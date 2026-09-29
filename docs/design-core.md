@@ -5,12 +5,12 @@ Last updated: 2026-09-29
 
 ## 1. Core loop
 
-1. tear / chew / eat flesh
+1. leave the restroom through its door and tear / chew / eat into the flesh blocking the way
 2. stomach fills
 3. return toward the clean restroom
 4. vomit into the toilet to empty stomach capacity
 5. mutation progress accumulates and becomes visible
-6. go back down and eat deeper
+6. go back out and eat deeper
 
 There is no sell loop. Vomit has no resource or crafting value.
 
@@ -111,6 +111,17 @@ The game must remain navigable despite player-made tunnels and flesh regeneratio
 
 ## 8. Restroom
 
+The game starts inside the restroom.
+
+Opening the door does not reveal a normal corridor or open exterior. The doorway is blocked immediately by a wall of flesh, establishing the first required act of excavation.
+
+From that doorway, excavation is volumetric rather than a fixed downward shaft. The player can eat into the flesh:
+- forward
+- upward
+- downward
+- left
+- right
+
 The restroom is deliberately **clean and white**.
 
 Visual rule:
@@ -132,6 +143,8 @@ Additional restroom content is TODO.
 ## 9. Depth
 
 Going deeper is the core-loop objective and does not require a conventional quest justification.
+
+Because excavation can proceed in multiple directions from the restroom doorway, **deeper does not automatically mean downward on the world Y-axis**. The exact rule that defines progression depth is unresolved.
 
 Depth must change play, not only HP/resistance values.
 
