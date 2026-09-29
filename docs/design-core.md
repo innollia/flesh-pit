@@ -16,6 +16,20 @@ There is no sell loop. Vomit has no resource or crafting value.
 
 The target rhythm should borrow from successful compact digging games: stomach capacity and early refill timing should be tuned so returns happen often enough to teach the loop without becoming constant interruption.
 
+### Overfilling
+
+A full stomach is not a hard stop.
+
+The player can keep eating past normal capacity, but the body visibly struggles:
+- chewing / eating motion becomes progressively slower
+- sound and animation should make the act read as forced rather than normal consumption
+- the stomach UI continues upward beyond the stomach into the throat
+- once overfilled far enough, recently torn-off flesh is visibly held at the bottom of the screen instead of disappearing cleanly
+- continuing to eat pushes an increasingly large mass of flesh forward into view
+- an overflow bar continues rising past the normal stomach UI to show how far beyond comfortable capacity the player has gone
+
+The purpose is to let the player choose to push farther at worsening efficiency rather than imposing an abrupt capacity wall.
+
 ## 2. Regenerating flesh is a core pressure
 
 Excavated flesh **grows back**.
@@ -28,6 +42,8 @@ This is not just world flavor. It changes the return trip:
 Early-game stomach capacity and flesh-regeneration speed should be intentionally tuned so the player notices regeneration during the first few loops without needing explicit explanation.
 
 The first version should make the phenomenon obvious but recoverable rather than punitive.
+
+A later tool role is established: the player can **slow local regeneration** to keep selected routes useful for longer. It should not permanently delete regeneration pressure.
 
 ## 3. Eating feel
 
@@ -43,9 +59,15 @@ Start:
 - tearing
 - eating
 
-Tool progression is unresolved and must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
+Tool progression must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
-One tool role is already expected: the player can eventually use a tool or device that **suppresses or prevents flesh regeneration locally**, allowing selected routes or areas to remain open longer.
+Established tool directions:
+- **portable blender:** torn flesh can be collected and blended in batches, then consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently
+- **tissue-specific tools:** some tools can improve handling of particular tissue types
+- **route / return tools:** tools can support navigation, route maintenance, or return travel
+- **regeneration-control tools:** some tools can slow local flesh regeneration
+
+The exact tool roster and progression order remain unresolved.
 
 See TODOs.
 
@@ -60,6 +82,8 @@ Accepted feedback channels:
 - stomach UI changing with mutation
 
 Major mutations should be perceptible immediately.
+
+Mutation progression includes **player choice** rather than being purely automatic. The exact choice cadence, number of options, and presentation remain unresolved.
 
 ## 5. Tissue-specific rules
 
@@ -98,6 +122,7 @@ On death:
 - dropped belongings remain at the death location
 - the player can return and recover them
 - failing to recover them should not create a severe long-term penalty
+- navigation only preserves the **last known location** of the drop; if living tissue shifts afterward, the marker does not magically update to the item's new exact position
 
 Death should create a small recovery objective, not wipe progression.
 
@@ -158,7 +183,7 @@ Additional restroom content is TODO.
 
 Going deeper is the core-loop objective and does not require a conventional quest justification.
 
-Because excavation can proceed in multiple directions from the restroom doorway, **deeper does not automatically mean downward on the world Y-axis**. The exact rule that defines progression depth is unresolved.
+Because excavation can proceed in multiple directions from the restroom doorway, **deeper does not automatically mean downward on the world Y-axis**.
 
 Current working structure:
 - the restroom sits near the center of multiple nested roughly spherical layers
