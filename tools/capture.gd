@@ -61,7 +61,7 @@ func _apply_stage(i: int) -> void:
     match i:
         0:
             m.restroom.set_door_open(false, true)
-            _pose(Vector3(0.9, 0.95, 1.1), deg_to_rad(215.0), deg_to_rad(-12.0))
+            _pose(m.START_POS, m.START_YAW, deg_to_rad(-10.0))
         1:
             m.restroom.set_door_open(true, true)
             _pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-4.0))
@@ -76,7 +76,7 @@ func _apply_stage(i: int) -> void:
         4:
             m.terrain.dig_at(Vector3(0.25, 1.25, 2.4), 1.0)
             _dig_tunnel()
-            _pose(Vector3(0.0, 0.95, 3.3), PI, deg_to_rad(-6.0))
+            _pose(Vector3(0.0, 0.95, 4.2), -PI * 0.5, deg_to_rad(-6.0))
             m.player.camera.fov = 60.0
             m.hands_rig.on_grab_started(Vector3i.ZERO)
         5:
@@ -93,6 +93,7 @@ func _apply_stage(i: int) -> void:
             m.settlement.finish_counting()
             m._on_buy(0)
             m.end_settlement()
+            m.has_blender = true
             m.toggle_carry()
             m.carried_flesh = 30.0
             _pose(Vector3(0.0, 0.95, 4.0), PI, deg_to_rad(-2.0))
@@ -101,7 +102,11 @@ func _apply_stage(i: int) -> void:
 func _per_frame(i: int) -> void:
     var m = _main
     if i == 4:
-        m.hands_rig.on_chew_progress(clampf(float(_frame) / SETTLE * 1.1, 0.0, 0.8), Vector3i.ZERO)
+        var r := clampf(float(_frame) / SETTLE * 1.1, 0.0, 0.8)
+        m.hands_rig.on_chew_progress(r, Vector3i.ZERO)
+        m.terrain.set_press(Vector3(0.95, 1.3, 4.2), Vector3(-1, 0, 0), r)
+    if i == 5 and _frame == 0:
+        m.terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
     if i == 6 and _frame == SETTLE - 2:
         m.settlement.finish_counting()
 

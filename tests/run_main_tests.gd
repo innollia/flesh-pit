@@ -89,7 +89,14 @@ func _run() -> void:
         for i in range(60):
             m.chewer.process_chew(0.05)
         _assert(m.stomach.fill > before, "chewing the door wall tears flesh into the stomach")
-    # carry pile
+    # chew press dents the wall
+    m.terrain.set_press(Vector3(0, 1, 2.3), Vector3(0, 0, -1), 0.6)
+    _assert(is_equal_approx(m.terrain.get_press_amount(), 0.6), "chew press is sent to the terrain shader")
+    m.terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
+    # carry pile needs the blender
+    m.toggle_carry()
+    _assert(not m.carry_mode, "without the blender the flesh pile cannot be carried")
+    m.has_blender = true
     m.toggle_carry()
     m._on_cell_torn(Vector3(0, 1, 3))
     _assert(m.carried_flesh > 0.0 and not m.two_handed_tools_available(), "carrying torn flesh blocks two-handed tools")

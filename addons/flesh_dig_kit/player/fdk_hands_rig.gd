@@ -173,8 +173,8 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
     var breathe := sin(_time * 1.7 + side) * 1.5
     var idle := {
         "wrist_pitch": 14.0 + breathe, "wrist_yaw": 10.0 * side, "wrist_roll": -32.0 * side,
-        "f1": 14.0 + breathe, "f2": 16.0, "f3": 10.0,
-        "t1": 8.0, "t2": 10.0, "t3": 8.0, "t_opp": 12.0,
+        "f1": 18.0 + breathe, "f2": 24.0, "f3": 14.0,
+        "t1": 2.0, "t2": 8.0, "t3": 10.0, "t_opp": 3.0,
         "pos": Vector3(0.2 * side, -0.215, -0.4),
     }
     var p := idle.duplicate()
@@ -306,11 +306,14 @@ func _to_rig(n: Node3D) -> Transform3D:
 
 # --- mesh building ---------------------------------------------------------
 
+## Cross-section of the fused finger block: four rounded fingers side by
+## side, with grooves between them on the back AND the palm side.
 const FINGER_PROFILE := [
-    Vector2(1.0, -0.2), Vector2(0.95, 0.6), Vector2(0.75, 1.0), Vector2(0.5, 0.6),
-    Vector2(0.25, 1.0), Vector2(0.0, 0.62), Vector2(-0.25, 1.0), Vector2(-0.5, 0.6),
-    Vector2(-0.75, 0.95), Vector2(-0.95, 0.55), Vector2(-1.0, -0.2), Vector2(-0.85, -0.8),
-    Vector2(-0.3, -0.95), Vector2(0.3, -0.95), Vector2(0.85, -0.8),
+    Vector2(1.0, -0.1), Vector2(0.95, 0.55), Vector2(0.75, 1.0), Vector2(0.5, 0.58),
+    Vector2(0.25, 1.0), Vector2(0.0, 0.6), Vector2(-0.25, 1.0), Vector2(-0.5, 0.58),
+    Vector2(-0.75, 0.95), Vector2(-0.95, 0.5), Vector2(-1.0, -0.15), Vector2(-0.92, -0.72),
+    Vector2(-0.75, -1.0), Vector2(-0.5, -0.66), Vector2(-0.25, -1.0), Vector2(0.0, -0.66),
+    Vector2(0.25, -1.0), Vector2(0.5, -0.66), Vector2(0.75, -1.0), Vector2(0.92, -0.72),
 ]
 
 func _build_hand(side: float) -> Dictionary:
@@ -326,7 +329,7 @@ func _build_hand(side: float) -> Dictionary:
 
     var palm_len := 0.088
     var f_len := [0.044, 0.031, 0.025]
-    var f_half := [Vector2(0.041, 0.0115), Vector2(0.038, 0.0105), Vector2(0.034, 0.0092)]
+    var f_half := [Vector2(0.041, 0.0175), Vector2(0.038, 0.0158), Vector2(0.034, 0.0138)]
     var f1 := _joint(wrist, "Finger1", Vector3(0, 0.001, -palm_len))
     _add_mesh(f1, "Seg", _finger_mesh(f_len[0], f_half[0], f_half[1], thumb_side, false))
     var f2 := _joint(f1, "Finger2", Vector3(0, 0, -f_len[0]))
@@ -408,8 +411,8 @@ func _palm_mesh(thumb_side: float) -> Mesh:
         FDKLowPoly.ring(prof, 0.014, Vector2(0.027, 0.018)),
         FDKLowPoly.ring(prof, -0.022, Vector2(0.037, 0.0175), Vector2(thumb_side * 0.002, 0)),
         FDKLowPoly.ring(prof, -0.058, Vector2(0.043, 0.0165)),
-        FDKLowPoly.ring(prof, -0.086, Vector2(0.044, 0.013), Vector2(0, 0.001)),
-        FDKLowPoly.ring(prof, -0.093, Vector2(0.041, 0.011), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, -0.086, Vector2(0.044, 0.017), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, -0.093, Vector2(0.042, 0.0175), Vector2(0, 0.001)),
     ]
     FDKLowPoly.loft(st, rings, [skin_color, skin_color, skin_color.lightened(0.04), skin_color], true, true)
     FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.02, -0.011, -0.03), Vector3(0.017, 0.011, 0.026), 0.18, 3, palm_color, palm_color.darkened(0.08))
@@ -420,10 +423,12 @@ func _finger_mesh(length: float, half_start: Vector2, half_end: Vector2, thumb_s
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var prof := PackedVector2Array(FINGER_PROFILE)
-    var r0 := FDKLowPoly.ring(prof, 0.006, half_start * 1.03)
-    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5)
-    var r2 := FDKLowPoly.ring(prof, -length, half_end)
+    # knuckle bulge at the joint, slimmer in the middle of the segment
+    var r0 := FDKLowPoly.ring(prof, 0.007, half_start * Vector2(1.06, 1.28), Vector2(0, half_start.y * 0.12))
+    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(0.98, 0.9))
+    var r2 := FDKLowPoly.ring(prof, -length, half_end * Vector2(1.0, 1.08))
     if tip:
+        _shape_tip(r0, prof, thumb_side, -0.007, 0.0)
         _shape_tip(r1, prof, thumb_side, length * 0.5, 0.35)
         _shape_tip(r2, prof, thumb_side, length, 1.0)
         var r3 := FDKLowPoly.ring(prof, -length - 0.007, half_end * Vector2(0.9, 0.55), Vector2(0, -0.001))

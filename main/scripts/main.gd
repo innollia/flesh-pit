@@ -14,6 +14,9 @@ const VOMIT_BUTTON_OVERFILL := 0.35
 const MUTATION_PER_FLESH := 0.5
 const MONEY_PER_FLESH := 12.0
 const WORLD_GEN_HALF := 10.0
+## Start beside the sink looking across the room: toilet and door both in view.
+const START_POS := Vector3(-1.12, 0.95, 0.35)
+const START_YAW := -PI * 0.5 - 0.05
 
 @export var terrain_config: FDKTerrainConfig = FDKTerrainConfig.new()
 @export var stomach_config: FDKStomachConfig = FDKStomachConfig.new()
@@ -39,6 +42,10 @@ var money: int = 0
 ## Flesh held in the hands (carry mode). While > 0, two-handed tools are off.
 var carried_flesh: float = 0.0
 var carry_mode: bool = false
+## Portable blender owned (temporary flag until the tool system exists).
+## Carrying a flesh pile is only possible with it (design-core 3).
+var has_blender: bool = false
+var _chew_ratio: float = 0.0
 var purchased_items: Array = []
 var _settling: bool = false
 var _coin: MeshInstance3D
@@ -73,9 +80,9 @@ func _ready() -> void:
     var player_scene: PackedScene = load("res://addons/flesh_dig_kit/player/fdk_first_person_controller.tscn")
     player = player_scene.instantiate()
     player.name = "Player"
-    player.position = Vector3(0, 0.95, -0.2)
+    player.position = START_POS
     add_child(player)
-    player.set("_yaw", PI) # face the door (+Z)
+    player.set("_yaw", START_YAW) # side view: toilet left, door right
 
     chewer = FDKChewer.new()
     chewer.name = "Chewer"
@@ -90,6 +97,9 @@ func _ready() -> void:
     chewer.chew_progress.connect(hands_rig.on_chew_progress)
     chewer.cell_torn.connect(hands_rig.on_cell_torn)
     chewer.released.connect(hands_rig.on_released)
+    chewer.chew_progress.connect(func(r, _c): _chew_ratio = r)
+    chewer.cell_torn.connect(func(_p): _chew_ratio = 0.0)
+    chewer.released.connect(func(): _chew_ratio = 0.0)
 
     stomach_view = FPStomachView.new()
     stomach_view.name = "StomachView"
@@ -159,13 +169,20 @@ func _spawn_door_nerves() -> void:
     var z := FPRestroom.HALF.z + ROOM_MARGIN
     var spots := [Vector3(-0.35, 1.55, z), Vector3(0.3, 0.55, z), Vector3(0.05, 1.85, z), Vector3(-0.2, 0.3, z)]
     for s in spots:
-        _spawn_nerve(s + Vector3(0, 0, 0.02), Vector3(0, 0, -1).rotated(Vector3.UP, randf_range(-0.4, 0.4)).rotated(Vector3.RIGHT, randf_range(-0.3, 0.3)))
+        # short: the gap between the closed door and the flesh is ~0.23 m,
+        # longer stalks would poke through the door into the clean room
+        var n := _spawn_nerve(s + Vector3(0, 0, 0.02), Vector3(0, 0, -1).rotated(Vector3.UP, randf_range(-0.4, 0.4)).rotated(Vector3.RIGHT, randf_range(-0.3, 0.3)))
+        n.length = 0.19
+
+func _add_nerve(n: FDKNerveStalk) -> void:
+    add_child(n)
 
 func _spawn_nerve(at: Vector3, normal: Vector3) -> FDKNerveStalk:
     var n := FDKNerveStalk.new()
     n.length = randf_range(0.35, 0.65)
     n.terrain = terrain
-    add_child(n)
+    n.set_meta("pending_add", true)
+    call_deferred("_add_nerve", n)
     n.place(at, normal)
     nerves.append(n)
     return n
@@ -197,9 +214,10 @@ func _setup_environment() -> void:
 func _update_atmosphere(delta: float) -> void:
     var inside := restroom.contains(player.global_position)
     var k := 1.0 - exp(-delta * 3.0)
-    environment.fog_density = lerpf(environment.fog_density, 0.012 if inside else 0.09, k)
+    var depth_tone := clampf(terrain.depth_at(player.global_position) / terrain_config.depth_tone_distance, 0.0, 1.0)
+    environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
     environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
-    environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.22 if inside else 0.35, k)
+    environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.3, k)
     player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.2 if inside else 1.1, k)
     # deeper shells are darker and more purple
     var depth := terrain.depth_at(player.global_position)
@@ -286,10 +304,13 @@ func _process(delta: float) -> void:
             # aim half a cell INTO the wall: the targeted cell is solid tissue
             chewer.try_start(hit.position + direction * terrain_config.cell_size * 0.5)
             chewer.process_chew(delta)
+            terrain.set_press(hit.position, -direction, _chew_ratio if chewer.is_chewing() else 0.0)
         else:
             chewer.stop()
+            terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
     else:
         chewer.stop()
+        terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 
     terrain.regenerate_all(delta, player.global_position, 2.0)
 
@@ -380,6 +401,8 @@ func _process_coin(delta: float) -> void:
 ## stomach (the portable blender will consume it later). While carrying,
 ## two-handed tools are unavailable.
 func toggle_carry() -> void:
+    if not has_blender and not carry_mode:
+        return
     carry_mode = not carry_mode
     chewer.stomach = null if carry_mode else stomach
     if not carry_mode:

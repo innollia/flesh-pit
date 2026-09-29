@@ -39,7 +39,7 @@ func build() -> void:
 func _build_tiles(mat: Material) -> void:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var grout := Color(0.74, 0.76, 0.78)
+    var grout := Color(0.52, 0.55, 0.58)
     var h := HALF
     # grout planes (slightly behind tiles), then tiles
     _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 0, 2 * h.z), Vector3.UP, grout)
@@ -102,7 +102,7 @@ func _tile_color(a: int, b: int, c: int, floor_tile: bool) -> Color:
     var hsh := FDKLowPoly.hash3(a, b, c)
     if floor_tile:
         return Color(0.9, 0.92, 0.93) if (a + b + c) % 2 == 0 else Color(0.82, 0.86, 0.9)
-    return Color(0.96, 0.97, 0.97).darkened(hsh * 0.04)
+    return Color(0.9, 0.91, 0.92).darkened(hsh * 0.05)
 
 func _plane(st: SurfaceTool, o: Vector3, u: Vector3, v: Vector3, n: Vector3, c: Color) -> void:
     FDKLowPoly.add_quad(st, o, o + u, o + u + v, o + v, n, c)
@@ -288,7 +288,8 @@ func _build_light() -> void:
     l.name = "RoomLight"
     l.position = Vector3(0, 2 * HALF.y - 0.3, 0)
     l.omni_range = 6.0
-    l.light_energy = 0.75
+    l.light_energy = 0.42
+    l.shadow_enabled = true
     l.light_color = Color(1.0, 0.99, 0.96)
     add_child(l)
 

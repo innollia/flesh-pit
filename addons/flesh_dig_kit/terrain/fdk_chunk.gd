@@ -45,17 +45,12 @@ const TISSUE_COLORS: Array[Color] = [
 ## Deep-shell tint the flesh drifts toward with depth.
 const DEEP_TINT := Color(0.32, 0.04, 0.12)
 
-static var _shared_material: StandardMaterial3D
+static var _shared_material: ShaderMaterial
 
-static func terrain_material() -> StandardMaterial3D:
+static func terrain_material() -> ShaderMaterial:
     if _shared_material == null:
-        var m := StandardMaterial3D.new()
-        m.vertex_color_use_as_albedo = true
-        m.roughness = 0.32
-        m.metallic_specular = 0.75
-        m.rim_enabled = true
-        m.rim = 0.25
-        m.rim_tint = 0.8
+        var m := ShaderMaterial.new()
+        m.shader = load("res://addons/flesh_dig_kit/terrain/fdk_terrain.gdshader")
         _shared_material = m
     return _shared_material
 

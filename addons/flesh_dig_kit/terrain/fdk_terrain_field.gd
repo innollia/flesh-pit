@@ -174,6 +174,18 @@ func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: fl
         var local_radius: float = protect_radius / config.cell_size
         chunk.regenerate(delta, config.regen_rate, local_protect, local_radius)
 
+## Chew press visual: dents then stretches the wall around `center` toward
+## `toward` (usually the player) as amount goes 0..1. amount 0 = off.
+func set_press(center: Vector3, toward: Vector3, amount: float) -> void:
+    var m := FDKChunk.terrain_material()
+    m.set_shader_parameter("press_center", center)
+    m.set_shader_parameter("press_dir", toward.normalized() if toward.length_squared() > 0.0 else Vector3.BACK)
+    m.set_shader_parameter("press_amount", clampf(amount, 0.0, 1.0))
+
+func get_press_amount() -> float:
+    var v = FDKChunk.terrain_material().get_shader_parameter("press_amount")
+    return float(v) if v != null else 0.0
+
 func depth_at(world_pos: Vector3) -> float:
     return world_pos.distance_to(depth_origin)
 
