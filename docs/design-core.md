@@ -3,124 +3,160 @@
 Status: **current working canon**
 Last updated: 2026-09-29
 
-## 1. First-minute fantasy
+## 1. Core loop
 
-The player encounters flesh and simply **eats it**.
+1. tear / chew / eat flesh
+2. stomach fills
+3. return toward the clean restroom
+4. vomit into the toilet to empty stomach capacity
+5. mutation progress accumulates and becomes visible
+6. go back down and eat deeper
 
-No economy explanation is required up front. The first loop should be understood physically:
+There is no sell loop. Vomit has no resource or crafting value.
 
-1. tear/eat flesh
-2. stomach meter rises
-3. stomach becomes full
-4. go back to the restroom
-5. vomit into the toilet
-6. stomach capacity resets
-7. go back and eat farther/deeper
+The target rhythm should borrow from successful compact digging games: stomach capacity and early refill timing should be tuned so returns happen often enough to teach the loop without becoming constant interruption.
 
-The loop should be readable before any upgrade screen is explained.
+## 2. Regenerating flesh is a core pressure
 
-## 2. Mutation discovery
+Excavated flesh **grows back**.
 
-Repeated consumption causes **mutation points** to accumulate.
+This is not just world flavor. It changes the return trip:
+- the tunnel gradually narrows behind the player
+- old routes become less comfortable or partially obstructed
+- deeper excursions increase return pressure
 
-The player should discover this after already understanding the eat/full/vomit loop. Mutation is therefore a second-layer revelation, not tutorial clutter.
+Early-game stomach capacity and flesh-regeneration speed should be intentionally tuned so the player notices regeneration during the first few loops without needing explicit explanation.
 
-Mutation replaces the conventional mining-game shop economy.
+The first version should make the phenomenon obvious but recoverable rather than punitive.
 
-Possible upgrade axes:
-- stomach capacity
-- bite / tear size
-- digestion / eating speed
-- resistance to bleeding or irritants
-- ability to sense nerves, vessels, rare tissue
-- new body/tool interaction verbs
+## 3. Eating feel
 
-## 3. Tool evolution
+Eating is not abstract block deletion.
+
+Required physical signals:
+- tissue elasticity
+- chewing / consumption time
+- visible tearing/deformation before removal
 
 Start:
 - bare hands
 - tearing
-- biting/eating
+- eating
 
-Later tools should change verbs, not just DPS:
-- cut
-- hook and pull
-- saw
-- spread/pry
-- suction
-- cauterize
+Tool progression is unresolved and must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
-A new tool is valuable when it changes **which tissue can be approached safely or efficiently**.
+See TODOs.
 
-## 4. Accepted flesh-specific rules
+## 4. Mutation feedback
+
+Mutation should be felt through the player's body and presentation, not only numbers.
+
+Accepted feedback channels:
+- sound changes
+- heavier / altered footstep shake
+- the player's hands as an in-world HUD
+- stomach UI changing with mutation
+
+Major mutations should be perceptible immediately.
+
+## 5. Tissue-specific rules
 
 ### Blood vessels
-Damage can create bleeding that:
-- obscures vision
-- changes navigation
-- forces the player to clear, avoid, or contain the area
+**Cancelled as a core mechanic for now.**
+
+Do not assume bleeding/vascular avoidance is part of the core design unless reintroduced later.
 
 ### Nerves
-Damage can trigger:
-- contraction
-- shifting passages
-- local deformation
-- temporary danger or route closure
+Nerves are intentionally conspicuous:
+- yellow
+- protrude from walls
+- wriggle like garden eels
 
-### Tumors / valuable growths
-Careless destruction reduces:
-- quality
-- mutation yield
-- intact recovery value, if a later system uses intact samples
+The player should recognize them before interacting.
 
-This makes precision occasionally preferable to raw excavation speed.
+Their current mechanical role remains:
+- touching/damaging them can cause local tissue contraction, shifting, or deformation
 
-## 5. Toilet / restroom
+The reaction must read as caused by the player's action rather than arbitrary punishment.
 
-The restroom is the project's equivalent of a mining game's surface base.
+### Cancer / tumors
+Cancerous growths are primarily a **collection/codex element**.
 
-Primary mechanical purpose:
-- empty stomach
-- close one expedition cycle
+Current canon:
+- collect/discover entries for a cancer/tumor codex
+- additional direct gameplay benefit is undecided
+
+Do not force a reward system onto them until there is a reason.
+
+## 6. Death and recovery
+
+Death exists.
+
+On death:
+- dropped belongings remain at the death location
+- the player can return and recover them
+- failing to recover them should not create a severe long-term penalty
+
+Death should create a small recovery objective, not wipe progression.
+
+## 7. Navigation
+
+Accepted navigation aids:
+- compass
+- canary
+
+Exact canary function is still open, but it belongs to the navigation/foreshadowing language rather than being random decoration.
+
+The game must remain navigable despite player-made tunnels and flesh regeneration.
+
+## 8. Restroom
+
+The restroom is deliberately **clean and white**.
+
+Visual rule:
+- the flesh world is dirty/red/organic
+- the restroom is the safe white exception
+
+It should feel genuinely safe and clean rather than secretly disgusting.
+
+Primary functions:
+- empty stomach by vomiting
+- mark the end of one expedition cycle
 - expose mutation/progression
+- provide a strong visual reset between excursions
 
-Do **not** make vomit itself a crafting/selling resource unless a later prototype proves that it improves the central loop. Right now, vomit is intentionally mechanically inert.
+The restroom already serves as the game's emotional contrast space.
 
-The restroom can still carry content:
-- environmental changes across depth milestones
-- mirror/body mutation feedback
-- new tools appearing
-- signage and infrastructure traces
-- plumbing behavior changing with progress
+Additional restroom content is TODO.
 
-## 6. Depth
+## 9. Depth
 
-The player does not need a conventional quest justification for going deeper.
+Going deeper is the core-loop objective and does not require a conventional quest justification.
 
-Depth is:
-- progression
-- curiosity
-- escalation
-- access to new tissue behaviors
-- access to new mutation possibilities
+Depth must change play, not only HP/resistance values.
 
-The design obligation is not “explain why the player keeps going.”
-The obligation is **make deeper layers change play**.
+**TODO:** use Mystery Flesh Pit and adjacent references only as brainstorming material for distinct depth/anatomy zones in the original world.
 
-Avoid:
-- same flesh with more HP
-- purely numerical resistance scaling
-- lore dumps used as substitutes for mechanical variation
+## 10. Ending ideas — not canon
 
-## 7. Scope
+Current possibilities, all unconfirmed:
+- mutation escalates until a biological singularity / irreversible transformation
+- the restroom is located inside a large intestine; the player eventually digs through and exits via the anus
+- the player is actually a parasite moving through a human/organism body
+- other endings may replace all of the above
 
-This is a **small indie game**.
+Do not build the project around any of these yet.
+
+## 11. Scope
+
+This is a small indie game.
 
 Protect:
-- one dominant loop
-- compact mutation tree
-- few tools with strong behavioral differences
-- short return trips
+- digging/eating core loop
+- stomach pressure
+- regeneration pressure
+- restroom reset
+- mutation feedback
 - strong depth milestones
 
 Avoid accidental expansion into:
