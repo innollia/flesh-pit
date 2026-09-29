@@ -68,3 +68,23 @@ func _run_test() -> void:
 	var restored_density: float = restored_chunk.get_density_at_corner(local_cell.x, local_cell.y, local_cell.z)
 	_assert(is_equal_approx(restored_density, saved_density),
 		"save/load: terrain density at dug cell restored (got %f, expected %f)" % [restored_density, saved_density])
+
+	_test_drawings()
+
+## Crayon drawings (kind + order) survive save/load and hang on the wall again.
+func _test_drawings() -> void:
+	_main_node.vent.on_tumors_settled(["stone", "hair_ball"])
+	var d: Dictionary = _main_node.serialize()
+	_assert(d.has("drawings") and d["drawings"] == ["stone", "hair_ball"], "save: drawings kinds in order")
+	_main_node.vent.on_tumors_settled(["eye"])
+	_main_node.deserialize(d)
+	_assert(_main_node.vent.drawings == ["stone", "hair_ball"], "load: vent drawings restored")
+	var live: Array = []
+	for n in _main_node.drawing_nodes:
+		live.append(String(n.get_meta("tumor_kind")))
+	_assert(live == ["stone", "hair_ball"], "load: papers rebuilt on the wall in order (got %s)" % [live])
+	_assert(_main_node.drawing_nodes.size() == 2 and _main_node.drawing_nodes[1].position.is_equal_approx(FPVent.drawing_spot(1)), "load: paper 2 at its wall spot")
+	var empty: Dictionary = d.duplicate()
+	empty.erase("drawings")
+	_main_node.deserialize(empty)
+	_assert(_main_node.drawing_nodes.is_empty(), "load: old save without drawings clears the wall")

@@ -1235,6 +1235,7 @@ func serialize() -> Dictionary:
         "ended": ended,
         "taken_tumor_spots": taken_tumor_spots.duplicate(),
         "player_position": [player.global_position.x, player.global_position.y, player.global_position.z],
+        "drawings": vent.drawings.duplicate(),
     }
 
 func deserialize(data: Dictionary) -> void:
@@ -1279,3 +1280,14 @@ func deserialize(data: Dictionary) -> void:
     var pos: Array = data.get("player_position", [])
     if pos.size() == 3:
         player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+    _restore_drawings(data.get("drawings", []) as Array)
+
+## Crayon tumor drawings come back on the wall in the order they were given.
+func _restore_drawings(kinds: Array) -> void:
+    for n in drawing_nodes:
+        n.queue_free()
+    drawing_nodes.clear()
+    vent.drawings.clear()
+    for k in kinds:
+        vent.drawings.append(String(k))
+        _on_drawing_dropped(String(k))
