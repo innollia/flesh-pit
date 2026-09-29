@@ -1,6 +1,6 @@
 extends Node3D
 
-## Ending set: a city street on a bright day. Asphalt road with lane marks,
+## Ending set: a city street on a bright day (no awnings/flags: kept sober). Asphalt road with lane marks,
 ## kerbs and pavements, low-poly 5-8 storey blocks with window grids and
 ## shop awnings, street lamps. The street is EMPTY (no people at all, per
 ## the owner's call), and the rolling human sphere - larger than the tallest
@@ -20,11 +20,11 @@ func _ready() -> void:
     var asphalt := Color(0.34, 0.34, 0.36)
     var pave := Color(0.66, 0.64, 0.6)
     var kerb := Color(0.78, 0.77, 0.74)
-    K.quad(st, Transform3D.IDENTITY, Vector3(-6, 0, 20), Vector3(6, 0, 20), Vector3(6, 0, -LEN), Vector3(-6, 0, -LEN), Vector3.UP, asphalt)
+    K.quad(st, Transform3D.IDENTITY, Vector3(-6, 0, 90), Vector3(6, 0, 90), Vector3(6, 0, -LEN), Vector3(-6, 0, -LEN), Vector3.UP, asphalt)
     for sx in [-1, 1]:
         K.rbox(st, K.T(Vector3(sx * 6.1, 0.08, -LEN * 0.5 + 10)), Vector3(0.12, 0.08, LEN * 0.5 + 10), 0.04, kerb)
-        K.quad(st, Transform3D.IDENTITY, Vector3(sx * 6.2, 0.15, 20), Vector3(sx * 10, 0.15, 20), Vector3(sx * 10, 0.15, -LEN), Vector3(sx * 6.2, 0.15, -LEN), Vector3.UP, pave)
-    var z := 18.0
+        K.quad(st, Transform3D.IDENTITY, Vector3(sx * 6.2, 0.15, 90), Vector3(sx * 10, 0.15, 90), Vector3(sx * 10, 0.15, -LEN), Vector3(sx * 6.2, 0.15, -LEN), Vector3.UP, pave)
+    var z := 88.0
     while z > -LEN:
         K.quad(st, Transform3D.IDENTITY, Vector3(-0.08, 0.01, z), Vector3(0.08, 0.01, z), Vector3(0.08, 0.01, z - 3.0), Vector3(-0.08, 0.01, z - 3.0), Vector3.UP, Color(0.95, 0.92, 0.8))
         z -= 7.0
@@ -37,7 +37,7 @@ func _ready() -> void:
     st = K.begin()
     var facades := [Color(0.82, 0.74, 0.62), Color(0.7, 0.72, 0.74), Color(0.62, 0.44, 0.36), Color(0.88, 0.86, 0.8), Color(0.55, 0.6, 0.66)]
     for sx in [-1, 1]:
-        var bz := 16.0
+        var bz := 60.0
         var i := 0
         while bz > -LEN:
             var w := 9.0 + K.h(i, sx + 5) * 8.0
@@ -60,9 +60,6 @@ func _ready() -> void:
                     K.quad(st, Transform3D.IDENTITY, Vector3(fx, wy, wz), Vector3(fx, wy, wz - 1.1), Vector3(fx, wy + 1.5, wz - 1.1), Vector3(fx, wy + 1.5, wz), Vector3(-sx, 0, 0), glass)
             # ground floor shop window + awning
             K.quad(st, Transform3D.IDENTITY, Vector3(fx, 0.5, bz - 1.0), Vector3(fx, 0.5, bz - w + 1.4), Vector3(fx, 2.6, bz - w + 1.4), Vector3(fx, 2.6, bz - 1.0), Vector3(-sx, 0, 0), Color(0.3, 0.38, 0.45))
-            var aw: Color = [Color(0.8, 0.2, 0.15), Color(0.15, 0.45, 0.35), Color(0.9, 0.7, 0.2)][i % 3]
-            K.quad(st, Transform3D.IDENTITY, Vector3(fx, 3.0, bz - 1.0), Vector3(fx, 3.0, bz - w + 1.4), Vector3(fx - sx * 1.4, 2.5, bz - w + 1.4), Vector3(fx - sx * 1.4, 2.5, bz - 1.0), Vector3(-sx, 1, 0), aw)
-            K.quad(st, Transform3D.IDENTITY, Vector3(fx, 3.0, bz - 1.0), Vector3(fx, 3.0, bz - w + 1.4), Vector3(fx - sx * 1.4, 2.5, bz - w + 1.4), Vector3(fx - sx * 1.4, 2.5, bz - 1.0), Vector3(sx, -1, 0), aw.darkened(0.3))
             bz -= w
             i += 1
     K.add_mesh(self, "Buildings", K.finish(st, 0.4), K.mat("tex_tile_wall_64.png", 0.05, false))
@@ -101,4 +98,4 @@ func landing_point() -> Vector3:
 
 func capture_setup() -> Dictionary:
     set_roll(0.0)
-    return {"cam_pos": Vector3(1.5, 1.7, 8.0), "look_at": Vector3(0, 16.0, -50.0), "env": "day", "fov": 60.0}
+    return {"cam_pos": Vector3(3.0, 40.0, 95.0), "look_at": Vector3(0, 26.0, -50.0), "env": "day", "fov": 60.0}

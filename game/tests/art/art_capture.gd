@@ -32,6 +32,11 @@ func _ready() -> void:
             env.ambient_light_energy = 0.3
             sun.light_energy = 0.55
             sun.light_color = Color(0.92, 0.97, 1.0)
+        "lit":
+            env.background_color = Color(0.1, 0.1, 0.12)
+            env.ambient_light_color = Color(0.9, 0.85, 0.8)
+            env.ambient_light_energy = 1.6
+            sun.light_energy = 2.4
         _:
             env.background_color = Color(0.1, 0.1, 0.12)
             env.ambient_light_color = Color(0.7, 0.55, 0.55)

@@ -43,7 +43,7 @@ func _ready() -> void:
             var col: Color = Color(1, 1, 1).lerp(reds[int(hv * 40.0) % 4], 0.12)
             var mid := (a + b + c + d) * 0.25
             K.quad(st, Transform3D.IDENTITY, a, b, c, d, mid, col)
-    K.add_mesh(_ball, "Body", K.finish(st, 5.0), FDKPs1Material.get_material("res://main/art/textures/tex_minced_meat_128.png", 1.0, true, 0.35, 0.6, 1.0, false))
+    K.add_mesh(_ball, "Body", K.finish(st, 3.0), FDKPs1Material.get_material("res://main/art/textures/tex_minced_meat_128.png", 1.0, true, 0.35, 0.6, 1.0, false))
     set_radius(radius)
 
 func set_radius(r: float) -> void:

@@ -15,8 +15,8 @@ var _lump: MeshInstance3D
 var _has := false
 
 func _ready() -> void:
-    var cord := Color(0.12, 0.12, 0.14)
-    var cord_hi := Color(0.72, 0.18, 0.12)
+    var cord := Color(0.85, 0.82, 0.74)
+    var cord_hi := Color(0.9, 0.45, 0.15)
     var mat := K.mat("tex_fixture_64.png", 0.1, true)
     # strap + drawstring knot (shared)
     var st := K.begin()
@@ -71,7 +71,4 @@ func has_tumor() -> bool:
 
 func capture_setup() -> Dictionary:
     set_tumor(true, 1)
-    # capture only: the empty bag hanging beside the full one
-    var e := K.add_mesh(self, "CaptureEmpty", _net_empty.mesh, _net_empty.material_override)
-    e.position = Vector3(-0.32, 0.0, 0)
-    return {"cam_pos": Vector3(-0.1, -0.02, 0.8), "look_at": Vector3(-0.12, -0.12, 0), "env": "dark", "fov": 55.0}
+    return {"cam_pos": Vector3(0.05, 0.0, 0.62), "look_at": Vector3(0, -0.14, 0), "env": "lit", "fov": 55.0}
