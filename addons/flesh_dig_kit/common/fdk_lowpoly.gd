@@ -13,8 +13,9 @@ static func add_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, outward
     var n := (b - a).cross(c - a)
     if n.length_squared() < 1e-14:
         return
-    # Godot front faces are clockwise from the viewer, which means the
-    # right-handed cross product points AWAY from the viewer.
+    # Godot front faces are clockwise from the viewer, so the right-handed
+    # cross product must point AWAY from the viewer (checked with
+    # tools/_winding_check.gd).
     if n.dot(outward) > 0.0:
         var tmp := b
         b = c
