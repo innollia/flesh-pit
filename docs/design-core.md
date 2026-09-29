@@ -54,11 +54,12 @@ Early-game stomach capacity and flesh-regeneration speed should be intentionally
 
 The first version should make the phenomenon obvious but recoverable rather than punitive.
 
-A later tool role is established: the player can **slow local regeneration** to keep selected routes useful for longer. It should not permanently delete regeneration pressure.
+Route control uses two distinct tools:
 
-Regeneration-slowing devices are limited by **how many can be installed at once**. This forces the player to choose which routes or areas are worth stabilizing instead of suppressing regeneration everywhere.
+- **physical barriers:** temporarily hold back moving / regenerating tissue. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier can eventually break; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
+- **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent.
 
-To change which areas are stabilized, the player must physically return to an installed device, recover it, and relocate it. New placements do not automatically deactivate old devices.
+Permanent spray is intended to be the default route-maintenance tool. Its built-in cost is that sprayed tissue is removed as edible material instead of being consumed. Barriers are the temporary alternative when the player wants to hold a route without permanently dissolving it.
 
 ## 3. Eating feel
 
@@ -80,7 +81,8 @@ Established tool directions:
 - **portable blender:** torn flesh can be collected visibly in the player's hands, then blended in batches and consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently. While carrying a pile of flesh, the player can still use one-handed tools and actions, but two-handed tools are unavailable until the carried flesh is put down, consumed, or otherwise cleared.
 - **tissue-specific tools:** some tools can improve handling of particular tissue types
 - **route / return tools:** tools can support navigation, route maintenance, or return travel
-- **regeneration-control tools:** some tools can slow local flesh regeneration
+- **physical barriers:** temporarily resist tissue movement / regrowth and can fail under accumulated biome stress
+- **biosecurity spray:** permanently dissolves sprayed flesh, making it inedible and preventing that sprayed space from regenerating
 
 The exact tool roster and progression order remain unresolved.
 
@@ -98,13 +100,18 @@ Accepted feedback channels:
 
 Major mutations should be perceptible immediately.
 
-Mutation progression includes **player choice** rather than being purely automatic.
+Mutation progression uses a **point-based upgrade structure** rather than a one-time choice screen after each expedition.
 
-Mutation choice is presented when the player returns to the restroom and vomits into the toilet. The mutation UI appears beside the toilet rather than as a detached menu.
+Progression points accumulate and are settled while the player vomits into the restroom toilet.
 
-The offered mutation choices are determined by the **types of tissue the player has eaten** during the excursion.
+During the toilet sequence:
+- the toilet fills most of the screen
+- a branching upgrade structure appears on the right, visually closer to an organization chart / family tree than a detached menu
+- the current point total is shown beneath the upgrade structure
+- while vomiting continues, the settlement number visibly counts upward
+- the intended number treatment is a dark-gray existing total plus a green newly gained amount, for example **5000 + +2293**
 
-A tissue type must be eaten past a defined threshold before it becomes eligible to contribute mutation choices. Eligible tissue types then populate the available mutation options. Exact threshold values and option count remain unresolved.
+The player then spends accumulated points through this branching structure. Exact point sources, costs, branch contents, and pacing remain unresolved.
 
 ## 5. Tissue-specific rules
 
@@ -131,7 +138,8 @@ Cancerous growths are primarily a **collection/codex element**.
 
 Current canon:
 - collect/discover entries for a cancer/tumor codex
-- additional direct gameplay benefit is undecided
+- **prototype:** collection only; no practical reward is required
+- long-term practical benefit remains undecided
 
 Do not force a reward system onto them until there is a reason.
 
@@ -166,7 +174,11 @@ The canary's primary established role is **return-route danger warning**:
 - the warning is about the condition of the route back, not an exact pathfinding arrow
 - it should help the player notice that continued excavation is consuming their safe return margin
 
-Whether the canary also contributes to biome finding remains unresolved.
+The canary also has a lightweight secondary response to unusual nearby biome conditions:
+- it may make a noticeably different, odd cry such as **"우에엥?"**
+- it may visibly act frightened
+
+This is qualitative behavior, not a precise biome detector or GPS arrow.
 
 Biome geography is not fully static. As flesh regenerates, biome boundaries drift and reshape continuously during play rather than only between expeditions.
 
@@ -205,7 +217,11 @@ Primary functions:
 
 The restroom already serves as the game's emotional contrast space.
 
-Additional restroom content is TODO.
+**Prototype:** keep the restroom visually and structurally fixed as the clean white safe room.
+
+**Long-term direction:** the restroom itself can gradually become larger or change its internal structure as progression advances, while remaining the clean safe exception rather than being invaded by flesh.
+
+Additional long-term restroom content is TODO.
 
 ## 9. Depth
 
