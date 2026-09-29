@@ -33,8 +33,8 @@ const TEAR_TIME := 0.34
 const RELEASE_TIME := 0.4
 const SECOND_HAND_DELAY := 0.09
 
-@export var skin_color: Color = Color(0.86, 0.66, 0.56)
-@export var palm_color: Color = Color(0.9, 0.58, 0.52)
+@export var skin_color: Color = Color(0.88, 0.72, 0.62)
+@export var palm_color: Color = Color(0.9, 0.68, 0.6)
 @export var nail_color: Color = Color(0.95, 0.8, 0.74)
 @export var bob_follow: float = 0.9
 
@@ -329,7 +329,7 @@ func _build_hand(side: float) -> Dictionary:
 
     var palm_len := 0.088
     var f_len := [0.044, 0.031, 0.025]
-    var f_half := [Vector2(0.041, 0.0175), Vector2(0.038, 0.0158), Vector2(0.034, 0.0138)]
+    var f_half := [Vector2(0.047, 0.0215), Vector2(0.044, 0.0195), Vector2(0.04, 0.017)]
     var f1 := _joint(wrist, "Finger1", Vector3(0, 0.001, -palm_len))
     _add_mesh(f1, "Seg", _finger_mesh(f_len[0], f_half[0], f_half[1], thumb_side, false))
     var f2 := _joint(f1, "Finger2", Vector3(0, 0, -f_len[0]))
@@ -338,12 +338,12 @@ func _build_hand(side: float) -> Dictionary:
     _add_mesh(f3, "Seg", _finger_mesh(f_len[2], f_half[2], f_half[2] * 0.8, thumb_side, true))
 
     var t_len := [0.04, 0.03, 0.025]
-    var t1 := _joint(wrist, "Thumb1", Vector3(thumb_side * 0.03, -0.007, -0.014))
-    _add_mesh(t1, "Seg", _thumb_mesh(t_len[0], Vector2(0.0145, 0.0125), Vector2(0.0125, 0.011), false))
+    var t1 := _joint(wrist, "Thumb1", Vector3(thumb_side * 0.036, -0.008, -0.016))
+    _add_mesh(t1, "Seg", _thumb_mesh(t_len[0], Vector2(0.02, 0.0175), Vector2(0.0175, 0.0155), false))
     var t2 := _joint(t1, "Thumb2", Vector3(0, 0, -t_len[0]))
-    _add_mesh(t2, "Seg", _thumb_mesh(t_len[1], Vector2(0.0125, 0.011), Vector2(0.011, 0.0095), false))
+    _add_mesh(t2, "Seg", _thumb_mesh(t_len[1], Vector2(0.0175, 0.0155), Vector2(0.0155, 0.0135), false))
     var t3 := _joint(t2, "Thumb3", Vector3(0, 0, -t_len[1]))
-    _add_mesh(t3, "Seg", _thumb_mesh(t_len[2], Vector2(0.011, 0.0095), Vector2(0.009, 0.0075), true))
+    _add_mesh(t3, "Seg", _thumb_mesh(t_len[2], Vector2(0.0155, 0.0135), Vector2(0.013, 0.011), true))
 
     var thumb_base := Basis(Vector3.UP, deg_to_rad(-38.0) * thumb_side) * Basis(Vector3.FORWARD, deg_to_rad(-55.0) * thumb_side) * Basis(Vector3.RIGHT, deg_to_rad(-12.0))
 
@@ -409,10 +409,10 @@ func _palm_mesh(thumb_side: float) -> Mesh:
     var prof := FDKLowPoly.round_profile(10, 0.35)
     var rings := [
         FDKLowPoly.ring(prof, 0.014, Vector2(0.027, 0.018)),
-        FDKLowPoly.ring(prof, -0.022, Vector2(0.037, 0.0175), Vector2(thumb_side * 0.002, 0)),
-        FDKLowPoly.ring(prof, -0.058, Vector2(0.043, 0.0165)),
-        FDKLowPoly.ring(prof, -0.086, Vector2(0.044, 0.017), Vector2(0, 0.001)),
-        FDKLowPoly.ring(prof, -0.093, Vector2(0.042, 0.0175), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, -0.022, Vector2(0.042, 0.02), Vector2(thumb_side * 0.002, 0)),
+        FDKLowPoly.ring(prof, -0.058, Vector2(0.049, 0.02)),
+        FDKLowPoly.ring(prof, -0.086, Vector2(0.05, 0.021), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, -0.093, Vector2(0.048, 0.0215), Vector2(0, 0.001)),
     ]
     FDKLowPoly.loft(st, rings, [skin_color, skin_color, skin_color.lightened(0.04), skin_color], true, true)
     FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.02, -0.011, -0.03), Vector3(0.017, 0.011, 0.026), 0.18, 3, palm_color, palm_color.darkened(0.08))
@@ -424,8 +424,8 @@ func _finger_mesh(length: float, half_start: Vector2, half_end: Vector2, thumb_s
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var prof := PackedVector2Array(FINGER_PROFILE)
     # knuckle bulge at the joint, slimmer in the middle of the segment
-    var r0 := FDKLowPoly.ring(prof, 0.007, half_start * Vector2(1.06, 1.28), Vector2(0, half_start.y * 0.12))
-    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(0.98, 0.9))
+    var r0 := FDKLowPoly.ring(prof, 0.007, half_start * Vector2(1.02, 1.07), Vector2(0, half_start.y * 0.03))
+    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 0.97))
     var r2 := FDKLowPoly.ring(prof, -length, half_end * Vector2(1.0, 1.08))
     if tip:
         _shape_tip(r0, prof, thumb_side, -0.007, 0.0)

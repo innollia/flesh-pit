@@ -89,6 +89,41 @@ func _run() -> void:
         for i in range(60):
             m.chewer.process_chew(0.05)
         _assert(m.stomach.fill > before, "chewing the door wall tears flesh into the stomach")
+    # no flesh surface pokes into the restroom (ceiling corners etc.)
+    var inside := 0
+    for ch in m.terrain.get_chunks():
+        var mesh: ArrayMesh = ch.get_node("Body/Mesh").mesh
+        if mesh == null:
+            continue
+        var v: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+        for p in v:
+            var w: Vector3 = ch.position + p
+            var h: Vector3 = FPRestroom.HALF
+            if absf(w.x) < h.x + 0.05 and w.y > -0.05 and w.y < 2.0 * h.y + 0.05 and absf(w.z) < h.z + 0.05:
+                inside += 1
+    _assert(inside == 0, "no flesh vertex inside the restroom box (+5 cm) (found %d)" % inside)
+    # first shell is mostly red flesh; fat only near the shell boundary
+    var fat_inner := 0
+    var fat_edge := 0
+    for i in range(400):
+        var dir := Vector3(sin(i * 1.7), cos(i * 0.9), sin(i * 2.3)).normalized()
+        if m._world_tissue(m.RESTROOM_CENTER + dir * (4.0 + fposmod(i * 0.37, 3.5))) == 2:
+            fat_inner += 1
+        if m._world_tissue(m.RESTROOM_CENTER + dir * 8.6) == 2:
+            fat_edge += 1
+    _assert(fat_inner == 0 and fat_edge > 100, "fat appears only as the next-shell boundary band (inner %d, edge %d)" % [fat_inner, fat_edge])
+    # tank pickup: look at the bought item and pick it up
+    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.6, 0.75)
+    var item: Node3D = m.restroom.tank_items.get_child(0)
+    m.restroom.set_tank_open(true, true)
+    var eye: Vector3 = m.player.get_look_ray()[0]
+    m.player.look_at(item.global_position, Vector3.UP)
+    m.player.set("_yaw", m.player.rotation.y)
+    m.player.rotation = Vector3(0, m.player.rotation.y, 0)
+    var to: Vector3 = item.global_position - m.player.camera.global_position
+    m.player.camera_pivot.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+    m.player.force_update_transform()
+    _assert(m.try_pick_tank_item() and m.inventory.size() == 1 and m.restroom.tank_items.get_child_count() == 0, "looking at a tank item and right-clicking picks it up")
     # chew press dents the wall
     m.terrain.set_press(Vector3(0, 1, 2.3), Vector3(0, 0, -1), 0.6)
     _assert(is_equal_approx(m.terrain.get_press_amount(), 0.6), "chew press is sent to the terrain shader")

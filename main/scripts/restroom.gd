@@ -31,6 +31,7 @@ func build() -> void:
     _build_toilet(mat)
     _build_sink(mat)
     _build_door(mat)
+    _build_korean(mat)
     _build_light()
     _build_collision()
 
@@ -219,6 +220,61 @@ func _box(st: SurfaceTool, a: Vector3, b: Vector3, c: Color, side: Color) -> voi
     FDKLowPoly.add_quad(st, p[0], p[4], p[7], p[3], Vector3.LEFT, side)
     FDKLowPoly.add_quad(st, p[1], p[5], p[6], p[2], Vector3.RIGHT, side)
     FDKLowPoly.add_quad(st, p[0], p[1], p[5], p[4], Vector3.DOWN, side)
+
+
+# --- modern Korean restroom fixtures (wet-room style: shower on the wall,
+# floor drain, paper holder, ceiling vent) ---------------------------------
+
+func _build_korean(mat: Material) -> void:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var chrome := Color(0.8, 0.82, 0.86)
+    var chrome_d := Color(0.6, 0.62, 0.67)
+    var x := -HALF.x
+    var sz := 1.0
+    # shower mixer on the left wall, riser bar, head, hose
+    _box(st, Vector3(x, 0.95, sz - 0.08), Vector3(x + 0.06, 1.05, sz + 0.08), chrome, chrome_d)
+    _box(st, Vector3(x + 0.06, 0.98, sz - 0.02), Vector3(x + 0.12, 1.02, sz + 0.02), chrome, chrome_d)
+    _box(st, Vector3(x + 0.02, 1.05, sz - 0.015), Vector3(x + 0.05, 1.95, sz + 0.015), chrome, chrome_d)
+    var prof := FDKLowPoly.round_profile(8)
+    var hc := Vector3(x + 0.11, 1.9, sz)
+    var head_a := PackedVector3Array()
+    var head_b := PackedVector3Array()
+    for p in prof:
+        head_a.append(hc + Vector3(-0.02, p.x * 0.06, p.y * 0.06))
+        head_b.append(hc + Vector3(0.02, p.x * 0.07, p.y * 0.07))
+    FDKLowPoly.loft(st, [head_a, head_b], [chrome], true, true)
+    _box(st, Vector3(x + 0.05, 1.88, sz - 0.012), Vector3(x + 0.1, 1.9, sz + 0.012), chrome, chrome_d)
+    # hose: a sagging chain of small boxes from the mixer
+    var prev := Vector3(x + 0.08, 0.95, sz)
+    for i in range(1, 9):
+        var t := float(i) / 8.0
+        var q := Vector3(x + 0.08 + sin(t * PI) * 0.06, 0.95 - sin(t * PI) * 0.45 + t * 0.9, sz + t * 0.05)
+        var mid := (prev + q) * 0.5
+        _box(st, mid - Vector3(0.008, 0.06, 0.008), mid + Vector3(0.008, 0.06, 0.008), chrome_d, chrome_d.darkened(0.1))
+        prev = q
+    # floor drain: square stainless grate slightly sunk into the floor tiles
+    var dc := Vector3(-0.9, 0.012, 1.0)
+    _box(st, dc - Vector3(0.1, 0.004, 0.1), dc + Vector3(0.1, 0.0, 0.1), chrome_d, chrome_d)
+    for i in range(5):
+        var gx := dc.x - 0.08 + i * 0.04
+        _box(st, Vector3(gx - 0.006, dc.y, dc.z - 0.08), Vector3(gx + 0.006, dc.y + 0.003, dc.z + 0.08), Color(0.35, 0.36, 0.38), Color(0.3, 0.3, 0.32))
+    # toilet paper holder on the right wall beside the toilet
+    var px := HALF.x
+    _box(st, Vector3(px - 0.03, 0.7, -0.95), Vector3(px, 0.78, -0.75), chrome, chrome_d)
+    var roll_a := PackedVector3Array()
+    var roll_b := PackedVector3Array()
+    for p in prof:
+        roll_a.append(Vector3(px - 0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.93))
+        roll_b.append(Vector3(px - 0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.8))
+    FDKLowPoly.loft(st, [roll_a, roll_b], [Color(0.98, 0.98, 0.97)], true, true)
+    # ceiling exhaust vent
+    var cy := 2 * HALF.y - 0.005
+    _box(st, Vector3(0.6, cy - 0.02, 0.6), Vector3(0.9, cy, 0.9), Color(0.93, 0.93, 0.94), Color(0.85, 0.85, 0.86))
+    for i in range(4):
+        var vz := 0.64 + i * 0.07
+        _box(st, Vector3(0.63, cy - 0.024, vz), Vector3(0.87, cy - 0.02, vz + 0.025), Color(0.55, 0.56, 0.58), Color(0.5, 0.5, 0.52))
+    _add(st, mat, "KoreanFixtures")
 
 # --- sink, door, light, collision ---------------------------------------------
 

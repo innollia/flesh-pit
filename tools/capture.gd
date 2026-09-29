@@ -61,7 +61,7 @@ func _apply_stage(i: int) -> void:
     match i:
         0:
             m.restroom.set_door_open(false, true)
-            _pose(m.START_POS, m.START_YAW, deg_to_rad(-10.0))
+            _pose(m.START_POS, m.START_YAW, deg_to_rad(-6.0))
         1:
             m.restroom.set_door_open(true, true)
             _pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-4.0))
