@@ -3,15 +3,15 @@
 ## High priority design
 
 - [ ] Brainstorm depth-by-depth gameplay differences using Mystery Flesh Pit and other giant-organism references only as inspiration; keep the world original.
-- [ ] Design the actual biome-region layouts inside concentric shells. Work toward multiple biome regions per shell; if production cost is too high, fall back to one dominant biome per shell.
+- [ ] Design the actual biome-region layouts inside concentric shells. Work toward multiple biome regions per shell; if production cost is too high, fall back to one dominant biome per shell. **Define 4 biome languages first for early asset production/testing.**
 - [ ] Design hybrid shell transitions: gradual tissue-composition change approaching the boundary plus a clearer final boundary signal / membrane / transition feature.
 - [ ] Tune the canary's return-route warning: when it begins chirping, how urgency escalates, and how accurately it reflects narrowing / obstruction behind the player.
-- [ ] Tune the canary's secondary anomaly / biome reaction: what makes it give an odd "우에엥?"-type cry or visibly become frightened, and how often this happens without turning it into a precise detector.
+- [ ] Tune the canary's secondary anomaly / biome reaction: what makes it give an odd "우에엥?"-type cry or visibly become frightened, and how often this happens without turning it into a precise detector. Presentation baseline: small portable cage / carrier that enters view when its physical reaction matters rather than a permanently visible shoulder bird.
 - [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
 - [ ] Tune how much continuous tissue / biome drift can misalign old tunnels and the restroom approach without making navigation feel arbitrary.
 - [ ] Decide whether indefinitely drifting death drops with only a stale last-known-location marker are acceptable in playtesting, or whether recovery becomes too punitive.
 - [ ] Tune consumable physical barriers: price, automatic tunnel-cross-section fitting, total durability, how much biome motion they can hold, stress accumulation, the three 33%-step damage transitions plus broken state, and how the final elastic "boing" release reads. Carry cap is 3.
-- [ ] Produce / specify 4 barrier visual states/assets for the 33%-step durability presentation.
+- [ ] Produce / specify 4 barrier visual states/assets for the 33%-step durability presentation. Baseline form: industrial deployable / tension barrier that automatically expands across the tunnel cross-section and visibly bends/cracks under tissue load.
 - [ ] Tune permanent biosecurity spray: cheap surface-treatment can versus expensive deep-penetration can, including price gap, application rate, per-can coverage, exact treatment depth, and how sacrificing edible flesh balances permanent non-regenerating routes. Carry cap is 3 cans.
 - [ ] Design tool progression across the already accepted roles: portable blender, tissue-specific tools, route/return tools, physical barriers, and permanent biosecurity spray.
 - [ ] Define portable blender handling: how much loose flesh can be visibly held in the hands before blending, how batching works, how much stomach efficiency it grants, and which tools count as one-handed versus two-handed.
@@ -23,8 +23,10 @@
 - [ ] Define the toilet settlement presentation precisely: how dark-gray existing totals and green newly gained amounts count upward for mutation points and money while the shop occupies the right side.
 - [ ] Define toilet-shop purchase pacing and animation: coin thrown into the toilet, multiple purchased items accumulate in the cistern, and each is picked up by looking at it and right-clicking.
 - [ ] Outside vomiting awards no mutation points or money; verify in prototype that emergency stomach relief remains useful without undermining the return loop.
-- [ ] Brainstorm long-term restroom expansion / structural changes while preserving the clean safe-room identity; keep the prototype restroom fixed.
+- [ ] Produce the prototype restroom close to final visual quality as a reusable modular kit: walls, floor, ceiling, pipes, toilet, sink, door, and fixture groups.
+- [ ] Brainstorm long-term restroom expansion / structural changes while preserving the clean safe-room identity; reuse the modular prototype kit rather than replacing it wholesale.
 - [ ] Decide after the prototype whether cancer/tumor codex completion ever grants a practical benefit; prototype behavior is collection-only.
+- [ ] Plan the first-person hand asset as a human-like, visually neutral base with minimal forearm exposure plus mutation variants; avoid a throwaway hand rig that cannot carry mutation feedback.
 - [ ] Tune normal stomach capacity, overfill slowdown, visible flesh buildup, and overflow-bar growth against flesh-regeneration speed.
 
 ## Prototype questions
