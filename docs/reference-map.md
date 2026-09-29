@@ -6,6 +6,15 @@ The point of this document is not to copy whole games. Each reference is attache
 
 **Worldbuilding note:** this project uses an original setting. Mystery Flesh Pit National Park and other works below are reference material only, not shared continuity.
 
+
+## Detailed reference studies
+
+- [A Game About Digging A Hole](references/a-game-about-digging-a-hole.md) — compact loop, return cadence, tool progression
+- [Whale Flesh](references/whale-flesh.md) — direct flesh excavation and its repetition failure modes
+- [LAB MEAT](references/lab-meat.md) — deformable meat, scanning, marching-cubes implementation notes
+- [LimeFlesh](references/limeflesh.md) — living-wall tunneling and anatomy as progression gates
+- [Mystery Flesh Pit method](references/mystery-flesh-pit-method.md) — abstract worldbuilding method only; original setting remains separate
+
 ---
 
 ## 1. Core progression loop: dig → capacity limit → return → upgrade → dig deeper
