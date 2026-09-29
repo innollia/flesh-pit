@@ -105,6 +105,10 @@ var _chew_ratio: float = 0.0
 var _settling: bool = false
 var _settle_amount: float = 0.0
 var _mirror_open: bool = false
+## Sitting on the toilet (F at the bowl while standing).
+var _seated: bool = false
+## Esc menu: key settings screen (fp_keybind_menu.gd).
+var keybind_menu: FPKeybindMenu
 var _crush_t: float = 0.0
 var _hazards: Array = []
 var _nerve_cool: Dictionary = {}
@@ -461,6 +465,11 @@ func _build_ui() -> void:
     mirror.name = "Mirror"
     add_child(mirror)
     mirror.closed.connect(_on_mirror_closed)
+    keybind_menu = FPKeybindMenu.new()
+    keybind_menu.name = "KeybindMenu"
+    add_child(keybind_menu)
+    keybind_menu.setup(self)
+    keybind_menu.closed.connect(_on_keybind_menu_closed)
     ending = FPEnding.new()
     ending.name = "Ending"
     add_child(ending)
@@ -567,7 +576,17 @@ func _process(delta: float) -> void:
         elif Input.is_action_just_pressed("ui_cancel"):
             leave_settlement() # stand up without flushing: nothing settles
         return
+    if keybind_menu != null and keybind_menu.is_open():
+        chewer.stop()
+        return
+    if _seated:
+        chewer.stop()
+        _process_seated()
+        return
     if _mirror_open:
+        return
+    if Input.is_action_just_pressed("ui_cancel") and keybind_menu != null and not keybind_menu.just_closed():
+        open_keybind_menu()
         return
     _handle_actions()
     if Input.is_action_pressed("fdk_eat"):
@@ -676,6 +695,8 @@ func _interact() -> void:
     elif _near_toilet():
         if stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents():
             start_settlement()
+        elif not _looking_at(lever_point(), 35.0, 1.6):
+            sit_down() # facing the bowl, not the tank: sit on it
         else:
             var opening := restroom._lid_target == 0.0
             if not opening and progression.teeth_in_hand > 0:
@@ -780,6 +801,73 @@ func leave_settlement() -> void:
 
 func is_settling() -> bool:
     return _settling
+
+## Sit on the toilet (F at the bowl while standing, not looking at the tank).
+## F, Esc or a left click stands up again. The lever is still a thing on the
+## toilet: seated, R / right click reaches back and presses it.
+func sit_down() -> bool:
+    if _seated or _settling or ended:
+        return false
+    _seated = true
+    player.velocity = Vector3.ZERO
+    player.global_position = SEAT_POS
+    player.set("_yaw", PI)
+    player.rotation.y = PI
+    player.set("_pitch", OPENING_SEAT_PITCH)
+    player.camera_pivot.rotation.x = OPENING_SEAT_PITCH
+    player.set_physics_process(false)
+    vent.notice("sit") # 딴짓_앉기 in vent_rules.json (open vent, no teeth given)
+    return true
+
+func stand_up() -> bool:
+    if not _seated:
+        return false
+    _seated = false
+    player.global_position = Vector3(SEAT_POS.x, START_POS.y, SEAT_POS.z + 0.25)
+    player.set("_pitch", 0.0)
+    player.camera_pivot.rotation.x = 0.0
+    player.set_physics_process(true)
+    return true
+
+func is_seated() -> bool:
+    return _seated
+
+func _process_seated() -> void:
+    for action in ["fp_pick", "fp_vomit", "fp_interact", "ui_cancel", "fdk_eat"]:
+        if Input.is_action_just_pressed(action):
+            seated_action(action)
+            return
+
+## One input while seated (tests drive this directly).
+func seated_action(action: String) -> void:
+    match action:
+        "fp_pick":
+            pull_lever()
+        "fp_vomit":
+            request_vomit()
+        "fp_interact", "ui_cancel", "fdk_eat":
+            stand_up()
+
+# --- Esc menu: key settings -------------------------------------------------------
+
+func open_keybind_menu() -> void:
+    keybind_menu.open()
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func _on_keybind_menu_closed() -> void:
+    if player.mouse_look_enabled and not _settling and not _mirror_open:
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## Default keys from keybinds.json (action -> {키보드, 패드, 설명}).
+func keybind_defaults() -> Dictionary:
+    var d = JSON.parse_string(FileAccess.get_file_as_string(KEYBINDS_PATH))
+    return d.get("키", {}) if d is Dictionary else {}
+
+## Forget the player's own keys: back to keybinds.json.
+func reset_keybinds() -> void:
+    if FileAccess.file_exists(USER_KEYBINDS_PATH):
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_KEYBINDS_PATH))
+    _register_keybinds()
 
 func settle_at_rest_point() -> Dictionary:
     var got := progression.settle(stomach.vomit())

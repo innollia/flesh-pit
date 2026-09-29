@@ -33,6 +33,8 @@ func _process(_d: float) -> bool:
     if _frame < 6:
         return false
     _settlement()
+    _seat()
+    _keys()
     _hairs()
     _trade()
     _more()
@@ -43,6 +45,8 @@ func _process(_d: float) -> bool:
     return true
 
 func _visible_text(n: Node) -> int:
+    if n is FPSubtitles:
+        return 0 # spoken vent lines (W13 captions) are sound, not UI
     var c := 0
     if (n is Label or n is Button or n is RichTextLabel) and (n as CanvasItem).is_visible_in_tree():
         var t: String = n.text
@@ -525,3 +529,78 @@ func _reactions() -> void:
     _assert(missing.is_empty(), "W06 every non-random line id is triggered by a test (unreached %s)" % [missing])
     for n in vents:
         n.queue_free()
+
+# --- sitting on the toilet ------------------------------------------------------
+
+func _seat() -> void:
+    var m = _m
+    var prog: FPProgression = m.progression
+    _assert(not m.is_seated(), "seat: standing at the start")
+    var v: FPVent = _fresh_open(m)
+    v.spoken.clear()
+    _assert(m.sit_down() and m.is_seated(), "seat: F at the bowl sits down")
+    _assert(m.player.global_position.distance_to(m.SEAT_POS) < 0.01 and m._near_toilet(), "seat: the body is on the seat, at the toilet")
+    _assert(v.spoken.has("distract.sit"), "seat: sitting again with the vent open and no teeth given -> 딴짓_앉기 line")
+    _assert(not m.sit_down(), "seat: cannot sit twice")
+    # the lever still works seated (R / right click reaches back)
+    m.stomach.add_flesh(100.0)
+    m.toilet.vomit_into(m.stomach.vomit())
+    var t0: int = prog.teeth
+    m.seated_action("fp_pick")
+    _assert(prog.teeth > t0 and m.is_seated(), "seat: the lever settles the bowl while seated and you stay seated")
+    # F stands up
+    m.seated_action("fp_interact")
+    _assert(not m.is_seated() and m.player.is_physics_processing(), "seat: F again stands up")
+    m.sit_down()
+    m.seated_action("ui_cancel")
+    _assert(not m.is_seated(), "seat: Esc stands up")
+    m.sit_down()
+    m.seated_action("fdk_eat")
+    _assert(not m.is_seated(), "seat: a left click stands up (mouse only)")
+    v.close()
+    v.spoken.clear()
+
+# --- Esc menu: key settings -----------------------------------------------------
+
+func _key_ev(code: int) -> InputEventKey:
+    var e := InputEventKey.new()
+    e.physical_keycode = code
+    e.pressed = true
+    return e
+
+func _keys() -> void:
+    var m = _m
+    m.reset_keybinds()
+    var menu: FPKeybindMenu = m.keybind_menu
+    _assert(menu != null and not menu.is_open(), "keys: the menu starts closed")
+    m.open_keybind_menu()
+    var defs: Dictionary = m.keybind_defaults()
+    _assert(menu.is_open() and menu.buttons.size() == defs.size(), "keys: Esc menu lists every action in keybinds.json (%d)" % menu.buttons.size())
+    _assert((menu.buttons["fp_interact"] as Button).text == "F", "keys: shows the current key")
+    _assert(menu.get_viewport().gui_get_focus_owner() == menu.buttons[menu._order[0]], "keys: keyboard focus starts on the first key")
+    # mouse: click a key, press the new one
+    (menu.buttons["fp_interact"] as Button).pressed.emit()
+    _assert(menu.waiting == "fp_interact", "keys: clicking a key waits for the new key")
+    menu._input(_key_ev(KEY_K))
+    _assert(FPKeybindMenu.key_of("fp_interact") == "K" and FileAccess.file_exists(m.USER_KEYBINDS_PATH), "keys: the new key is used and saved")
+    # a key already used swaps
+    menu.assign("fp_interact", "V")
+    _assert(FPKeybindMenu.key_of("fp_interact") == "V" and FPKeybindMenu.key_of("fp_vomit") == "K", "keys: taking a used key swaps the two")
+    # keyboard: Enter-style start, Esc cancels the wait
+    menu.start_wait("fp_carry")
+    menu._input(_key_ev(KEY_ESCAPE))
+    _assert(menu.waiting == "" and FPKeybindMenu.key_of("fp_carry") == "Q" and menu.is_open(), "keys: Esc cancels the wait, key unchanged, menu stays")
+    menu.start_wait("fp_carry")
+    menu._input(_key_ev(KEY_J))
+    _assert(FPKeybindMenu.key_of("fp_carry") == "J", "keys: keyboard alone rebinds")
+    menu.reset_button.pressed.emit()
+    _assert(FPKeybindMenu.key_of("fp_interact") == "F" and FPKeybindMenu.key_of("fp_vomit") == "V" and FPKeybindMenu.key_of("fp_carry") == "Q" and not FileAccess.file_exists(m.USER_KEYBINDS_PATH), "keys: 기본값 되돌리기 restores keybinds.json")
+    var ev := InputEventAction.new()
+    ev.action = "ui_cancel"
+    ev.pressed = true
+    menu._input(ev)
+    _assert(not menu.is_open() and menu.just_closed(), "keys: Esc closes the menu")
+    _assert(_visible_text(m) == 0 or not menu.root.visible, "keys: nothing of the menu shows when closed")
+    m.open_keybind_menu()
+    menu.close_button.pressed.emit()
+    _assert(not menu.is_open(), "keys: 닫기 button closes (mouse only)")
