@@ -18,7 +18,9 @@ const LEN := 260.0
 const CRUSH_Z := -18.0
 ## Where the ball starts: far enough that the intact blocks near the landing
 ## point never overlap its silhouette from the landing camera.
-const ROLL_START_Z := -115.0
+## Close enough that the 84 m ball visibly towers over the 26 m blocks
+## (from -115 m perspective made it read smaller than the near buildings).
+const ROLL_START_Z := -62.0
 var _sphere: Node3D
 var _time := 0.0
 

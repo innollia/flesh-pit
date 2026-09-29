@@ -11,7 +11,7 @@ extends Node3D
 const K := preload("res://main/art/fp_art_kit.gd")
 const SEG := 36
 const RINGS := 22
-@export var radius := 34.0
+@export var radius := 42.0
 var roll_speed := 3.0
 var _rolling := false
 var _ball: Node3D

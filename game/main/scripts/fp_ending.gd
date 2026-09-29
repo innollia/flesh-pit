@@ -79,8 +79,12 @@ func _pose_camera(k: float) -> void:
 	if street_camera == null:
 		return
 	var e := 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 3.0)
-	street_camera.position = Vector3(0.4, lerpf(7.0, 1.3, e), 2.0)
-	street_camera.look_at(street.global_position + Vector3(0, lerpf(-2.0, 30.0, e), -110.0), Vector3.UP)
+	# After landing the camera slowly pulls back up the street (W41) while
+	# the ball rolls away, so the whole ball and the blocks stay in frame.
+	var back := clampf((k - 1.0) / 5.0, 0.0, 1.0)
+	back = back * back * (3.0 - 2.0 * back)
+	street_camera.position = Vector3(0.4, lerpf(7.0, 1.3, e) + back * 5.0, 2.0 + back * 34.0)
+	street_camera.look_at(street.global_position + Vector3(0, lerpf(-2.0, 34.0, e), -110.0), Vector3.UP)
 
 func tick(delta: float) -> void:
 	if not active:
