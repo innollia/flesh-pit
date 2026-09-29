@@ -1,0 +1,460 @@
+{
+ "source": "docs/content/vent-lines.md",
+ "lines": [
+  {
+   "id": "first.heard",
+   "section": "1",
+   "ko": "......어? 어어? 나 똑똑히 들었다? 거기 누구 있어? 있지? 있잖아!"
+  },
+  {
+   "id": "first.nobody",
+   "section": "1",
+   "ko": "거기 누구 없어요?"
+  },
+  {
+   "id": "first.hello",
+   "section": "1",
+   "ko": "헬로---."
+  },
+  {
+   "id": "first.tsk",
+   "section": "1",
+   "ko": "쯧."
+  },
+  {
+   "id": "first.open",
+   "section": "1",
+   "ko": "좋아! 좋아... 좋아... 저, 저기, 물통. 물통 뚜껑 열어봐. 거기 봉 있지. 봉. 응?"
+  },
+  {
+   "id": "first.open_late",
+   "section": "1",
+   "ko": "어! 어어어! 그래! 있었잖아! 내 귀가 봉창났어도 날랑바리진 않는다고! 좋아... 저, 저기 있잖아. 저기 물통. 변기위에 저거 열어. 어서. 봉 있지? 봉. 응?"
+  },
+  {
+   "id": "distract.sink",
+   "section": "1d",
+   "ko": "어어? 그쪽 아니야. 물통. 물. 통."
+  },
+  {
+   "id": "distract.wash",
+   "section": "1d",
+   "ko": "지금 손 씻을 때야? 손은 봉 주고 씻어도 돼."
+  },
+  {
+   "id": "distract.mirror",
+   "section": "1d",
+   "ko": "거울 말고. 너 잘생긴 거 알아. 물통."
+  },
+  {
+   "id": "distract.sit",
+   "section": "1d",
+   "ko": "......앉지 마. 앉으면 안 일어나잖아 사람들은."
+  },
+  {
+   "id": "distract.door",
+   "section": "1d",
+   "ko": "야 야 야 야. 나가면 안 돼. 나가지 마. 봉 두고 나가지 마!"
+  },
+  {
+   "id": "distract.idle",
+   "section": "1d",
+   "ko": "...... (긁는 소리) ......나 아직 여기 있어."
+  },
+  {
+   "id": "tank.approach",
+   "section": "1t",
+   "ko": "그렇지. 그렇지 그렇지. 조금만. 조금만 더."
+  },
+  {
+   "id": "tank.leave",
+   "section": "1t",
+   "ko": "어? 어어? 왜 가? 거의 다 왔잖아!"
+  },
+  {
+   "id": "tank.approach_again",
+   "section": "1t",
+   "ko": "......이번엔 진짜지? 진짜 여는 거지?"
+  },
+  {
+   "id": "tank.leave_again",
+   "section": "1t",
+   "ko": "나 가지고 노는구나. 그치. 재밌지. 재밌겠지."
+  },
+  {
+   "id": "lid.open",
+   "section": "1l",
+   "ko": "하...... (숨 들이켜는 소리) 봉새."
+  },
+  {
+   "id": "lid.stare",
+   "section": "1l",
+   "ko": "보기만 할 거야? 그거 보는 거 아니야. 먹는 거...... 아니 주는 거."
+  },
+  {
+   "id": "lid.grab",
+   "section": "1l",
+   "ko": "그래. 그래 긁. 엙웈 ......그래 그래. 이거야. 야호---"
+  },
+  {
+   "id": "lid.walk_with",
+   "section": "1l",
+   "ko": "손에 쥐고 어디 가! 그 손! 그 손 이리 와!"
+  },
+  {
+   "id": "lid.put_back",
+   "section": "1l",
+   "ko": "......아."
+  },
+  {
+   "id": "place.accept",
+   "section": "1p",
+   "ko": "......하아. 그래. 그래, 이거지. 이거 참 몰랑한 봉이로군. 값은 이 정도면 적당하겠어. 가져가."
+  },
+  {
+   "id": "flush.a1",
+   "section": "2a",
+   "ko": "들었다. 들었어. 방금 그거 물 내린 거 맞지?"
+  },
+  {
+   "id": "flush.a2",
+   "section": "2a",
+   "ko": "봉 쌓였지. 소리 났어. 달그락."
+  },
+  {
+   "id": "flush.a3",
+   "section": "2a",
+   "ko": "저기요? 여보세요? 거기 화장실 계신 분?"
+  },
+  {
+   "id": "flush.a4",
+   "section": "2a",
+   "ko": "익스큐즈 미."
+  },
+  {
+   "id": "flush.a5",
+   "section": "2a",
+   "ko": "쯧."
+  },
+  {
+   "id": "flush.a_late",
+   "section": "2a",
+   "ko": "......봉"
+  },
+  {
+   "id": "flush.b1",
+   "section": "2b",
+   "ko": "봉! 봉봉! 봉 왔다!"
+  },
+  {
+   "id": "flush.b2",
+   "section": "2b",
+   "ko": "(쾅 쾅) 천장! 위! 여기!"
+  },
+  {
+   "id": "flush.b3",
+   "section": "2b",
+   "ko": "봉 소리는 못 속여. 나 귀 좋아."
+  },
+  {
+   "id": "flush.b4",
+   "section": "2b",
+   "ko": "......흥."
+  },
+  {
+   "id": "open.teeth1",
+   "section": "3",
+   "ko": "왔다 왔다 왔다. 물통. 알지? 이제 알지?"
+  },
+  {
+   "id": "open.teeth2",
+   "section": "3",
+   "ko": "오늘은 빨리 열었네. 착하다."
+  },
+  {
+   "id": "open.teeth3",
+   "section": "3",
+   "ko": "손. 손 보여줘. 빈손 아니지?"
+  },
+  {
+   "id": "open.early",
+   "section": "3",
+   "ko": "어? 벌써? ......준비가 안 됐는데. 됐어. 됐다. 줘."
+  },
+  {
+   "id": "appraise.1",
+   "section": "4",
+   "ko": "뽀득하네."
+  },
+  {
+   "id": "appraise.2",
+   "section": "4",
+   "ko": "이건 좀 누리끼리한데...... 뭐, 봉은 봉이지."
+  },
+  {
+   "id": "appraise.3",
+   "section": "4",
+   "ko": "빤딱빤딱. 누가 닦았나."
+  },
+  {
+   "id": "appraise.4",
+   "section": "4",
+   "ko": "몰랑해. 오늘 봉 좋다."
+  },
+  {
+   "id": "appraise.5",
+   "section": "4",
+   "ko": "어금니다. 어금니 좋아해."
+  },
+  {
+   "id": "appraise.6",
+   "section": "4",
+   "ko": "......이거 금니야? 금니지? 큭."
+  },
+  {
+   "id": "amount.little",
+   "section": "5",
+   "ko": "......이거? 이걸로? 음. 그럼 이런 거밖에 없어."
+  },
+  {
+   "id": "amount.little2",
+   "section": "5",
+   "ko": "너 나 싸구려로 보지."
+  },
+  {
+   "id": "amount.fair",
+   "section": "5",
+   "ko": "좋아. 공평해. 골라."
+  },
+  {
+   "id": "amount.lots",
+   "section": "5",
+   "ko": "어어. 어어어. 이렇게나? 잠깐, 잠깐만. (뒤적이는 소리) 이거. 아껴둔 거."
+  },
+  {
+   "id": "amount.absurd",
+   "section": "5",
+   "ko": "큭 켘."
+  },
+  {
+   "id": "pick.hover",
+   "section": "6",
+   "ko": "고민해. 고민 좋아. 봉은 이미 내 거지만."
+  },
+  {
+   "id": "pick.long",
+   "section": "6",
+   "ko": "......아직이야? 나 여기서 늙는다."
+  },
+  {
+   "id": "pick.take1",
+   "section": "6",
+   "ko": "그거. 그래 그거."
+  },
+  {
+   "id": "pick.take2",
+   "section": "6",
+   "ko": "......그거? 그거라고? 알았어."
+  },
+  {
+   "id": "pick.take3",
+   "section": "6",
+   "ko": "눈 좋네."
+  },
+  {
+   "id": "pick.withdraw",
+   "section": "6",
+   "ko": "이건 다시 넣고~ 이것도 넣고~"
+  },
+  {
+   "id": "leave.close",
+   "section": "7",
+   "ko": "어? 어? 안 골랐잖아! ......됐어. 다음에 똑같이 꺼내줄게. 봉은 못 돌려줘. 못 돌려줘!"
+  },
+  {
+   "id": "leave.walk",
+   "section": "7",
+   "ko": "어디 가? 야. 야! 물건! 네 물건!"
+  },
+  {
+   "id": "leave.out",
+   "section": "7",
+   "ko": "......진짜 갔네. (사이) 흥. 흐응. 안 기다려."
+  },
+  {
+   "id": "leave.back",
+   "section": "7",
+   "ko": "......기다린 거 아니야. 여기 원래 있어."
+  },
+  {
+   "id": "leave.back_long_near",
+   "section": "7",
+   "ko": "......골라."
+  },
+  {
+   "id": "empty.unaware1",
+   "section": "8u",
+   "ko": "흐음~ 흐흠~ 흠~ (정적) ......뭘 봐?! 언제부터 열려 있었어!"
+  },
+  {
+   "id": "empty.unaware2",
+   "section": "8u",
+   "ko": "하나, 둘, 셋...... 셋밖에 없네. 셋이면...... (눈 마주침) 세지 마! 보지 마! 닫아!"
+  },
+  {
+   "id": "empty.unaware3",
+   "section": "8u",
+   "ko": "(코 고는 소리) ......응? 봉? 봉 왔어? (사이) ......아니네. 꿈이네. 닫아."
+  },
+  {
+   "id": "empty.unaware4",
+   "section": "8u",
+   "ko": "(오독오독 씹는 소리) ......안 먹었어."
+  },
+  {
+   "id": "empty.unaware5",
+   "section": "8u",
+   "ko": "...... (천천히 바로 섬) 못 본 걸로 해."
+  },
+  {
+   "id": "empty.aware1",
+   "section": "8a",
+   "ko": "없어? 없으면 왜 열어. 닫아. 가서 가져와. 빨리."
+  },
+  {
+   "id": "empty.aware2",
+   "section": "8a",
+   "ko": "빈손이잖아. 빈손. 나 놀리냐."
+  },
+  {
+   "id": "empty.aware3",
+   "section": "8a",
+   "ko": "물 내리고 와. 그다음에 열어. 순서가 있어."
+  },
+  {
+   "id": "empty.again",
+   "section": "8a",
+   "ko": "......또?"
+  },
+  {
+   "id": "empty.third",
+   "section": "8a",
+   "ko": "(아무 말 없이 눈만 가늘어짐)"
+  },
+  {
+   "id": "toggle.2",
+   "section": "9",
+   "ko": "뭐야."
+  },
+  {
+   "id": "toggle.3",
+   "section": "9",
+   "ko": "하지 마."
+  },
+  {
+   "id": "toggle.4",
+   "section": "9",
+   "ko": "어지러워. 하지 마아."
+  },
+  {
+   "id": "toggle.5",
+   "section": "9",
+   "ko": "......나 없어."
+  },
+  {
+   "id": "weird.flesh",
+   "section": "10",
+   "ko": "......이건 봉이 아니잖아. 봉은 딱딱해. 이건 말랑해. 달라."
+  },
+  {
+   "id": "weird.tumor",
+   "section": "10",
+   "ko": "......윽. 이런 거 좋아하는 애는 따로 있어. 난 아니야."
+  },
+  {
+   "id": "weird.canary",
+   "section": "10",
+   "ko": "...... (짹) ......귀엽네. 가져가. 나 새 못 키워."
+  },
+  {
+   "id": "weird.spray",
+   "section": "10",
+   "ko": "악! 캑! 켁켁! 야!!"
+  },
+  {
+   "id": "weird.hand",
+   "section": "10",
+   "ko": "손 넣지 마. 여긴 내 방이야."
+  },
+  {
+   "id": "player.blood",
+   "section": "11",
+   "ko": "너 손이 빨개. 딸기 먹었어?"
+  },
+  {
+   "id": "player.hairs",
+   "section": "11",
+   "ko": "털 보송하다. 나도 털 있었는데."
+  },
+  {
+   "id": "player.mutated",
+   "section": "11",
+   "ko": "......너 뭔가 바뀌었다. 머리 잘랐어?"
+  },
+  {
+   "id": "player.extra_arm",
+   "section": "11",
+   "ko": "......너 팔 원래 세 개였어? 아니었지? 나 기억력 좋아."
+  },
+  {
+   "id": "player.long_absent",
+   "section": "11",
+   "ko": "......살아 있었네. 아니 걱정한 건 아니고. 봉이 걱정됐지."
+  },
+  {
+   "id": "player.died",
+   "section": "11",
+   "ko": "너 냄새가 달라. 한 번 갔다 왔구나."
+  },
+  {
+   "id": "mantle.flush",
+   "section": "12m",
+   "ko": "들었어. ......천천히 와도 돼. 아니 빨리. 아니 천천히."
+  },
+  {
+   "id": "mantle.paid",
+   "section": "12m",
+   "ko": "요즘은 봉이 덜 고파. 이상하다. 나 아픈가."
+  },
+  {
+   "id": "surface.flush",
+   "section": "12s",
+   "ko": "......내렸구나."
+  },
+  {
+   "id": "surface.hum",
+   "section": "12s",
+   "ko": "......너도 들려? 이 노래. 요즘 자꾸 들려."
+  },
+  {
+   "id": "surface.paid",
+   "section": "12s",
+   "ko": "이 봉은 반짝거린다. 밖에 거 같아."
+  },
+  {
+   "id": "final.before",
+   "section": "12f",
+   "ko": "......안 줘도 돼."
+  },
+  {
+   "id": "final.given",
+   "section": "12f",
+   "ko": "......그래. 고마워. 이거 그냥 가져가."
+  },
+  {
+   "id": "final.close",
+   "section": "12f",
+   "ko": "잘 가. 흐음~ 흠~"
+  }
+ ]
+}

@@ -24,6 +24,10 @@ const TEETH_PER_FLESH := 0.08
 const EXPEDITION_TEETH := 8
 ## One handful scooped from the tank and placed at the vent.
 const HANDFUL_TEETH := 4
+## 04-economy 2: hairs per settled flesh (after the shell multiplier).
+## Fractions carry over to the next settlement.
+const FLESH_PER_BIOME_HAIR := 50.0
+const FLESH_PER_COMMON_HAIR := 150.0
 
 ## design-core 5 price guide, in expeditions' earnings. Items without a guide
 ## price (canary feed, tumor bag) are prototype picks, see the report.
@@ -77,7 +81,13 @@ var tumor_mutations: Array[String] = []
 var deepest_shell: int = 0
 ## Hairs for flesh currently in the stomach: they only grow on the arm when
 ## the flesh is vomited into the toilet (or a rest point).
+## Keys: COMMON + each biome. Values: weighted flesh units (unit x shell
+## multiplier) still in the stomach; they turn into hairs on settling.
 var pending_hairs: Dictionary = {}
+## Leftover weighted flesh below one hair, carried to the next settlement.
+var hair_carry: Dictionary = {}
+## Junk the vent being pushed out and the player took (no use).
+var junk_taken: int = 0
 var _rng_state: int = 20260929
 
 func _init() -> void:
@@ -89,6 +99,9 @@ func _init() -> void:
 	tumors.bag_capacity = 2 if has_bag else 1
 	_define_mutations()
 	_clear_pending()
+	hair_carry = {COMMON: 0.0}
+	for b in BIOMES:
+		hair_carry[b] = 0.0
 
 func _clear_pending() -> void:
 	pending_hairs = {COMMON: 0}
@@ -190,8 +203,8 @@ func total_hairs() -> int:
 static func biome_for_shell(shell: int) -> String:
 	return BIOMES[clampi(shell, 0, BIOMES.size() - 1)]
 
-## One torn flesh unit: 1 common + 1 biome hair, times the shell multiplier.
-## Held as pending until the flesh is vomited at the toilet or a rest point.
+## One torn flesh unit, times the shell multiplier, is held as pending
+## weighted flesh until vomited at the toilet or a rest point.
 func on_flesh_eaten(shell: int, units: int = 1) -> void:
 	var biome := biome_for_shell(shell)
 	var gain: int = units * int(SHELL_MULTIPLIER[biome])
@@ -199,22 +212,32 @@ func on_flesh_eaten(shell: int, units: int = 1) -> void:
 	pending_hairs[biome] = int(pending_hairs[biome]) + gain
 	deepest_shell = maxi(deepest_shell, shell)
 
+## Weighted flesh still pending in the stomach (0 = nothing to settle).
 func pending_hair_total() -> int:
 	var n := 0
 	for k in pending_hairs.keys():
 		n += int(pending_hairs[k])
 	return n
 
-## Settling vomited flesh: teeth into the tank, pending hairs onto the arm.
-## Returns {teeth, hairs}.
+## Settling vomited flesh: teeth into the tank, pending flesh turns into
+## hairs (biome: 1 per 50, common: 1 per 150, fractions carried).
+## Returns {teeth, hairs, by_pool}.
 func settle(flesh_amount: float) -> Dictionary:
 	var gain_teeth := int(round(flesh_amount * TEETH_PER_FLESH))
 	teeth += gain_teeth
-	var gain_hairs := pending_hair_total()
+	var gain_hairs := 0
+	var by_pool := {}
 	for k in pending_hairs.keys():
-		mutation_tree.add_points(k, int(pending_hairs[k]))
+		var per := FLESH_PER_COMMON_HAIR if k == COMMON else FLESH_PER_BIOME_HAIR
+		var c := float(hair_carry.get(k, 0.0)) + float(pending_hairs[k])
+		var n := int(floor(c / per + 1e-6))
+		hair_carry[k] = c - n * per
+		if n > 0:
+			mutation_tree.add_points(k, n)
+			gain_hairs += n
+		by_pool[k] = n
 	_clear_pending()
-	return {"teeth": gain_teeth, "hairs": gain_hairs}
+	return {"teeth": gain_teeth, "hairs": gain_hairs, "by_pool": by_pool}
 
 ## Vomit anywhere else: flesh and its pending hairs are simply gone.
 func discard_stomach() -> void:
@@ -309,16 +332,42 @@ func scoop_handful() -> int:
 	teeth_in_hand += n
 	return n
 
-## Teeth placed at the vent: the being keeps them all and pushes out what it
-## thinks is fair -- the most expensive affordable items, up to 3.
+## Teeth placed at the vent (03-restroom 7): the being keeps them all, no
+## change. Few teeth -> junk only. Enough -> one of the dearest affordable
+## items, the rest random cheaper ones (can be worth less than paid).
 func vent_offer(placed: int) -> Array[String]:
 	var cands: Array[String] = []
 	for id in PRICE_UNITS.keys():
 		if vent.try_price(id, placed, float(deepest_shell)) < 0 or _maxed(id):
 			continue
 		cands.append(id)
+	if cands.is_empty():
+		return ["junk"] as Array[String]
 	cands.sort_custom(func(a, b): return price_for(a) > price_for(b) or (price_for(a) == price_for(b) and a < b))
-	return cands.slice(0, VENT_MAX_OFFER)
+	var out: Array[String] = [cands[0]]
+	var rest: Array[String] = cands.slice(1)
+	while out.size() < VENT_MAX_OFFER and not rest.is_empty():
+		out.append(rest.pop_at(_rand() % rest.size()))
+	if out.size() < VENT_MAX_OFFER:
+		out.append("junk")
+	return out
+
+## Absurd overpay: at least this many teeth (twice the dearest unlocked
+## item) makes the being laugh and spill early items.
+func vent_absurd_threshold() -> int:
+	var top := 0
+	for id in PRICE_UNITS.keys():
+		if vent.is_unlocked(id, float(deepest_shell)):
+			top = maxi(top, price_for(id))
+	return top * 2
+
+## Early (core-unlocked) items that spill out on an absurd overpay.
+func vent_spill() -> Array[String]:
+	var out: Array[String] = []
+	for id in ["barrier", "spray_cheap", "canary_feed", "knife"]:
+		if not _maxed(id):
+			out.append(id)
+	return out
 
 func grant_item(id: String) -> bool:
 	if _maxed(id):
@@ -332,6 +381,7 @@ func grant_item(id: String) -> bool:
 		"tumor_bag":
 			has_bag = true # one basketball bag holds one tumor; a hand holds one more
 			tumors.bag_capacity = 2
+		"junk": junk_taken += 1
 		_: return false
 	return true
 
@@ -442,6 +492,8 @@ func serialize() -> Dictionary:
 		"has_bag": has_bag,
 		"deepest_shell": deepest_shell,
 		"pending_hairs": pending_hairs.duplicate(true),
+		"hair_carry": hair_carry.duplicate(true),
+		"junk_taken": junk_taken,
 		"tumor_mutations": tumor_mutations.duplicate(),
 		"rng": _rng_state,
 		"tools": tools.serialize(),
@@ -462,6 +514,10 @@ func deserialize(d: Dictionary) -> void:
 	var ph: Dictionary = d.get("pending_hairs", {})
 	for k in ph.keys():
 		pending_hairs[k] = int(ph[k])
+	var hc: Dictionary = d.get("hair_carry", {})
+	for k in hc.keys():
+		hair_carry[k] = float(hc[k])
+	junk_taken = int(d.get("junk_taken", 0))
 	tumor_mutations.clear()
 	for m in (d.get("tumor_mutations", []) as Array):
 		tumor_mutations.append(String(m))

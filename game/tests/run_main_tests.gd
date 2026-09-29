@@ -87,7 +87,7 @@ func _run() -> void:
     _assert(prog.teeth == 0, "nothing is paid before the flush")
     var got: Dictionary = m.flush()
     _assert(prog.teeth == int(round(amount * FPProgression.TEETH_PER_FLESH)) and got["teeth"] == prog.teeth, "flush puts teeth in the tank (%d)" % prog.teeth)
-    _assert(prog.hairs(FPProgression.COMMON) == 10 and prog.hairs("core") == 10, "flush grows 1 common + 1 core hair per core unit")
+    _assert(prog.hairs(FPProgression.COMMON) == 0 and prog.hairs("core") == 0 and is_equal_approx(prog.hair_carry["core"], 10.0), "10 core units are below one hair; the fraction carries (04-economy 2)")
     _assert(not m.is_settling() and m.vent.mood() == "frantic", "the flush sets the vent being off")
     # shell multipliers
     prog.on_flesh_eaten(1, 1)
@@ -164,7 +164,8 @@ func _run_systems() -> void:
     _assert(m.take_vent_offer("barrier") and prog.barriers == 1 and m.vent.offers.is_empty(), "taking one item pulls the rest back")
     _assert(m.vent.mood() == "calm", "a paid vent being turns calm")
     prog.teeth_in_hand = 1
-    _assert(m.place_teeth_at_vent().is_empty() and prog.teeth_in_hand == 1, "too few teeth are pushed back")
+    _assert(m.place_teeth_at_vent() == ["junk"] and prog.teeth_in_hand == 0, "too few teeth buy only junk, no change (03-restroom 7)")
+    m.take_vent_offer("junk")
     prog.teeth_in_hand = 0
     prog.deepest_shell = 0
     _assert(prog.vent_offer(1000).has("big_saw") == false, "big saw stays locked until the surface shell")

@@ -1,138 +1,500 @@
 class_name FPVent
 extends Node3D
 
-## Ceiling vent shop (design-core 5), no UI. Open the grate: two eyes in the
-## dark. The being demands "BONG" (teeth). Right after a flush it is frantic;
-## once paid it turns calm. Placing a handful of teeth makes it push out a
-## few items; the player takes one by hand and the rest are pulled back.
-## Speech lines are ids for the sound/voice layer, never shown as text.
+## Ceiling vent shop (spec 03-restroom 7, content/vent-lines.md). No UI.
+## Open the grate: two eyes in the dark. The being wants "BONG" (teeth).
+## Trade: open the tank lid, scoop a handful, place handfuls at the vent,
+## the being pushes out a few items, take one by hand, the rest go back.
+## Prices are never shown and there is no change. Leaving without picking
+## keeps the teeth and the same offer comes back next time.
+## Every reaction is a line id from main/data/vent_lines.json, emitted on
+## line_spoken for the voice/subtitle layer.
 
 signal line_spoken(line_id: String)
 signal offers_changed(ids: Array)
+## Early items spilled out on an absurd overpay (already granted).
+signal spilled(ids: Array)
 
 const FRANTIC_TIME := 20.0
 const CALM_TIME := 30.0
+## Seconds between escalating nags while the player ignores the being.
+const NAG_INTERVAL := 6.0
+## Opens within this window count as "여닫기 반복".
+const TOGGLE_WINDOW := 5.0
+const IDLE_TIME := 12.0
+const STARE_TIME := 5.0
+const PICK_LONG_TIME := 15.0
+## Away this long counts as "한참 뒤 돌아옴" / "오래 안 옴".
+const LONG_AWAY := 120.0
+const SPRAY_SULK := 40.0
+const TOGGLE_HIDE := 20.0
+const REMARK_COOLDOWN := 90.0
+
+const FIRST_CHAIN: Array[String] = ["first.heard", "first.nobody", "first.hello", "first.tsk"]
+const FLUSH_A: Array[String] = ["flush.a1", "flush.a2", "flush.a3", "flush.a4", "flush.a5"]
+const FLUSH_B: Array[String] = ["flush.b1", "flush.b2", "flush.b3", "flush.b4"]
+const OPEN_TEETH: Array[String] = ["open.teeth1", "open.teeth2", "open.teeth3"]
+const APPRAISE: Array[String] = ["appraise.1", "appraise.2", "appraise.3", "appraise.4", "appraise.5", "appraise.6"]
+const UNAWARE: Array[String] = ["empty.unaware1", "empty.unaware2", "empty.unaware3", "empty.unaware4", "empty.unaware5"]
+const AWARE: Array[String] = ["empty.aware1", "empty.aware2", "empty.aware3"]
+const TAKE: Array[String] = ["pick.take1", "pick.take2", "pick.take3"]
 
 var is_open: bool = false
 var offers: Array[String] = []
+## Deepest shell reached (0 core, 1 mantle, 2 surface); main keeps it set.
+var shell: int = 0
+## The last trade before the outermost shell (spec 12 마지막 거래).
+var final_trade: bool = false
+## Line ids spoken so far, oldest first (tests and subtitles read it).
+var spoken: Array[String] = []
+var last_line: String = ""
+## Eyes gone: after a spray or heavy toggling.
+var absent_left: float = 0.0
+
 var _since_flush: float = INF
 var _since_paid: float = INF
 var _eyes: Node3D
 var _offer_root: Node3D
-## The main/art vent model: grate, duct, blinking eyes, the arm and items.
 var art: Node3D
+
+var _met: bool = false
+var _chain: Array[String] = []
+var _chain_step: int = 0
+var _nag_t: float = 0.0
+var _chain_first: bool = false
+var _open_times: Array[float] = []
+var _clock: float = 0.0
+var _empty_streak: int = 0
+var _little_streak: int = 0
+var _idle_t: float = 0.0
+var _idle_said: bool = false
+var _lid_open: bool = false
+var _lid_t: float = 0.0
+var _stare_said: bool = false
+var _tank_visits: int = 0
+var _tank_near: bool = false
+var _offer_t: float = 0.0
+var _pick_long_said: bool = false
+## Offers left behind unpicked: shown again on the next open.
+var _held: Array[String] = []
+var _left_at: float = -1.0
+var _silent_back: bool = false
+var _remark_t: float = -INF
+var _paid_ever: bool = false
+var _rng: int = 7331
+## Player state for the occasional remarks (main keeps it fresh).
+var player_state: Dictionary = {}
 
 ## Game item id -> the art model's item kind.
 const ART_KIND := {
-	"spray_cheap": "spray_cheap", "spray_deep": "spray_expensive", "barrier": "barrier",
-	"knife": "knife", "blender": "blender_box", "big_saw": "saw_box",
+    "spray_cheap": "spray_cheap", "spray_deep": "spray_expensive", "barrier": "barrier",
+    "knife": "knife", "blender": "blender_box", "big_saw": "saw_box",
 }
 
 func _ready() -> void:
-	art = (load("res://main/art/fp_vent.tscn") as PackedScene).instantiate()
-	art.name = "VentArt"
-	add_child(art)
-	art.call("set_open", 0.0)
-	art.call("set_eyes", false)
-	_eyes = Node3D.new()
-	_eyes.name = "Eyes"
-	add_child(_eyes)
-	_eyes.visible = false
-	_offer_root = Node3D.new()
-	_offer_root.name = "Offers"
-	add_child(_offer_root)
+    art = (load("res://main/art/fp_vent.tscn") as PackedScene).instantiate()
+    art.name = "VentArt"
+    add_child(art)
+    art.call("set_open", 0.0)
+    art.call("set_eyes", false)
+    _eyes = Node3D.new()
+    _eyes.name = "Eyes"
+    add_child(_eyes)
+    _eyes.visible = false
+    _offer_root = Node3D.new()
+    _offer_root.name = "Offers"
+    add_child(_offer_root)
+
+func _rand(n: int) -> int:
+    _rng = (_rng * 1103515245 + 12345) & 0x7fffffff
+    return (_rng >> 8) % maxi(n, 1)
+
+func _say(id: String) -> void:
+    spoken.append(id)
+    last_line = id
+    line_spoken.emit(id)
+
+func _pick(arr: Array[String]) -> String:
+    return arr[_rand(arr.size())]
+
+# --- time --------------------------------------------------------------------
 
 func tick(delta: float) -> void:
-	_since_flush += delta
-	_since_paid += delta
-	var md := mood()
-	art.call("set_eye_mood", 1.0 if md == "frantic" else (0.0 if md == "calm" else 0.5))
+    _clock += delta
+    _since_flush += delta
+    _since_paid += delta
+    if absent_left > 0.0:
+        absent_left = maxf(absent_left - delta, 0.0)
+        if is_open and art != null:
+            art.call("set_eyes", absent_left <= 0.0)
+    var md := mood()
+    if art != null:
+        art.call("set_eye_mood", 1.0 if md == "frantic" else (0.0 if md == "calm" else 0.5))
+    # ignored after a flush: escalate while closed
+    if not is_open and _chain_step < _chain.size():
+        _nag_t += delta
+        if _nag_t >= NAG_INTERVAL:
+            _nag_t = 0.0
+            _say(_chain[_chain_step])
+            _chain_step += 1
+    if is_open:
+        _idle_t += delta
+        if _idle_t >= IDLE_TIME and not _idle_said and _wants_teeth():
+            _idle_said = true
+            _say("distract.idle")
+        if _lid_open and not _stare_said:
+            _lid_t += delta
+            if _lid_t >= STARE_TIME:
+                _stare_said = true
+                _say("lid.stare")
+        if not offers.is_empty():
+            _offer_t += delta
+            if _offer_t >= PICK_LONG_TIME and not _pick_long_said:
+                _pick_long_said = true
+                _say("pick.long")
 
 ## "frantic" right after a flush, "calm" after being paid, else "demanding".
 func mood() -> String:
-	if _since_paid < CALM_TIME:
-		return "calm"
-	if _since_flush < FRANTIC_TIME:
-		return "frantic"
-	return "demanding"
+    if _since_paid < CALM_TIME:
+        return "calm"
+    if _since_flush < FRANTIC_TIME:
+        return "frantic"
+    return "demanding"
+
+func _wants_teeth() -> bool:
+    return _since_paid >= CALM_TIME and offers.is_empty()
+
+# --- flush and opening --------------------------------------------------------
 
 func on_flush() -> void:
-	_since_flush = 0.0
-	if is_open:
-		line_spoken.emit("vent_heard_flush")
+    _since_flush = 0.0
+    _nag_t = 0.0
+    _chain_step = 0
+    _chain_first = not _met
+    if final_trade:
+        _chain = []
+    elif not _met:
+        _chain = FIRST_CHAIN.duplicate()
+    elif shell >= 2:
+        _chain = ["surface.flush"] as Array[String]
+    elif shell == 1:
+        _chain = ["mantle.flush"] as Array[String]
+    else:
+        _chain = (FLUSH_A if _rand(2) == 0 else FLUSH_B).duplicate()
+    if is_open:
+        _say(_chain[0] if not _chain.is_empty() else "flush.a1")
+        _chain_step = _chain.size()
+    else:
+        # the first line comes at once through the ceiling
+        if not _chain.is_empty():
+            _say(_chain[0])
+            _chain_step = 1
 
-func open() -> void:
-	if is_open:
-		return
-	is_open = true
-	_eyes.visible = true
-	art.call("play_open")
-	art.call("set_eyes", true)
-	line_spoken.emit("vent_bong_" + mood())
+## Open the grate. `teeth_available` = teeth in the tank or in hand.
+func open(teeth_available: int = 0) -> void:
+    if is_open:
+        return
+    is_open = true
+    _eyes.visible = true
+    if art != null:
+        art.call("play_open")
+        art.call("set_eyes", absent_left <= 0.0)
+    _idle_t = 0.0
+    _idle_said = false
+    _open_times.append(_clock)
+    while not _open_times.is_empty() and _clock - _open_times[0] > TOGGLE_WINDOW * 4.0:
+        _open_times.pop_front()
+    var toggles := 0
+    for i in range(_open_times.size() - 1, -1, -1):
+        if i == _open_times.size() - 1 or _open_times[i + 1] - _open_times[i] <= TOGGLE_WINDOW:
+            toggles += 1
+        else:
+            break
+    if toggles >= 2:
+        if toggles >= 5:
+            _say("toggle.5")
+            absent_left = TOGGLE_HIDE
+            if art != null:
+                art.call("set_eyes", false)
+        else:
+            _say("toggle.%d" % toggles)
+        _chain_step = _chain.size()
+        if not _held.is_empty() and absent_left <= 0.0:
+            _set_offers(_held)
+            _held = []
+        return
+    if absent_left > 0.0:
+        return
+    if final_trade:
+        _say("final.before")
+        _chain_step = _chain.size()
+        return
+    if not _held.is_empty():
+        var away := _clock - _left_at if _left_at >= 0.0 else 0.0
+        if _left_at >= 0.0 and away >= LONG_AWAY:
+            _silent_back = true # silently pushes the items out; "골라" when near
+        elif _left_at >= 0.0:
+            _say("leave.back")
+        _left_at = -1.0
+        _set_offers(_held)
+        _held = []
+        _chain_step = _chain.size()
+        return
+    if not _met:
+        _met = true
+        _say("first.open" if _chain_step <= 1 else "first.open_late")
+        _chain_step = _chain.size()
+        return
+    var ignored_all := not _chain.is_empty() and _chain_step >= _chain.size() and _chain_step > 1
+    _chain = []
+    _chain_step = 0
+    if teeth_available <= 0:
+        _empty_open()
+        return
+    _empty_streak = 0
+    if ignored_all and _since_flush < 600.0:
+        _say("flush.a_late")
+    elif _since_flush < 3.0:
+        _say("open.early")
+    else:
+        _say(_pick(OPEN_TEETH))
+
+func _empty_open() -> void:
+    _empty_streak += 1
+    if _empty_streak == 2:
+        _say("empty.again")
+    elif _empty_streak >= 3:
+        _say("empty.third")
+    elif shell >= 2:
+        _say("surface.hum")
+    elif _rand(2) == 0:
+        _say(_pick(UNAWARE))
+    else:
+        _say(_pick(AWARE))
 
 func close() -> void:
-	var was_open := is_open
-	is_open = false
-	_eyes.visible = false
-	_clear_offers()
-	art.call("set_offer_items", [])
-	art.call("set_eyes", false)
-	if was_open and is_inside_tree():
-		create_tween().tween_method(func(v): art.call("set_open", v), 1.0, 0.0, 0.35)
-	else:
-		art.call("set_open", 0.0)
+    var was_open := is_open
+    is_open = false
+    _eyes.visible = false
+    if was_open and not offers.is_empty():
+        _say("leave.close")
+        _held = offers.duplicate()
+    elif was_open and final_trade:
+        _say("final.close")
+    _clear_offers()
+    _lid_t = 0.0
+    if art != null:
+        art.call("set_offer_items", [])
+        art.call("set_eyes", false)
+        if was_open and is_inside_tree():
+            create_tween().tween_method(func(v): art.call("set_open", v), 1.0, 0.0, 0.35)
+        else:
+            art.call("set_open", 0.0)
 
-## Player places `placed` teeth. Returns the offered ids ([] = the being
-## pushes the teeth back as too few; the caller refunds them).
+# --- trade --------------------------------------------------------------------
+
+## Player places `placed` teeth. The being keeps them (no change) and
+## returns what it pushes out. [] only when closed or nothing was placed.
 func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
-	if not is_open or placed <= 0:
-		return []
-	var ids := prog.vent_offer(placed)
-	if ids.is_empty():
-		line_spoken.emit("vent_not_enough")
-		return []
-	_since_paid = 0.0
-	line_spoken.emit("vent_this_is_fair")
-	_set_offers(ids)
-	return ids
+    if not is_open or placed <= 0:
+        return []
+    _idle_t = 0.0
+    _since_paid = 0.0
+    var first_pay := not _paid_ever
+    _paid_ever = true
+    if final_trade:
+        _say("final.given")
+        var all: Array[String] = []
+        for id in FPProgression.PRICE_UNITS.keys():
+            if prog.vent.is_unlocked(id, float(prog.deepest_shell)) and not prog._maxed(id):
+                all.append(id)
+        _set_offers(all)
+        return all
+    if placed >= prog.vent_absurd_threshold():
+        _say("amount.absurd")
+        var sp := prog.vent_spill()
+        for id in sp:
+            prog.grant_item(id)
+        spilled.emit(sp)
+    else:
+        _say("place.accept" if first_pay else _pick(APPRAISE))
+    var ids := prog.vent_offer(placed)
+    if placed < prog.vent_absurd_threshold():
+        if ids == ["junk"]:
+            _little_streak += 1
+            _say("amount.little2" if _little_streak >= 2 else "amount.little")
+        else:
+            _little_streak = 0
+            var top := prog.price_for(ids[0])
+            _say("amount.lots" if placed * 2 >= top * 3 else "amount.fair")
+        _maybe_remark()
+    _set_offers(ids)
+    return ids
 
 ## Take one offered item; the others are pulled back.
 func take(id: String, prog: FPProgression) -> bool:
-	if id not in offers:
-		return false
-	var ok := prog.grant_item(id)
-	art.call("take_item", offers.find(id))
-	_clear_offers()
-	return ok
+    if id not in offers:
+        return false
+    var ok := prog.grant_item(id)
+    _say(_pick(TAKE))
+    if offers.size() > 1:
+        _say("pick.withdraw")
+    if art != null:
+        art.call("take_item", offers.find(id))
+    _held = []
+    _clear_offers()
+    return ok
+
+## Put something that is not teeth on the vent: flesh, tumor, canary.
+func place_weird(kind: String) -> void:
+    if not is_open:
+        return
+    match kind:
+        "flesh": _say("weird.flesh")
+        "tumor": _say("weird.tumor")
+        "canary": _say("weird.canary")
+
+## The occasional remark on how the player looks, after being paid.
+func _maybe_remark() -> void:
+    if _clock - _remark_t < REMARK_COOLDOWN:
+        return
+    var st := player_state
+    var id := ""
+    if bool(st.get("died", false)):
+        id = "player.died"
+    elif float(st.get("away", 0.0)) >= LONG_AWAY * 5.0:
+        id = "player.long_absent"
+    elif bool(st.get("extra_arm", false)):
+        id = "player.extra_arm"
+    elif bool(st.get("mutated", false)):
+        id = "player.mutated"
+    elif float(st.get("blood", 0.0)) >= 0.5:
+        id = "player.blood"
+    elif int(st.get("hairs", 0)) >= 20:
+        id = "player.hairs"
+    elif shell >= 2:
+        id = "surface.paid"
+    elif shell == 1:
+        id = "mantle.paid"
+    if id != "":
+        _remark_t = _clock
+        player_state.erase("died")
+        player_state.erase("mutated")
+        _say(id)
+
+# --- player actions main reports ----------------------------------------------
+
+## Main reports what the player does in the room. Events:
+## near_sink, wash, mirror, sit, door, tank_near, tank_far, lid_open,
+## lid_close, grab, walk_with, put_back, walk_away, left_room, returned,
+## near_vent, spray, hand_in.
+func notice(event: String) -> void:
+    if event != "tank_far" and event != "tank_near":
+        _idle_t = 0.0
+    match event:
+        "spray":
+            if is_open:
+                _say("weird.spray")
+                absent_left = SPRAY_SULK
+                if art != null:
+                    art.call("set_eyes", false)
+            return
+        "hand_in":
+            if is_open:
+                _say("weird.hand")
+            return
+        "left_room":
+            if is_open and not offers.is_empty():
+                _say("leave.out")
+                _held = offers.duplicate()
+                _left_at = _clock
+            return
+        "returned":
+            if is_open and _left_at >= 0.0:
+                if _clock - _left_at >= LONG_AWAY:
+                    _silent_back = true # says nothing, only holds the items out
+                else:
+                    _say("leave.back")
+                _left_at = -1.0
+                _held = []
+            return
+        "near_vent":
+            if _silent_back and is_open and not offers.is_empty():
+                _silent_back = false
+                _say("leave.back_long_near")
+            return
+    if not is_open or absent_left > 0.0:
+        return
+    if not offers.is_empty():
+        if event == "walk_away" or event == "door":
+            _say("leave.walk")
+        elif event == "hover":
+            _say("pick.hover")
+        return
+    if not _wants_teeth():
+        return
+    match event:
+        "near_sink": _say("distract.sink")
+        "wash": _say("distract.wash")
+        "mirror": _say("distract.mirror")
+        "sit": _say("distract.sit")
+        "door": _say("distract.door")
+        "tank_near":
+            if _tank_near:
+                return
+            _tank_near = true
+            _say("tank.approach" if _tank_visits == 0 else "tank.approach_again")
+        "tank_far":
+            if not _tank_near:
+                return
+            _tank_near = false
+            _say("tank.leave" if _tank_visits == 0 else "tank.leave_again")
+            _tank_visits += 1
+        "lid_open":
+            _lid_open = true
+            _lid_t = 0.0
+            _stare_said = false
+            _say("lid.open")
+        "lid_close":
+            _lid_open = false
+        "grab":
+            _stare_said = true
+            _say("lid.grab")
+        "walk_with": _say("lid.walk_with")
+        "put_back": _say("lid.put_back")
 
 func _set_offers(ids: Array[String]) -> void:
-	_clear_offers()
-	offers = ids.duplicate()
-	for i in range(offers.size()):
-		var b := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(0.07, 0.05, 0.07)
-		b.mesh = bm
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color.from_hsv(0.13 * i + 0.05, 0.5, 0.75)
-		b.material_override = m
-		b.position = Vector3((i - (offers.size() - 1) * 0.5) * 0.1, -0.04, 0.0)
-		b.set_meta("offer_id", offers[i])
-		b.visible = false # aim anchor only; the art arm holds the real item
-		_offer_root.add_child(b)
-	var kinds: Array = []
-	for id in offers:
-		kinds.append(ART_KIND.get(id, "junk"))
-	art.call("set_offer_items", kinds)
-	art.call("play_offer")
-	offers_changed.emit(offers)
+    _clear_offers()
+    offers = ids.duplicate()
+    _offer_t = 0.0
+    _pick_long_said = false
+    for i in range(offers.size()):
+        var b := MeshInstance3D.new()
+        var bm := BoxMesh.new()
+        bm.size = Vector3(0.07, 0.05, 0.07)
+        b.mesh = bm
+        b.position = Vector3((i - (offers.size() - 1) * 0.5) * 0.1, -0.04, 0.0)
+        b.set_meta("offer_id", offers[i])
+        b.visible = false # aim anchor only; the art arm holds the real item
+        _offer_root.add_child(b)
+    var kinds: Array = []
+    for id in offers:
+        kinds.append(ART_KIND.get(id, "junk"))
+    if art != null:
+        art.call("set_offer_items", kinds)
+        art.call("play_offer")
+    offers_changed.emit(offers)
 
 func _clear_offers() -> void:
-	offers.clear()
-	for c in _offer_root.get_children():
-		c.queue_free()
-		_offer_root.remove_child(c)
-	offers_changed.emit(offers)
+    offers.clear()
+    for c in _offer_root.get_children():
+        c.queue_free()
+        _offer_root.remove_child(c)
+    offers_changed.emit(offers)
 
 func offer_nodes() -> Array:
-	return _offer_root.get_children()
+    return _offer_root.get_children()
+
+## Offers waiting for the next open (left unpicked).
+func held_offers() -> Array[String]:
+    return _held

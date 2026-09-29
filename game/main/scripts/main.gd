@@ -66,6 +66,10 @@ var canary: FDKCanary
 var hazard: FDKHazardCheck = FDKHazardCheck.new()
 var death_drop: FDKDeathDrop
 var vent: FPVent
+## W04 toilet bowl + lever settlement (no numbers, no shop).
+var toilet: FPToiletSettlement
+var _vent_in_room: bool = true
+var _vent_away_t: float = 0.0
 var mirror: FPMirror
 var ending: FPEnding
 var art_hookup: FPArtHookup
@@ -206,6 +210,9 @@ func _ready() -> void:
     vent.name = "Vent"
     vent.position = Vector3(0.75, 2.0 * FPRestroom.HALF.y - 0.03, 0.75)
     add_child(vent)
+    toilet = FPToiletSettlement.new()
+    toilet.name = "ToiletSettlement"
+    add_child(toilet)
 
     for r in rest_points:
         FPWorldFeatures.build_container(self, r)
@@ -459,6 +466,7 @@ func _process(delta: float) -> void:
     hands_rig.set_mutation(progression.mutation_amount())
     hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
     vent.tick(delta)
+    _vent_watch(delta)
     _update_tank_teeth()
     if ended:
         ending.tick(delta)
@@ -468,8 +476,10 @@ func _process(delta: float) -> void:
         return
     if _settling:
         chewer.stop()
-        if Input.is_action_just_pressed("fp_interact") or Input.is_action_just_pressed("ui_cancel"):
-            flush()
+        if Input.is_action_just_pressed("fp_interact"):
+            flush() # the lever, pressed by hand
+        elif Input.is_action_just_pressed("ui_cancel"):
+            leave_settlement() # stand up without flushing: nothing settles
         return
     if _mirror_open:
         return
@@ -567,10 +577,12 @@ func _interact() -> void:
     elif p.distance_to(sink_point()) < 0.9:
         wash_hands()
     elif _near_toilet():
-        if stomach.fill > 0.0 or progression.tumors.carried_count() > 0:
+        if stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents():
             start_settlement()
         else:
-            restroom.set_tank_open(restroom._lid_target == 0.0)
+            var opening := restroom._lid_target == 0.0
+            restroom.set_tank_open(opening)
+            vent.notice("lid_open" if opening else "lid_close")
     elif p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6:
         restroom.set_door_open(not restroom.is_door_open())
     else:
@@ -618,8 +630,8 @@ func request_vomit() -> void:
 func start_settlement() -> void:
     if _settling:
         return
-    _settle_amount = stomach.vomit()
-    if progression.throw_tumors_in_toilet() > 0:
+    toilet.vomit_into(stomach.vomit())
+    if toilet.throw_tumors(progression) > 0:
         progression.refresh_hands(carry_mode)
     _settling = true
     settle_camera.current = true
@@ -631,8 +643,9 @@ func start_settlement() -> void:
 func flush() -> Dictionary:
     if not _settling:
         return {}
-    var got := progression.settle(_settle_amount)
-    _settle_amount = 0.0
+    if toilet.tank_node == null:
+        toilet.tank_node = restroom.tank_art
+    var got := toilet.press_lever(progression)
     _settling = false
     vent.on_flush()
     flushed.emit(got["teeth"], got["hairs"])
@@ -643,6 +656,15 @@ func flush() -> Dictionary:
 
 func end_settlement() -> void:
     flush()
+
+## Stand up from the bowl without the lever: the bowl keeps its contents.
+func leave_settlement() -> void:
+    if not _settling:
+        return
+    _settling = false
+    player.camera.current = true
+    if player.mouse_look_enabled:
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func is_settling() -> bool:
     return _settling
@@ -665,7 +687,10 @@ func _update_tank_teeth() -> void:
 func scoop_teeth() -> int:
     if restroom._lid_target == 0.0:
         return 0
-    return progression.scoop_handful()
+    var n := progression.scoop_handful()
+    if n > 0:
+        vent.notice("grab")
+    return n
 
 func try_pick_tank_item() -> bool:
     return scoop_teeth() > 0
@@ -674,7 +699,7 @@ func try_pick_tank_item() -> bool:
 
 func use_vent() -> void:
     if not vent.is_open:
-        vent.open()
+        vent.open(progression.teeth + progression.teeth_in_hand)
     elif progression.teeth_in_hand > 0:
         place_teeth_at_vent()
     elif vent.offers.is_empty():
@@ -697,10 +722,40 @@ func take_vent_offer(id: String = "") -> bool:
                 id = n.get_meta("offer_id")
     return vent.take(id, progression)
 
+## W06: tell the vent being what the player does in the room.
+func _vent_watch(delta: float) -> void:
+    vent.shell = progression.deepest_shell
+    vent.player_state["blood"] = hand_blood
+    vent.player_state["hairs"] = progression.total_hairs()
+    vent.player_state["extra_arm"] = ("extra_arm" in progression.tumor_mutations or "T2" in progression.tumor_mutations)
+    if player == null or restroom == null:
+        return
+    var p := player.global_position
+    var inside: bool = restroom.contains(p)
+    if inside != _vent_in_room:
+        _vent_in_room = inside
+        if inside:
+            vent.player_state["away"] = _vent_away_t
+            vent.notice("returned")
+        else:
+            _vent_away_t = 0.0
+            vent.notice("left_room")
+    if not inside:
+        _vent_away_t += delta
+        return
+    var tank_d: float = p.distance_to(restroom.toilet.global_position + Vector3(0, 0.9, 0.5))
+    if tank_d < 0.9:
+        vent.notice("tank_near")
+    elif tank_d > 1.6:
+        vent.notice("tank_far")
+    if p.distance_to(Vector3(vent.global_position.x, p.y, vent.global_position.z)) < 1.0:
+        vent.notice("near_vent")
+
 # --- mirror, sink, canary ------------------------------------------------------
 
 func open_mirror() -> void:
     _mirror_open = true
+    vent.notice("mirror")
     mirror.open(progression)
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
@@ -710,6 +765,7 @@ func _on_mirror_closed() -> void:
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func wash_hands() -> void:
+    vent.notice("wash")
     hand_blood = 0.0
 
 func take_canary() -> bool:
@@ -848,6 +904,8 @@ func use_spray(deep: bool = false) -> int:
     var tier := progression.pick_spray_tier(deep)
     if tier < 0:
         return -1
+    if vent.is_open and restroom.contains(player.global_position) and _pitch() > 0.45:
+        vent.notice("spray") # sprayed at the vent being
     var hit := _look_hit()
     if hit.is_empty():
         return -1
