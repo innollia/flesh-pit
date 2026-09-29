@@ -12,7 +12,7 @@ Last updated: 2026-09-29
 5. mutation progress accumulates and becomes visible
 6. go back out and eat deeper
 
-There is no sell loop. Vomit has no resource or crafting value.
+There is no conventional sell loop. The toilet is a settlement point: flesh vomited into it awards mutation points and money, while flesh vomited elsewhere awards neither.
 
 The target rhythm should borrow from successful compact digging games: stomach capacity and early refill timing should be tuned so returns happen often enough to teach the loop without becoming constant interruption.
 
@@ -34,7 +34,10 @@ After the player exceeds a certain overfill threshold, a **vomit button** appear
 
 Vomiting outside the restroom has **no special lethal penalty**. It can be used as an emergency way to empty stomach contents away from the toilet.
 
-The important distinction is settlement: vomiting into the restroom toilet is where carried excursion value is converted / counted into **mutation points and money**. Exact handling of value lost or retained when vomiting outside remains to be defined.
+Rewards are generated only by vomiting flesh into the restroom toilet:
+- flesh vomited into the toilet awards **mutation points and money**
+- flesh vomited anywhere else is simply discarded and awards nothing
+- there is no separately banked "unsettled value" that survives an outside vomit
 
 ## 2. Regenerating flesh is a core pressure
 
@@ -102,21 +105,28 @@ Accepted feedback channels:
 
 Major mutations should be perceptible immediately.
 
-Mutation progression uses a **point-based upgrade structure** rather than a one-time choice screen after each expedition.
+Mutation progression uses a **point-based parent → child upgrade structure** rather than a one-time choice screen after each expedition.
 
-Mutation points and money are both settled while the player vomits into the restroom toilet.
+Mutation upgrades can be purchased **anywhere**; they are not tied to the restroom or toilet UI.
 
-Mutation-point gain scales with **depth × amount of flesh eaten**. The biome of the flesh also matters: flesh from different biomes yields different mutation-point progression rather than all eaten material feeding one undifferentiated result.
+There are two mutation-point layers:
+- **common mutation points**
+- **biome-specific mutation points**, determined by which biome's flesh was eaten
+
+Mutation-point gain scales from the established **depth × amount of flesh eaten** basis, with biome identity determining the biome-specific portion. Exact common-vs-biome-specific split and costs remain unresolved.
+
+Money is also awarded only when flesh is vomited into the restroom toilet. Money value is based primarily on:
+- **biome / rarity**
+- **amount of flesh**
+- unusually valuable material such as **tumors**, which pays substantially more than ordinary flesh
 
 During the toilet sequence:
 - the toilet fills most of the screen
-- a branching upgrade structure appears on the right, visually closer to an organization chart / family tree than a detached menu
-- the upgrade structure uses a true **parent → child unlock hierarchy**
-- the current mutation-point total and money settlement are shown as part of the sequence
-- while vomiting continues, both mutation points and money visibly count upward
+- mutation points and money visibly count upward as the vomit is processed
 - the intended number treatment is a dark-gray existing total plus a green newly gained amount, for example **5000 + +2293**
+- the **right side of the toilet view shows the shop**, not the mutation tree
 
-The player spends accumulated mutation points through the parent-child upgrade structure. Exact costs, biome branch contents, money values, and pacing remain unresolved.
+The mutation tree exists separately from this toilet view and preserves the established parent → child unlock hierarchy.
 
 ## 5. Tissue-specific rules
 
@@ -143,10 +153,11 @@ Cancerous growths are primarily a **collection/codex element**.
 
 Current canon:
 - collect/discover entries for a cancer/tumor codex
-- **prototype:** collection only; no practical reward is required
-- long-term practical benefit remains undecided
+- **prototype codex behavior:** collection only; no separate codex-completion reward is required
+- tumors themselves are economically valuable when eaten and later vomited into the restroom toilet, awarding substantially more money than ordinary flesh
+- long-term codex-completion benefit remains undecided
 
-Do not force a reward system onto them until there is a reason.
+Do not force a separate codex reward system onto them until there is a reason.
 
 ## 6. Death and recovery
 
@@ -216,12 +227,25 @@ It should feel genuinely safe and clean rather than secretly disgusting.
 
 Primary functions:
 - empty stomach by vomiting
-- settle excursion gains into mutation points and money
+- convert toilet-vomited flesh into mutation points and money
+- host the shop during the toilet settlement view
+- receive purchased items through the toilet tank
 - mark the end of one expedition cycle
-- expose mutation/progression
 - provide a strong visual reset between excursions
 
 The restroom already serves as the game's emotional contrast space.
+
+### Toilet shop delivery
+
+While the player is vomiting into the toilet, the **shop appears on the right side** of the toilet-focused UI.
+
+When the player buys an item:
+- the purchase presentation shows a **coin being thrown into the toilet**
+- the bought item is not handed over through a normal inventory pop-up
+- afterward, the player opens the **toilet water tank / cistern**
+- the purchased item is found inside the tank
+
+This keeps buying and item delivery physically tied to the restroom fixture rather than a detached shop menu.
 
 **Prototype:** keep the restroom visually and structurally fixed as the clean white safe room.
 
