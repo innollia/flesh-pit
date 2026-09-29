@@ -3,6 +3,7 @@
 ## High priority design
 
 - [ ] Brainstorm depth-by-depth gameplay differences using Mystery Flesh Pit and other giant-organism references only as inspiration; keep the world original.
+- [ ] Define what counts as **deeper** in an omnidirectional excavation space: distance from the restroom, authored tissue/anatomy boundaries, another progression rule, or a combination.
 - [ ] Design tool progression without losing the core identity of **eating** the terrain.
 - [ ] Brainstorm progression content/events for the clean white restroom.
 - [ ] Define the canary's exact gameplay function.
@@ -13,7 +14,6 @@
 
 - [ ] How fast should flesh regrow before the first return so the player notices it naturally?
 - [ ] How narrow can a returning tunnel become before it feels unfair?
-- [ ] What happens if a player simply eats straight down?
 - [ ] How do compass and canary prevent getting lost without trivializing navigation?
 - [ ] How should death drops work when the old route is regenerating?
 - [ ] How much chewing time feels tactile rather than sluggish?
