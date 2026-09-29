@@ -36,6 +36,7 @@ func _process(_d: float) -> bool:
 	_run_long_knuckle()
 	_run_tumors()
 	_run_stomach_forms()
+	_run_skipped_followup()
 	_m.queue_free()
 	print("--- %d passed, %d failed ---" % [_passed, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -239,3 +240,104 @@ func _run_stomach_forms() -> void:
 	sv.set_state(1.0, 0.8)
 	sv.snap()
 	_assert(sv._pouch.visible and sv._gullet.visible, "throat pouch and gullet tube show when overfull")
+
+## Session C follow-up: T1 echo marks, M23 hair shiver, M25 live death marker.
+func _grant(id: String) -> void:
+	var p: FPProgression = _m.progression
+	if id.begins_with("T"):
+		p.tumor_mutations.append(id)
+	else:
+		p.mutation_tree._purchased[id] = true
+
+func _ungrant(id: String) -> void:
+	var p: FPProgression = _m.progression
+	while id in p.tumor_mutations:
+		p.tumor_mutations.erase(id)
+	p.mutation_tree._purchased.erase(id)
+
+func _run_skipped_followup() -> void:
+	var ma: FPMutationApply = _m.mutation_apply
+	var t: FDKTerrainField = _m.terrain
+	for id in ["T1", "M23", "M25"]:
+		_ungrant(id)
+	var c := Vector3(160, 20, 160)
+	t.fill_box_uniform(AABB(c - Vector3.ONE * 6.0, Vector3.ONE * 12.0), 1.0, FPProgression.TISSUE_COMPRESSIVE)
+	t.fill_box_uniform(AABB(c + Vector3(0.9, -0.6, -0.6), Vector3(1.2, 1.2, 1.2)), 1.0, FPProgression.TISSUE_NERVE)
+	t.fill_box_uniform(AABB(c + Vector3(-0.6, -2.4, -0.6), Vector3(1.2, 1.2, 1.2)), 1.0, FPProgression.TISSUE_CONTRACTILE)
+	t.carve_sphere(c, 1.5)
+	t.carve_sphere(c + Vector3(0, 0, 3.2), 1.4) # leaves a thin wall on +z
+	t.fill_box_uniform(AABB(c + Vector3(-1.2, -0.3, -0.3), Vector3(0.6, 0.6, 0.6)), 0.3, FPProgression.TISSUE_COMPRESSIVE)
+	var cp := c + Vector3(0, -1.5, 0)
+	t.contract_time = FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.contract_phase(cp) - 1.0
+	var fake := Node3D.new()
+	_m.add_child(fake)
+	fake.global_position = c + Vector3(0.6, 0.3, 0)
+	_m.tumor_nodes.append(fake)
+	_grant("T1")
+	_m.player.global_position = c - Vector3(0, 1.4, 0)
+	var n: Dictionary = ma.echo_pulse()
+	var E := FPMutationApply.Echo
+	_assert(int(n[E.NERVE]) > 0, "T1 echo marks the nerve patch (%d)" % int(n[E.NERVE]))
+	_assert(int(n[E.THIN]) > 0, "T1 echo marks the thin wall (%d)" % int(n[E.THIN]))
+	_assert(int(n[E.REGROW]) > 0, "T1 echo marks regrowing flesh (%d)" % int(n[E.REGROW]))
+	_assert(int(n[E.SQUEEZE]) > 0, "T1 echo marks the wall about to squeeze (%d)" % int(n[E.SQUEEZE]))
+	_assert(int(n[E.TUMOR]) == 1, "T1 echo marks the tumor")
+	var thin_ok := true
+	for e in ma.echo_marks:
+		if e.kind == E.THIN and (e.pos as Vector3).z < c.z + 0.5:
+			thin_ok = false
+	_assert(thin_ok, "T1 only the thin +z wall reads as thin")
+	_assert(ma._echo_mm != null and ma._echo_mm.visible and ma._echo_mm.multimesh.instance_count == ma.echo_marks.size(), "T1 echo marks are drawn")
+	t.contract_time = FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.contract_phase(cp) - 5.0
+	n = ma.echo_pulse()
+	_assert(int(n[E.SQUEEZE]) == 0, "T1 a resting contractile wall is not marked")
+	_ungrant("T1")
+	ma._step_echo_marks(0.016)
+	_assert(not ma._echo_mm.visible, "T1 marks vanish without the tumor")
+	_m.tumor_nodes.erase(fake)
+	fake.queue_free()
+	# M23: periodic squeeze
+	_grant("M23")
+	var fires := [0]
+	var cb := func(): fires[0] += 1
+	ma.hair_shiver_started.connect(cb)
+	_m.player.global_position = c - Vector3(0, 1.0, 0)
+	t.contract_time = FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.contract_phase(cp) - 1.2
+	ma._shiver_scan_t = 0.0
+	ma._step_hair_shiver(0.016)
+	_assert(ma.hair_shiver > 0.0 and fires[0] == 1, "M23 hairs shiver before a nearby squeeze (eta %.2f)" % ma.squeeze_eta())
+	ma._step_hair_shiver(0.016)
+	_assert(fires[0] == 1, "M23 one warning per squeeze")
+	t.contract_time = FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.contract_phase(cp) - 4.0
+	ma._shiver_scan_t = 0.0
+	ma._step_hair_shiver(0.016)
+	_assert(ma.hair_shiver == 0.0, "M23 still hairs while the squeeze is far off (eta %.2f)" % ma.squeeze_eta())
+	# M23: nerve charge
+	_m.player.global_position = c + Vector3(0, 30, 0)
+	var tt = _m.tissue_tools
+	tt.plugged = true
+	tt.plug_t = 0.4
+	tt._next_contract = 1.5
+	ma._shiver_scan_t = 0.0
+	ma._step_hair_shiver(0.016)
+	_assert(ma.hair_shiver > 0.0 and fires[0] == 2, "M23 hairs shiver before the plugged nerve squeezes")
+	tt.plugged = false
+	tt._next_contract = FPTissueTools.CHARGE_CONTRACT_DELAY
+	_ungrant("M23")
+	ma._step_hair_shiver(0.016)
+	_assert(ma.hair_shiver == 0.0, "M23 no shiver without the mutation")
+	ma.hair_shiver_started.disconnect(cb)
+	# M25: the death marker follows the drifting drop
+	var dd: FDKDeathDrop = _m.death_drop
+	dd.drop(c, {})
+	dd.carry_along(Vector3(0.7, 0, 0))
+	ma.step_timed(0.016)
+	_assert(dd.marker_position().is_equal_approx(c), "without M25 the marker stays stale")
+	_grant("M25")
+	ma.step_timed(0.016)
+	_assert(dd.marker_position().is_equal_approx(c + Vector3(0.7, 0, 0)), "M25 the marker follows the drift")
+	dd.carry_along(Vector3(0, 0, 0.5))
+	ma.step_timed(0.016)
+	_assert(dd.marker_position().is_equal_approx(c + Vector3(0.7, 0, 0.5)), "M25 the marker keeps updating")
+	_ungrant("M25")
+	dd.try_recover(dd.current_position)

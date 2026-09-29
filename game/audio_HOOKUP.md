@@ -12,6 +12,8 @@
 - `main.mutation_apply` 신호 `alien_hand_tore()`: M22 외계인 손이 멋대로 뜯어 먹을 때.
 - `main.mutation_apply` 신호 `gulped()`: M15 빠지는 턱으로 살 더미를 통째로 삼킬 때(굵은 꿀꺽).
 - `main.mutation_apply` 신호 `echo_click()`: T1 반향정위 혀 딸깍(1.2초마다).
+- `main.mutation_apply` 신호 `echo_pulsed(counts)`: T1 딸깍 반향이 다 퍼진 순간(약 0.3초 뒤). 신경/종양이 잡히면 되돌아오는 소리를 조금 다르게 해도 됨.
+- `main.mutation_apply` 신호 `hair_shiver_started()`: M23 감각털. 수축 1.5초 전 팔 털이 떨리기 시작할 때 마른 사각거림. 세기는 `hair_shiver`(0~1).
 - `main.mutation_apply.magnet_hum_level()` (0~1): M03 자기장 눈. 화장실 쪽을 볼수록 귀에서 낮게 윙.
 - `main.progression.has_mutation("M02")`: 넓은 목구멍이면 삼키는 소리를 굵게. `has_mutation("M04")`: 불거진 턱이면 씹는 소리를 바꿈.
 

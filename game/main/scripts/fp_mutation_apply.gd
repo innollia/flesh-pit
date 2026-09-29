@@ -146,18 +146,245 @@ func step_timed(delta: float) -> void:
 			gulp()
 	else:
 		_gulp_t = -1.0
-	# T1: echolocation clicks light up outlines, nothing else
+	# T1: each click lights outlines and marks thin / regrowing / squeezing /
+	# nerve / tumor spots through the flesh (echo_pulse)
 	if p.has_mutation("T1") and m.player_lamp != null:
 		_echo_t += delta
 		var k := fposmod(_echo_t, 1.2) / 1.2
 		if k < _click_phase:
 			echo_click.emit()
+			echo_pulse(false)
 		_click_phase = k
 		m.player_lamp.light_color = Color(0.7, 0.85, 1.0)
 		m.player_lamp.light_energy = 3.5 * exp(-k * 6.0)
 		m.environment.ambient_light_energy = 0.02
 	elif m.player_lamp != null:
 		m.player_lamp.light_color = Color(1.0, 0.8, 0.72)
+	_step_echo_marks(delta)
+	# M23: arm hairs shiver HAIR_WARN_TIME before a squeeze reaches the player
+	_step_hair_shiver(delta)
+	# M25: the death marker keeps following the drifting drop
+	if p.has_mutation("M25") and m.death_drop != null and m.death_drop.active and m.death_drop.marker != null:
+		m.death_drop.marker.position = m.death_drop.current_position
+		m.death_drop.last_known_position = m.death_drop.current_position
+
+# --- T1 echo pulse -----------------------------------------------------------
+
+## Kinds a T1 echo pulse tells apart (05-mutations.md 4: 얇은 곳, 재생 중인
+## 곳, 수축 직전인 곳, 신경, 종양).
+enum Echo { THIN, REGROW, SQUEEZE, NERVE, TUMOR }
+const ECHO_COLORS := {
+	Echo.THIN: Color(0.85, 0.95, 1.0),
+	Echo.REGROW: Color(0.35, 1.0, 0.45),
+	Echo.SQUEEZE: Color(0.8, 0.35, 1.0),
+	Echo.NERVE: Color(1.0, 0.9, 0.2),
+	Echo.TUMOR: Color(1.0, 0.2, 0.15),
+}
+const ECHO_RADIUS := 5.0
+const ECHO_STEP := 0.5
+const ECHO_THIN := 1.0 ## a wall thinner than this (m) reads as thin
+const ECHO_SQUEEZE_LEAD := 2.5 ## s: "about to squeeze" window
+signal echo_pulsed(counts: Dictionary)
+var echo_marks: Array = [] ## [{pos, kind}] from the last pulse (tests)
+var echo_counts: Dictionary = {}
+var _echo_mm: MultiMeshInstance3D
+var _echo_age := 99.0
+
+## Offsets inside the pulse sphere, nearest first (built once).
+static var _echo_offsets: Array = []
+const ECHO_PER_FRAME := 450 ## samples per frame: the pulse spreads out in ~0.3 s
+var _echo_scan := -1
+var _echo_origin := Vector3.ZERO
+var _echo_time := 0.0
+
+static func _offsets() -> Array:
+	if _echo_offsets.is_empty():
+		var n := int(ECHO_RADIUS / ECHO_STEP)
+		for ix in range(-n, n + 1):
+			for iy in range(-n, n + 1):
+				for iz in range(-n, n + 1):
+					var off := Vector3(ix, iy, iz) * ECHO_STEP
+					var dist := off.length()
+					if dist <= ECHO_RADIUS and dist >= 0.3:
+						_echo_offsets.append(off)
+		_echo_offsets.sort_custom(func(x: Vector3, y: Vector3): return x.length_squared() < y.length_squared())
+	return _echo_offsets
+
+## Start a pulse from the player. immediate=true scans everything now
+## (tests); otherwise the scan runs ECHO_PER_FRAME samples a frame and the
+## marks appear as the pulse travels outward.
+func echo_pulse(immediate: bool = true) -> Dictionary:
+	_echo_origin = m.player.global_position + Vector3(0, 1.4, 0)
+	_echo_time = m.terrain.contract_time
+	_echo_age = 0.0
+	echo_marks.clear()
+	_echo_scan = 0
+	var tn = m.get("tumor_nodes")
+	if tn is Array:
+		for tu in tn:
+			if is_instance_valid(tu) and (tu as Node3D).is_visible_in_tree() and (tu as Node3D).global_position.distance_to(_echo_origin) <= ECHO_RADIUS * 2.0:
+				echo_marks.append({"pos": (tu as Node3D).global_position, "kind": Echo.TUMOR})
+	if immediate:
+		_echo_scan_some(1 << 30)
+	else:
+		_draw_echo()
+	return echo_counts
+
+func _echo_scan_some(budget: int) -> void:
+	var offs := _offsets()
+	var t: FDKTerrainField = m.terrain
+	var end := mini(offs.size(), _echo_scan + budget)
+	for i in range(_echo_scan, end):
+		var off: Vector3 = offs[i]
+		var p := _echo_origin + off
+		var d := t.density_at(p)
+		var dir := off.normalized()
+		if d < FDKTissueRules.EMPTY_DENSITY:
+			# regrowing: an opened cell whose flesh is coming back
+			if d > 0.15 and not t.is_sealed_at(p) and t.regen_multiplier_at(p) > 0.0:
+				echo_marks.append({"pos": p, "kind": Echo.REGROW})
+			continue
+		# only the face of the wall the pulse hits
+		if t.density_at(p - dir * ECHO_STEP) >= FDKTissueRules.EMPTY_DENSITY:
+			continue
+		var tissue := t.tissue_at(p)
+		if tissue == FPProgression.TISSUE_NERVE:
+			echo_marks.append({"pos": p, "kind": Echo.NERVE})
+		elif tissue == FPProgression.TISSUE_CONTRACTILE and _squeeze_in(p, _echo_time) <= ECHO_SQUEEZE_LEAD:
+			echo_marks.append({"pos": p, "kind": Echo.SQUEEZE})
+		elif tissue != FPProgression.TISSUE_MEMBRANE and t.density_at(p + dir * ECHO_THIN) < FDKTissueRules.EMPTY_DENSITY:
+			echo_marks.append({"pos": p, "kind": Echo.THIN})
+	_echo_scan = end
+	echo_counts = {}
+	for k in ECHO_COLORS.keys():
+		echo_counts[k] = 0
+	for e in echo_marks:
+		echo_counts[e.kind] = int(echo_counts[e.kind]) + 1
+	_draw_echo()
+	if _echo_scan >= offs.size():
+		_echo_scan = -1
+		echo_pulsed.emit(echo_counts)
+## Seconds until the periodic squeeze at p starts (0 while squeezing).
+static func _squeeze_in(p: Vector3, time: float) -> float:
+	var c := fposmod(time + FDKTissueRules.contract_phase(p), FDKTissueRules.CONTRACT_PERIOD)
+	if c < FDKTissueRules.CONTRACT_RISE + FDKTissueRules.CONTRACT_HOLD:
+		return 0.0
+	return FDKTissueRules.CONTRACT_PERIOD - c
+
+func _draw_echo() -> void:
+	if _echo_mm == null:
+		_echo_mm = MultiMeshInstance3D.new()
+		_echo_mm.name = "EchoMarks"
+		_echo_mm.top_level = true
+		_echo_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		var sm := SphereMesh.new()
+		sm.radius = 0.06
+		sm.height = 0.12
+		sm.radial_segments = 4
+		sm.rings = 2
+		mm.mesh = sm
+		_echo_mm.multimesh = mm
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.no_depth_test = true # the pulse sees through the flesh
+		_echo_mm.material_override = mat
+		m.add_child(_echo_mm)
+	var mm2 := _echo_mm.multimesh
+	mm2.instance_count = echo_marks.size()
+	for i in range(echo_marks.size()):
+		var e: Dictionary = echo_marks[i]
+		var sc := 2.2 if e.kind == Echo.TUMOR else 1.0
+		mm2.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * sc), e.pos))
+		mm2.set_instance_color(i, ECHO_COLORS[e.kind])
+	_echo_mm.visible = true
+
+func _step_echo_marks(delta: float) -> void:
+	if _echo_mm == null:
+		return
+	if not m.progression.has_mutation("T1"):
+		_echo_mm.visible = false
+		_echo_scan = -1
+		return
+	if _echo_scan >= 0:
+		_echo_scan_some(ECHO_PER_FRAME)
+	_echo_age += delta
+	var a := clampf(1.0 - _echo_age / 1.2, 0.0, 1.0)
+	(_echo_mm.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, 0.25 + 0.75 * a)
+
+# --- M23 sensory hairs ------------------------------------------------------
+
+signal hair_shiver_started ## sound hook: dry rustle of stiff arm hairs
+var hair_shiver := 0.0 ## 0..1 how hard the arm hairs shake now
+var hair_warnings := 0 ## warnings raised (tests)
+var _shiver_on := false
+var _shiver_scan_t := 0.0
+var _squeeze_eta := 99.0
+
+## Seconds until the next squeeze that will reach the player: the periodic
+## squeeze of nearby contractile walls, or the nerve the blender is plugged
+## into (fp_tissue_tools, read only).
+func squeeze_eta() -> float:
+	var eta := _squeeze_eta
+	var tt = m.get("tissue_tools")
+	if tt != null and tt.plugged:
+		eta = minf(eta, maxf(0.0, float(tt._next_contract) - float(tt.plug_t)))
+	return eta
+
+func _scan_squeeze() -> void:
+	_squeeze_eta = 99.0
+	var t: FDKTerrainField = m.terrain
+	var pp: Vector3 = m.player.global_position + Vector3(0, 0.9, 0)
+	var r := 2.0
+	var s := 0.5
+	var n := int(r / s)
+	for ix in range(-n, n + 1):
+		for iy in range(-n, n + 1):
+			for iz in range(-n, n + 1):
+				var p := pp + Vector3(ix, iy, iz) * s
+				if p.distance_to(pp) > r:
+					continue
+				if t.tissue_at(p) != FPProgression.TISSUE_CONTRACTILE or t.density_at(p) < FDKTissueRules.EMPTY_DENSITY:
+					continue
+				var c := fposmod(t.contract_time + FDKTissueRules.contract_phase(p), FDKTissueRules.CONTRACT_PERIOD)
+				_squeeze_eta = minf(_squeeze_eta, FDKTissueRules.CONTRACT_PERIOD - c)
+
+func _step_hair_shiver(delta: float) -> void:
+	if not m.progression.has_mutation("M23"):
+		hair_shiver = 0.0
+		_shiver_on = false
+		return
+	_shiver_scan_t -= delta
+	if _shiver_scan_t <= 0.0:
+		_shiver_scan_t = 0.2
+		_scan_squeeze()
+	else:
+		_squeeze_eta -= delta
+	var eta := squeeze_eta()
+	var on := eta <= FPProgression.HAIR_WARN_TIME
+	if on and not _shiver_on:
+		hair_warnings += 1
+		hair_shiver_started.emit()
+	_shiver_on = on
+	hair_shiver = clampf(1.0 - eta / FPProgression.HAIR_WARN_TIME, 0.2, 1.0) if on else 0.0
+	_shake_bristles()
+
+func _shake_bristles() -> void:
+	var rig = m.get("hands_rig")
+	if rig == null or not is_instance_valid(rig):
+		return
+	var tm := Time.get_ticks_msec() * 0.001
+	for b in (rig as Node).find_children("MutDeco_Bristles*", "Node3D", true, false):
+		var n3 := b as Node3D
+		if not n3.has_meta("rest"):
+			n3.set_meta("rest", n3.position)
+		var rest: Vector3 = n3.get_meta("rest")
+		var j := hair_shiver * 0.004
+		n3.position = rest + Vector3(sin(tm * 71.0), cos(tm * 83.0), sin(tm * 59.0)) * j
 
 ## M22 / tests: tear one cell in reach with the left hand, even when full.
 func alien_tear() -> bool:
