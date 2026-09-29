@@ -1,0 +1,121 @@
+name: Fetch public-domain source assets
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fetch-public-domain-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download curated Wikimedia Commons images
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import mimetypes
+          import pathlib
+          import time
+          import urllib.parse
+          import urllib.request
+
+          root = pathlib.Path("assets/source-public-domain")
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          report = {"downloaded": [], "failed": []}
+
+          for group in manifest["groups"]:
+              out_dir = root / group["pack"]
+              out_dir.mkdir(parents=True, exist_ok=True)
+
+              for item in group["items"]:
+                  target = out_dir / item["path"]
+                  if target.exists() and target.stat().st_size > 4096:
+                      report["downloaded"].append({
+                          "path": str(target),
+                          "status": "already-present",
+                          "bytes": target.stat().st_size,
+                      })
+                      continue
+
+                  filename = item["file_title"]
+                  encoded = urllib.parse.quote(filename, safe="")
+                  url = (
+                      "https://commons.wikimedia.org/wiki/Special:Redirect/file/"
+                      + encoded
+                      + "?width="
+                      + str(manifest.get("download_width_px", 1600))
+                  )
+
+                  ok = False
+                  last_error = None
+                  for attempt in range(3):
+                      try:
+                          req = urllib.request.Request(
+                              url,
+                              headers={
+                                  "User-Agent": "flesh-pit-public-domain-asset-fetcher/1.0 (+https://github.com/innollia/flesh-pit)"
+                              },
+                          )
+                          with urllib.request.urlopen(req, timeout=60) as resp:
+                              content_type = (resp.headers.get("Content-Type") or "").lower()
+                              data = resp.read()
+
+                          if not content_type.startswith("image/"):
+                              raise RuntimeError(f"unexpected content type: {content_type}")
+                          if len(data) < 4096:
+                              raise RuntimeError(f"download too small: {len(data)} bytes")
+
+                          target.write_bytes(data)
+                          report["downloaded"].append({
+                              "path": str(target),
+                              "status": "downloaded",
+                              "bytes": len(data),
+                              "commons_page": item["commons_page"],
+                          })
+                          ok = True
+                          print(f"OK {target} ({len(data):,} bytes)")
+                          break
+                      except Exception as exc:
+                          last_error = repr(exc)
+                          print(f"retry {attempt+1}/3: {filename}: {last_error}")
+                          time.sleep(2 + attempt * 2)
+
+                  if not ok:
+                      report["failed"].append({
+                          "path": str(target),
+                          "file_title": filename,
+                          "commons_page": item["commons_page"],
+                          "error": last_error,
+                      })
+                      print(f"FAILED {filename}: {last_error}")
+
+          (root / "download-report.json").write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          success_count = len(report["downloaded"])
+          print(f"downloaded/already present: {success_count}; failed: {len(report['failed'])}")
+          if success_count < 20:
+              raise SystemExit("Too few source images were downloaded; refusing to commit an incomplete pool.")
+          PY
+
+      - name: Commit downloaded source images
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/source-public-domain
+          if git diff --cached --quiet; then
+            echo "No asset changes to commit."
+            exit 0
+          fi
+          git commit -m "Fetch curated public-domain source images"
+          git push
