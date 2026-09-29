@@ -221,6 +221,8 @@ This is qualitative behavior, not a precise biome detector or GPS arrow.
 
 Biome geography is not fully static. As flesh regenerates, biome boundaries drift and reshape continuously during play rather than only between expeditions.
 
+Human infrastructure found outside the restroom should use a **mixed 1930s–1990s practical industrial / public-facility language** rather than a single clean period style. Such infrastructure is relatively rare and may appear partially embedded in or overtaken by living tissue.
+
 The world can shift enough that, on return, the restroom doorway and previously excavated tunnel may be slightly misaligned with where the player remembers them. This should read as living tissue moving and regrowing, not as a discrete map reroll.
 
 This drift should preserve the sense that the organism is alive and changing, but it must not make navigation or recovery objectives arbitrarily impossible.
@@ -241,6 +243,8 @@ From that doorway, excavation is volumetric rather than a fixed downward shaft. 
 - right
 
 The restroom is deliberately **clean and white**.
+
+Its visual language is a **complete modern Korean restroom**, and it should read as an exceptional space whose era / origin is only weakly connected to the surrounding embedded infrastructure rather than as an obvious renovation layer of the same facility.
 
 Visual rule:
 - the flesh world is dirty/red/organic
@@ -303,6 +307,13 @@ For art production, do not treat a biome as either a full bespoke environment or
 2. tissue-specific material and deformation rules
 3. biome-specific embedded biological structures and surface-pattern assets
 4. reusable human infrastructure residue that can intersect with multiple tissues
+
+The first biome-language production set should remain intentionally small rather than forcing four regions:
+- **compressive tissue:** soft volume that gives way / bulges and tends to reclaim space quickly
+- **contractile tissue:** directional fibers / forms whose movement visibly pulls or constricts the local terrain
+- **nerve-dense tissue:** conspicuous yellow protruding nerve structures appear at high density; interacting with them strongly drives the already-established local contraction / deformation response
+
+A separate fiber-focused biome is **not** part of the initial set. Do not add a fourth biome merely to fill a quota.
 
 This supports the setting's "organism as geography" and "old serviced infrastructure inside biology" direction while keeping the asset count compatible with a small indie scope.
 
