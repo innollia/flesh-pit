@@ -10,4 +10,4 @@ cf = (180 + clamp(t, 0, 0.4) * 900) * PITCH
 gulp = noise(0, 0, SEED) * g * 1.6 |> bp(@, cf, 5.0)
 knock = sine(90 * PITCH) * (clamp((t - 0.22) / 0.01, 0, 1) * exp(neg(clamp(t - 0.22, 0, 100)) / 0.08)) * 0.55
 wetc = noise(0, 0, SEED2) * gt(noise(50, 0, SEED2), 0.7) * g * 0.45 |> lp(@, 1800, 0.8)
-out(gulp + knock + wetc)
+out((gulp + knock + wetc) * 0.4)

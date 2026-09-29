@@ -13,3 +13,10 @@
 - `build_audio.py`에 `load_real_layer()`를 추가: `sounds.json`의 `real_layer` 필드(샘플 경로, 구간, 게인, 피치, hp/lp)로 지정된 실제 녹음을 리샘플·필터링해 합성(nkido) 결과 위에 더한다. 합성은 질감 보조층, 실제 녹음이 정체성을 담당하는 방향(형님 피드백 총평).
 - 카나리아 경고음(canary_warn)은 기존에 받아 둔 canary 샘플(`canary/fs85401.wav`)을 피치업(1.25x)해 재사용했다. 사람 신음(chew_strain, 10번 피드백)은 CC0 사람 발성 녹음을 구하지 못해 합성 파라미터만 조정(소울음 배음 제거, 성대 프라이 노이즈 추가)해 처리했다.
 - 재현: `python -X utf8 build_audio.py` (ffmpeg가 PATH에 있어야 mp3 디코딩 단계가 필요할 때 동작; 이미 디코딩된 `.wav`가 있으면 불필요).
+
+## 3차 (2단계 청취 피드백 반영, 2026-09-29 21:xx)
+
+- 1차(7ea1881) 실제 파일을 git show로 꺼내 ear.py로 형님의 1차 청취 피드백과 대조: 판정 대상 19개 중 16개 일치(84.2%). 03(tear_fat), 18(canary_warn), 22(depth_marker, 당시 파일)는 도구가 통과로 봤지만 형님은 문제로 지적한 역방향 불일치.
+- 2단계 WARN 항목 개선: sounds.json의 real_layer(gain_db/hp/lp)를 조정하고 akkado 패치의 합성 출력을 최대 60%까지 줄여 CC0 실제 녹음의 비중을 높였다. depth_marker에는 ding/fs531031.wav(bicycle bell)을 새 real_layer로 추가하고 파도(res 노이즈) 볼륨을 0.18->0.07로 축소. chew_strain에는 body/fs214865.wav(chewing/biting 계열)를 새 real_layer로 추가. amb_body_a/b는 중음대(300-450Hz) 필터링 노이즈 레이어를 추가하고 target_lufs를 5~6dB 올려 가청성을 개선했다(순수 tri() 톤은 8초 루프 안에서 repetition-tick 게이트에 걸려 노이즈로 교체).
+- 결과: 05_swallow, 22_depth_marker가 WARN에서 OK로 개선. 나머지 10개(01,03,07,08,09,10,11,12,13,15)는 real_layer 게인을 최대 +14dB까지 올리고 tear_nerve는 샘플 자체를 tear/fs133440->tear/fs234236으로 교체했음에도 CLAP top-1이 바뀌지 않았다. freesound.org API가 API 키 없이는 401을 반환해 신규 CC0 녹음을 추가로 확보하지 못한 것이 근본 제약이다.
+- build_audio.py 판정(PASS 183 / FAIL 0)과 Godot 헤드리스 오디오 테스트(118 passed, 0 failed, 종료코드 0)는 모두 통과. game/audio/listen/과 README.txt, LISTEN_REPORT.md를 이번 결과로 갱신했다.

@@ -9,4 +9,4 @@ W = 2.3
 tick = noise(0, 0, SEED) * clamp(t / 0.0006, 0, 1) * exp(neg(t) / 0.008) * 1.0 |> bp(@, 3400 * PITCH, 5.0)
 heel = sine((110 / W + 30) * PITCH) * clamp(t / 0.003, 0, 1) * exp(neg(t) / (0.03 * W)) * (0.25 * W)
 smear = noise(0, 0, SEED2) * clamp((t - 0.01) / 0.02, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / (0.05 * W)) * ((W - 1) * 0.35 + 0.05) |> bp(@, 900, 2.0)
-out((tick + heel + smear) |> delay(@, 0.06, 0.25, 1.0, 0.25))
+out(((tick + heel + smear) |> delay(@, 0.06, 0.25, 1.0, 0.25)) * 0.5)

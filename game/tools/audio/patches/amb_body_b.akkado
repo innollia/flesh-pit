@@ -7,4 +7,6 @@ sub_l = sine(69.25) * 0.05
 sub_r = sine(69.375) * 0.05
 air_l = noise(0, 0, 711) * 0.30 |> lp(@, 440, 0.7) |> hp(@, 80)
 air_r = noise(0, 0, 717) * 0.30 |> lp(@, 440, 0.7) |> hp(@, 80)
-out(stereo(dr_l + sub_l + air_l, dr_r + sub_r + air_r))
+mid_l = noise(0, 0, 719) * (0.44 + swell * 0.12) |> bp(@, 360, 2.4)
+mid_r = noise(0, 0, 727) * (0.44 + swell * 0.12) |> bp(@, 360, 2.4)
+out(stereo(dr_l + sub_l + air_l + mid_l, dr_r + sub_r + air_r + mid_r))

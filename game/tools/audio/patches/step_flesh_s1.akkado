@@ -7,7 +7,7 @@ t = phasor(0.1) * 10
 // id: step_flesh_s1 -- bare foot sinking into soft flesh. Stage 1 of mutation: W scales weight.
 W = 1.0
 hit = clamp(t / 0.006, 0, 1) * exp(neg(t) / (0.05 * W))
-squish = noise(0, 0, SEED) * clamp((t - 0.01) / 0.02, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / (0.08 * W)) |> bp(@, (620 / W) * PITCH, 5.5)
-suck = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.55) * exp(neg(t) / (0.12 * W)) * 0.5 |> lp(@, 950, 1.2)
+squish = noise(0, 0, SEED) * clamp((t - 0.01) / 0.02, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / (0.06 * W)) |> bp(@, (320 / W) * PITCH, 12.0)
+suck = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.65) * exp(neg(t) / (0.08 * W)) * 0.18 |> lp(@, 500, 1.8)
 thud = sine((75 / W + 20) * PITCH) * hit * (0.3 * W)
 out(squish * 0.9 + suck + thud)

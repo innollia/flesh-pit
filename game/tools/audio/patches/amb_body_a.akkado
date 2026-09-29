@@ -6,4 +6,6 @@ dr_l = saw(41) * (0.28 + swell * 0.10) |> lp(@, 210 + swell * 50, 0.8) |> hp(@, 
 dr_r = saw(41.125) * (0.28 + swell * 0.10) |> lp(@, 210 + swell * 50, 0.8) |> hp(@, 36)
 air_l = noise(0, 0, 601) * 0.26 |> lp(@, 480, 0.7) |> hp(@, 90)
 air_r = noise(0, 0, 607) * 0.26 |> lp(@, 480, 0.7) |> hp(@, 90)
-out(stereo(dr_l + air_l, dr_r + air_r))
+mid_l = noise(0, 0, 613) * (0.42 + swell * 0.10) |> bp(@, 420, 2.4)
+mid_r = noise(0, 0, 619) * (0.42 + swell * 0.10) |> bp(@, 420, 2.4)
+out(stereo(dr_l + air_l + mid_l, dr_r + air_r + mid_r))
