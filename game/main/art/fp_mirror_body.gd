@@ -11,6 +11,8 @@ extends Node3D
 ## set_red(part, t), static look(id) -> Dictionary.
 
 const K := preload("res://main/art/fp_art_kit.gd")
+const BELT_SCENE := preload("res://main/art/fp_belt.tscn")
+const BAG_SCENE := preload("res://main/art/fp_tumor_bag.tscn")
 const SKIN := Color(1.0, 0.86, 0.76)
 const SKIN_D := Color(0.95, 0.8, 0.7)
 
@@ -48,6 +50,7 @@ var _extras: Array[Node3D] = []
 var _sub := {}     ## sub pivot name -> Node3D (jaw, shoulders, hand, fingers, forearm...)
 var _time := 0.0
 var applied: Array[String] = []
+var _belt: Node3D
 
 ## World-y trunk rings [y, half width, front depth, back depth], hips to collar.
 const TRUNK := [
@@ -208,6 +211,29 @@ func build() -> void:
 		FDKLowPoly.loft(st, lg, [SKIN, SKIN, SKIN_D, SKIN, SKIN, SKIN, SKIN_D], false, false)
 		K.tube(st, I, [Vector3(sx * 0.078, -0.89, -0.03), Vector3(sx * 0.08, -0.915, 0.03), Vector3(sx * 0.085, -0.93, 0.12)], [0.032, 0.036, 0.026], 6, [SKIN_D, SKIN, SKIN], true, 0.65) # foot
 	_mesh(legs, "Legs", st)
+	# --- belt: the same first-person waist belt (fp_belt.gd: leather band,
+	# buckle, spray cans, canary pocket) plus the tumor bag, worn over the
+	# briefs so the mirror shows the gear the player carries. Reused scenes,
+	# not a copy. The belt faces -Z; the mirror body faces +Z, so it is
+	# turned 180 and dropped to the briefs waistline.
+	_belt = BELT_SCENE.instantiate()
+	_belt.name = "Belt"
+	_belt.position = Vector3(0, 1.05, 0.0)
+	_belt.rotation_degrees = Vector3(0, 180, 0)
+	_belt.scale = Vector3(0.86, 0.62, 0.82)
+	add_child(_belt)
+	var bag := BAG_SCENE.instantiate()
+	bag.name = "TumorBag"
+	bag.position = Vector3(-0.2, -0.02, 0.06)
+	bag.scale = Vector3.ONE * 0.8
+	_belt.add_child(bag)
+	# the belt scene carries its own dark work trousers for the first-person
+	# look-down; the mirror already shows the briefs, so hide those trousers
+	# and keep only the band, buckle, cans, canary and bag. _ready ran on
+	# add_child, so the Trousers mesh already exists.
+	var tr := _belt.get_node_or_null("Trousers")
+	if tr != null:
+		(tr as Node3D).visible = false
 	# --- whole: no mesh of its own; its shimmer covers every part
 	_part("whole", Vector3.ZERO)
 	# shimmer shells
