@@ -34,3 +34,22 @@
 | depth_marker | sfx | 새 깊이 도달 | 멀리서 낮게 부풀어 오름. 급격한 시작 없음 |
 
 배경 전환: 화장실 ↔ 몸은 2초, 얕은↔깊은 몸은 3초 크로스페이드. 모든 배경 층은 계속 돌고 음량만 바뀐다(루프가 다시 시작되지 않음).
+
+## 5차 새 소리 (전부 CC0 녹음 + PS1 질감)
+
+| id | 종류 | 언제 | 느낌 |
+|---|---|---|---|
+| mirror_mutate | sfx | 거울에서 변이 살 때 | 뼈 뚝뚝 꺾이는 소리 |
+| tumor_eat | sfx | 종양 먹을 때 | 물컹 깨물어 씹기 |
+| barrier_deploy | sfx | 장벽 설치 | 금속 톱니 따르륵 펼침 |
+| barrier_strain | sfx | 장벽이 버티다 금 갈 때(내구도 단계) | 금속 끼익 신음 |
+| barrier_break | sfx | 장벽 터짐(보잉) | 큰 스프링 튕김 |
+| spray_hiss | sfx | 스프레이 뿌릴 때 | 스프레이 칙 |
+| blender_drink | sfx | 믹서 음료 마실 때 | 빨대로 바닥까지 후루룩 |
+| vent_open | sfx | 환풍구 열릴 때 | 금속 창살 긁히며 열림 |
+| scissors_snip | sfx | 가위 도구 | 가위 싹둑 |
+| saw_stroke | sfx | 큰 톱 도구 | 톱질 한 번 |
+| player_death | sfx | 죽을 때 | 심장 박동 |
+| ending_roll | sfx | 엔딩(고기공이 굴러감) | 무거운 돌 구르는 소리 |
+| settle_tick | sfx | 정산 숫자 올라갈 때 | 기계 키 딸깍 |
+| ui_click | sfx | 화면 버튼 누를 때 | 작은 버튼 클릭 |

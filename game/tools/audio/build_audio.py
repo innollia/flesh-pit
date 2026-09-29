@@ -133,6 +133,92 @@ def load_real_layer(spec_entry, rate, seconds):
     return out * gain
 
 
+# --- PS1 treatment (stage 5) -------------------------------------------------
+# 1990s PlayStation SPU look: band-limit, sample-and-hold down to a low rate
+# (aliasing grit), 4-bit block ADPCM with the SPU's first predictor, a coarse
+# bit depth, zero-order hold back up, and a short metallic comb "room".
+# Levels are named so a sound can ask for less (sounds.json "ps1").
+PS1_LEVELS = {
+    "off": None,
+    "subtle": {"rate": 32000, "bits": 14, "adpcm": 0.2, "room": 0.04},
+    "light": {"rate": 22050, "bits": 12, "adpcm": 0.35, "room": 0.08},
+    "mid": {"rate": 16000, "bits": 10, "adpcm": 0.65, "room": 0.14},
+    "strong": {"rate": 11025, "bits": 8, "adpcm": 1.0, "room": 0.22},
+}
+
+
+def _adpcm4(x):
+    """PS1 SPU-style ADPCM round trip: 28-sample blocks, filter 1
+    (0.9375 * previous), 4-bit residual with a per-block shift."""
+    out = np.empty_like(x)
+    prev = 0.0
+    for b in range(0, x.size, 28):
+        blk = x[b:b + 28]
+        est = blk - 0.9375 * np.concatenate(([prev], blk[:-1]))
+        peak = float(np.max(np.abs(est))) if blk.size else 0.0
+        step = 2.0 ** math.ceil(math.log2(peak / 7.0)) if peak > 1e-9 else 1e-9
+        for i in range(blk.size):
+            pred = 0.9375 * prev
+            q = max(-8, min(7, int(round((blk[i] - pred) / step))))
+            prev = max(-1.0, min(1.0, pred + q * step))
+            out[b + i] = prev
+    return out
+
+
+def _ps1_channel(x, rate, p):
+    from scipy.signal import butter, sosfilt, lfilter
+    sr = p["rate"]
+    sos = butter(4, 0.45 * sr, "low", fs=rate, output="sos")
+    x = sosfilt(sos, x)
+    n = x.size
+    m = int(n * sr / rate)
+    pos = np.minimum((np.arange(m) * rate / sr).astype(np.int64), n - 1)
+    xd = x[pos]
+    peak = float(np.max(np.abs(xd))) or 1.0
+    xd = xd / peak
+    if p["adpcm"] > 0:
+        xd = (1.0 - p["adpcm"]) * xd + p["adpcm"] * _adpcm4(xd)
+    q = 2.0 ** (p["bits"] - 1)
+    xd = np.round(xd * q) / q
+    back = np.minimum((np.arange(n) * sr / rate).astype(np.int64), m - 1)
+    y = xd[back] * peak
+    y = sosfilt(butter(2, 0.5 * sr, "low", fs=rate, output="sos"), y)
+    wet = np.zeros_like(y)
+    for d, g in ((0.019, 0.45), (0.027, 0.4), (0.041, 0.35)):
+        k = int(d * rate)
+        a = np.zeros(k + 1); a[0] = 1.0; a[k] = -g
+        wet += lfilter([1.0], a, y)
+    wet = sosfilt(butter(2, [700, 0.45 * sr], "band", fs=rate, output="sos"), wet) / 3.0
+    return y + p["room"] * wet
+
+
+def ps1_treat(data, rate, level, is_loop):
+    p = PS1_LEVELS.get(level)
+    if p is None:
+        return data
+    out = np.empty_like(data)
+    for c in range(data.shape[1]):
+        x = data[:, c]
+        if is_loop:
+            # process three laps and keep the middle one, so filters, hold
+            # phase and room tail all wrap seamlessly
+            y = _ps1_channel(np.concatenate([x, x, x]), rate, p)
+            out[:, c] = y[x.size:2 * x.size]
+        else:
+            out[:, c] = _ps1_channel(x, rate, p)
+    return out
+
+
+# owner favourites keep their own gentle level even under a --ps1 override
+PS1_PINNED = ("canary_wrong", "amb_restroom")
+
+
+def ps1_level(s, default, override):
+    if override and s["id"] not in PS1_PINNED:
+        return override
+    return s.get("ps1", default)
+
+
 def remove_dc(data, rate, is_loop):
     """DC removal is mastering, not a gate change. A loop only gets its mean
     subtracted (a constant keeps the wrap seamless); a one-shot gets a
@@ -177,10 +263,12 @@ def variant_patch(text, seed, seed2, pitch):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="")
+    ap.add_argument("--ps1", default="", help="override the default PS1 level (off/light/mid/strong)")
     args = ap.parse_args()
     spec = json.load(open(os.path.join(HERE, "sounds.json"), encoding="utf-8"))
     targets = json.load(open(os.path.join(HERE, "targets.json"), encoding="utf-8"))
     rate = int(spec["rate"])
+    ps1_default = args.ps1 or spec.get("ps1_default", "off")
     only = set(x for x in args.only.split(",") if x)
     os.makedirs(BUILD, exist_ok=True)
 
@@ -221,6 +309,7 @@ def main():
             if rot:
                 # move the wrap point into the quiet gap between two bites
                 data = np.roll(data, -rot, axis=0)
+            data = ps1_treat(data, rate, ps1_level(s, ps1_default, args.ps1), True)
             data = remove_dc(data, rate, True)
             out, raw_lufs, gain = master(data, rate, float(s["target_lufs"]))
             rel = "audio/loops/%s.wav" % sid
@@ -259,6 +348,7 @@ def main():
                     take = min(real.size, mono.shape[0])
                     mono = mono.copy()
                     mono[:take, 0] += real[:take]
+                mono = ps1_treat(mono, rate, ps1_level(s, ps1_default, args.ps1), False)
                 out, _, gain = master(remove_dc(mono, rate, False), rate, float(s["target_lufs"]))
                 rel = "audio/sfx/%s_v%d.wav" % (sid, n)
                 write_wav(os.path.join(GAME, rel), out, rate)

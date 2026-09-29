@@ -41,6 +41,21 @@ func _process(_delta: float) -> bool:
 		if chewer is FDKChewer:
 			(chewer as FDKChewer).cell_torn.emit(Vector3(0, 1, 3))
 			_ok(d.last_played.begins_with("tear_"), "main's chewer drives tear sounds (%s)" % d.last_played)
+		# stage-5 event sounds: every one is in the manifest and plays by name
+		var events: Dictionary = _hook.get("EVENT_SOUNDS")
+		var all_ok := true
+		for ev in events.keys():
+			_hook.call("play_event", ev)
+			if not d.bank.has(String(events[ev])) or d.last_played != String(events[ev]):
+				all_ok = false
+				print("  missing event sound: ", ev)
+		_ok(all_ok and events.size() == 14, "all 14 stage-5 event sounds load and play (%d)" % events.size())
+		_main.emit_signal("died", "test")
+		_ok(d.last_played == "player_death", "main.died plays the death sound (%s)" % d.last_played)
+		var mirror = _main.get("mirror")
+		if mirror != null and mirror.has_signal("mutated"):
+			mirror.emit_signal("mutated", "test")
+			_ok(d.last_played == "mirror_mutate", "mirror.mutated plays the mutation sound (%s)" % d.last_played)
 	_main.free()
 	FDKPs1Material.clear_cache()
 	print("--- %d passed, %d failed ---" % [_passed, _failed])

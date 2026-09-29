@@ -22,3 +22,8 @@
 
 키트 문서: `addons/flesh_dig_kit/README.md`, `CHANGELOG.md`에 audio/ 폴더 설명 한 단락이 필요하다(그 파일들은 소유자가 따로 있어 건드리지 않음). 넣을 문장:
 "audio/: FDKSoundBank (manifest-driven streams, no back-to-back repeat) and FDKAudioDirector (subscribes to FDKChewer/FDKStomach/controller signals; bed crossfades; chew speed follows stomach overfill)."
+
+## 5차 새 소리 연결
+
+`fp_audio_hookup.gd`가 이미 있는 신호는 스스로 구독한다: `main.died`->player_death, `main.ending_reached`->ending_roll, `mirror.mutated`->mirror_mutate, `barrier_field.barrier_broke`->barrier_break, 장벽 개수 증가->barrier_deploy, 각 장벽 `damage_step_changed`->barrier_strain, `vent.is_open` 켜짐->vent_open.
+게임에 신호가 없는 것은 부를 함수만 있다(main에서 hookup 노드를 찾아 호출): `on_tumor_eaten()`, `on_spray(pos)`, `on_blender_drink()`, `on_scissors()`, `on_saw_stroke()`, `on_settle_tick()`, `on_ui_click()`, 또는 `play_event(이름, 위치)`(이름 표는 `EVENT_SOUNDS`).

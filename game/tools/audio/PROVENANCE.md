@@ -1,4 +1,4 @@
-# tools/audio 출처와 라이선스
+﻿# tools/audio 출처와 라이선스
 
 - 소리 엔진: nkido 0.4.9 (`C:\projects\_tools\nkido`, https://github.com/mlaass/nkido). **MIT License, Copyright (c) 2026 Moritz Laass** (LICENSE 파일로 확인). 렌더할 때만 쓰는 외부 실행 파일이며 게임·키트에는 들어가지 않는다. `--no-default-bank`로 샘플 뱅크를 끄고 합성만 한다(외부 샘플 0개).
 - `analyze_audio.py`, `loopify.py`, `render_variations.py`: 형님 저장소 TINProject `tools/nkido_pipeline/tool/`에서 **수정 없이 복사**(우리 코드. TINProject에는 LICENSE 파일이 없고 외부 코드가 아님). `targets.json`의 기준값도 거기 `analysis_targets.json`에서 그대로 가져왔다.
@@ -31,3 +31,26 @@
 - 2단계 WARN 항목 개선: sounds.json의 real_layer(gain_db/hp/lp)를 조정하고 akkado 패치의 합성 출력을 최대 60%까지 줄여 CC0 실제 녹음의 비중을 높였다. depth_marker에는 ding/fs531031.wav(bicycle bell)을 새 real_layer로 추가하고 파도(res 노이즈) 볼륨을 0.18->0.07로 축소. chew_strain에는 body/fs214865.wav(chewing/biting 계열)를 새 real_layer로 추가. amb_body_a/b는 중음대(300-450Hz) 필터링 노이즈 레이어를 추가하고 target_lufs를 5~6dB 올려 가청성을 개선했다(순수 tri() 톤은 8초 루프 안에서 repetition-tick 게이트에 걸려 노이즈로 교체).
 - 결과: 05_swallow, 22_depth_marker가 WARN에서 OK로 개선. 나머지 10개(01,03,07,08,09,10,11,12,13,15)는 real_layer 게인을 최대 +14dB까지 올리고 tear_nerve는 샘플 자체를 tear/fs133440->tear/fs234236으로 교체했음에도 CLAP top-1이 바뀌지 않았다. freesound.org API가 API 키 없이는 401을 반환해 신규 CC0 녹음을 추가로 확보하지 못한 것이 근본 제약이다.
 - build_audio.py 판정(PASS 183 / FAIL 0)과 Godot 헤드리스 오디오 테스트(118 passed, 0 failed, 종료코드 0)는 모두 통과. game/audio/listen/과 README.txt, LISTEN_REPORT.md를 이번 결과로 갱신했다.
+
+## 5차 (PS1 질감 + 새 소리 14개, 2026-09-30)
+
+- `build_audio.py`에 `ps1_treat()` 추가: 대역 제한 -> 저샘플레이트 샘플앤홀드 -> PS1 SPU식 ADPCM(28샘플 블록, 필터1 0.9375, 4bit) -> 비트 깎기 -> 원래 속도로 계단 복원 -> 짧은 금속 콤 울림. 반복음은 3바퀴 처리 후 가운데만 써서 이음매 유지. 강도는 `sounds.json` `ps1_default`(=mid)와 소리별 `ps1`.
+- 약/중/강 전체 렌더를 ear.py로 비교: 약 25 OK, 중 24 OK, 강 20 OK(강은 chew_loop_b 이음매 게이트 FAIL 1). 기본을 중으로 정하고, 정체가 흐려진 소리만 낮춤(tear_flesh/settle_tick 아주 약(subtle: 32kHz, 14bit), vomit_toilet/step_flesh_s3/depth_marker/blender_drink/amb_body_b 약), step_tile_s3는 강에서만 OK라 강. 19 amb_restroom, 18 canary_wrong은 약 고정.
+- 새 녹음은 bigsoundbank.com(저자 Joseph SARDIN). 각 다운로드 페이지에서 'Free and Royalty Free'와 CC0 표기를 스크립트로 확인(`samples/src/s5/_info.json`). mp3는 ffmpeg로 48kHz mono wav 디코딩. 원본 구간을 먼저 ear.py로 들려 의도 문구가 1위인 구간만 채택(탈락: 1301 Steps on the Twigs=발걸음, 0016 Saw=샌딩, 0008 앞부분=타자기, 1041 Pruner=손가락 튕김).
+
+- 23 mirror_mutate: [Finger clashes](https://bigsoundbank.com/finger-clashes-s0483.html), `s5/bss0483.wav`, Free and Royalty Free=True, CC0=True
+- 24 tumor_eat: `body/fs214865.wav` 35.0초 구간 (freesound, 1차에서 CC0 확인)
+- 25 barrier_deploy: [Large ratchet](https://bigsoundbank.com/large-ratchet-s0795.html), `s5/bss0795.wav`, Free and Royalty Free=True, CC0=True
+- 26 barrier_strain: [Creaking metallic door](https://bigsoundbank.com/creaking-metallic-door-s0616.html), `s5/bss0616.wav`, Free and Royalty Free=True, CC0=True
+- 27 barrier_break: [Large spring](https://bigsoundbank.com/large-spring-s0206.html), `s5/bss0206.wav`, Free and Royalty Free=True, CC0=True
+- 28 spray_hiss: [Spray](https://bigsoundbank.com/spray-s0048.html), `s5/bss0048.wav`, Free and Royalty Free=True, CC0=True
+- 29 blender_drink: [Straw, end of glass](https://bigsoundbank.com/straw-end-of-glass-s0508.html), `s5/bss0508.wav`, Free and Royalty Free=True, CC0=True
+- 30 vent_open: [Grinding metal gate](https://bigsoundbank.com/grinding-metal-gate-s0683.html), `s5/bss0683.wav`, Free and Royalty Free=True, CC0=True
+- 31 scissors_snip: [Scissors](https://bigsoundbank.com/scissors-s0008.html), `s5/bss0008.wav`, Free and Royalty Free=True, CC0=True
+- 32 saw_stroke: [Hacksaw](https://bigsoundbank.com/hacksaw-s0017.html), `s5/bss0017.wav`, Free and Royalty Free=True, CC0=True
+- 33 player_death: [Heart Beat](https://bigsoundbank.com/heart-beat-s0218.html), `s5/bss0218.wav`, Free and Royalty Free=True, CC0=True
+- 34 ending_roll: [Fall of Stone](https://bigsoundbank.com/fall-of-stone-s1022.html), `s5/bss1022.wav`, Free and Royalty Free=True, CC0=True
+- 35 settle_tick: [Typewriter, Key](https://bigsoundbank.com/typewriter-key-s2842.html), `s5/bss2842.wav`, Free and Royalty Free=True, CC0=True
+- 36 ui_click: [Raspberry Mouse, Single Click](https://bigsoundbank.com/raspberry-mouse-single-click-s1735.html), `s5/bss1735.wav`, Free and Royalty Free=True, CC0=True
+
+- 결과: 게이트 PASS 274 / FAIL 0(기준·예외 목록 변경 없음), ear.py 36개 중 33 OK(기존 OK 19개 유지 + 새 14개 전부 OK), Godot 오디오 테스트 163 passed / 0 failed.

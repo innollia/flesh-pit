@@ -317,6 +317,146 @@
     "res://audio/loops/amb_heart_b.wav"
    ],
    "loop_seconds": 8.0
+  },
+  "mirror_mutate": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/mirror_mutate_v1.wav",
+    "res://audio/sfx/mirror_mutate_v2.wav",
+    "res://audio/sfx/mirror_mutate_v3.wav",
+    "res://audio/sfx/mirror_mutate_v4.wav"
+   ],
+   "spatial": false
+  },
+  "tumor_eat": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tumor_eat_v1.wav",
+    "res://audio/sfx/tumor_eat_v2.wav",
+    "res://audio/sfx/tumor_eat_v3.wav",
+    "res://audio/sfx/tumor_eat_v4.wav"
+   ],
+   "spatial": false
+  },
+  "barrier_deploy": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/barrier_deploy_v1.wav",
+    "res://audio/sfx/barrier_deploy_v2.wav",
+    "res://audio/sfx/barrier_deploy_v3.wav",
+    "res://audio/sfx/barrier_deploy_v4.wav"
+   ],
+   "spatial": true
+  },
+  "barrier_strain": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/barrier_strain_v1.wav",
+    "res://audio/sfx/barrier_strain_v2.wav",
+    "res://audio/sfx/barrier_strain_v3.wav",
+    "res://audio/sfx/barrier_strain_v4.wav"
+   ],
+   "spatial": true
+  },
+  "barrier_break": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/barrier_break_v1.wav",
+    "res://audio/sfx/barrier_break_v2.wav",
+    "res://audio/sfx/barrier_break_v3.wav",
+    "res://audio/sfx/barrier_break_v4.wav"
+   ],
+   "spatial": true
+  },
+  "spray_hiss": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/spray_hiss_v1.wav",
+    "res://audio/sfx/spray_hiss_v2.wav",
+    "res://audio/sfx/spray_hiss_v3.wav",
+    "res://audio/sfx/spray_hiss_v4.wav"
+   ],
+   "spatial": true
+  },
+  "blender_drink": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/blender_drink_v1.wav",
+    "res://audio/sfx/blender_drink_v2.wav",
+    "res://audio/sfx/blender_drink_v3.wav",
+    "res://audio/sfx/blender_drink_v4.wav"
+   ],
+   "spatial": false
+  },
+  "vent_open": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/vent_open_v1.wav",
+    "res://audio/sfx/vent_open_v2.wav",
+    "res://audio/sfx/vent_open_v3.wav",
+    "res://audio/sfx/vent_open_v4.wav"
+   ],
+   "spatial": true
+  },
+  "scissors_snip": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/scissors_snip_v1.wav",
+    "res://audio/sfx/scissors_snip_v2.wav",
+    "res://audio/sfx/scissors_snip_v3.wav",
+    "res://audio/sfx/scissors_snip_v4.wav"
+   ],
+   "spatial": false
+  },
+  "saw_stroke": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/saw_stroke_v1.wav",
+    "res://audio/sfx/saw_stroke_v2.wav",
+    "res://audio/sfx/saw_stroke_v3.wav",
+    "res://audio/sfx/saw_stroke_v4.wav"
+   ],
+   "spatial": false
+  },
+  "player_death": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/player_death_v1.wav",
+    "res://audio/sfx/player_death_v2.wav",
+    "res://audio/sfx/player_death_v3.wav",
+    "res://audio/sfx/player_death_v4.wav"
+   ],
+   "spatial": false
+  },
+  "ending_roll": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/ending_roll_v1.wav",
+    "res://audio/sfx/ending_roll_v2.wav",
+    "res://audio/sfx/ending_roll_v3.wav",
+    "res://audio/sfx/ending_roll_v4.wav"
+   ],
+   "spatial": false
+  },
+  "settle_tick": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/settle_tick_v1.wav",
+    "res://audio/sfx/settle_tick_v2.wav",
+    "res://audio/sfx/settle_tick_v3.wav",
+    "res://audio/sfx/settle_tick_v4.wav"
+   ],
+   "spatial": false
+  },
+  "ui_click": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/ui_click_v1.wav",
+    "res://audio/sfx/ui_click_v2.wav",
+    "res://audio/sfx/ui_click_v3.wav",
+    "res://audio/sfx/ui_click_v4.wav"
+   ],
+   "spatial": false
   }
  },
  "beds": {

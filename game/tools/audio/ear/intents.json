@@ -182,5 +182,117 @@
    "wind blowing",
    "alarm beep"
   ]
+ },
+ "23_mirror_mutate_v1.wav": {
+  "intent": "bones cracking and snapping",
+  "confusions": [
+   "footsteps on gravel",
+   "paper crumpling",
+   "fire crackling"
+  ]
+ },
+ "24_tumor_eat_v1.wav": {
+  "intent": "a person biting and chewing food with wet mouth sounds",
+  "confusions": [
+   "footsteps",
+   "applause",
+   "slapping"
+  ]
+ },
+ "25_barrier_deploy_v1.wav": {
+  "intent": "a metal ratchet mechanism clicking",
+  "confusions": [
+   "clock ticking",
+   "typewriter",
+   "rain"
+  ]
+ },
+ "26_barrier_strain_v1.wav": {
+  "intent": "metal creaking and groaning under heavy load",
+  "confusions": [
+   "bird chirping",
+   "violin",
+   "cat meowing"
+  ]
+ },
+ "27_barrier_break_v1.wav": {
+  "intent": "a large metal spring boinging",
+  "confusions": [
+   "guitar string",
+   "door slam",
+   "gunshot"
+  ]
+ },
+ "28_spray_hiss_v1.wav": {
+  "intent": "an aerosol spray can hissing",
+  "confusions": [
+   "wind blowing",
+   "rain",
+   "steam"
+  ]
+ },
+ "29_blender_drink_v1.wav": {
+  "intent": "slurping a drink through a straw",
+  "confusions": [
+   "water bubbling",
+   "pig grunting",
+   "drain gurgling"
+  ]
+ },
+ "30_vent_open_v1.wav": {
+  "intent": "a metal gate grinding and scraping",
+  "confusions": [
+   "car brakes squealing",
+   "bird chirping",
+   "violin"
+  ]
+ },
+ "31_scissors_snip_v1.wav": {
+  "intent": "scissors snipping",
+  "confusions": [
+   "clock ticking",
+   "typewriter click",
+   "finger snapping"
+  ]
+ },
+ "32_saw_stroke_v1.wav": {
+  "intent": "a hand saw cutting wood",
+  "confusions": [
+   "snoring",
+   "breathing",
+   "sanding"
+  ]
+ },
+ "33_player_death_v1.wav": {
+  "intent": "a heartbeat",
+  "confusions": [
+   "drum",
+   "footsteps",
+   "door knocking"
+  ]
+ },
+ "34_ending_roll_v1.wav": {
+  "intent": "a heavy stone rolling and tumbling",
+  "confusions": [
+   "thunder",
+   "wind blowing",
+   "engine"
+  ]
+ },
+ "35_settle_tick_v1.wav": {
+  "intent": "a mechanical key click",
+  "confusions": [
+   "water drop",
+   "footstep",
+   "bird chirp"
+  ]
+ },
+ "36_ui_click_v1.wav": {
+  "intent": "a small button click",
+  "confusions": [
+   "water drop",
+   "footstep",
+   "knock on wood"
+  ]
  }
 }

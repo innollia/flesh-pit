@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# game/audio/listen/ 22개를 최신 sfx/loops 렌더 결과로 갱신
+# game/audio/listen/ 01~36을 최신 sfx/loops 렌더 결과로 갱신
 import shutil, os
 
 GAME_AUDIO = r"C:\Users\fixme\Desktop\flesh-pit-main\game\audio"
@@ -28,6 +28,20 @@ pairs = [
     ("20_amb_body_a.wav", "loops/amb_body_a.wav"),
     ("21_amb_body_b.wav", "loops/amb_body_b.wav"),
     ("22_depth_marker_v1.wav", "sfx/depth_marker_v1.wav"),
+    ("23_mirror_mutate_v1.wav", "sfx/mirror_mutate_v1.wav"),
+    ("24_tumor_eat_v1.wav", "sfx/tumor_eat_v1.wav"),
+    ("25_barrier_deploy_v1.wav", "sfx/barrier_deploy_v1.wav"),
+    ("26_barrier_strain_v1.wav", "sfx/barrier_strain_v1.wav"),
+    ("27_barrier_break_v1.wav", "sfx/barrier_break_v1.wav"),
+    ("28_spray_hiss_v1.wav", "sfx/spray_hiss_v1.wav"),
+    ("29_blender_drink_v1.wav", "sfx/blender_drink_v1.wav"),
+    ("30_vent_open_v1.wav", "sfx/vent_open_v1.wav"),
+    ("31_scissors_snip_v1.wav", "sfx/scissors_snip_v1.wav"),
+    ("32_saw_stroke_v1.wav", "sfx/saw_stroke_v1.wav"),
+    ("33_player_death_v1.wav", "sfx/player_death_v1.wav"),
+    ("34_ending_roll_v1.wav", "sfx/ending_roll_v1.wav"),
+    ("35_settle_tick_v1.wav", "sfx/settle_tick_v1.wav"),
+    ("36_ui_click_v1.wav", "sfx/ui_click_v1.wav"),
 ]
 
 ok = 0

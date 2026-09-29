@@ -15,6 +15,20 @@ var _lid_open := false
 var _coin_active := false
 var _settling := false
 var _in_room := true
+var _vent_open := false
+var _barrier_count := 0
+var _hooked_barriers: Array = []
+
+## Stage-5 events that the game has no signal for yet. The game calls
+## play_event(<name>) (or the named helper below); nothing else is needed.
+const EVENT_SOUNDS := {
+	"mirror_mutate": "mirror_mutate", "tumor_eat": "tumor_eat",
+	"barrier_deploy": "barrier_deploy", "barrier_strain": "barrier_strain",
+	"barrier_break": "barrier_break", "spray": "spray_hiss",
+	"blender_drink": "blender_drink", "vent_open": "vent_open",
+	"scissors": "scissors_snip", "saw": "saw_stroke", "death": "player_death",
+	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
+}
 
 func _ready() -> void:
 	main = get_parent()
@@ -42,6 +56,20 @@ func _wire() -> void:
 	_in_room = _player_in_room()
 	director.set_surface("tile" if _in_room else "flesh")
 	director.set_bed("restroom" if _in_room else director.body_bed_for_shell(), 0.0)
+	# stage-5 events that already exist as signals on main or its children
+	if main.has_signal("died"):
+		main.connect("died", func(_cause): play_event("death"))
+	if main.has_signal("ending_reached"):
+		main.connect("ending_reached", func(): play_event("ending"))
+	var mirror = main.get("mirror")
+	if mirror != null and mirror.has_signal("mutated"):
+		mirror.connect("mutated", func(_id): play_event("mirror_mutate"))
+	var field = main.get("barrier_field")
+	if field != null and field.has_signal("barrier_broke"):
+		field.connect("barrier_broke", func(_b, pos): play_event("barrier_break", pos))
+	var vent = main.get("vent")
+	if vent != null and vent.get("is_open") != null:
+		_vent_open = bool(vent.get("is_open"))
 
 func _process(_delta: float) -> void:
 	if main == null or director == null:
@@ -89,6 +117,42 @@ func _process(_delta: float) -> void:
 		if _settling and not s:
 			director.play("toilet_flush", _toilet_pos())
 		_settling = s
+
+	# vent opening (FPVent.is_open flips) and barriers placed / straining
+	var vent = main.get("vent")
+	if vent != null and vent.get("is_open") != null:
+		var vo := bool(vent.get("is_open"))
+		if vo and not _vent_open:
+			play_event("vent_open", (vent as Node3D).global_position if vent is Node3D else null)
+		_vent_open = vo
+	var field = main.get("barrier_field")
+	if field != null and field.has_method("get_barriers"):
+		var bs: Array = field.get_barriers()
+		if bs.size() > _barrier_count:
+			play_event("barrier_deploy", _node_pos(bs[bs.size() - 1]))
+		_barrier_count = bs.size()
+		for b in bs:
+			if b is Object and not _hooked_barriers.has(b) and b.has_signal("damage_step_changed"):
+				_hooked_barriers.append(b)
+				b.connect("damage_step_changed", func(_step): play_event("barrier_strain", _node_pos(b)))
+
+## Plays a stage-5 event sound by its game name (EVENT_SOUNDS). Unknown names
+## and ids missing from the manifest are skipped silently.
+func play_event(event_name: String, world_pos: Variant = null) -> void:
+	if director == null:
+		return
+	director.play(String(EVENT_SOUNDS.get(event_name, event_name)), world_pos)
+
+func on_tumor_eaten() -> void: play_event("tumor_eat")
+func on_spray(world_pos: Variant = null) -> void: play_event("spray", world_pos)
+func on_blender_drink() -> void: play_event("blender_drink")
+func on_scissors() -> void: play_event("scissors")
+func on_saw_stroke() -> void: play_event("saw")
+func on_settle_tick() -> void: play_event("settle_tick")
+func on_ui_click() -> void: play_event("ui_click")
+
+func _node_pos(n) -> Variant:
+	return (n as Node3D).global_position if n is Node3D and (n as Node3D).is_inside_tree() else null
 
 func _on_vomited(_amount: float) -> void:
 	var near := false

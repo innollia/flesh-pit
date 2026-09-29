@@ -62,7 +62,8 @@
     "pitch": 0.92,
     "hp": 90,
     "lp": 5500
-   }
+   },
+   "ps1": "subtle"
   },
   {
    "id": "tear_fat",
@@ -180,7 +181,8 @@
     "pitch": 1.0,
     "hp": 45,
     "lp": 7500
-   }
+   },
+   "ps1": "light"
   },
   {
    "id": "vomit_floor",
@@ -248,7 +250,8 @@
     "pitch": 0.85,
     "hp": 100,
     "lp": 3000
-   }
+   },
+   "ps1": "light"
   },
   {
    "id": "step_tile_s1",
@@ -305,7 +308,8 @@
     "pitch": 0.9,
     "hp": 350,
     "lp": 6500
-   }
+   },
+   "ps1": "strong"
   },
   {
    "id": "regen_creak",
@@ -428,7 +432,8 @@
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "ps1": "light"
   },
   {
    "id": "depth_marker",
@@ -448,7 +453,8 @@
     "pitch": 1.0,
     "hp": 500,
     "lp": 9000
-   }
+   },
+   "ps1": "light"
   },
   {
    "id": "shell_transition",
@@ -529,7 +535,8 @@
    "kind": "loop",
    "loop_seconds": 8.0,
    "fade_seconds": 1.0,
-   "target_lufs": -34
+   "target_lufs": -34,
+   "ps1": "light"
   },
   {
    "id": "amb_body_a",
@@ -543,7 +550,8 @@
    "kind": "loop",
    "loop_seconds": 8.0,
    "fade_seconds": 1.0,
-   "target_lufs": -18
+   "target_lufs": -18,
+   "ps1": "light"
   },
   {
    "id": "amb_heart_a",
@@ -560,6 +568,295 @@
    "fade_seconds": 1.0,
    "target_lufs": -31,
    "rotate_seconds": 1.35
+  },
+  {
+   "id": "mirror_mutate",
+   "kind": "sfx",
+   "seconds": 1.2,
+   "target_lufs": -18,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "restroom"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0483.wav",
+    "offset_s": 11.15,
+    "dur_s": 1.2,
+    "gain_db": 25.7,
+    "pitch": 1.0,
+    "hp": 80,
+    "lp": 8000
+   }
+  },
+  {
+   "id": "tumor_eat",
+   "kind": "sfx",
+   "seconds": 1.0,
+   "target_lufs": -16,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "body/fs214865.wav",
+    "offset_s": 35.0,
+    "dur_s": 1.0,
+    "gain_db": 12.3,
+    "pitch": 1.0,
+    "hp": 80,
+    "lp": 12000
+   },
+   "ps1": "mid"
+  },
+  {
+   "id": "barrier_deploy",
+   "kind": "sfx",
+   "seconds": 1.2,
+   "target_lufs": -19,
+   "spatial": true,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0795.wav",
+    "offset_s": 16.63,
+    "dur_s": 1.2,
+    "gain_db": 19.9,
+    "pitch": 1.0,
+    "hp": 120,
+    "lp": 9000
+   }
+  },
+  {
+   "id": "barrier_strain",
+   "kind": "sfx",
+   "seconds": 1.5,
+   "target_lufs": -21,
+   "spatial": true,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0616.wav",
+    "offset_s": 50.0,
+    "dur_s": 1.5,
+    "gain_db": 9.7,
+    "pitch": 1.0,
+    "hp": 150,
+    "lp": 9000
+   },
+   "ps1": "mid"
+  },
+  {
+   "id": "barrier_break",
+   "kind": "sfx",
+   "seconds": 1.0,
+   "target_lufs": -17,
+   "spatial": true,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0206.wav",
+    "offset_s": 45.75,
+    "dur_s": 1.0,
+    "gain_db": 1.5,
+    "pitch": 1.0,
+    "hp": 80,
+    "lp": 9000
+   }
+  },
+  {
+   "id": "spray_hiss",
+   "kind": "sfx",
+   "seconds": 1.0,
+   "target_lufs": -19,
+   "spatial": true,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0048.wav",
+    "offset_s": 1.67,
+    "dur_s": 1.0,
+    "gain_db": 30.1,
+    "pitch": 1.0,
+    "hp": 300,
+    "lp": 10000
+   }
+  },
+  {
+   "id": "blender_drink",
+   "kind": "sfx",
+   "seconds": 1.3,
+   "target_lufs": -17,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "restroom"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0508.wav",
+    "offset_s": 2.0,
+    "dur_s": 1.3,
+    "gain_db": 6.7,
+    "pitch": 1.0,
+    "hp": 80,
+    "lp": 8000
+   },
+   "ps1": "light"
+  },
+  {
+   "id": "vent_open",
+   "kind": "sfx",
+   "seconds": 1.3,
+   "target_lufs": -20,
+   "spatial": true,
+   "stage": 5,
+   "bed": [
+    "restroom"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0683.wav",
+    "offset_s": 2.52,
+    "dur_s": 1.3,
+    "gain_db": -4.2,
+    "pitch": 1.0,
+    "hp": 120,
+    "lp": 9000
+   }
+  },
+  {
+   "id": "scissors_snip",
+   "kind": "sfx",
+   "seconds": 1.2,
+   "target_lufs": -20,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0008.wav",
+    "offset_s": 4.5,
+    "dur_s": 1.2,
+    "gain_db": 9.7,
+    "pitch": 1.0,
+    "hp": 200,
+    "lp": 10000
+   }
+  },
+  {
+   "id": "saw_stroke",
+   "kind": "sfx",
+   "seconds": 1.0,
+   "target_lufs": -19,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0017.wav",
+    "offset_s": 3.72,
+    "dur_s": 1.0,
+    "gain_db": 4.1,
+    "pitch": 1.0,
+    "hp": 150,
+    "lp": 9000
+   }
+  },
+  {
+   "id": "player_death",
+   "kind": "sfx",
+   "seconds": 2.2,
+   "target_lufs": -16,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "s5/bss0218.wav",
+    "offset_s": 2.73,
+    "dur_s": 2.2,
+    "gain_db": 0.5,
+    "pitch": 1.0,
+    "hp": 35,
+    "lp": 5000
+   }
+  },
+  {
+   "id": "ending_roll",
+   "kind": "sfx",
+   "seconds": 2.5,
+   "target_lufs": -18,
+   "spatial": false,
+   "stage": 5,
+   "real_layer": {
+    "sample": "s5/bss1022.wav",
+    "offset_s": 16.46,
+    "dur_s": 2.5,
+    "gain_db": 12.2,
+    "pitch": 1.0,
+    "hp": 40,
+    "lp": 7000
+   }
+  },
+  {
+   "id": "settle_tick",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -24,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "restroom"
+   ],
+   "real_layer": {
+    "sample": "s5/bss2842.wav",
+    "offset_s": 0.2,
+    "dur_s": 0.35,
+    "gain_db": 15.3,
+    "pitch": 1.0,
+    "hp": 300,
+    "lp": 10000
+   },
+   "ps1": "subtle"
+  },
+  {
+   "id": "ui_click",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -24,
+   "spatial": false,
+   "stage": 5,
+   "bed": [
+    "restroom"
+   ],
+   "real_layer": {
+    "sample": "s5/bss1735.wav",
+    "offset_s": 0.21,
+    "dur_s": 0.25,
+    "gain_db": 15.8,
+    "pitch": 1.0,
+    "hp": 300,
+    "lp": 10000
+   }
   }
  ],
  "beds": {
@@ -577,5 +874,7 @@
  },
  "_beds_note": "A bed is what the game actually plays under the player: the steady drone plus its heart layer, summed at mastered level. Masking is judged against these sums.",
  "variations_keep": 4,
- "_variations_note": "8 candidate (seed, seed2, pitch) takes are rendered; the 4 shipped are the subset with the smallest raw level spread whose pairwise spectral distance still clears the floor. Curation, not a relaxed gate: the shipped 4 are then judged against the unchanged limits."
+ "_variations_note": "8 candidate (seed, seed2, pitch) takes are rendered; the 4 shipped are the subset with the smallest raw level spread whose pairwise spectral distance still clears the floor. Curation, not a relaxed gate: the shipped 4 are then judged against the unchanged limits.",
+ "ps1_default": "mid",
+ "_ps1_note": "PS1 treatment level for every sound (build_audio.py PS1_LEVELS). A sound's own \"ps1\" key overrides it; canary_wrong and amb_restroom keep \"light\" (owner favourites: texture only, character unchanged)."
 }

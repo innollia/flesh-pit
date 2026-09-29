@@ -1,0 +1,11 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: mirror_mutate -- quiet texture bed under the CC0 recording (stage 5). The recording carries the identity.
+env = clamp(t / 0.004, 0, 1) * exp(neg(t) / 0.25)
+body = noise(0, 0, SEED) * env |> bp(@, 900 * PITCH, 2.5)
+grit = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.4) * env * 0.5 |> bp(@, 1710 * PITCH, 4.0)
+out((body + grit) * 0.04)
