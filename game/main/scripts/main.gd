@@ -74,6 +74,11 @@ var vent: FPVent
 var toilet: FPToiletSettlement
 var _vent_in_room: bool = true
 var _vent_away_t: float = 0.0
+## W06 edge flags for room-distance vent events (distances in vent_rules.json).
+var _vent_flags: Dictionary = {}
+var _vent_hover_id: String = ""
+## Crayon tumor drawings posted on the wall (03-restroom 10).
+var drawing_nodes: Array[Node3D] = []
 var mirror: FPMirror
 var ending: FPEnding
 var art_hookup: FPArtHookup
@@ -217,6 +222,7 @@ func _ready() -> void:
     vent.name = "Vent"
     vent.position = Vector3(0.75, 2.0 * FPRestroom.HALF.y - 0.03, 0.75)
     add_child(vent)
+    vent.drawing_dropped.connect(_on_drawing_dropped)
     toilet = FPToiletSettlement.new()
     toilet.name = "ToiletSettlement"
     add_child(toilet)
@@ -613,8 +619,11 @@ func _interact() -> void:
             start_settlement()
         else:
             var opening := restroom._lid_target == 0.0
-            restroom.set_tank_open(opening)
-            vent.notice("lid_open" if opening else "lid_close")
+            if not opening and progression.teeth_in_hand > 0:
+                put_teeth_back()
+            else:
+                restroom.set_tank_open(opening)
+                vent.notice("lid_open" if opening else "lid_close")
     elif p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6:
         restroom.set_door_open(not restroom.is_door_open())
     else:
@@ -623,6 +632,8 @@ func _interact() -> void:
 func _pick() -> void:
     if vent.is_open and not vent.offers.is_empty():
         take_vent_offer()
+    elif vent.is_open and _near_toilet() and _pitch() > 0.45:
+        reach_into_vent()
     elif _near_toilet() and restroom._lid_target != 0.0:
         scoop_teeth()
 
@@ -677,8 +688,10 @@ func start_settlement() -> void:
 func pull_lever() -> Dictionary:
     if toilet.tank_node == null:
         toilet.tank_node = restroom.tank_art
+    var tumor_kinds := toilet.bowl_tumors.duplicate()
     var got := toilet.press_lever(progression)
     vent.on_flush()
+    vent.on_tumors_settled(tumor_kinds)
     flushed.emit(got["teeth"], got["hairs"])
     if _settling:
         _settling = false
@@ -742,6 +755,8 @@ func use_vent() -> void:
         vent.open(progression.teeth + progression.teeth_in_hand)
     elif progression.teeth_in_hand > 0:
         place_teeth_at_vent()
+    elif vent.offers.is_empty() and progression.tumors.carried_count() > 0:
+        vent.place_weird("tumor") # it will not take it; the tumor stays in hand
     elif vent.offers.is_empty():
         vent.close()
 
@@ -761,6 +776,70 @@ func take_vent_offer(id: String = "") -> bool:
                 best_dot = d
                 id = n.get_meta("offer_id")
     return vent.take(id, progression)
+
+## Handful back into the tank: the being sighs.
+func put_teeth_back() -> int:
+    var n := progression.teeth_in_hand
+    if n <= 0:
+        return 0
+    progression.teeth += n
+    progression.teeth_in_hand = 0
+    vent.notice("put_back")
+    return n
+
+## Pick into the open grate with nothing offered: the canary if carried
+## (it gives the bird straight back), otherwise a bare hand.
+func reach_into_vent() -> void:
+    if has_canary:
+        vent.place_weird("canary")
+    else:
+        vent.notice("hand_in")
+
+## The offer the camera points at ("" when none).
+func aimed_offer() -> String:
+    var id := ""
+    var best_dot := -2.0
+    var ray: Array = player.get_look_ray()
+    for n in vent.offer_nodes():
+        var d: float = ((n as Node3D).global_position - ray[0]).normalized().dot(ray[1])
+        if d > best_dot:
+            best_dot = d
+            id = n.get_meta("offer_id")
+    return id
+
+## Fires `event` once each time `on` turns true.
+func _vent_edge(key: String, on: bool, event: String) -> void:
+    if on and not bool(_vent_flags.get(key, false)):
+        vent.notice(event)
+    _vent_flags[key] = on
+
+func _on_drawing_dropped(kind: String) -> void:
+    var paper := MeshInstance3D.new()
+    paper.name = "Drawing_%d" % drawing_nodes.size()
+    var pm := BoxMesh.new()
+    pm.size = Vector3(0.004, 0.3, 0.21)
+    paper.mesh = pm
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.93, 0.9, 0.8)
+    paper.material_override = mat
+    # a crude crayon blob, a different wobble per tumor kind
+    var h := absi(hash(kind))
+    var blob := MeshInstance3D.new()
+    var bm := SphereMesh.new()
+    bm.radius = 0.05 + float(h % 3) * 0.01
+    bm.height = bm.radius * (1.2 + float(h % 5) * 0.15)
+    blob.mesh = bm
+    blob.scale = Vector3(0.05, 1.0, 1.0)
+    blob.position = Vector3(-0.004, float(h % 7) * 0.006 - 0.02, float(h % 11) * 0.005 - 0.025)
+    var bmat := StandardMaterial3D.new()
+    bmat.albedo_color = Color.from_hsv(float(h % 360) / 360.0, 0.7, 0.8)
+    blob.material_override = bmat
+    paper.add_child(blob)
+    paper.set_meta("tumor_kind", kind)
+    paper.rotation.x = deg_to_rad(float(h % 9) - 4.0) # taped on crooked
+    paper.position = FPVent.drawing_spot(drawing_nodes.size())
+    restroom.add_child(paper)
+    drawing_nodes.append(paper)
 
 ## W06: tell the vent being what the player does in the room.
 func _vent_watch(delta: float) -> void:
@@ -788,8 +867,20 @@ func _vent_watch(delta: float) -> void:
         vent.notice("tank_near")
     elif tank_d > 1.6:
         vent.notice("tank_far")
-    if p.distance_to(Vector3(vent.global_position.x, p.y, vent.global_position.z)) < 1.0:
+    var vent_d := p.distance_to(Vector3(vent.global_position.x, p.y, vent.global_position.z))
+    if vent_d < FPVent.dist("UNDER_VENT", 1.0):
         vent.notice("near_vent")
+    _vent_edge("sink", p.distance_to(sink_point()) < FPVent.dist("SINK_NEAR", 0.9), "near_sink")
+    _vent_edge("door", p.distance_to(Vector3(0, p.y, FPRestroom.HALF.z)) < FPVent.dist("DOOR_NEAR", 1.0), "door")
+    _vent_edge("away", vent.is_open and not vent.offers.is_empty() and vent_d > FPVent.dist("WALK_AWAY", 2.0), "walk_away")
+    _vent_edge("with", progression.teeth_in_hand > 0 and tank_d > FPVent.dist("WALK_WITH", 1.8) and vent_d > FPVent.dist("UNDER_VENT", 1.0), "walk_with")
+    if vent.is_open and not vent.offers.is_empty():
+        var aim := aimed_offer()
+        if _vent_hover_id != "" and aim != _vent_hover_id:
+            vent.notice("hover")
+        _vent_hover_id = aim
+    else:
+        _vent_hover_id = ""
 
 # --- mirror, sink, canary ------------------------------------------------------
 

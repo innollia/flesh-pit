@@ -8,6 +8,8 @@ var _passed := 0
 var _m: Node3D
 var _frame := 0
 var _ids: Dictionary = {}
+## Line ids reached by the B4 interaction tests.
+var _extra_used: Dictionary = {}
 
 func _assert(c: bool, msg: String) -> void:
     if c:
@@ -33,6 +35,7 @@ func _process(_d: float) -> bool:
     _settlement()
     _hairs()
     _trade()
+    _more()
     _reactions()
     _m.queue_free()
     print("--- %d passed, %d failed ---" % [_passed, _failures])
@@ -48,6 +51,116 @@ func _visible_text(n: Node) -> int:
     for ch in n.get_children():
         c += _visible_text(ch)
     return c
+
+# --- B4: more room interactions, all conditions from vent_rules.json -----------
+
+func _fresh_open(m) -> FPVent:
+    var v: FPVent = m.vent
+    v.close()
+    v._met = true
+    v._chain = []
+    v._since_paid = INF
+    v.absent_left = 0.0
+    v._open_times.clear()
+    v._clock += 100.0
+    v.open(0)
+    return v
+
+func _more() -> void:
+    var m = _m
+    var prog: FPProgression = m.progression
+    var r: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://main/data/vent_rules.json"))
+    _assert(r.has("사건") and r.has("기준") and r.has("거리") and r.has("쏟아지는물건"), "B4 rules file has event/number/distance/spill tables")
+    _assert(FPVent.spill_list() == ["barrier", "spray_cheap", "canary_feed", "knife"], "B4 spill list read from file")
+    _assert(is_equal_approx(FPVent.LOTS_MULT, 1.5) and is_equal_approx(FPVent.ABSURD_MULT, 2.0), "B4 amount multipliers read from file")
+    var ev: Dictionary = r["사건"]
+    var bad := 0
+    for k in ev.keys():
+        for id in ev[k]["대사"]:
+            if not _ids.has(String(id)):
+                bad += 1
+    _assert(bad == 0, "B4 every event line id exists")
+    var room_c: Vector3 = m.restroom.toilet.global_position
+    # sink: walking over there while the vent waits for teeth
+    var v := _fresh_open(m)
+    m.player.global_position = room_c + Vector3(0, 0.9, 0.6)
+    m._vent_watch(0.1)
+    m.player.global_position = m.sink_point() + Vector3(0.3, 0.0, 0.0)
+    m._vent_watch(0.1)
+    _assert(v.spoken.has("distract.sink"), "B4 walking to the sink: 그쪽 아니야")
+    var n_sink := v.spoken.count("distract.sink")
+    m._vent_watch(0.1)
+    _assert(v.spoken.count("distract.sink") == n_sink, "B4 sink line once per approach")
+    # door
+    m.player.global_position = Vector3(0, 0.9, FPRestroom.HALF.z - 0.4)
+    m._vent_watch(0.1)
+    _assert(v.spoken.has("distract.door"), "B4 walking to the door: 나가지 마")
+    # tumor held up to the open grate
+    prog.tumors._carried.append("test_tumor")
+    m.player.global_position = room_c + Vector3(0, 0.9, 0.6)
+    m.use_vent()
+    _assert(v.is_open and v.last_line == "weird.tumor", "B4 tumor held to the vent: refused, grate stays open")
+    prog.tumors._carried.clear()
+    # canary and bare hand into the grate
+    m.has_canary = true
+    m.reach_into_vent()
+    _assert(v.last_line == "weird.canary", "B4 canary into the vent: 귀엽네")
+    m.has_canary = false
+    m.reach_into_vent()
+    _assert(v.last_line == "weird.hand", "B4 hand into the vent: 내 방이야")
+    # teeth: grab, walk off with them, put them back
+    prog.teeth = 8
+    prog.teeth_in_hand = 0
+    m.restroom.set_tank_open(true)
+    v.notice("lid_open")
+    m.scoop_teeth()
+    m.player.global_position = room_c + Vector3(0, 0.9, 0.6)
+    m._vent_watch(0.1)
+    m.player.global_position = Vector3(-1.2, 0.9, 1.0)
+    m._vent_watch(0.1)
+    _assert(v.spoken.has("lid.walk_with"), "B4 walking off with teeth: 그 손 이리 와")
+    var held := prog.teeth_in_hand
+    _assert(m.put_teeth_back() == held and prog.teeth_in_hand == 0 and prog.teeth == 8, "B4 put back: all teeth return to the tank")
+    _assert(v.last_line == "lid.put_back", "B4 put back: ......아.")
+    # offers: aiming at different items, then walking away
+    v.close()
+    v._clock += 100.0
+    v._open_times.clear()
+    v.open(8)
+    v._since_paid = INF
+    var ids: Array[String] = ["knife", "barrier", "junk"]
+    v._set_offers(ids)
+    m.player.global_position = room_c + Vector3(0, 0.9, 0.6)
+    m._vent_hover_id = ""
+    m._vent_watch(0.0)
+    var aim: String = m.aimed_offer()
+    m._vent_hover_id = "barrier" if aim == "knife" else "knife"
+    m._vent_watch(0.1)
+    _assert(v.spoken.has("pick.hover"), "B4 eyes moving between offers: 고민해")
+    var nh := v.spoken.count("pick.hover")
+    m._vent_hover_id = "zzz"
+    m._vent_watch(0.1)
+    _assert(v.spoken.count("pick.hover") == nh, "B4 hover line once per offer")
+    m.player.global_position = Vector3(-1.2, 0.9, -1.2)
+    m._vent_watch(0.1)
+    _assert(v.spoken.has("leave.walk"), "B4 walking away from offers: 네 물건!")
+    v.close()
+    # tumor settled whole: crayon drawings go on the wall
+    var before: int = m.drawing_nodes.size()
+    m.toilet.bowl_tumors.append("tumor_a")
+    m.pull_lever()
+    _assert(v.spoken.has("drawing.drop") and m.drawing_nodes.size() == before + 1, "B4 first whole tumor: crayon drawing posted")
+    m.toilet.bowl_tumors.append("tumor_b")
+    m.pull_lever()
+    _assert(v.spoken.has("drawing.again") and m.drawing_nodes.size() == before + 2, "B4 second tumor: another drawing")
+    var d0: Node3D = m.drawing_nodes[before]
+    var d1: Node3D = m.drawing_nodes[before + 1]
+    _assert(d0.position.distance_to(d1.position) > 0.1 and m.restroom.contains(d0.global_position + Vector3(-0.1, 0, 0)), "B4 drawings sit side by side on the wall, inside the room")
+    _assert(_visible_text(m) == 0, "B4 no text UI from the new interactions")
+    for id in v.spoken:
+        _extra_used[id] = true
+    v.spoken.clear()
+    prog.teeth = 0
 
 # --- W04 -----------------------------------------------------------------------
 
@@ -195,7 +308,7 @@ func _all_known(v: FPVent) -> bool:
 
 func _reactions() -> void:
     var p := FPProgression.new()
-    var used: Dictionary = {}
+    var used: Dictionary = _extra_used.duplicate()
     var vents: Array = []
     var mk := func() -> FPVent:
         var nv := _new_vent()

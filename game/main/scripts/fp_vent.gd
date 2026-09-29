@@ -14,6 +14,8 @@ signal line_spoken(line_id: String)
 signal offers_changed(ids: Array)
 ## Early items spilled out on an absurd overpay (already granted).
 signal spilled(ids: Array)
+## A crayon drawing of a settled tumor floats down (spec 03-restroom 10).
+signal drawing_dropped(kind: String)
 
 ## Timings and line pools are editable in main/data/vent_rules.json.
 const RULES_PATH := "res://main/data/vent_rules.json"
@@ -133,6 +135,10 @@ var _left_at: float = -1.0
 var _silent_back: bool = false
 var _remark_t: float = -INF
 var _paid_ever: bool = false
+var _hover_said: bool = false
+var _walk_said: bool = false
+## Tumor kinds drawn so far, oldest first.
+var drawings: Array[String] = []
 var _rng: int = 7331
 ## Player state for the occasional remarks (main keeps it fresh).
 var player_state: Dictionary = {}
@@ -484,9 +490,11 @@ func notice(event: String) -> void:
     if not is_open or absent_left > 0.0:
         return
     if not offers.is_empty():
-        if event == "walk_away" or event == "door":
+        if (event == "walk_away" or event == "door") and not _walk_said:
+            _walk_said = true
             _say(_ev("물건두고_멀어짐", "leave.walk"))
-        elif event == "hover":
+        elif event == "hover" and not _hover_said:
+            _hover_said = true
             _say(_ev("물건_만지작", "pick.hover"))
         return
     if not _wants_teeth():
@@ -521,11 +529,35 @@ func notice(event: String) -> void:
         "walk_with": _say(_ev("이빨_들고감", "lid.walk_with"))
         "put_back": _say(_ev("이빨_도로넣기", "lid.put_back"))
 
+## The lever settled whole tumors: the being draws each one in crayon and
+## sends the paper down (works with the grate shut, it slides through).
+func on_tumors_settled(kinds: Array) -> void:
+    for k in kinds:
+        var first := drawings.is_empty()
+        drawings.append(String(k))
+        _say(_ev("그림_처음", "drawing.drop") if first else _ev("그림_또", "drawing.again"))
+        drawing_dropped.emit(String(k))
+
+## A distance from the 거리 table of vent_rules.json.
+static func dist(key: String, fallback: float) -> float:
+    var t = _rule_data().get("거리", {}).get(key, {})
+    return float(t.get("값", fallback)) if t is Dictionary else fallback
+
+## Where drawing number `i` hangs on the wall (그림종이 in vent_rules.json).
+static func drawing_spot(i: int) -> Vector3:
+    var p = _rule_data().get("그림종이", {})
+    if not p is Dictionary:
+        p = {}
+    var per := maxi(int(p.get("한줄_장수", 7)), 1)
+    return Vector3(float(p.get("x", 1.49)), float(p.get("y", 1.55)) - float(p.get("줄_간격", 0.34)) * (i / per), float(p.get("z_시작", -1.0)) + float(p.get("간격", 0.27)) * (i % per))
+
 func _set_offers(ids: Array[String]) -> void:
     _clear_offers()
     offers = ids.duplicate()
     _offer_t = 0.0
     _pick_long_said = false
+    _hover_said = false
+    _walk_said = false
     for i in range(offers.size()):
         var b := MeshInstance3D.new()
         var bm := BoxMesh.new()
