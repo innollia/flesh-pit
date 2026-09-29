@@ -7,8 +7,9 @@
 - [ ] Design hybrid shell transitions: gradual tissue-composition change approaching the boundary plus a clearer final boundary signal / membrane / transition feature.
 - [ ] Define the canary's exact long-range hint language without turning it into exact destination tracking.
 - [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
-- [ ] Define how much biome boundaries may drift during regeneration, and how quickly, without invalidating navigation knowledge.
-- [ ] Define protection rules for death-drop recovery and other return objectives when surrounding biome geography has shifted.
+- [ ] Tune how much continuous tissue / biome drift can misalign old tunnels and the restroom approach without making navigation feel arbitrary.
+- [ ] Define protection rules for death-drop recovery and other return objectives when surrounding geography has shifted.
+- [ ] Define the regeneration-suppression tool: coverage, duration, placement limits, and how strongly it can stabilize a route without deleting regeneration pressure.
 - [ ] Design tool progression without losing the core identity of **eating** the terrain.
 - [ ] Brainstorm progression content/events for the clean white restroom.
 - [ ] Decide whether cancer/tumor codex completion grants any practical benefit or stays purely collectible.
