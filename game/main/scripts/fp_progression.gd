@@ -359,12 +359,12 @@ func vent_absurd_threshold() -> int:
 	for id in PRICE_UNITS.keys():
 		if vent.is_unlocked(id, float(deepest_shell)):
 			top = maxi(top, price_for(id))
-	return top * 2
+	return int(ceil(float(top) * FPVent.ABSURD_MULT))
 
 ## Early (core-unlocked) items that spill out on an absurd overpay.
 func vent_spill() -> Array[String]:
 	var out: Array[String] = []
-	for id in ["barrier", "spray_cheap", "canary_feed", "knife"]:
+	for id in FPVent.spill_list():
 		if not _maxed(id):
 			out.append(id)
 	return out

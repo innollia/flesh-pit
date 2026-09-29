@@ -27,6 +27,23 @@ for k, p in rules["대사묶음"].items():
     if not p["대사"]:
         print("EMPTY pool in vent_rules.json:", k); bad += 1
     used.update(p["대사"])
+for k, e in rules.get("사건", {}).items():
+    if not isinstance(e.get("대사"), list) or not e["대사"]:
+        print("EMPTY event in vent_rules.json:", k); bad += 1; continue
+    if not e.get("설명"):
+        print("NO 설명 for event in vent_rules.json:", k); bad += 1
+    used.update(e["대사"])
+for k in re.findall(r'_ev\("([^"]+)"', code):
+    if "%" not in k and k not in rules.get("사건", {}):
+        print("event used in code but missing in vent_rules.json 사건:", k); bad += 1
+for k, v in rules.get("기준", {}).items():
+    if not isinstance(v.get("값"), (int, float)) or v["값"] <= 0:
+        print("BAD number in vent_rules.json 기준:", k); bad += 1
+prog = (root / "game/main/scripts/fp_progression.gd").read_text(encoding="utf-8")
+items = set(re.findall(r'^\t"([a-z_]+)":', prog, re.M))
+for i in rules.get("쏟아지는물건", {}).get("목록", []):
+    if i not in items:
+        print("unknown item in vent_rules.json 쏟아지는물건:", i); bad += 1
 for k, v in rules["시간"].items():
     if not isinstance(v.get("값"), (int, float)) or v["값"] <= 0:
         print("BAD time in vent_rules.json:", k); bad += 1

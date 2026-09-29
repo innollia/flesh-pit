@@ -37,6 +37,36 @@ static func _pool(key: String, fallback: Array) -> Array[String]:
         out.append(String(i))
     return out
 
+## A number from the 기준 table of vent_rules.json.
+static func _lim(key: String, fallback: float) -> float:
+    var t = _rule_data().get("기준", {}).get(key, {})
+    return float(t.get("값", fallback)) if t is Dictionary else fallback
+
+## Items spilled on an absurd overpay (쏟아지는물건 in vent_rules.json).
+static func spill_list() -> Array[String]:
+    return _pool_raw(_rule_data().get("쏟아지는물건", {}), "목록", ["barrier", "spray_cheap", "canary_feed", "knife"])
+
+static func _pool_raw(p, field: String, fallback: Array) -> Array[String]:
+    var out: Array[String] = []
+    var ids = p.get(field, fallback) if p is Dictionary else fallback
+    for i in ids:
+        out.append(String(i))
+    return out
+
+static var TOGGLE_START: int = int(_lim("TOGGLE_START", 2))
+static var TOGGLE_HIDE_COUNT: int = int(_lim("TOGGLE_HIDE_COUNT", 5))
+static var TOGGLE_MEMORY: float = _lim("TOGGLE_MEMORY", 4.0)
+static var EMPTY_AGAIN: int = int(_lim("EMPTY_AGAIN", 2))
+static var EMPTY_THIRD: int = int(_lim("EMPTY_THIRD", 3))
+static var IGNORED_LATE: float = _lim("IGNORED_LATE", 600.0)
+static var OPEN_EARLY: float = _lim("OPEN_EARLY", 3.0)
+static var ABSURD_MULT: float = _lim("ABSURD_MULT", 2.0)
+static var LOTS_MULT: float = _lim("LOTS_MULT", 1.5)
+static var LITTLE_STREAK: int = int(_lim("LITTLE_STREAK", 2))
+static var BLOOD_REMARK: float = _lim("BLOOD_REMARK", 0.5)
+static var HAIRS_REMARK: int = int(_lim("HAIRS_REMARK", 20))
+static var LONG_ABSENT_MULT: float = _lim("LONG_ABSENT_MULT", 5.0)
+
 static var FRANTIC_TIME: float = _num("FRANTIC_TIME", 20.0)
 static var CALM_TIME: float = _num("CALM_TIME", 30.0)
 ## Seconds between escalating nags while the player ignores the being.
@@ -136,6 +166,12 @@ func _say(id: String) -> void:
     last_line = id
     line_spoken.emit(id)
 
+## The line for an event from the 사건 table (random one if several).
+func _ev(key: String, fallback: String) -> String:
+    var e = _rule_data().get("사건", {}).get(key, {})
+    var ids := _pool_raw(e, "대사", [fallback])
+    return fallback if ids.is_empty() else ids[_rand(ids.size())] if ids.size() > 1 else ids[0]
+
 func _pick(arr: Array[String]) -> String:
     return arr[_rand(arr.size())]
 
@@ -163,17 +199,17 @@ func tick(delta: float) -> void:
         _idle_t += delta
         if _idle_t >= IDLE_TIME and not _idle_said and _wants_teeth():
             _idle_said = true
-            _say("distract.idle")
+            _say(_ev("열고_가만히", "distract.idle"))
         if _lid_open and not _stare_said:
             _lid_t += delta
             if _lid_t >= STARE_TIME:
                 _stare_said = true
-                _say("lid.stare")
+                _say(_ev("물통_쳐다만", "lid.stare"))
         if not offers.is_empty():
             _offer_t += delta
             if _offer_t >= PICK_LONG_TIME and not _pick_long_said:
                 _pick_long_said = true
-                _say("pick.long")
+                _say(_ev("고르기_오래", "pick.long"))
 
 ## "frantic" right after a flush, "calm" after being paid, else "demanding".
 func mood() -> String:
@@ -198,13 +234,13 @@ func on_flush() -> void:
     elif not _met:
         _chain = FIRST_CHAIN.duplicate()
     elif shell >= 2:
-        _chain = ["surface.flush"] as Array[String]
+        _chain = [_ev("겉껍질_물내림", "surface.flush")] as Array[String]
     elif shell == 1:
-        _chain = ["mantle.flush"] as Array[String]
+        _chain = [_ev("맨틀_물내림", "mantle.flush")] as Array[String]
     else:
         _chain = (FLUSH_A if _rand(2) == 0 else FLUSH_B).duplicate()
     if is_open:
-        _say(_chain[0] if not _chain.is_empty() else "flush.a1")
+        _say(_chain[0] if not _chain.is_empty() else _ev("부르기_기본", "flush.a1"))
         _chain_step = _chain.size()
     else:
         # the first line comes at once through the ceiling
@@ -224,7 +260,7 @@ func open(teeth_available: int = 0) -> void:
     _idle_t = 0.0
     _idle_said = false
     _open_times.append(_clock)
-    while not _open_times.is_empty() and _clock - _open_times[0] > TOGGLE_WINDOW * 4.0:
+    while not _open_times.is_empty() and _clock - _open_times[0] > TOGGLE_WINDOW * TOGGLE_MEMORY:
         _open_times.pop_front()
     var toggles := 0
     for i in range(_open_times.size() - 1, -1, -1):
@@ -232,14 +268,14 @@ func open(teeth_available: int = 0) -> void:
             toggles += 1
         else:
             break
-    if toggles >= 2:
-        if toggles >= 5:
-            _say("toggle.5")
+    if toggles >= TOGGLE_START:
+        if toggles >= TOGGLE_HIDE_COUNT:
+            _say(_ev("여닫기_5", "toggle.5"))
             absent_left = TOGGLE_HIDE
             if art != null:
                 art.call("set_eyes", false)
         else:
-            _say("toggle.%d" % toggles)
+            _say(_ev("여닫기_%d" % toggles, "toggle.%d" % toggles))
         _chain_step = _chain.size()
         if not _held.is_empty() and absent_left <= 0.0:
             _set_offers(_held)
@@ -248,7 +284,7 @@ func open(teeth_available: int = 0) -> void:
     if absent_left > 0.0:
         return
     if final_trade:
-        _say("final.before")
+        _say(_ev("마지막_열기", "final.before"))
         _chain_step = _chain.size()
         return
     if not _held.is_empty():
@@ -256,7 +292,7 @@ func open(teeth_available: int = 0) -> void:
         if _left_at >= 0.0 and away >= LONG_AWAY:
             _silent_back = true # silently pushes the items out; "골라" when near
         elif _left_at >= 0.0:
-            _say("leave.back")
+            _say(_ev("잠깐_갔다옴", "leave.back"))
         _left_at = -1.0
         _set_offers(_held)
         _held = []
@@ -264,7 +300,7 @@ func open(teeth_available: int = 0) -> void:
         return
     if not _met:
         _met = true
-        _say("first.open" if _chain_step <= 1 else "first.open_late")
+        _say(_ev("첫_열기", "first.open") if _chain_step <= 1 else _ev("첫_열기_늦게", "first.open_late"))
         _chain_step = _chain.size()
         return
     var ignored_all := not _chain.is_empty() and _chain_step >= _chain.size() and _chain_step > 1
@@ -274,21 +310,21 @@ func open(teeth_available: int = 0) -> void:
         _empty_open()
         return
     _empty_streak = 0
-    if ignored_all and _since_flush < 600.0:
-        _say("flush.a_late")
-    elif _since_flush < 3.0:
-        _say("open.early")
+    if ignored_all and _since_flush < IGNORED_LATE:
+        _say(_ev("무시후_열기", "flush.a_late"))
+    elif _since_flush < OPEN_EARLY:
+        _say(_ev("바로_열기", "open.early"))
     else:
         _say(_pick(OPEN_TEETH))
 
 func _empty_open() -> void:
     _empty_streak += 1
-    if _empty_streak == 2:
-        _say("empty.again")
-    elif _empty_streak >= 3:
-        _say("empty.third")
+    if _empty_streak == EMPTY_AGAIN:
+        _say(_ev("빈손_2번", "empty.again"))
+    elif _empty_streak >= EMPTY_THIRD:
+        _say(_ev("빈손_3번", "empty.third"))
     elif shell >= 2:
-        _say("surface.hum")
+        _say(_ev("겉껍질_빈손", "surface.hum"))
     elif _rand(2) == 0:
         _say(_pick(UNAWARE))
     else:
@@ -299,10 +335,10 @@ func close() -> void:
     is_open = false
     _eyes.visible = false
     if was_open and not offers.is_empty():
-        _say("leave.close")
+        _say(_ev("물건두고_닫기", "leave.close"))
         _held = offers.duplicate()
     elif was_open and final_trade:
-        _say("final.close")
+        _say(_ev("마지막_닫기", "final.close"))
     _clear_offers()
     _lid_t = 0.0
     if art != null:
@@ -325,7 +361,7 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
     var first_pay := not _paid_ever
     _paid_ever = true
     if final_trade:
-        _say("final.given")
+        _say(_ev("마지막_이빨", "final.given"))
         var all: Array[String] = []
         for id in FPProgression.PRICE_UNITS.keys():
             if prog.vent.is_unlocked(id, float(prog.deepest_shell)) and not prog._maxed(id):
@@ -333,22 +369,22 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
         _set_offers(all)
         return all
     if placed >= prog.vent_absurd_threshold():
-        _say("amount.absurd")
+        _say(_ev("터무니없이", "amount.absurd"))
         var sp := prog.vent_spill()
         for id in sp:
             prog.grant_item(id)
         spilled.emit(sp)
     else:
-        _say("place.accept" if first_pay else _pick(APPRAISE))
+        _say(_ev("첫_이빨", "place.accept") if first_pay else _pick(APPRAISE))
     var ids := prog.vent_offer(placed)
     if placed < prog.vent_absurd_threshold():
         if ids == ["junk"]:
             _little_streak += 1
-            _say("amount.little2" if _little_streak >= 2 else "amount.little")
+            _say(_ev("적게_연속", "amount.little2") if _little_streak >= LITTLE_STREAK else _ev("적게", "amount.little"))
         else:
             _little_streak = 0
             var top := prog.price_for(ids[0])
-            _say("amount.lots" if placed * 2 >= top * 3 else "amount.fair")
+            _say(_ev("많이", "amount.lots") if float(placed) >= float(top) * LOTS_MULT else _ev("적당히", "amount.fair"))
         _maybe_remark()
     _set_offers(ids)
     return ids
@@ -360,7 +396,7 @@ func take(id: String, prog: FPProgression) -> bool:
     var ok := prog.grant_item(id)
     _say(_pick(TAKE))
     if offers.size() > 1:
-        _say("pick.withdraw")
+        _say(_ev("나머지_회수", "pick.withdraw"))
     if art != null:
         art.call("take_item", offers.find(id))
     _held = []
@@ -372,9 +408,9 @@ func place_weird(kind: String) -> void:
     if not is_open:
         return
     match kind:
-        "flesh": _say("weird.flesh")
-        "tumor": _say("weird.tumor")
-        "canary": _say("weird.canary")
+        "flesh": _say(_ev("살점_올림", "weird.flesh"))
+        "tumor": _say(_ev("종양_올림", "weird.tumor"))
+        "canary": _say(_ev("카나리아_올림", "weird.canary"))
 
 ## The occasional remark on how the player looks, after being paid.
 func _maybe_remark() -> void:
@@ -383,21 +419,21 @@ func _maybe_remark() -> void:
     var st := player_state
     var id := ""
     if bool(st.get("died", false)):
-        id = "player.died"
-    elif float(st.get("away", 0.0)) >= LONG_AWAY * 5.0:
-        id = "player.long_absent"
+        id = _ev("혼잣말_죽었다옴", "player.died")
+    elif float(st.get("away", 0.0)) >= LONG_AWAY * LONG_ABSENT_MULT:
+        id = _ev("혼잣말_오래안옴", "player.long_absent")
     elif bool(st.get("extra_arm", false)):
-        id = "player.extra_arm"
+        id = _ev("혼잣말_팔더", "player.extra_arm")
     elif bool(st.get("mutated", false)):
-        id = "player.mutated"
-    elif float(st.get("blood", 0.0)) >= 0.5:
-        id = "player.blood"
-    elif int(st.get("hairs", 0)) >= 20:
-        id = "player.hairs"
+        id = _ev("혼잣말_변이", "player.mutated")
+    elif float(st.get("blood", 0.0)) >= BLOOD_REMARK:
+        id = _ev("혼잣말_피", "player.blood")
+    elif int(st.get("hairs", 0)) >= HAIRS_REMARK:
+        id = _ev("혼잣말_털", "player.hairs")
     elif shell >= 2:
-        id = "surface.paid"
+        id = _ev("혼잣말_겉껍질", "surface.paid")
     elif shell == 1:
-        id = "mantle.paid"
+        id = _ev("혼잣말_맨틀", "mantle.paid")
     if id != "":
         _remark_t = _clock
         player_state.erase("died")
@@ -416,18 +452,18 @@ func notice(event: String) -> void:
     match event:
         "spray":
             if is_open:
-                _say("weird.spray")
+                _say(_ev("스프레이_맞음", "weird.spray"))
                 absent_left = SPRAY_SULK
                 if art != null:
                     art.call("set_eyes", false)
             return
         "hand_in":
             if is_open:
-                _say("weird.hand")
+                _say(_ev("손_넣음", "weird.hand"))
             return
         "left_room":
             if is_open and not offers.is_empty():
-                _say("leave.out")
+                _say(_ev("물건두고_나감", "leave.out"))
                 _held = offers.duplicate()
                 _left_at = _clock
             return
@@ -436,54 +472,54 @@ func notice(event: String) -> void:
                 if _clock - _left_at >= LONG_AWAY:
                     _silent_back = true # says nothing, only holds the items out
                 else:
-                    _say("leave.back")
+                    _say(_ev("잠깐_갔다옴", "leave.back"))
                 _left_at = -1.0
                 _held = []
             return
         "near_vent":
             if _silent_back and is_open and not offers.is_empty():
                 _silent_back = false
-                _say("leave.back_long_near")
+                _say(_ev("오래뒤_다가옴", "leave.back_long_near"))
             return
     if not is_open or absent_left > 0.0:
         return
     if not offers.is_empty():
         if event == "walk_away" or event == "door":
-            _say("leave.walk")
+            _say(_ev("물건두고_멀어짐", "leave.walk"))
         elif event == "hover":
-            _say("pick.hover")
+            _say(_ev("물건_만지작", "pick.hover"))
         return
     if not _wants_teeth():
         return
     match event:
-        "near_sink": _say("distract.sink")
-        "wash": _say("distract.wash")
-        "mirror": _say("distract.mirror")
-        "sit": _say("distract.sit")
-        "door": _say("distract.door")
+        "near_sink": _say(_ev("딴짓_세면대", "distract.sink"))
+        "wash": _say(_ev("딴짓_손씻기", "distract.wash"))
+        "mirror": _say(_ev("딴짓_거울", "distract.mirror"))
+        "sit": _say(_ev("딴짓_앉기", "distract.sit"))
+        "door": _say(_ev("딴짓_문", "distract.door"))
         "tank_near":
             if _tank_near:
                 return
             _tank_near = true
-            _say("tank.approach" if _tank_visits == 0 else "tank.approach_again")
+            _say(_ev("물통_다가감", "tank.approach") if _tank_visits == 0 else _ev("물통_또다가감", "tank.approach_again"))
         "tank_far":
             if not _tank_near:
                 return
             _tank_near = false
-            _say("tank.leave" if _tank_visits == 0 else "tank.leave_again")
+            _say(_ev("물통_멀어짐", "tank.leave") if _tank_visits == 0 else _ev("물통_또멀어짐", "tank.leave_again"))
             _tank_visits += 1
         "lid_open":
             _lid_open = true
             _lid_t = 0.0
             _stare_said = false
-            _say("lid.open")
+            _say(_ev("물통_뚜껑열기", "lid.open"))
         "lid_close":
             _lid_open = false
         "grab":
             _stare_said = true
-            _say("lid.grab")
-        "walk_with": _say("lid.walk_with")
-        "put_back": _say("lid.put_back")
+            _say(_ev("이빨_집기", "lid.grab"))
+        "walk_with": _say(_ev("이빨_들고감", "lid.walk_with"))
+        "put_back": _say(_ev("이빨_도로넣기", "lid.put_back"))
 
 func _set_offers(ids: Array[String]) -> void:
     _clear_offers()
