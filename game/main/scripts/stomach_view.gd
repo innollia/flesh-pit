@@ -1,7 +1,7 @@
 class_name FPStomachView
 extends Node3D
 
-## Stomach state without any text (design-core 1 Overfilling): a lumpy mass
+## Stomach state without any text (docs/spec/01-body-eating.md Overfilling): a lumpy mass
 ## of flesh swells up from the bottom of the screen between the hands as the
 ## stomach fills, pulsing like a gut. Past capacity it keeps rising toward
 ## the throat, and torn-off chunks pile up at the bottom edge of the screen
@@ -17,6 +17,11 @@ var _time: float = 0.0
 var _mass: MeshInstance3D
 var _pile: Array[MeshInstance3D] = []
 var _material: ShaderMaterial
+## ★ mutation forms (05-mutations.md): M01 bigger saggy mass, M02 a thick
+## gullet tube rising to the throat, M30 an extra throat pouch beside it.
+var forms: Array[String] = []
+var _gullet: MeshInstance3D
+var _pouch: MeshInstance3D
 
 func _ready() -> void:
     build()
@@ -60,6 +65,7 @@ func build() -> void:
         mi.rotation = Vector3(FDKLowPoly.hash3(i, 2, 2) * 3.0, FDKLowPoly.hash3(i, 3, 3) * 3.0, 0)
         add_child(mi)
         _pile.append(mi)
+    _build_forms()
     _apply(0.0)
 
 ## Connect to FDKStomach.fill_changed, or call with ratios directly.
@@ -86,10 +92,62 @@ func _apply(_delta: float) -> void:
     var rise := lerpf(-0.36, -0.25, f) + 0.07 * _shown_over
     var swell := lerpf(0.55, 1.0, f) * (1.0 + 0.45 * _shown_over)
     var pulse := 1.0 + sin(_time * (2.2 + 3.0 * _shown_over)) * (0.02 + 0.05 * _shown_over)
+    var big := has_form("M01")
+    if big:
+        # stretched stomach: bigger, hanging lower and wider at the bottom
+        rise -= 0.02
+        swell *= 1.22
     _mass.position = Vector3(0, rise, -0.34)
-    _mass.scale = Vector3(swell * pulse, swell / pulse, swell)
+    _mass.scale = Vector3(swell * pulse * (1.12 if big else 1.0), swell / pulse * (0.88 if big else 1.0), swell)
+    if _gullet != null:
+        # past capacity the flesh climbs toward the throat through the gullet
+        var g := clampf(_shown_over * 1.4, 0.0, 1.0)
+        _gullet.visible = _mass.visible and g > 0.05
+        var thick := 2.1 if has_form("M02") else 1.0
+        _gullet.position = Vector3(0.0, rise + 0.06 * swell, -0.345)
+        _gullet.scale = Vector3(thick * swell, g * 1.1, thick * swell)
+    if _pouch != null:
+        _pouch.visible = has_form("M30") and _mass.visible
+        var pf := clampf(_shown_over, 0.0, 1.0)
+        _pouch.position = Vector3(0.2 * swell + 0.05, rise + 0.03 + 0.03 * pf, -0.35)
+        _pouch.scale = Vector3.ONE * lerpf(0.55, 1.15, pf) * pulse
     var count := int(round(_shown_over * PILE_MAX))
     for i in range(_pile.size()):
         _pile[i].visible = i < count
         if _pile[i].visible:
             _pile[i].scale = Vector3.ONE * (1.0 + sin(_time * 3.0 + i) * 0.04)
+
+func _build_forms() -> void:
+    var a := Color(0.58, 0.08, 0.12)
+    var b := Color(0.86, 0.3, 0.3)
+    # gullet: a tube from the top of the mass up toward the throat
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    for i in range(6):
+        var t := float(i) / 5.0
+        FDKLowPoly.add_blob(st, Vector3(sin(t * 3.0) * 0.012, t * 0.16, 0.0), Vector3(0.022, 0.03, 0.02), 0.2, 60 + i, a, b)
+    _gullet = MeshInstance3D.new()
+    _gullet.name = "Gullet"
+    _gullet.mesh = st.commit()
+    _gullet.material_override = _material
+    add_child(_gullet)
+    # throat pouch: a second, paler sac beside the mass
+    st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(0.075, 0.06, 0.05), 0.18, 70, Color(0.8, 0.45, 0.42), Color(0.95, 0.62, 0.55))
+    FDKLowPoly.add_blob(st, Vector3(-0.05, 0.045, 0.0), Vector3(0.02, 0.03, 0.02), 0.1, 71, Color(0.8, 0.45, 0.42), Color(0.9, 0.55, 0.5))
+    _pouch = MeshInstance3D.new()
+    _pouch.name = "Pouch"
+    _pouch.mesh = st.commit()
+    _pouch.material_override = _material
+    add_child(_pouch)
+
+## Set the owned mutation ids; only the ★ ones change the stomach look.
+func set_forms(ids: Array) -> void:
+    forms.clear()
+    for id in ids:
+        if String(id) in ["M01", "M02", "M30"]:
+            forms.append(String(id))
+
+func has_form(id: String) -> bool:
+    return id in forms

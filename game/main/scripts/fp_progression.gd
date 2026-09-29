@@ -1,7 +1,7 @@
 class_name FPProgression
 extends RefCounted
 
-## Game-side progression state (design-core 2/4/5/6/8): teeth (money), arm
+## Game-side progression state (docs/spec/04-economy.md): teeth (money), arm
 ## hairs (mutation points: common + per-biome pools), ~30 mutations, tumor
 ## mutations, tools with one/two-handed rules, consumables, vent stock and
 ## the death drop payload. Pure data/logic; main.gd wires it to the world.
@@ -15,7 +15,7 @@ const BIOMES: Array[String] = [BIOME_CORE, BIOME_MANTLE, BIOME_SURFACE]
 const COMMON := FDKMutationTree.COMMON
 const TUMOR_POOL := "tumor"
 
-## design-core 6: shell multiplier core x1, mantle x2, surface x3.
+## docs/spec/04-economy.md: shell multiplier core x1, mantle x2, surface x3.
 const SHELL_MULTIPLIER := {BIOME_CORE: 1, BIOME_MANTLE: 2, BIOME_SURFACE: 3}
 
 ## Teeth per flesh unit vomited into the toilet. One expedition fills about
@@ -29,7 +29,7 @@ const HANDFUL_TEETH := 4
 const FLESH_PER_BIOME_HAIR := 50.0
 const FLESH_PER_COMMON_HAIR := 150.0
 
-## design-core 5 price guide, in expeditions' earnings. Items without a guide
+## docs/spec/04-economy.md price guide, in expeditions' earnings. Items without a guide
 ## price (canary feed, tumor bag) are prototype picks, see the report.
 const PRICE_UNITS := {
 	"barrier": 0.5,
@@ -57,11 +57,39 @@ const TUMOR_KINDS: Array[String] = ["core_knot", "core_bulb", "mantle_coil", "ma
 const TUMOR_TOOTH_PAYOUT := 24 ## "a large pile of teeth" = 3 expeditions
 const TUMOR_EAT_POINTS := 1
 const TUMOR_MUTATION_COST := 1
-## Large, obvious tumor mutations, granted at random (design-core 6).
-const TUMOR_MUTATIONS: Array[String] = ["extra_arm", "palm_mouth", "swollen_torso", "back_eyes", "split_jaw", "rib_fan"]
+## Tumor mutations (docs/spec/05-mutations.md 4), granted at random at the
+## mirror by pressing a tumor bump on the belly. Never twice the same.
+const TUMOR_MUTATIONS: Array[String] = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"]
 
-## Body parts the mirror can hover (design-core 5).
-const PARTS: Array[String] = ["left_hand", "right_hand", "jaw", "torso", "legs"]
+## Body parts the mirror can hover (05-mutations.md: every mutation has a
+## body part). "tumor" is the bump on the belly, handled separately.
+const PARTS: Array[String] = ["face", "neck", "chest", "belly", "right_hand", "left_hand", "arms", "whole"]
+
+## 04-economy.md 2: hairs per mutation by branch.
+const BRANCH_COST := {"common": 12, "compressive": 5, "contractile": 10, "nerve": 15}
+const BRANCH_POOL := {"common": COMMON, "compressive": BIOME_CORE, "contractile": BIOME_MANTLE, "nerve": BIOME_SURFACE}
+const POOL_COST := {COMMON: 12, BIOME_CORE: 5, BIOME_MANTLE: 10, BIOME_SURFACE: 15}
+## Combination: either biome, at 1.5x that biome's value.
+const COMBO_FACTOR := 1.5
+
+## Base values from docs/spec/01-body-eating.md (and 07 crush time).
+const BASE_REACH := 2.5
+const BASE_TEAR_CELLS := 1
+const BASE_CHEW_TIME := 0.6
+const BASE_CAPACITY := 100.0
+const BASE_OVERFILL := 60.0
+const BASE_OVERFILL_CHEW := 3.0
+const BASE_BODY_RADIUS := 0.35
+const BASE_CRUSH_TIME := 6.0
+const BASE_CARRY := 40.0
+const BASE_FOV := 90.0
+const SQUEEZE_SLOW_AT := 0.5
+## Tissue hardness (02-world-tissue.md 3), keyed by main.gd tissue id.
+const TISSUE_HARDNESS := {0: 1.0, 1: 1.2, 2: 1.0, 3: 2.0, 4: 1.4}
+const TISSUE_COMPRESSIVE := 0
+const TISSUE_NERVE := 1
+const TISSUE_MEMBRANE := 3
+const TISSUE_CONTRACTILE := 4
 
 var tools: FDKToolKit = FDKToolKit.new()
 var mutation_tree: FDKMutationTree = FDKMutationTree.new()
@@ -79,6 +107,7 @@ var canary_feed: int = 0
 var has_bag: bool = false
 var tumor_mutations: Array[String] = []
 var deepest_shell: int = 0
+var tumors_eaten: int = 0
 ## Hairs for flesh currently in the stomach: they only grow on the arm when
 ## the flesh is vomited into the toilet (or a rest point).
 ## Keys: COMMON + each biome. Values: weighted flesh units (unit x shell
@@ -110,48 +139,56 @@ func _clear_pending() -> void:
 
 # --- mutations -------------------------------------------------------------
 
-func _def(id: String, pool: String, part: String, hand: String, group: String, cost: int, alt: Array[String] = []) -> void:
+## One mutation. `part` is the mirror part, `spot` the exact body place in
+## the spec, `hand` which first-person hand it reshapes ("" none).
+func _def(id: String, name_ko: String, branch: String, part: String, spot: String, hand: String, alt: Array[String] = []) -> void:
+	var pool: String = alt[0] if not alt.is_empty() else String(BRANCH_POOL[branch])
+	var cost := int(POOL_COST[pool]) if alt.is_empty() else int(ceil(float(POOL_COST[pool]) * COMBO_FACTOR))
 	mutation_tree.define_node(id, [] as Array[String], pool, cost, alt)
-	mutation_info[id] = {"part": part, "hand": hand, "pool": pool, "group": group}
+	mutation_info[id] = {"name": name_ko, "part": part, "spot": spot, "hand": hand, "pool": pool, "group": branch, "alt": alt.duplicate()}
 
-## design-core 6: ~30 mutations, 6 common + 7 per biome + 3 combination.
-## Grouping only: no prerequisites. Left hand = blender/tool hand, right
-## hand = tearing hand.
+## docs/spec/05-mutations.md, sections 2 and 3 (29 ids; M11 was deleted and
+## M03 was reused for the magnet eye). Branch only picks the hair colour.
 func _define_mutations() -> void:
-	_def("thick_skin", COMMON, "torso", "", "common", 20)
-	_def("wide_jaw", COMMON, "jaw", "", "common", 25)
-	_def("calloused_soles", COMMON, "legs", "", "common", 20)
-	_def("long_nails", COMMON, "right_hand", "right", "common", 25)
-	_def("heavy_gut", COMMON, "torso", "", "common", 35)
-	_def("thick_wrist", COMMON, "left_hand", "left", "common", 30)
-	# compressive (core): soft, spongy, absorbing
-	_def("core_padded_palm", BIOME_CORE, "right_hand", "right", "compressive", 15)
-	_def("core_sponge_knuckles", BIOME_CORE, "left_hand", "left", "compressive", 15)
-	_def("core_soft_throat", BIOME_CORE, "jaw", "", "compressive", 20)
-	_def("core_fat_heels", BIOME_CORE, "legs", "", "compressive", 20)
-	_def("core_swollen_belly", BIOME_CORE, "torso", "", "compressive", 30)
-	_def("core_suction_fingers", BIOME_CORE, "right_hand", "right", "compressive", 35)
-	_def("core_press_forearm", BIOME_CORE, "left_hand", "left", "compressive", 40)
-	# contractile (mantle): fibrous, gripping, pulling
-	_def("mantle_fiber_grip", BIOME_MANTLE, "right_hand", "right", "contractile", 30)
-	_def("mantle_cord_tendons", BIOME_MANTLE, "left_hand", "left", "contractile", 30)
-	_def("mantle_clench_jaw", BIOME_MANTLE, "jaw", "", "contractile", 40)
-	_def("mantle_coil_calves", BIOME_MANTLE, "legs", "", "contractile", 40)
-	_def("mantle_banded_ribs", BIOME_MANTLE, "torso", "", "contractile", 60)
-	_def("mantle_hook_thumb", BIOME_MANTLE, "right_hand", "right", "contractile", 70)
-	_def("mantle_winch_arm", BIOME_MANTLE, "left_hand", "left", "contractile", 80)
-	# nerve (surface): twitchy, sensing
-	_def("surface_twitch_fingers", BIOME_SURFACE, "right_hand", "right", "nerve", 45)
-	_def("surface_feeler_hairs", BIOME_SURFACE, "left_hand", "left", "nerve", 45)
-	_def("surface_buzzing_teeth", BIOME_SURFACE, "jaw", "", "nerve", 60)
-	_def("surface_spring_knees", BIOME_SURFACE, "legs", "", "nerve", 60)
-	_def("surface_glow_spine", BIOME_SURFACE, "torso", "", "nerve", 90)
-	_def("surface_shock_palm", BIOME_SURFACE, "right_hand", "right", "nerve", 100)
-	_def("surface_eel_wrist", BIOME_SURFACE, "left_hand", "left", "nerve", 120)
-	# combination: payable from either contributing pool
-	_def("combo_core_mantle", BIOME_CORE, "torso", "", "combination", 60, [BIOME_CORE, BIOME_MANTLE] as Array[String])
-	_def("combo_mantle_surface", BIOME_MANTLE, "right_hand", "right", "combination", 90, [BIOME_MANTLE, BIOME_SURFACE] as Array[String])
-	_def("combo_core_surface", BIOME_CORE, "left_hand", "left", "combination", 90, [BIOME_CORE, BIOME_SURFACE] as Array[String])
+	_def("M01", "늘어난 위", "common", "belly", "배", "")
+	_def("M02", "넓은 목구멍", "common", "neck", "목", "")
+	_def("M03", "자기장 눈", "common", "face", "눈", "")
+	_def("M04", "불거진 턱", "common", "face", "턱", "")
+	_def("M05", "접히는 어깨", "common", "chest", "어깨", "")
+	_def("M06", "긴 숨", "common", "chest", "가슴", "")
+	_def("M07", "넓은 손바닥", "compressive", "right_hand", "오른손", "right")
+	_def("M08", "물갈퀴", "compressive", "right_hand", "오른손", "right")
+	_def("M09", "두꺼운 손톱", "compressive", "right_hand", "오른손", "right")
+	_def("M10", "긴 마디", "compressive", "right_hand", "오른손", "right")
+	_def("M12", "부푼 팔뚝", "compressive", "right_hand", "오른팔", "right")
+	_def("M13", "빨판 주름", "compressive", "right_hand", "오른손", "right")
+	_def("M14", "근육 과다", "contractile", "whole", "온몸", "both")
+	_def("M15", "빠지는 턱", "contractile", "face", "턱", "")
+	_def("M16", "되새김 위", "contractile", "belly", "배", "")
+	_def("M17", "무통각증", "contractile", "whole", "온몸", "")
+	_def("M18", "두더지 앞발", "contractile", "right_hand", "오른손", "right")
+	_def("M19", "연동 기기", "contractile", "belly", "배", "")
+	_def("M20", "과유연 관절", "contractile", "arms", "팔다리", "both")
+	_def("M21", "발전 근육", "nerve", "left_hand", "왼팔", "left")
+	_def("M22", "외계인 손", "nerve", "left_hand", "왼손", "left")
+	_def("M23", "감각털", "nerve", "arms", "팔", "both")
+	_def("M24", "올빼미 눈", "nerve", "face", "눈", "")
+	_def("M25", "과잉 기억", "nerve", "face", "머리", "")
+	_def("M26", "도롱뇽 재생", "nerve", "arms", "팔", "both")
+	_def("M27", "코끼리 코", "nerve", "face", "코", "")
+	_def("M28", "뼈 없는 팔", "combination", "left_hand", "왼팔", "left", [BIOME_CORE, BIOME_MANTLE] as Array[String])
+	_def("M29", "휴면", "combination", "whole", "온몸", "", [BIOME_MANTLE, BIOME_SURFACE] as Array[String])
+	_def("M30", "목주머니", "combination", "neck", "목", "", [BIOME_SURFACE, BIOME_CORE] as Array[String])
+
+const TUMOR_INFO := {
+	"T1": {"name": "반향정위", "part": "face"},
+	"T2": {"name": "세 번째 팔", "part": "chest"},
+	"T3": {"name": "손바닥 입", "part": "right_hand"},
+	"T4": {"name": "부푼 몸통", "part": "belly"},
+	"T5": {"name": "어안", "part": "face"},
+	"T6": {"name": "세로 턱", "part": "face"},
+	"T7": {"name": "부채 갈비", "part": "chest"},
+}
 
 func mutation_count() -> int:
 	return mutation_info.size()
@@ -164,11 +201,44 @@ func mutations_for_part(part: String) -> Array[String]:
 	out.sort()
 	return out
 
-func can_buy_mutation(id: String) -> bool:
-	return mutation_tree.can_purchase(id)
+## Hairs this mutation costs when paid from `pool` (-1 if not payable there).
+func cost_in(id: String, pool: String) -> int:
+	var info: Dictionary = mutation_info.get(id, {})
+	if info.is_empty():
+		return -1
+	var alt: Array = info["alt"]
+	if alt.is_empty():
+		return int(POOL_COST[pool]) if pool == info["pool"] else -1
+	if pool not in alt:
+		return -1
+	return int(ceil(float(POOL_COST[pool]) * COMBO_FACTOR))
 
+## Pool that would pay for id right now ("" if none can).
+func paying_pool(id: String) -> String:
+	var info: Dictionary = mutation_info.get(id, {})
+	if info.is_empty() or mutation_tree.is_purchased(id):
+		return ""
+	var pools: Array = info["alt"] if not (info["alt"] as Array).is_empty() else [info["pool"]]
+	for p in pools:
+		if hairs(p) >= cost_in(id, p):
+			return p
+	return ""
+
+func can_buy_mutation(id: String) -> bool:
+	return paying_pool(id) != ""
+
+## Buying pulls the hairs off the arm (combination: from whichever of its
+## two biome pools can pay its own 1.5x price).
 func buy_mutation(id: String) -> bool:
-	return mutation_tree.purchase(id)
+	var pool := paying_pool(id)
+	if pool == "":
+		return false
+	mutation_tree.add_points(pool, -cost_in(id, pool))
+	mutation_tree._purchased[id] = true
+	return true
+
+func has_mutation(id: String) -> bool:
+	return mutation_tree.is_purchased(id) or id in tumor_mutations
 
 func purchased_mutations() -> Array[String]:
 	var out: Array[String] = []
@@ -178,6 +248,13 @@ func purchased_mutations() -> Array[String]:
 	out.sort()
 	return out
 
+## Every owned mutation, hair and tumor ones, for the body visuals.
+func all_mutations() -> Array[String]:
+	var out := purchased_mutations()
+	for t in tumor_mutations:
+		out.append(t)
+	return out
+
 ## 0..1 overall bodily change, for the hands rig and footstep weight.
 func mutation_amount() -> float:
 	return clampf((purchased_mutations().size() + tumor_mutations.size() * 2) / float(mutation_count()), 0.0, 1.0)
@@ -185,9 +262,140 @@ func mutation_amount() -> float:
 func hand_mutation_count(hand: String) -> int:
 	var n := 0
 	for id in purchased_mutations():
-		if mutation_info[id]["hand"] == hand:
+		var h: String = mutation_info[id]["hand"]
+		if h == hand or h == "both":
 			n += 1
 	return n
+
+# --- mutation effects (parameter names from CONTEXT.md / 01-body-eating.md) ---
+
+func _m(id: String) -> bool:
+	return has_mutation(id)
+
+func reach() -> float:
+	return BASE_REACH + (0.4 if _m("M10") else 0.0)
+
+func tear_cells() -> int:
+	return BASE_TEAR_CELLS + (1 if _m("M07") else 0) + (1 if _m("M14") else 0)
+
+func base_chew_time() -> float:
+	var t := BASE_CHEW_TIME
+	if _m("M04"):
+		t *= 0.85
+	if _m("T3"):
+		t *= 0.4
+	return t
+
+func capacity() -> float:
+	var c := BASE_CAPACITY + (20.0 if _m("M01") else 0.0)
+	return c * (2.0 if _m("T4") else 1.0)
+
+func overfill_capacity() -> float:
+	return BASE_OVERFILL + (40.0 if _m("M30") else 0.0)
+
+func overfill_chew_multiplier() -> float:
+	return 2.4 if _m("M02") else BASE_OVERFILL_CHEW
+
+func body_radius() -> float:
+	var r := BASE_BODY_RADIUS
+	if _m("M05"):
+		r *= 0.85
+	if _m("T4"):
+		r *= 1.3
+	return r
+
+func crush_time() -> float:
+	return BASE_CRUSH_TIME + (3.0 if _m("M06") else 0.0)
+
+func carry_capacity() -> float:
+	return BASE_CARRY * (1.5 if _m("M13") else 1.0)
+
+## Walk speed factor from mutations alone (M14 x0.9, T7 x0.8).
+func walk_speed_factor() -> float:
+	var f := 1.0
+	if _m("M14"):
+		f *= 0.9
+	if _m("T7"):
+		f *= 0.8
+	return f
+
+## Speed factor from squeeze (0..1): normally half at >= 0.5; M20 removes
+## the slowdown, M19 turns it into a x1.3 push.
+func squeeze_speed_factor(squeeze: float) -> float:
+	if squeeze < SQUEEZE_SLOW_AT:
+		return 1.0
+	if _m("M19"):
+		return 1.3
+	if _m("M20"):
+		return 1.0
+	return 0.5
+
+## Effective hardness of a tissue id for the player's body.
+## M08 compressive x0.7, M18 contractile x0.6, M12 excess over 1.0 x0.5,
+## T6 membrane 2.0 -> 1.0, M09 bare-hand membrane chew x3.
+func hardness(tissue: int, bare_hand: bool = false) -> float:
+	var h: float = float(TISSUE_HARDNESS.get(tissue, 1.0))
+	if tissue == TISSUE_MEMBRANE and _m("T6"):
+		h = 1.0
+	if tissue == TISSUE_COMPRESSIVE and _m("M08"):
+		h *= 0.7
+	if tissue == TISSUE_CONTRACTILE and _m("M18"):
+		h *= 0.6
+	if h > 1.0 and _m("M12"):
+		h = 1.0 + (h - 1.0) * 0.5
+	if tissue == TISSUE_MEMBRANE and bare_hand and _m("M09") and not _m("T6"):
+		h *= 3.0
+	return h
+
+## Membrane needs a blade, unless thick nails (M09) or the vertical jaw (T6).
+func can_grab_membrane_bare() -> bool:
+	return _m("M09") or _m("T6")
+
+func tissue_damage_factor() -> float:
+	return 0.5 if _m("M17") else 1.0
+
+func health_regen_factor() -> float:
+	return 3.0 if _m("M26") else 1.0
+
+func light_range_factor() -> float:
+	return 1.6 if _m("M24") else 1.0
+
+func restroom_glare_factor() -> float:
+	return 2.0 if _m("M24") else 1.0
+
+func fov() -> float:
+	return 200.0 if _m("T5") else BASE_FOV
+
+## M21: the blender charges itself in the left hand (per second).
+func blender_self_charge() -> float:
+	return 5.0 if _m("M21") else 0.0
+
+## M16: every 60 s the flesh in the stomach shrinks by 10 %.
+const CUD_PERIOD := 60.0
+const CUD_SHRINK := 0.1
+## M22: standing still, the left hand tears one cell in reach every 2 s.
+const ALIEN_HAND_PERIOD := 2.0
+## M15: a whole flesh pile swallowed in 3 s.
+const GULP_TIME := 3.0
+## M23: hair shiver lead time before a contraction.
+const HAIR_WARN_TIME := 1.5
+## M27: trunk twitch radius toward tumors.
+const TRUNK_RADIUS := 10.0
+## M29: dormancy wake delay.
+const DORMANT_WAKE := 30.0
+## T7: regen freeze radius while standing still.
+const RIB_FAN_RADIUS := 1.5
+
+func can_lift_without_blender() -> bool:
+	return _m("M15")
+
+## Hands: T3 mouth in the right palm cannot hold a pile; M28/T2 let two-hand
+## tools work while carrying.
+func right_hand_can_carry() -> bool:
+	return not _m("T3")
+
+func two_hand_tools_while_carrying() -> bool:
+	return _m("M28") or _m("T2")
 
 func hairs(pool: String) -> int:
 	return mutation_tree.points(pool)
@@ -279,7 +487,7 @@ func dig_multiplier() -> float:
 		_: return 1.0
 
 ## Tough tissue (mantle contractile fibers) needs a blade: bare hands cannot
-## tear it (design-core 4, knife = "cuts tough flesh bare hands cannot tear").
+## tear it (docs/spec/04-economy.md, knife = "cuts tough flesh bare hands cannot tear").
 func can_tear(tough: bool) -> bool:
 	if not tough:
 		return true
@@ -402,8 +610,19 @@ func eat_carried_tumor() -> bool:
 	if tumors.carried_count() == 0:
 		return false
 	var kind: String = tumors._carried.pop_back()
-	tumors.eat(kind, TUMOR_EAT_POINTS)
+	eat_tumor_kind(kind)
 	return true
+
+## Eating a tumor: a small bump rises on the belly (1 point = 1 bump).
+## Once all 7 tumor mutations are owned no more bumps appear.
+func eat_tumor_kind(kind: String) -> void:
+	var pts := TUMOR_EAT_POINTS if tumor_mutations.size() + tumors.tumor_points < TUMOR_MUTATIONS.size() else 0
+	tumors.eat(kind, pts)
+	tumors_eaten += 1
+
+## Bumps currently on the belly, waiting to be pressed at the mirror.
+func belly_bumps() -> int:
+	return tumors.tumor_points
 
 ## Throw every carried tumor into the toilet: teeth + codex entries.
 func throw_tumors_in_toilet() -> int:
@@ -495,6 +714,7 @@ func serialize() -> Dictionary:
 		"hair_carry": hair_carry.duplicate(true),
 		"junk_taken": junk_taken,
 		"tumor_mutations": tumor_mutations.duplicate(),
+		"tumors_eaten": tumors_eaten,
 		"rng": _rng_state,
 		"tools": tools.serialize(),
 		"mutations": mutation_tree.serialize(),
@@ -519,8 +739,12 @@ func deserialize(d: Dictionary) -> void:
 		hair_carry[k] = float(hc[k])
 	junk_taken = int(d.get("junk_taken", 0))
 	tumor_mutations.clear()
+	const OLD_TUMOR := {"extra_arm": "T2", "palm_mouth": "T3", "swollen_torso": "T4", "back_eyes": "T5", "split_jaw": "T6", "rib_fan": "T7"}
 	for m in (d.get("tumor_mutations", []) as Array):
-		tumor_mutations.append(String(m))
+		var id := String(OLD_TUMOR.get(String(m), String(m)))
+		if id in TUMOR_MUTATIONS and id not in tumor_mutations:
+			tumor_mutations.append(id)
+	tumors_eaten = int(d.get("tumors_eaten", 0))
 	_rng_state = int(d.get("rng", _rng_state))
 	if d.has("tools"):
 		tools.deserialize(d["tools"])

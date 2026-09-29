@@ -17,7 +17,7 @@ const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
 const MutHandsScene := preload("res://main/art/fp_mutation_hands.tscn")
 const BarrierScene := preload("res://main/art/fp_barrier_stages.tscn")
-const MUT_KINDS := ["extra_arm", "palm_mouth", "swollen_torso"]
+const MUT_KINDS := ["T2", "T3", "T4"] ## extra arm, palm mouth, swollen torso
 
 var m: Node3D
 var knife: Node3D
@@ -172,21 +172,36 @@ func _sync_hairs(prog: FPProgression) -> void:
 		arm_hair.call("set_hair", prog.hairs(FPProgression.COMMON), biome)
 
 func _sync_mutations(prog: FPProgression) -> void:
-	var owned: Array = []
-	for k in MUT_KINDS:
-		if k in prog.tumor_mutations:
-			owned.append(k)
-	var key := ",".join(owned)
-	if key == _mut_key:
-		return
-	_mut_key = key
-	for k in MUT_KINDS:
-		mut_hands.call("set_mutation", k, k in owned)
-	var use_mut := not owned.is_empty()
-	var r2: Node3D = mut_hands.call("rig")
-	mut_hands.visible = use_mut
-	m.hands_rig.visible = not use_mut
-	_attach_to_rig(r2 if use_mut else m.hands_rig)
+	var all: Array = prog.all_mutations()
+	var key := ",".join(all)
+	if key != _mut_key:
+		_mut_key = key
+		var owned: Array = []
+		for k in MUT_KINDS:
+			if k in all:
+				owned.append(k)
+		for k in MUT_KINDS:
+			mut_hands.call("set_mutation", k, k in owned)
+		var r2: Node3D = mut_hands.call("rig")
+		# hair mutations reshape both rigs; tumor parts need the second rig
+		mut_hands.call("apply_all", [m.hands_rig, r2], all)
+		var use_mut := not owned.is_empty()
+		mut_hands.visible = true
+		r2.visible = use_mut
+		m.hands_rig.visible = not use_mut
+		_attach_to_rig(r2 if use_mut else m.hands_rig)
+	# M27: the trunk tip twitches toward a tumor within 10 m
+	if "M27" in all:
+		var dir := Vector3.ZERO
+		var cam: Camera3D = m.player.camera
+		var best := FPProgression.TRUNK_RADIUS
+		for t in m.tumor_nodes:
+			if is_instance_valid(t) and t.visible:
+				var d: float = cam.global_position.distance_to(t.global_position)
+				if d < best:
+					best = d
+					dir = cam.global_transform.basis.inverse() * (t.global_position - cam.global_position).normalized()
+		mut_hands.call("set_trunk_target", dir)
 
 ## Mirrors hands state onto the mutation rig while it is the visible one.
 func _physics_process(_d: float) -> void:

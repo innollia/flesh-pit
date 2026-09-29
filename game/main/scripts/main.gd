@@ -82,6 +82,7 @@ var drawing_nodes: Array[Node3D] = []
 var mirror: FPMirror
 var ending: FPEnding
 var art_hookup: FPArtHookup
+var mutation_apply: FPMutationApply
 var rest_points: Array[Vector3] = []
 var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
@@ -239,6 +240,10 @@ func _ready() -> void:
     art_hookup.name = "ArtHookup"
     add_child(art_hookup)
     art_hookup.setup(self)
+    mutation_apply = FPMutationApply.new()
+    mutation_apply.name = "MutationApply"
+    add_child(mutation_apply)
+    mutation_apply.setup(self)
 
     _setup_environment()
     _build_ui()
@@ -572,6 +577,8 @@ func step_world(delta: float) -> void:
     for b in barrier_field.get_barriers():
         if not b.is_broken():
             blockers.append(Vector4(b.position.x, b.position.y, b.position.z, b.radius))
+    if mutation_apply != null:
+        blockers.append_array(mutation_apply.extra_regen_blockers())
     terrain.regen_blockers = blockers
     barrier_field.pressure_scale = BARRIER_PRESSURE * _regen_scale(player.global_position)
     terrain.regenerate_all(delta, player.global_position, BODY_PROTECT_RADIUS)
@@ -588,7 +595,7 @@ func step_world(delta: float) -> void:
 
 func _look_hit() -> Dictionary:
     var ray: Array = player.get_look_ray()
-    var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * REACH)
+    var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * progression.reach())
     q.exclude = [player.get_rid()]
     return get_world_3d().direct_space_state.intersect_ray(q)
 
@@ -949,7 +956,7 @@ func cycle_tool() -> void:
 
 ## Carry mode: torn flesh piles up in the hand for the blender.
 func toggle_carry() -> void:
-    if not progression.owns("blender") and not carry_mode:
+    if not carry_mode and ((not progression.owns("blender") and not progression.can_lift_without_blender()) or not progression.right_hand_can_carry()):
         return
     carry_mode = not carry_mode
     chewer.stomach = null if carry_mode else stomach
@@ -1051,7 +1058,7 @@ func eat_tumor() -> bool:
     var t := _nearest_tumor(1.2)
     if t == null:
         return false
-    progression.tumors.eat(String(t.get_meta("kind")), FPProgression.TUMOR_EAT_POINTS)
+    progression.eat_tumor_kind(String(t.get_meta("kind")))
     t.visible = false
     taken_tumor_spots.append(int(t.get_meta("spot")))
     return true
@@ -1098,7 +1105,7 @@ func _on_nerve_disturbed(at: Vector3) -> void:
 ## 0..1: how close a crush death is. Rises over CRUSH_TIME while boxed in,
 ## falls back when the player frees themselves.
 func crush_progress() -> float:
-    return clampf(_crush_t / CRUSH_TIME, 0.0, 1.0)
+    return clampf(_crush_t / progression.crush_time(), 0.0, 1.0)
 
 func _step_hazards(delta: float) -> void:
     if restroom.contains(player.global_position) or FPWorldFeatures.in_container(player.global_position, rest_points):
@@ -1119,7 +1126,7 @@ func _step_hazards(delta: float) -> void:
     else:
         _crush_t = maxf(0.0, _crush_t - delta * 2.0)
     # crush is never instant: it creeps in over CRUSH_TIME while boxed in
-    if _crush_t >= CRUSH_TIME:
+    if _crush_t >= progression.crush_time():
         die("crush")
     elif hazard.health <= 0.0:
         die("tissue")
@@ -1128,7 +1135,7 @@ func _step_hazards(delta: float) -> void:
 func is_trapped() -> bool:
     var p := player.global_position
     for d in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK, Vector3.UP, Vector3.DOWN]:
-        if terrain.density_at(p + d * (BODY_PROTECT_RADIUS + 0.35)) < CRUSH_BLOCK:
+        if terrain.density_at(p + d * (BODY_PROTECT_RADIUS + progression.body_radius())) < CRUSH_BLOCK:
             return false
     return true
 
