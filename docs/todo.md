@@ -9,12 +9,12 @@
 - [ ] Decide whether the canary has any secondary biome-finding role or remains dedicated to return-route danger.
 - [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
 - [ ] Tune how much continuous tissue / biome drift can misalign old tunnels and the restroom approach without making navigation feel arbitrary.
-- [ ] Define how death-drop recovery works when the marker preserves only the last known location but the tissue can move afterward.
-- [ ] Tune the regeneration-slowing tool: coverage, duration, placement limits, and slowdown strength.
+- [ ] Define how death-drop recovery remains fair when the marker preserves only the last known location and dropped belongings can keep drifting indefinitely with tissue movement.
+- [ ] Tune the regeneration-slowing tool: coverage, simultaneous installation cap, relocation/recovery rules, and slowdown strength.
 - [ ] Design tool progression across the already accepted roles: portable blender, tissue-specific tools, route/return tools, and regeneration-control tools.
-- [ ] Define portable blender handling: how much loose flesh can be visibly held in the hands before blending, how batching works, and how much stomach efficiency it grants.
-- [ ] Define mutation-choice contents and option count; presentation is tied to vomiting at the restroom, with the UI appearing beside the toilet.
-- [ ] Decide what vomiting outside the restroom does after the overfill-triggered vomit button appears.
+- [ ] Define portable blender handling: how much loose flesh can be visibly held in the hands before blending, how batching works, how much stomach efficiency it grants, and which one-handed actions remain available while carrying flesh.
+- [ ] Define mutation-choice weighting and option count based on the tissue types eaten during the excursion.
+- [ ] Tune the lethal outside-restroom vomiting sequence: trigger timing, hardening speed, visual readability, and death timing.
 - [ ] Brainstorm progression content/events for the clean white restroom.
 - [ ] Decide whether cancer/tumor codex completion grants any practical benefit or stays purely collectible.
 - [ ] Tune normal stomach capacity, overfill slowdown, visible flesh buildup, and overflow-bar growth against flesh-regeneration speed.
