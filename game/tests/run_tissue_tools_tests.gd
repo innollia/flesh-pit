@@ -216,6 +216,11 @@ func _main_tests(m) -> void:
 	for i in range(120):
 		tools.chew_at(mem, mem, Vector3(1, 0, 0), 1.0 / 60.0)
 	_assert(m.terrain.density_at(mem) >= d0 - 0.001 and tools.membrane_refusals > 0, "W10 bare hands cannot tear membrane")
+	# T6 vertical jaw is a TUMOR mutation (not bought): bare hands must grab membrane
+	prog.tumor_mutations.append("T6")
+	_assert(tools.can_grab_at(mem) and tools.tissue_opts().get("split_jaw", false), "T6 tumor jaw lets bare hands grab membrane")
+	prog.tumor_mutations.erase("T6")
+	_assert(not tools.can_grab_at(mem), "without T6 bare hands cannot grab membrane again")
 	prog.grant_item("knife")
 	_assert(m.equip_tool("knife"), "W10 the knife is equipped")
 	var torn := [0]

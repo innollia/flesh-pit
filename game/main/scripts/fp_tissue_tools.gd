@@ -51,9 +51,14 @@ func _init(main: Node3D) -> void:
 func tissue_opts() -> Dictionary:
 	var o := {}
 	var prog = m.progression
-	if prog == null or not prog.has_method("purchased_mutations"):
+	if prog == null:
 		return o
-	var owned: Array = prog.purchased_mutations()
+	# all_mutations() = bought + tumor (T1-T7); purchased_mutations() misses tumors
+	var owned: Array = []
+	if prog.has_method("all_mutations"):
+		owned = prog.all_mutations()
+	elif prog.has_method("purchased_mutations"):
+		owned = prog.purchased_mutations()
 	for id in owned:
 		var s := String(id).to_lower()
 		if s.begins_with("m08") or s.contains("web"):
