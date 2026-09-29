@@ -16,6 +16,7 @@ var terrain: FDKTerrainField
 var stomach: FDKStomach
 var chewer: FDKChewer
 var player: FDKFirstPersonController
+var hands_rig: FDKHandsRig
 
 ## Mutation is a simple accumulating counter for now; presentation (hand
 ## appearance, footstep sound change) is TODO per docs/todo.md.
@@ -58,7 +59,7 @@ func _ready() -> void:
 	chewer.cell_torn.connect(_on_cell_torn)
 	add_child(chewer)
 
-	var hands_rig: FDKHandsRig = player.hands_rig
+	hands_rig = player.hands_rig
 	chewer.chew_progress.connect(hands_rig.animate_chew)
 
 func _process(delta: float) -> void:
@@ -77,8 +78,12 @@ func _process(delta: float) -> void:
 			chewer.process_chew(delta)
 		else:
 			chewer.stop()
+			if hands_rig != null:
+				hands_rig.reset_chew()
 	else:
 		chewer.stop()
+		if hands_rig != null:
+			hands_rig.reset_chew()
 
 	terrain.regenerate_all(delta, player.global_position, 2.0)
 
@@ -89,7 +94,9 @@ func _process(delta: float) -> void:
 		stomach.vomit()
 
 func _on_cell_torn(_world_pos: Vector3) -> void:
-	pass # hook for chew sound/particles later
+	if hands_rig != null:
+		hands_rig.notify_tear()
+	# also a hook for chew sound/particles later
 
 func _on_vomited(_amount: float) -> void:
 	mutation_progress += 1.0

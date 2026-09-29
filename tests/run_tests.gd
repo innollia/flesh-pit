@@ -14,6 +14,8 @@ func _init() -> void:
 	_run_terrain_tests()
 	_run_stomach_tests()
 	_run_chewer_tests()
+	# Hand rig / hand mesh / hand animation is frontend scope (owned by
+	# another model per 형님's 2026-09-29 scope split) and is not tested here.
 	print("--- %d passed, %d failed ---" % [_passed, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -90,6 +92,7 @@ func _run_stomach_tests() -> void:
 	_assert(stomach.fill == 60.0, "stomach: add_flesh accumulates")
 	_assert(not stomach.is_overfull(), "stomach: under capacity is not overfull")
 	_assert(stomach.chew_time_multiplier() == 1.0, "stomach: no slowdown under capacity")
+	_assert(is_equal_approx(stomach.fill_ratio(), 0.6), "stomach: fill_ratio scales by capacity (got %f)" % stomach.fill_ratio())
 
 	stomach.add_flesh(65.0) # total 125, 25 into the 50-wide overfill band
 	_assert(stomach.is_overfull(), "stomach: over capacity is overfull")
@@ -127,14 +130,40 @@ func _run_chewer_tests() -> void:
 	chewer.stomach = stomach
 	chewer.config = stomach_config
 
+	_chewer_grab_count = 0
+	_chewer_tear_count = 0
+	_chewer_release_count = 0
+	chewer.grab_started.connect(_on_test_grab_started)
+	chewer.cell_torn.connect(_on_test_cell_torn)
+	chewer.released.connect(_on_test_released)
+
 	chewer.try_start(Vector3(0, 0, 0))
 	_assert(chewer.is_chewing(), "chewer: try_start begins chewing")
+	_assert(_chewer_grab_count == 1, "chewer: try_start emits grab_started once (got %d)" % _chewer_grab_count)
 
 	chewer.process_chew(0.2)
 	_assert(stomach.fill == 0.0, "chewer: no flesh gained before chew time elapses")
 
 	chewer.process_chew(0.4) # total 0.6s > base_chew_time 0.5s at multiplier 1.0
 	_assert(stomach.fill == 4.0, "chewer: cell_torn adds flesh_per_cell once chew completes (got %f)" % stomach.fill)
+	_assert(_chewer_tear_count == 1, "chewer: cell_torn emitted once on tear completion (got %d)" % _chewer_tear_count)
 
 	chewer.stop()
 	_assert(not chewer.is_chewing(), "chewer: stop() ends chewing")
+	_assert(_chewer_release_count == 1, "chewer: stop() emits released() once (got %d)" % _chewer_release_count)
+
+	chewer.stop() # calling stop again while already stopped must not re-emit released
+	_assert(_chewer_release_count == 1, "chewer: stop() is idempotent, no duplicate released() (got %d)" % _chewer_release_count)
+
+var _chewer_grab_count: int = 0
+var _chewer_tear_count: int = 0
+var _chewer_release_count: int = 0
+
+func _on_test_grab_started(_cell: Vector3i) -> void:
+	_chewer_grab_count += 1
+
+func _on_test_cell_torn(_pos: Vector3) -> void:
+	_chewer_tear_count += 1
+
+func _on_test_released() -> void:
+	_chewer_release_count += 1

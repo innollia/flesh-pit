@@ -11,6 +11,7 @@ var terrain: FDKTerrainField
 var stomach: FDKStomach
 var chewer: FDKChewer
 var player: FDKFirstPersonController
+var hands_rig: FDKHandsRig
 
 func _ready() -> void:
 	terrain = FDKTerrainField.new()
@@ -41,8 +42,9 @@ func _ready() -> void:
 	chewer.config = stomach_config
 	add_child(chewer)
 
-	var hands_rig: FDKHandsRig = player.hands_rig
+	hands_rig = player.hands_rig
 	chewer.chew_progress.connect(hands_rig.animate_chew)
+	chewer.cell_torn.connect(func(_p): hands_rig.notify_tear())
 
 func _process(delta: float) -> void:
 	if player == null or chewer == null:
@@ -60,7 +62,11 @@ func _process(delta: float) -> void:
 			chewer.process_chew(delta)
 		else:
 			chewer.stop()
+			if hands_rig != null:
+				hands_rig.reset_chew()
 	else:
 		chewer.stop()
+		if hands_rig != null:
+			hands_rig.reset_chew()
 
 	terrain.regenerate_all(delta, player.global_position, 2.0)

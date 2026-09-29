@@ -5,9 +5,20 @@ extends Node
 ## Call try_start(world_pos) each frame the eat input is held with a valid
 ## raycast hit, and stop() the frame it is released or the target changes.
 ## Reads FDKStomach to slow chewing down when overfull.
+##
+## Frontend contract: this is the full signal surface a hand-rig/animation
+## layer needs and should rely on instead of polling state:
+##   grab_started(target_cell)      -- a new cell was grabbed, curl closed from idle
+##   chew_progress(ratio, target_cell) -- 0..1 progress toward the current tear, every frame while chewing
+##   cell_torn(world_pos)           -- tear completed at world_pos (a.k.a. "tear")
+##   released()                     -- chewing stopped (input released or target lost), curl should relax to idle
+## No backend code here reads or assumes anything about hand meshes, hand
+## animation state, or visuals -- that is frontend scope.
 
+signal grab_started(target_cell: Vector3i)
 signal chew_progress(ratio: float, target_cell: Vector3i) ## ratio 0..1 within the current chew, for squeeze/stretch visuals
-signal cell_torn(world_pos: Vector3)
+signal cell_torn(world_pos: Vector3) ## a.k.a. "tear" in the frontend contract
+signal released()
 
 @export var terrain: FDKTerrainField
 @export var stomach: FDKStomach
@@ -19,7 +30,8 @@ var _target_local_cell: Vector3i
 var _elapsed: float = 0.0
 
 ## Begins or continues chewing at world_pos. Resets progress if the target
-## cell changed since the last call.
+## cell changed since the last call. Emits grab_started when a chew begins
+## or the target cell changes (a fresh grab).
 func try_start(world_pos: Vector3) -> void:
 	if terrain == null:
 		return
@@ -31,8 +43,13 @@ func try_start(world_pos: Vector3) -> void:
 		_target_chunk_coord = chunk_coord
 		_target_local_cell = local_cell
 		_elapsed = 0.0
+		grab_started.emit(local_cell)
 
+## Stops the current chew (input released, or raycast lost its target).
+## Emits released() exactly once per was-chewing -> stopped transition.
 func stop() -> void:
+	if _chewing:
+		released.emit()
 	_chewing = false
 	_elapsed = 0.0
 

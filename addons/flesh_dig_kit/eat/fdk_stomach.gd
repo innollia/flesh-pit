@@ -25,6 +25,18 @@ func vomit() -> float:
 	vomited.emit(amount)
 	return amount
 
+## Frontend contract: fill_ratio() and overfill_ratio() are the two numbers
+## a stomach-gauge visualization needs (see STATUS.md's frontend handoff
+## section for the full list). No backend code assumes any particular
+## gauge presentation.
+
+## 0.0 empty, 1.0 exactly at capacity, >1.0 while overfull (uncapped, so a
+## gauge can keep growing past the "comfortable" mark instead of clamping).
+func fill_ratio() -> float:
+	if config.capacity <= 0.0:
+		return 0.0
+	return fill / config.capacity
+
 ## 0.0 at/under capacity, 1.0 at capacity + overfill_capacity, clamped.
 func overfill_ratio() -> float:
 	if config.overfill_capacity <= 0.0:

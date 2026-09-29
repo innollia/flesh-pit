@@ -20,7 +20,8 @@ DIST_DIR = PROJECT_ROOT / "dist"
 def read_version() -> str:
     cfg = configparser.ConfigParser()
     cfg.read(KIT_DIR / "plugin.cfg", encoding="utf-8")
-    return cfg.get("plugin", "version", fallback="0.0.0")
+    raw = cfg.get("plugin", "version", fallback="0.0.0")
+    return raw.strip().strip('"')
 
 
 def main() -> int:
