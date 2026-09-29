@@ -105,7 +105,13 @@ Accepted navigation aids:
 - compass
 - canary
 
-Exact canary function is still open, but it belongs to the navigation/foreshadowing language rather than being random decoration.
+Biome-finding should use a **mixed information model**:
+- long-range information is vague rather than exact
+- the canary or another lightweight cue may indicate that something different exists in a broad direction, without acting like a GPS arrow
+- at close range, the tissue itself gives stronger readable precursors such as changes in color, texture, motion, sound, elasticity, embedded structures, or other biome-specific signals
+- the final route choice should still come from reading the flesh rather than following a perfect sensor
+
+The exact canary behavior is still open, but if it contributes to biome finding it should provide ambiguous long-range foreshadowing rather than exact destination tracking.
 
 The game must remain navigable despite player-made tunnels and flesh regeneration.
 
