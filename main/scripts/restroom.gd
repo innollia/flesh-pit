@@ -25,7 +25,8 @@ func _ready() -> void:
 func build() -> void:
     var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5)
     var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_fixture_128.png", 1.5, false, 0.35, 0.35)
-    _build_tiles(tile_mat)
+    var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.25, 0.45)
+    _build_tiles(tile_mat, floor_mat)
     _build_toilet(fixture_mat)
     _build_sink(fixture_mat)
     _build_door(fixture_mat)
@@ -35,7 +36,7 @@ func build() -> void:
 
 # --- tiles ------------------------------------------------------------------
 
-func _build_tiles(mat: Material) -> void:
+func _build_tiles(mat: Material, floor_mat: Material) -> void:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var grout := Color(0.52, 0.55, 0.58)
@@ -95,7 +96,10 @@ func _build_tiles(mat: Material) -> void:
     # skirting strip
     for w in [[Vector3(-h.x, 0, -h.z + 0.005), Vector3(2 * h.x, 0, 0), Vector3.BACK], [Vector3(-h.x + 0.005, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3.RIGHT], [Vector3(h.x - 0.005, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3.LEFT]]:
         _tile(st, w[0], w[1], Vector3(0, 0.08, 0), w[2], Color(0.82, 0.84, 0.86))
-    _add(st, mat, "Tiles")
+    var tiles := MeshInstance3D.new()
+    tiles.name = "Tiles"
+    tiles.mesh = _split_floor(st.commit() as ArrayMesh, mat, floor_mat)
+    add_child(tiles)
 
 func _tile_color(a: int, b: int, c: int, floor_tile: bool) -> Color:
     var hsh := FDKLowPoly.hash3(a, b, c)
@@ -134,6 +138,36 @@ func _add(st: SurfaceTool, mat: Material, node_name: String, parent: Node3D = nu
     mi.material_override = mat
     (parent if parent != null else self).add_child(mi)
     return mi
+
+
+## Splits a committed tile mesh into two surfaces by facing: up-facing
+## triangles (the floor) wear the floor texture, everything else the wall
+## texture. Planar UVs are generated per surface.
+func _split_floor(mesh: ArrayMesh, wall_mat: Material, floor_mat: Material) -> ArrayMesh:
+    var arr := mesh.surface_get_arrays(0)
+    var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+    var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+    var c: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+    var parts := [[PackedVector3Array(), PackedVector3Array(), PackedColorArray()], [PackedVector3Array(), PackedVector3Array(), PackedColorArray()]]
+    for i in range(0, v.size(), 3):
+        var is_floor := n[i].y > 0.9 and v[i].y < 0.1
+        var p: Array = parts[1 if is_floor else 0]
+        for k in range(3):
+            p[0].append(v[i + k])
+            p[1].append(n[i + k])
+            p[2].append(c[i + k] if c.size() > i + k else Color.WHITE)
+    var tmp := ArrayMesh.new()
+    for p in parts:
+        var a := []
+        a.resize(Mesh.ARRAY_MAX)
+        a[Mesh.ARRAY_VERTEX] = p[0]
+        a[Mesh.ARRAY_NORMAL] = p[1]
+        a[Mesh.ARRAY_COLOR] = p[2]
+        tmp.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+    var out := FDKLowPoly.planar_uv_mesh(tmp, 2.2)
+    out.surface_set_material(0, wall_mat)
+    out.surface_set_material(1, floor_mat)
+    return out
 
 # --- toilet -----------------------------------------------------------------
 

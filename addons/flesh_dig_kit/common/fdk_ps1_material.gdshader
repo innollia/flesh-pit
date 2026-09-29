@@ -5,7 +5,11 @@ shader_type spatial;
 // here on purpose -- Godot's rasterizer is already perspective-correct, so
 // texture swim instead comes from vertex snapping moving the UVs slightly
 // every frame), no mipmaps, and a fixed few-lights look (single hard key).
-render_mode cull_back, diffuse_lambert, specular_toon, world_vertex_coords;
+// NOTE: no world_vertex_coords -- VERTEX stays in model space so
+// MODELVIEW_MATRIX below applies the model transform exactly once (with
+// world_vertex_coords it was applied twice, scattering camera-attached
+// meshes such as the hands).
+render_mode cull_back, diffuse_lambert, specular_toon;
 
 uniform sampler2D albedo_tex : filter_nearest, repeat_enable;
 uniform float uv_scale = 1.0;
@@ -22,6 +26,10 @@ uniform float wetness : hint_range(0.0, 1.0) = 0.4;
 uniform vec3 press_center = vec3(0.0, -9999.0, 0.0);
 uniform float press_amount = 0.0;
 uniform float press_radius = 0.75;
+// View-model squash (hands, stomach mass): pull vertices toward the eye along
+// their view ray so they keep screen position but never clip into nearby
+// walls. 1.0 = off (world geometry).
+uniform float viewmodel_squash = 1.0;
 
 varying float vfog;
 
@@ -40,7 +48,9 @@ void vertex() {
     // Classic PS1 vertex jitter: transform to clip space, snap XY to a
     // coarse integer grid in NDC, transform back. Done here (not as a
     // post shader) so it moves with the object like the real console did.
-    vec4 clip = PROJECTION_MATRIX * (MODELVIEW_MATRIX * vec4(pushed, 1.0));
+    vec4 view_pos = MODELVIEW_MATRIX * vec4(pushed, 1.0);
+    view_pos.xyz *= viewmodel_squash;
+    vec4 clip = PROJECTION_MATRIX * view_pos;
     if (clip.w > 0.0001) {
         vec2 ndc = clip.xy / clip.w;
         float grid = max(snap_precision, 8.0);

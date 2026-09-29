@@ -1,4 +1,4 @@
-extends Node3D
+﻿extends Node3D
 
 ## flesh-pit main scene: the white restroom, the concentric flesh world around
 ## it, and the eat -> fill -> vomit -> settle loop, built on the Flesh Dig Kit.
@@ -25,8 +25,10 @@ const MONEY_PER_FLESH := 12.0
 const WORLD_GEN_HALF := 10.0
 const SHELL_THICKNESS := 9.0
 ## Start beside the sink looking across the room: toilet and door both in view.
-const START_POS := Vector3(-1.12, 0.95, 0.35)
-const START_YAW := -PI * 0.5 - 0.05
+const START_POS := Vector3(-0.95, 0.95, 0.75)
+const START_YAW := -PI * 0.5 - 0.02
+## Look slightly down so the toilet (left) and the door (right) share the frame.
+const START_PITCH := -0.32
 
 @export var terrain_config: FDKTerrainConfig = FDKTerrainConfig.new()
 @export var stomach_config: FDKStomachConfig = FDKStomachConfig.new()
@@ -127,8 +129,8 @@ func _ready() -> void:
     player_lamp.name = "BodyGlow"
     player_lamp.light_color = Color(1.0, 0.8, 0.72)
     player_lamp.light_energy = 2.4
-    player_lamp.omni_range = 6.0
-    player_lamp.omni_attenuation = 0.9
+    player_lamp.omni_range = 9.0
+    player_lamp.omni_attenuation = 0.6
     player_lamp.position = Vector3(0.1, 0.15, 0.1)
     player.camera.add_child(player_lamp)
 
@@ -511,3 +513,4 @@ func deserialize(data: Dictionary) -> void:
     var pos: Array = data.get("player_position", [])
     if pos.size() == 3:
         player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+

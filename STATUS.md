@@ -277,6 +277,23 @@ assets\3d\textures\(shells, restroom)를 읽어 다운샘플 + 베이어 디더�
 run_tests 51/51, run_main_tests 26/26, save_load 3/3, 300프레임 0,
 재메싱 6.4-7.0ms.
 
+## 프론트엔드 5차-2 (2026-09-29, 부모가 b973737 캡처 확인 후)
+
+- 손 안 보임 원인: PS1 재질 셰이더가 render_mode world_vertex_coords와
+  MODELVIEW_MATRIX를 함께 써서 모델 변환이 두 번 적용됨 -> 카메라에 붙은 손이
+  공중 조각으로 흩어지고 화장실 설비도 엉뚱한 곳에 그려짐(벽 가운데 검은
+  조각). world_vertex_coords 제거. 손·살점·더미에 viewmodel_squash 0.18
+  (벽에 파묻히지 않게) 추가.
+- 첫 장면: 카메라가 1.85m로 높아 변기가 화면 아래 끝. START_POS/YAW/PITCH
+  조정 -> 변기(화면 x=182) + 문(x=929) 한 화면. 검은 픽셀 0.2%.
+- 터널: 손전등 범위 6->9m, 감쇠 0.9->0.6. 03 검은 비율 68%->16%.
+- 벽·바닥 텍스처 분리: 타일 메시를 윗면(바닥)/나머지로 두 표면 분리.
+- 손 보임 검사(tools/check_captures.py): capture.gd를 보통/`-- nohands`로
+  두 번 찍어 차이 픽셀을 셈. 01 3.7%, 03 4.5%, 05 12.4%, 08 4.2% 모두 기준 통과.
+- 문 틈 0.04m, 09_korean_fixtures, 물건 목록만: 4a9e4fa에서 반영, 유지 확인.
+- 검증: import 0, run_tests 51/51, run_main_tests 26/26, save_load 3/3,
+  300프레임 0, 재메싱 5.6ms.
+
 ## 다음 (백엔드)
 
 백엔드 목록(할 일 0-10 중 손·시각 관련 제외분)은 현재 완료 상태. 남는 것은

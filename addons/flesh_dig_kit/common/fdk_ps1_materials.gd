@@ -7,8 +7,8 @@ extends RefCounted
 
 static var _cache: Dictionary = {}
 
-static func get_material(tex_path: String, uv_scale: float = 1.0, use_vertex_color: bool = false, wetness: float = 0.4, roughness: float = 0.6) -> ShaderMaterial:
-    var key := "%s|%.3f|%s|%.2f|%.2f" % [tex_path, uv_scale, use_vertex_color, wetness, roughness]
+static func get_material(tex_path: String, uv_scale: float = 1.0, use_vertex_color: bool = false, wetness: float = 0.4, roughness: float = 0.6, viewmodel_squash: float = 1.0) -> ShaderMaterial:
+    var key := "%s|%.3f|%s|%.2f|%.2f|%.2f" % [tex_path, uv_scale, use_vertex_color, wetness, roughness, viewmodel_squash]
     if _cache.has(key):
         return _cache[key]
     var m := ShaderMaterial.new()
@@ -19,6 +19,7 @@ static func get_material(tex_path: String, uv_scale: float = 1.0, use_vertex_col
     m.set_shader_parameter("use_vertex_color", use_vertex_color)
     m.set_shader_parameter("wetness", wetness)
     m.set_shader_parameter("roughness_value", roughness)
+    m.set_shader_parameter("viewmodel_squash", viewmodel_squash)
     var settings := FDKPs1Settings.active
     m.set_shader_parameter("snap_precision", settings.vertex_snap_precision if settings.enabled else 100000.0)
     m.set_shader_parameter("fog_distance", settings.fog_distance)
