@@ -1,0 +1,24 @@
+[gd_scene load_steps=4 format=3 uid="uid://fdkplayerscene01"]
+
+[ext_resource type="Script" path="res://addons/flesh_dig_kit/player/fdk_first_person_controller.gd" id="1"]
+[ext_resource type="Script" path="res://addons/flesh_dig_kit/player/fdk_hands_rig.gd" id="2"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.35
+height = 1.8
+
+[node name="FDKFirstPersonController" type="CharacterBody3D"]
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="CameraPivot" type="Node3D" parent="."]
+position = Vector3(0, 0.9, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+current = true
+fov = 75.0
+
+[node name="HandsRig" type="Node3D" parent="CameraPivot/Camera3D"]
+script = ExtResource("2")
