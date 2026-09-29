@@ -49,13 +49,15 @@ Single entry point for progress and validation. Updated after every step.
   frames without crashing, clean stderr.
 - remesh benchmark (tests/measure_remesh.gd): chunk_size=16, cell_size=0.5
   -> average 5.9ms/remesh (budget 8ms, PASS).
-- export_kit.py: wrote dist/flesh_dig_kit-0.1.0.zip (30 files). Extracted
-  into a scratch empty project with a minimal project.godot pointing at
-  addons/flesh_dig_kit/demo/fdk_demo.tscn as main_scene -- import/run
-  verification of the extracted zip is still pending (frontend scope work
-  interrupted this; backend half -- does the zip contain everything the
-  demo scene needs -- already confirmed by inspection of export_kit.py's
-  file list).
+- export_kit.py: wrote dist/flesh_dig_kit-0.1.0.zip (30 files). Verified
+  by extracting into a scratch empty project (minimal project.godot,
+  main_scene = addons/flesh_dig_kit/demo/fdk_demo.tscn): import exits 0
+  with no errors, and a 200-frame headless run of the demo scene completes
+  without crashing. Confirms the kit is genuinely self-contained.
+- save/load integration test (tests/run_save_load.gd): dig + partial
+  stomach fill -> serialize() -> mutate further -> deserialize() ->
+  confirms stomach.fill and terrain density are restored to the saved
+  snapshot, not the further-mutated state. 3/3 passed.
 
 ## 프론트엔드 인계 (Frontend handoff)
 
@@ -136,11 +138,11 @@ Single entry point for progress and validation. Updated after every step.
 6. 캡처 5장 (기존 `tools/capture.gd`의 4스테이지 + 손 클로즈업 1장 추가,
    판정은 프론트엔드가 함).
 
-## 다음 (백엔드, 계속)
+## 다음 (백엔드)
 
-- 저장/불러오기 통합 테스트 (main.gd의 serialize/deserialize 라운드트립).
-- export_kit.py로 만든 zip을 빈 프로젝트에서 실제 import+실행까지 검증
-  (현재는 압축 해제와 project.godot 준비까지만 진행, 범위 변경으로 중단).
+백엔드 목록(할 일 0-10 중 손·시각 관련 제외분)은 현재 완료 상태. 남는 것은
+프론트엔드 작업이 진행되면서 나올 백엔드 쪽 추가 요청(예: 새 시그널, 새
+depth_at 기반 biome 헬퍼 등) 대응 대기.
 
 ## 보류 / 형님께 물을 것
 
