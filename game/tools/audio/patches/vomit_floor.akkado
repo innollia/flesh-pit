@@ -14,4 +14,4 @@ splat_env = (clamp((t - 0.52) / 0.01, 0, 1) * exp(neg(clamp(t - 0.52, 0, 100)) /
 splat = noise(0, 0, SEED) * splat_env * 1.2 |> lp(@, 650, 1.0)
 thud = sine(70 * PITCH) * splat_env * 0.5
 drib = noise(0, 0, SEED2) * gt(noise(40, 0, SEED), 0.55) * clamp((t - 0.7) / 0.1, 0, 1) * clamp((1.6 - t) / 0.4, 0, 1) * 0.5 |> bp(@, 900, 3.0)
-out((groan + retch + gush + splat + thud + drib) * 0.45)
+out((groan + retch + gush + splat + thud + drib) * 0.18)

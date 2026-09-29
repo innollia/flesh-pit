@@ -1,186 +1,186 @@
 {
-  "01_tear_flesh_v1.wav": {
-    "intent": "wet ripping of raw meat and flesh tearing",
-    "confusions": [
-      "fabric ripping",
-      "paper tearing",
-      "wind blowing",
-      "balloon deflating"
-    ]
-  },
-  "02_tear_fat_v1.wav": {
-    "intent": "squelchy wet mushing sound of fat tissue being torn",
-    "confusions": [
-      "wind blowing",
-      "mud squelching",
-      "slime squishing",
-      "snow crunching"
-    ]
-  },
-  "03_tear_nerve_v1.wav": {
-    "intent": "tight thin string snapping and twanging",
-    "confusions": [
-      "wind blowing",
-      "guitar string snapping",
-      "whip crack",
-      "rope snapping"
-    ]
-  },
-  "04_tear_membrane_v1.wav": {
-    "intent": "rubbery creak followed by a wet pop of membrane bursting",
-    "confusions": [
-      "balloon popping",
-      "door hinge creaking",
-      "plastic crackling"
-    ]
-  },
-  "05_swallow_v1.wav": {
-    "intent": "a person gulping and swallowing loudly",
-    "confusions": [
-      "wind blowing",
-      "water pouring",
-      "drain gurgling"
-    ]
-  },
-  "06_stomach_gurgle_v1.wav": {
-    "intent": "human stomach gurgling and rumbling",
-    "confusions": [
-      "cow mooing",
-      "frog croaking",
-      "pipe gurgling",
-      "water bubbling"
-    ]
-  },
-  "07_chew_loop_a.wav": {
-    "intent": "a person chewing wet food repeatedly",
-    "confusions": [
-      "footsteps on gravel",
-      "walking on sand",
-      "paper crumpling",
-      "shoes on snow"
-    ]
-  },
-  "08_chew_loop_b.wav": {
-    "intent": "crunchy cartilage chewing with occasional clicks",
-    "confusions": [
-      "footsteps on gravel",
-      "walking on sand",
-      "typewriter click",
-      "stick snapping"
-    ]
-  },
-  "09_chew_strain.wav": {
-    "intent": "a person straining and grunting while swallowing with nasal breathing",
-    "confusions": [
-      "cow mooing",
-      "cattle bellowing",
-      "pig grunting",
-      "dog whining"
-    ]
-  },
-  "10_vomit_toilet_v1.wav": {
-    "intent": "a person vomiting into a toilet with liquid splashing",
-    "confusions": [
-      "cat yowling",
-      "cat meowing",
-      "arcade laser gun shot",
-      "toilet flushing"
-    ]
-  },
-  "11_vomit_floor_v1.wav": {
-    "intent": "a person vomiting onto a hard floor with splatter",
-    "confusions": [
-      "arcade laser gun shot",
-      "cat yowling",
-      "water splashing on tile"
-    ]
-  },
-  "12_step_flesh_s1_v1.wav": {
-    "intent": "a single wet squelchy footstep on soft flesh",
-    "confusions": [
-      "shovel digging in sand",
-      "footstep on wet sand",
-      "mud squelch"
-    ]
-  },
-  "13_step_flesh_s3_v1.wav": {
-    "intent": "a heavy wet squelchy footstep on soft flesh with more weight",
-    "confusions": [
-      "shovel digging in sand",
-      "footstep on wet sand",
-      "mud squelch"
-    ]
-  },
-  "14_step_tile_s1_v1.wav": {
-    "intent": "a crisp clicking footstep on hard tile floor",
-    "confusions": [
-      "footstep on sand",
-      "shovel in sand",
-      "typewriter click"
-    ]
-  },
-  "15_step_tile_s3_v1.wav": {
-    "intent": "a heavy footstep on tile with wet flesh residue splatting",
-    "confusions": [
-      "footstep on sand",
-      "shovel in sand",
-      "mud squelch"
-    ]
-  },
-  "16_toilet_flush_v1.wav": {
-    "intent": "a toilet flushing with rushing water and swirling drain",
-    "confusions": [
-      "ocean waves",
-      "rain falling",
-      "shower running"
-    ]
-  },
-  "17_canary_warn_v1.wav": {
-    "intent": "a small bird chirping a warning call, pitched up",
-    "confusions": [
-      "arcade laser gun shot",
-      "alarm beep",
-      "electronic chirp"
-    ]
-  },
-  "18_canary_wrong_v1.wav": {
-    "intent": "a small bird making a strange distorted warble",
-    "confusions": [
-      "synthesizer glitch",
-      "machine malfunction beep",
-      "radio static"
-    ]
-  },
-  "19_amb_restroom.wav": {
-    "intent": "a restroom ambience with faint ventilation fan hum",
-    "confusions": [
-      "wind blowing",
-      "air conditioner hum",
-      "white noise"
-    ]
-  },
-  "20_amb_body_a.wav": {
-    "intent": "a low deep ambient rumble inside a body cavity, shallow shell",
-    "confusions": [
-      "wind blowing",
-      "ocean waves",
-      "engine idling"
-    ]
-  },
-  "21_amb_body_b.wav": {
-    "intent": "a low deep ambient rumble inside a body cavity, deep shell",
-    "confusions": [
-      "wind blowing",
-      "ocean waves",
-      "engine idling"
-    ]
-  },
-  "22_depth_marker_v1.wav": {
-    "intent": "a soft musical chime marking depth, with faint background noise",
-    "confusions": [
-      "ocean waves",
-      "wind blowing",
-      "alarm beep"
-    ]
-  }
+ "01_tear_flesh_v1.wav": {
+  "intent": "wet ripping of raw meat and flesh tearing",
+  "confusions": [
+   "fabric ripping",
+   "paper tearing",
+   "wind blowing",
+   "balloon deflating"
+  ]
+ },
+ "02_tear_fat_v1.wav": {
+  "intent": "squelchy wet mushing sound of fat tissue being torn",
+  "confusions": [
+   "wind blowing",
+   "mud squelching",
+   "slime squishing",
+   "snow crunching"
+  ]
+ },
+ "03_tear_nerve_v1.wav": {
+  "intent": "a whip-like crack of a nerve or cord snapping and twanging",
+  "confusions": [
+   "wind blowing",
+   "guitar string snapping",
+   "rope snapping",
+   "gunshot"
+  ]
+ },
+ "04_tear_membrane_v1.wav": {
+  "intent": "rubbery creak followed by a wet pop of membrane bursting",
+  "confusions": [
+   "balloon popping",
+   "door hinge creaking",
+   "plastic crackling"
+  ]
+ },
+ "05_swallow_v1.wav": {
+  "intent": "a person gulping and swallowing loudly",
+  "confusions": [
+   "wind blowing",
+   "water pouring",
+   "drain gurgling"
+  ]
+ },
+ "06_stomach_gurgle_v1.wav": {
+  "intent": "human stomach gurgling and rumbling",
+  "confusions": [
+   "cow mooing",
+   "frog croaking",
+   "pipe gurgling",
+   "water bubbling"
+  ]
+ },
+ "07_chew_loop_a.wav": {
+  "intent": "a person chewing wet food repeatedly",
+  "confusions": [
+   "footsteps on gravel",
+   "walking on sand",
+   "paper crumpling",
+   "shoes on snow"
+  ]
+ },
+ "08_chew_loop_b.wav": {
+  "intent": "crunchy cartilage chewing with occasional clicks",
+  "confusions": [
+   "footsteps on gravel",
+   "walking on sand",
+   "typewriter click",
+   "stick snapping"
+  ]
+ },
+ "09_chew_strain.wav": {
+  "intent": "a person straining and grunting while swallowing with nasal breathing",
+  "confusions": [
+   "cow mooing",
+   "cattle bellowing",
+   "pig grunting",
+   "dog whining"
+  ]
+ },
+ "10_vomit_toilet_v1.wav": {
+  "intent": "a person vomiting into a toilet with liquid splashing",
+  "confusions": [
+   "cat yowling",
+   "cat meowing",
+   "arcade laser gun shot",
+   "toilet flushing"
+  ]
+ },
+ "11_vomit_floor_v1.wav": {
+  "intent": "a person vomiting onto a hard floor with splatter",
+  "confusions": [
+   "arcade laser gun shot",
+   "cat yowling",
+   "water splashing on tile"
+  ]
+ },
+ "12_step_flesh_s1_v1.wav": {
+  "intent": "a single wet squelchy footstep on soft flesh",
+  "confusions": [
+   "shovel digging in sand",
+   "footstep on wet sand",
+   "mud squelch"
+  ]
+ },
+ "13_step_flesh_s3_v1.wav": {
+  "intent": "a heavy wet squelchy footstep on soft flesh with more weight",
+  "confusions": [
+   "shovel digging in sand",
+   "footstep on wet sand",
+   "mud squelch"
+  ]
+ },
+ "14_step_tile_s1_v1.wav": {
+  "intent": "a crisp clicking footstep on hard tile floor",
+  "confusions": [
+   "footstep on sand",
+   "shovel in sand",
+   "typewriter click"
+  ]
+ },
+ "15_step_tile_s3_v1.wav": {
+  "intent": "a heavy footstep on tile with wet flesh residue splatting",
+  "confusions": [
+   "footstep on sand",
+   "shovel in sand",
+   "mud squelch"
+  ]
+ },
+ "16_toilet_flush_v1.wav": {
+  "intent": "a toilet flushing with rushing water and swirling drain",
+  "confusions": [
+   "ocean waves",
+   "rain falling",
+   "shower running"
+  ]
+ },
+ "17_canary_warn_v1.wav": {
+  "intent": "a small bird chirping a warning call, pitched up",
+  "confusions": [
+   "arcade laser gun shot",
+   "alarm beep",
+   "electronic chirp"
+  ]
+ },
+ "18_canary_wrong_v1.wav": {
+  "intent": "a small bird making a strange distorted warble",
+  "confusions": [
+   "synthesizer glitch",
+   "machine malfunction beep",
+   "radio static"
+  ]
+ },
+ "19_amb_restroom.wav": {
+  "intent": "a restroom ambience with faint ventilation fan hum",
+  "confusions": [
+   "wind blowing",
+   "air conditioner hum",
+   "white noise"
+  ]
+ },
+ "20_amb_body_a.wav": {
+  "intent": "a low deep ambient rumble inside a body cavity, shallow shell",
+  "confusions": [
+   "wind blowing",
+   "ocean waves",
+   "engine idling"
+  ]
+ },
+ "21_amb_body_b.wav": {
+  "intent": "a low deep ambient rumble inside a body cavity, deep shell",
+  "confusions": [
+   "wind blowing",
+   "ocean waves",
+   "engine idling"
+  ]
+ },
+ "22_depth_marker_v1.wav": {
+  "intent": "a soft musical chime marking depth, with faint background noise",
+  "confusions": [
+   "ocean waves",
+   "wind blowing",
+   "alarm beep"
+  ]
+ }
 }

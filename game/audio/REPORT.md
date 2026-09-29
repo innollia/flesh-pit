@@ -6,17 +6,17 @@ PASS 183 / FAIL 0
 
 | item | result | detail |
 |---|---|---|
-| tear_flesh (variations) | PASS | spread 0.63 LU, min distance 7.34 dB |
+| tear_flesh (variations) | PASS | spread 0.69 LU, min distance 7.35 dB |
 | tear_fat (variations) | PASS | spread 0.14 LU, min distance 6.77 dB |
-| tear_nerve (variations) | PASS | spread 0.05 LU, min distance 7.58 dB |
+| tear_nerve (variations) | PASS | spread 0.06 LU, min distance 7.64 dB |
 | tear_membrane (variations) | PASS | spread 0.49 LU, min distance 7.53 dB |
 | swallow (variations) | PASS | spread 0.20 LU, min distance 7.48 dB |
 | stomach_gurgle (variations) | PASS | spread 0.46 LU, min distance 5.23 dB |
-| vomit_toilet (variations) | PASS | spread 0.40 LU, min distance 7.76 dB |
-| vomit_floor (variations) | PASS | spread 0.18 LU, min distance 6.64 dB |
-| step_flesh_s1 (variations) | PASS | spread 0.50 LU, min distance 6.99 dB |
+| vomit_toilet (variations) | PASS | spread 0.41 LU, min distance 7.76 dB |
+| vomit_floor (variations) | PASS | spread 0.18 LU, min distance 6.63 dB |
+| step_flesh_s1 (variations) | PASS | spread 0.47 LU, min distance 6.99 dB |
 | step_flesh_s2 (variations) | PASS | spread 0.22 LU, min distance 7.10 dB |
-| step_flesh_s3 (variations) | PASS | spread 0.40 LU, min distance 4.96 dB |
+| step_flesh_s3 (variations) | PASS | spread 0.37 LU, min distance 4.88 dB |
 | step_tile_s1 (variations) | PASS | spread 0.27 LU, min distance 7.48 dB |
 | step_tile_s2 (variations) | PASS | spread 0.14 LU, min distance 6.89 dB |
 | step_tile_s3 (variations) | PASS | spread 0.14 LU, min distance 7.11 dB |
@@ -32,18 +32,18 @@ PASS 183 / FAIL 0
 | canary_wrong (variations) | PASS | spread 0.18 LU, min distance 7.26 dB |
 | depth_marker (variations) | PASS | spread 0.19 LU, min distance 2.27 dB |
 | shell_transition (variations) | PASS | spread 0.06 LU, min distance 6.44 dB |
-| audio/sfx/tear_flesh_v1.wav | PASS | LUFS -18.4, TP -1.5, DC 0.0000 |
-| audio/sfx/tear_flesh_v2.wav | PASS | LUFS -18.4, TP -1.5, DC 0.0000 |
-| audio/sfx/tear_flesh_v3.wav | PASS | LUFS -18.7, TP -1.5, DC 0.0000 |
-| audio/sfx/tear_flesh_v4.wav | PASS | LUFS -18.7, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_flesh_v1.wav | PASS | LUFS -19.6, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_flesh_v2.wav | PASS | LUFS -19.6, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_flesh_v3.wav | PASS | LUFS -19.6, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_flesh_v4.wav | PASS | LUFS -19.7, TP -1.5, DC 0.0000 |
 | audio/sfx/tear_fat_v1.wav | PASS | LUFS -18.5, TP -1.5, DC -0.0000 |
 | audio/sfx/tear_fat_v2.wav | PASS | LUFS -18.4, TP -1.5, DC 0.0000 |
 | audio/sfx/tear_fat_v3.wav | PASS | LUFS -18.6, TP -1.5, DC 0.0000 |
 | audio/sfx/tear_fat_v4.wav | PASS | LUFS -19.0, TP -1.5, DC 0.0000 |
-| audio/sfx/tear_nerve_v1.wav | PASS | LUFS -21.9, TP -1.5, DC -0.0000 |
-| audio/sfx/tear_nerve_v2.wav | PASS | LUFS -20.0, TP -1.5, DC 0.0000 |
-| audio/sfx/tear_nerve_v3.wav | PASS | LUFS -18.9, TP -1.5, DC 0.0000 |
-| audio/sfx/tear_nerve_v4.wav | PASS | LUFS -20.1, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_nerve_v1.wav | PASS | LUFS -32.7, TP -1.5, DC -0.0000 |
+| audio/sfx/tear_nerve_v2.wav | PASS | LUFS -32.6, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_nerve_v3.wav | PASS | LUFS -32.7, TP -1.5, DC 0.0000 |
+| audio/sfx/tear_nerve_v4.wav | PASS | LUFS -32.7, TP -1.5, DC 0.0000 |
 | audio/sfx/tear_membrane_v1.wav | PASS | LUFS -18.0, TP -5.6, DC 0.0000 |
 | audio/sfx/tear_membrane_v2.wav | PASS | LUFS -18.0, TP -5.4, DC 0.0000 |
 | audio/sfx/tear_membrane_v3.wav | PASS | LUFS -18.0, TP -6.1, DC 0.0000 |
@@ -56,26 +56,26 @@ PASS 183 / FAIL 0
 | audio/sfx/stomach_gurgle_v2.wav | PASS | LUFS -22.0, TP -10.3, DC 0.0000 |
 | audio/sfx/stomach_gurgle_v3.wav | PASS | LUFS -22.0, TP -9.7, DC 0.0000 |
 | audio/sfx/stomach_gurgle_v4.wav | PASS | LUFS -22.0, TP -10.3, DC 0.0000 |
-| audio/sfx/vomit_toilet_v1.wav | PASS | LUFS -19.4, TP -1.5, DC -0.0000 |
-| audio/sfx/vomit_toilet_v2.wav | PASS | LUFS -20.8, TP -1.5, DC -0.0000 |
-| audio/sfx/vomit_toilet_v3.wav | PASS | LUFS -20.2, TP -1.5, DC -0.0000 |
-| audio/sfx/vomit_toilet_v4.wav | PASS | LUFS -19.3, TP -1.5, DC -0.0000 |
-| audio/sfx/vomit_floor_v1.wav | PASS | LUFS -15.3, TP -1.5, DC 0.0000 |
-| audio/sfx/vomit_floor_v2.wav | PASS | LUFS -15.5, TP -1.5, DC 0.0000 |
-| audio/sfx/vomit_floor_v3.wav | PASS | LUFS -15.7, TP -1.5, DC 0.0000 |
-| audio/sfx/vomit_floor_v4.wav | PASS | LUFS -16.3, TP -1.5, DC 0.0000 |
-| audio/sfx/step_flesh_s1_v1.wav | PASS | LUFS -24.0, TP -7.5, DC -0.0000 |
-| audio/sfx/step_flesh_s1_v2.wav | PASS | LUFS -24.0, TP -7.6, DC -0.0000 |
-| audio/sfx/step_flesh_s1_v3.wav | PASS | LUFS -24.0, TP -7.1, DC 0.0000 |
-| audio/sfx/step_flesh_s1_v4.wav | PASS | LUFS -24.0, TP -8.9, DC 0.0000 |
+| audio/sfx/vomit_toilet_v1.wav | PASS | LUFS -16.6, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_toilet_v2.wav | PASS | LUFS -16.6, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_toilet_v3.wav | PASS | LUFS -16.6, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_toilet_v4.wav | PASS | LUFS -16.6, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_floor_v1.wav | PASS | LUFS -18.3, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_floor_v2.wav | PASS | LUFS -18.4, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_floor_v3.wav | PASS | LUFS -18.3, TP -1.5, DC -0.0000 |
+| audio/sfx/vomit_floor_v4.wav | PASS | LUFS -18.3, TP -1.5, DC -0.0000 |
+| audio/sfx/step_flesh_s1_v1.wav | PASS | LUFS -24.0, TP -6.1, DC -0.0000 |
+| audio/sfx/step_flesh_s1_v2.wav | PASS | LUFS -24.0, TP -5.9, DC -0.0000 |
+| audio/sfx/step_flesh_s1_v3.wav | PASS | LUFS -24.0, TP -6.1, DC -0.0000 |
+| audio/sfx/step_flesh_s1_v4.wav | PASS | LUFS -24.0, TP -6.0, DC -0.0000 |
 | audio/sfx/step_flesh_s2_v1.wav | PASS | LUFS -22.0, TP -6.3, DC -0.0000 |
 | audio/sfx/step_flesh_s2_v2.wav | PASS | LUFS -22.0, TP -6.3, DC 0.0000 |
 | audio/sfx/step_flesh_s2_v3.wav | PASS | LUFS -22.0, TP -6.5, DC 0.0000 |
 | audio/sfx/step_flesh_s2_v4.wav | PASS | LUFS -22.0, TP -5.5, DC -0.0000 |
-| audio/sfx/step_flesh_s3_v1.wav | PASS | LUFS -20.0, TP -3.9, DC -0.0000 |
-| audio/sfx/step_flesh_s3_v2.wav | PASS | LUFS -20.0, TP -4.0, DC -0.0000 |
-| audio/sfx/step_flesh_s3_v3.wav | PASS | LUFS -20.0, TP -4.2, DC -0.0000 |
-| audio/sfx/step_flesh_s3_v4.wav | PASS | LUFS -20.0, TP -3.9, DC 0.0000 |
+| audio/sfx/step_flesh_s3_v1.wav | PASS | LUFS -23.2, TP -1.5, DC -0.0000 |
+| audio/sfx/step_flesh_s3_v2.wav | PASS | LUFS -22.8, TP -1.5, DC -0.0000 |
+| audio/sfx/step_flesh_s3_v3.wav | PASS | LUFS -22.9, TP -1.5, DC 0.0000 |
+| audio/sfx/step_flesh_s3_v4.wav | PASS | LUFS -23.0, TP -1.5, DC 0.0000 |
 | audio/sfx/step_tile_s1_v1.wav | PASS | LUFS -24.0, TP -3.8, DC 0.0000 |
 | audio/sfx/step_tile_s1_v2.wav | PASS | LUFS -24.0, TP -3.1, DC 0.0000 |
 | audio/sfx/step_tile_s1_v3.wav | PASS | LUFS -24.0, TP -3.4, DC 0.0000 |
@@ -84,10 +84,10 @@ PASS 183 / FAIL 0
 | audio/sfx/step_tile_s2_v2.wav | PASS | LUFS -22.0, TP -2.4, DC 0.0000 |
 | audio/sfx/step_tile_s2_v3.wav | PASS | LUFS -22.0, TP -2.8, DC 0.0000 |
 | audio/sfx/step_tile_s2_v4.wav | PASS | LUFS -22.0, TP -2.8, DC 0.0000 |
-| audio/sfx/step_tile_s3_v1.wav | PASS | LUFS -22.4, TP -1.5, DC -0.0000 |
-| audio/sfx/step_tile_s3_v2.wav | PASS | LUFS -22.4, TP -1.5, DC 0.0000 |
-| audio/sfx/step_tile_s3_v3.wav | PASS | LUFS -22.3, TP -1.5, DC -0.0000 |
-| audio/sfx/step_tile_s3_v4.wav | PASS | LUFS -22.4, TP -1.5, DC -0.0000 |
+| audio/sfx/step_tile_s3_v1.wav | PASS | LUFS -24.3, TP -1.5, DC 0.0000 |
+| audio/sfx/step_tile_s3_v2.wav | PASS | LUFS -24.3, TP -1.5, DC 0.0000 |
+| audio/sfx/step_tile_s3_v3.wav | PASS | LUFS -24.3, TP -1.5, DC 0.0000 |
+| audio/sfx/step_tile_s3_v4.wav | PASS | LUFS -24.3, TP -1.5, DC 0.0000 |
 | audio/sfx/regen_creak_v1.wav | PASS | LUFS -26.0, TP -11.8, DC 0.0000 |
 | audio/sfx/regen_creak_v2.wav | PASS | LUFS -26.0, TP -11.6, DC -0.0000 |
 | audio/sfx/regen_creak_v3.wav | PASS | LUFS -26.0, TP -12.0, DC 0.0000 |
@@ -136,56 +136,56 @@ PASS 183 / FAIL 0
 | audio/sfx/shell_transition_v2.wav | PASS | LUFS -22.0, TP -6.4, DC -0.0000 |
 | audio/sfx/shell_transition_v3.wav | PASS | LUFS -22.0, TP -6.7, DC -0.0000 |
 | audio/sfx/shell_transition_v4.wav | PASS | LUFS -22.0, TP -7.0, DC 0.0000 |
-| audio/loops/chew_loop_a.wav | PASS | LUFS -18.2, TP -1.5, DC 0.0000, wrap 2.01, corr 1.00, tick -4.3 dB |
-| audio/loops/chew_loop_b.wav | PASS | LUFS -18.3, TP -1.5, DC 0.0000, wrap 0.65, corr 1.00, tick -2.9 dB |
-| audio/loops/chew_strain.wav | PASS | LUFS -24.0, TP -7.1, DC -0.0000, wrap 2.51, corr 1.00, tick -5.8 dB |
+| audio/loops/chew_loop_a.wav | PASS | LUFS -21.4, TP -1.5, DC -0.0000, wrap 1.01, corr 1.00, tick -1.9 dB |
+| audio/loops/chew_loop_b.wav | PASS | LUFS -20.2, TP -1.5, DC -0.0000, wrap 0.22, corr 1.00, tick -3.2 dB |
+| audio/loops/chew_strain.wav | PASS | LUFS -27.3, TP -1.5, DC -0.0000, wrap 0.51, corr 1.00, tick -3.9 dB |
 | audio/loops/amb_restroom.wav | PASS | LUFS -34.0, TP -25.0, DC -0.0000, wrap 0.63, corr -0.00, tick -inf dB |
-| audio/loops/amb_body_a.wav | PASS | LUFS -19.0, TP -7.1, DC 0.0000, wrap 1.79, corr -0.00, tick -11.1 dB |
-| audio/loops/amb_body_b.wav | PASS | LUFS -18.0, TP -6.5, DC 0.0000, wrap 0.06, corr -0.00, tick -10.1 dB |
+| audio/loops/amb_body_a.wav | PASS | LUFS -19.0, TP -8.0, DC -0.0000, wrap 1.58, corr -0.01, tick -11.7 dB |
+| audio/loops/amb_body_b.wav | PASS | LUFS -18.0, TP -6.8, DC -0.0000, wrap 0.01, corr 0.01, tick -11.5 dB |
 | audio/loops/amb_heart_a.wav | PASS | LUFS -33.0, TP -19.8, DC -0.0000, wrap 0.00, corr 1.00, tick -1.3 dB |
 | audio/loops/amb_heart_b.wav | PASS | LUFS -31.0, TP -18.6, DC -0.0000, wrap 0.00, corr 1.00, tick -1.3 dB |
-| mask tear_flesh over body_a | PASS | worst margin 7.9 dB (min -10) |
-| mask tear_flesh over body_b | PASS | worst margin 7.9 dB (min -10) |
-| mask tear_fat over body_a | PASS | worst margin 8.1 dB (min -10) |
-| mask tear_fat over body_b | PASS | worst margin 7.3 dB (min -10) |
-| mask tear_nerve over body_a | PASS | worst margin 11.6 dB (min -10) |
-| mask tear_nerve over body_b | PASS | worst margin 13.1 dB (min -10) |
-| mask tear_membrane over body_a | PASS | worst margin 11.0 dB (min -10) |
-| mask swallow over body_a | PASS | worst margin 3.8 dB (min -10) |
-| mask swallow over body_b | PASS | worst margin 3.1 dB (min -10) |
-| mask stomach_gurgle over body_a | PASS | worst margin 8.3 dB (min -10) |
-| mask stomach_gurgle over body_b | PASS | worst margin 7.9 dB (min -10) |
-| mask vomit_toilet over restroom | PASS | worst margin 29.0 dB (min -10) |
-| mask vomit_floor over body_a | PASS | worst margin 11.4 dB (min -10) |
-| mask vomit_floor over restroom | PASS | worst margin 26.9 dB (min -10) |
-| mask step_flesh_s1 over body_a | PASS | worst margin -9.0 dB (min -10) |
-| mask step_flesh_s2 over body_a | PASS | worst margin -0.4 dB (min -10) |
-| mask step_flesh_s3 over body_b | PASS | worst margin -5.1 dB (min -10) |
+| mask tear_flesh over body_a | PASS | worst margin 8.2 dB (min -10) |
+| mask tear_flesh over body_b | PASS | worst margin 6.6 dB (min -10) |
+| mask tear_fat over body_a | PASS | worst margin 19.6 dB (min -10) |
+| mask tear_fat over body_b | PASS | worst margin 8.8 dB (min -10) |
+| mask tear_nerve over body_a | PASS | worst margin -3.7 dB (min -10) |
+| mask tear_nerve over body_b | PASS | worst margin -3.9 dB (min -10) |
+| mask tear_membrane over body_a | PASS | worst margin 8.8 dB (min -10) |
+| mask swallow over body_a | PASS | worst margin 13.9 dB (min -10) |
+| mask swallow over body_b | PASS | worst margin 6.6 dB (min -10) |
+| mask stomach_gurgle over body_a | PASS | worst margin 13.0 dB (min -10) |
+| mask stomach_gurgle over body_b | PASS | worst margin 8.4 dB (min -10) |
+| mask vomit_toilet over restroom | PASS | worst margin 37.0 dB (min -10) |
+| mask vomit_floor over body_a | PASS | worst margin 11.6 dB (min -10) |
+| mask vomit_floor over restroom | PASS | worst margin 37.7 dB (min -10) |
+| mask step_flesh_s1 over body_a | PASS | worst margin -3.7 dB (min -10) |
+| mask step_flesh_s2 over body_a | PASS | worst margin 7.7 dB (min -10) |
+| mask step_flesh_s3 over body_b | PASS | worst margin 10.4 dB (min -10) |
 | mask step_tile_s1 over restroom | PASS | worst margin 12.0 dB (min -10) |
 | mask step_tile_s2 over restroom | PASS | worst margin 13.7 dB (min -10) |
-| mask step_tile_s3 over restroom | PASS | worst margin 7.3 dB (min -10) |
-| mask regen_creak over body_a | PASS | worst margin 7.7 dB (min -10) |
-| mask regen_creak over body_b | PASS | worst margin 9.8 dB (min -10) |
-| mask nerve_twitch over body_a | PASS | worst margin 7.0 dB (min -10) |
-| mask nerve_twitch over body_b | PASS | worst margin 6.0 dB (min -10) |
+| mask step_tile_s3 over restroom | PASS | worst margin -5.3 dB (min -10) |
+| mask regen_creak over body_a | PASS | worst margin 3.5 dB (min -10) |
+| mask regen_creak over body_b | PASS | worst margin 3.8 dB (min -10) |
+| mask nerve_twitch over body_a | PASS | worst margin 17.4 dB (min -10) |
+| mask nerve_twitch over body_b | PASS | worst margin 7.1 dB (min -10) |
 | mask door_open over restroom | PASS | worst margin 30.9 dB (min -10) |
 | mask door_close over restroom | PASS | worst margin 16.7 dB (min -10) |
 | mask toilet_flush over restroom | PASS | worst margin 29.7 dB (min -10) |
 | mask coin_drop over restroom | PASS | worst margin 33.3 dB (min -10) |
 | mask tank_lid over restroom | PASS | worst margin 29.9 dB (min -10) |
-| mask canary_chirp over body_a | PASS | worst margin 21.2 dB (min -10) |
-| mask canary_chirp over body_b | PASS | worst margin 21.6 dB (min -10) |
-| mask canary_warn over body_a | PASS | worst margin 23.4 dB (min -10) |
-| mask canary_warn over body_b | PASS | worst margin 24.0 dB (min -10) |
-| mask canary_wrong over body_a | PASS | worst margin 20.3 dB (min -10) |
-| mask canary_wrong over body_b | PASS | worst margin 21.3 dB (min -10) |
-| mask depth_marker over body_a | PASS | worst margin 5.3 dB (min -10) |
-| mask depth_marker over body_b | PASS | worst margin 3.7 dB (min -10) |
-| mask shell_transition over body_a | PASS | worst margin 5.4 dB (min -10) |
-| mask shell_transition over body_b | PASS | worst margin 4.8 dB (min -10) |
-| mask chew_loop_a over body_a | PASS | worst margin 8.8 dB (min -10) |
-| mask chew_loop_a over body_b | PASS | worst margin 6.8 dB (min -10) |
-| mask chew_loop_b over body_a | PASS | worst margin 8.0 dB (min -10) |
-| mask chew_loop_b over body_b | PASS | worst margin 6.1 dB (min -10) |
-| mask chew_strain over body_a | PASS | worst margin 7.6 dB (min -10) |
-| mask chew_strain over body_b | PASS | worst margin 8.5 dB (min -10) |
+| mask canary_chirp over body_a | PASS | worst margin 15.9 dB (min -10) |
+| mask canary_chirp over body_b | PASS | worst margin 15.1 dB (min -10) |
+| mask canary_warn over body_a | PASS | worst margin 18.1 dB (min -10) |
+| mask canary_warn over body_b | PASS | worst margin 17.6 dB (min -10) |
+| mask canary_wrong over body_a | PASS | worst margin 14.9 dB (min -10) |
+| mask canary_wrong over body_b | PASS | worst margin 14.8 dB (min -10) |
+| mask depth_marker over body_a | PASS | worst margin 18.1 dB (min -10) |
+| mask depth_marker over body_b | PASS | worst margin 6.1 dB (min -10) |
+| mask shell_transition over body_a | PASS | worst margin 12.5 dB (min -10) |
+| mask shell_transition over body_b | PASS | worst margin 5.8 dB (min -10) |
+| mask chew_loop_a over body_a | PASS | worst margin -2.5 dB (min -10) |
+| mask chew_loop_a over body_b | PASS | worst margin -3.0 dB (min -10) |
+| mask chew_loop_b over body_a | PASS | worst margin -5.1 dB (min -10) |
+| mask chew_loop_b over body_b | PASS | worst margin -7.4 dB (min -10) |
+| mask chew_strain over body_a | PASS | worst margin -6.3 dB (min -10) |
+| mask chew_strain over body_b | PASS | worst margin -6.3 dB (min -10) |

@@ -11,4 +11,4 @@ crack = noise(0, 0, SEED) * (clamp((t - 0.16) / 0.002, 0, 1) * exp(neg(clamp(t -
 twang_env = (clamp((t - 0.16) / 0.003, 0, 1) * exp(neg(clamp(t - 0.16, 0, 100)) / 0.2))
 twang = saw(190 * PITCH * (1 - clamp(t - 0.16, 0, 1) * 0.6)) * twang_env * 0.6 |> bp(@, 850 * PITCH, 5.0)
 wet = noise(0, 0, SEED2) * gt(noise(110, 0, SEED2), 0.5) * twang_env * 0.35 |> lp(@, 2000, 0.8)
-out((whine + crack + twang + wet) * 0.45)
+out((whine + crack + twang + wet) * 0.05)

@@ -14,4 +14,4 @@ splash_env = clamp((t - 0.55) / 0.02, 0, 1) * exp(neg(clamp(t - 0.55, 0, 100)) /
 splash = noise(0, 0, SEED) * gt(noise(90, 0, SEED2), 0.2) * splash_env * 0.9 |> bp(@, 2600 * PITCH, 1.5)
 bubble = noise(0, 0, SEED2) * splash_env * 0.5 |> bp(@, 700 + sine(11) * 250, 8.0)
 dry = groan + retch + gush + splash + bubble
-out((dry |> delay(@, 0.085, 0.35, 1.0, 0.35)) * 0.45)
+out((dry |> delay(@, 0.085, 0.35, 1.0, 0.35)) * 0.18)

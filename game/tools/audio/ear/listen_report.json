@@ -1,0 +1,1464 @@
+{
+  "01_tear_flesh_v1.wav": {
+    "intent": "wet ripping of raw meat and flesh tearing",
+    "clap_ranking": [
+      {
+        "score": 0.7096338272094727,
+        "label": "wet ripping of raw meat and flesh tearing"
+      },
+      {
+        "score": 0.13243652880191803,
+        "label": "balloon deflating"
+      },
+      {
+        "score": 0.08439479023218155,
+        "label": "paper tearing"
+      },
+      {
+        "score": 0.05869500711560249,
+        "label": "fabric ripping"
+      },
+      {
+        "score": 0.01483982801437378,
+        "label": "wind blowing"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.18824927508831024,
+        "label": "Speech"
+      },
+      {
+        "score": 0.11279352754354477,
+        "label": "Breaking"
+      },
+      {
+        "score": 0.05955049395561218,
+        "label": "Slam"
+      },
+      {
+        "score": 0.057394176721572876,
+        "label": "Crack"
+      },
+      {
+        "score": 0.044188305735588074,
+        "label": "Whack, thwack"
+      },
+      {
+        "score": 0.04034290462732315,
+        "label": "Smash, crash"
+      },
+      {
+        "score": 0.0300284530967474,
+        "label": "Tap"
+      },
+      {
+        "score": 0.021509282290935516,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.020488083362579346,
+        "label": "Music"
+      },
+      {
+        "score": 0.01785823330283165,
+        "label": "Skateboard"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "02_tear_fat_v1.wav": {
+    "intent": "squelchy wet mushing sound of fat tissue being torn",
+    "clap_ranking": [
+      {
+        "score": 0.46601203083992004,
+        "label": "squelchy wet mushing sound of fat tissue being torn"
+      },
+      {
+        "score": 0.2549442946910858,
+        "label": "mud squelching"
+      },
+      {
+        "score": 0.16374218463897705,
+        "label": "slime squishing"
+      },
+      {
+        "score": 0.1139405369758606,
+        "label": "wind blowing"
+      },
+      {
+        "score": 0.00136099336668849,
+        "label": "snow crunching"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.493425190448761,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.10271608829498291,
+        "label": "Music"
+      },
+      {
+        "score": 0.05670647323131561,
+        "label": "Scratch"
+      },
+      {
+        "score": 0.04920263960957527,
+        "label": "Boing"
+      },
+      {
+        "score": 0.041946008801460266,
+        "label": "Bang"
+      },
+      {
+        "score": 0.02858145907521248,
+        "label": "Whoosh, swoosh, swish"
+      },
+      {
+        "score": 0.01644470915198326,
+        "label": "Speech"
+      },
+      {
+        "score": 0.01566033437848091,
+        "label": "Whack, thwack"
+      },
+      {
+        "score": 0.014847786165773869,
+        "label": "Smash, crash"
+      },
+      {
+        "score": 0.011332177557051182,
+        "label": "Scrape"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "03_tear_nerve_v1.wav": {
+    "intent": "a whip-like crack of a nerve or cord snapping and twanging",
+    "clap_ranking": [
+      {
+        "score": 0.5633962750434875,
+        "label": "a whip-like crack of a nerve or cord snapping and twanging"
+      },
+      {
+        "score": 0.356411874294281,
+        "label": "rope snapping"
+      },
+      {
+        "score": 0.0711251050233841,
+        "label": "gunshot"
+      },
+      {
+        "score": 0.008053080178797245,
+        "label": "guitar string snapping"
+      },
+      {
+        "score": 0.0010136833880096674,
+        "label": "wind blowing"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.4595675468444824,
+        "label": "Whip"
+      },
+      {
+        "score": 0.16495542228221893,
+        "label": "Slap, smack"
+      },
+      {
+        "score": 0.050135258585214615,
+        "label": "Clapping"
+      },
+      {
+        "score": 0.033964063972234726,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.03034062683582306,
+        "label": "Whack, thwack"
+      },
+      {
+        "score": 0.01598389819264412,
+        "label": "Finger snapping"
+      },
+      {
+        "score": 0.014355309307575226,
+        "label": "Speech"
+      },
+      {
+        "score": 0.013806208968162537,
+        "label": "Chop"
+      },
+      {
+        "score": 0.010530374944210052,
+        "label": "Whoosh, swoosh, swish"
+      },
+      {
+        "score": 0.009835952892899513,
+        "label": "Music"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "04_tear_membrane_v1.wav": {
+    "intent": "rubbery creak followed by a wet pop of membrane bursting",
+    "clap_ranking": [
+      {
+        "score": 0.9751484394073486,
+        "label": "rubbery creak followed by a wet pop of membrane bursting"
+      },
+      {
+        "score": 0.013749527744948864,
+        "label": "plastic crackling"
+      },
+      {
+        "score": 0.008610740303993225,
+        "label": "balloon popping"
+      },
+      {
+        "score": 0.002491249702870846,
+        "label": "door hinge creaking"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.2526397407054901,
+        "label": "Music"
+      },
+      {
+        "score": 0.08822708576917648,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.07429325580596924,
+        "label": "Speech"
+      },
+      {
+        "score": 0.03973974660038948,
+        "label": "Water"
+      },
+      {
+        "score": 0.03599126264452934,
+        "label": "Rain on surface"
+      },
+      {
+        "score": 0.031340111047029495,
+        "label": "Slosh"
+      },
+      {
+        "score": 0.025774018839001656,
+        "label": "Rain"
+      },
+      {
+        "score": 0.024051720276474953,
+        "label": "Crackle"
+      },
+      {
+        "score": 0.019617902114987373,
+        "label": "Scratch"
+      },
+      {
+        "score": 0.016575424000620842,
+        "label": "Electronic music"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "05_swallow_v1.wav": {
+    "intent": "a person gulping and swallowing loudly",
+    "clap_ranking": [
+      {
+        "score": 0.9198946952819824,
+        "label": "a person gulping and swallowing loudly"
+      },
+      {
+        "score": 0.04140039160847664,
+        "label": "wind blowing"
+      },
+      {
+        "score": 0.038561176508665085,
+        "label": "drain gurgling"
+      },
+      {
+        "score": 0.00014378756168298423,
+        "label": "water pouring"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.19362418353557587,
+        "label": "Heart sounds, heartbeat"
+      },
+      {
+        "score": 0.13872471451759338,
+        "label": "Heart murmur"
+      },
+      {
+        "score": 0.06905923783779144,
+        "label": "Throbbing"
+      },
+      {
+        "score": 0.0452754907310009,
+        "label": "Stomach rumble"
+      },
+      {
+        "score": 0.04134075343608856,
+        "label": "Speech"
+      },
+      {
+        "score": 0.04125949740409851,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.03982383757829666,
+        "label": "Hum"
+      },
+      {
+        "score": 0.03635089471936226,
+        "label": "Explosion"
+      },
+      {
+        "score": 0.03263562545180321,
+        "label": "Music"
+      },
+      {
+        "score": 0.01884395070374012,
+        "label": "Gunshot, gunfire"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "06_stomach_gurgle_v1.wav": {
+    "intent": "human stomach gurgling and rumbling",
+    "clap_ranking": [
+      {
+        "score": 0.9800992608070374,
+        "label": "human stomach gurgling and rumbling"
+      },
+      {
+        "score": 0.01011926680803299,
+        "label": "pipe gurgling"
+      },
+      {
+        "score": 0.008329372853040695,
+        "label": "water bubbling"
+      },
+      {
+        "score": 0.0012290740851312876,
+        "label": "cow mooing"
+      },
+      {
+        "score": 0.00022289760818239301,
+        "label": "frog croaking"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.3163412809371948,
+        "label": "Stomach rumble"
+      },
+      {
+        "score": 0.14198504388332367,
+        "label": "Music"
+      },
+      {
+        "score": 0.09369342029094696,
+        "label": "Throbbing"
+      },
+      {
+        "score": 0.0753260925412178,
+        "label": "Hum"
+      },
+      {
+        "score": 0.04887056723237038,
+        "label": "Speech"
+      },
+      {
+        "score": 0.04467735067009926,
+        "label": "Rumble"
+      },
+      {
+        "score": 0.03730519115924835,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.01885201409459114,
+        "label": "Electronic music"
+      },
+      {
+        "score": 0.013207972049713135,
+        "label": "Musical instrument"
+      },
+      {
+        "score": 0.012229672633111477,
+        "label": "Heart sounds, heartbeat"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "07_chew_loop_a.wav": {
+    "intent": "a person chewing wet food repeatedly",
+    "clap_ranking": [
+      {
+        "score": 0.7264332175254822,
+        "label": "a person chewing wet food repeatedly"
+      },
+      {
+        "score": 0.18463948369026184,
+        "label": "footsteps on gravel"
+      },
+      {
+        "score": 0.08367081731557846,
+        "label": "paper crumpling"
+      },
+      {
+        "score": 0.004549248609691858,
+        "label": "walking on sand"
+      },
+      {
+        "score": 0.0007072376902215183,
+        "label": "shoes on snow"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.7916391491889954,
+        "label": "Crack"
+      },
+      {
+        "score": 0.07302054017782211,
+        "label": "Crushing"
+      },
+      {
+        "score": 0.04112895205616951,
+        "label": "Crunch"
+      },
+      {
+        "score": 0.017375478520989418,
+        "label": "Crumpling, crinkling"
+      },
+      {
+        "score": 0.015562771819531918,
+        "label": "Crackle"
+      },
+      {
+        "score": 0.01045484934002161,
+        "label": "Tearing"
+      },
+      {
+        "score": 0.007686015218496323,
+        "label": "Breaking"
+      },
+      {
+        "score": 0.006108142901211977,
+        "label": "Inside, small room"
+      },
+      {
+        "score": 0.003529519774019718,
+        "label": "Speech"
+      },
+      {
+        "score": 0.003415866522118449,
+        "label": "Sound effect"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "08_chew_loop_b.wav": {
+    "intent": "crunchy cartilage chewing with occasional clicks",
+    "clap_ranking": [
+      {
+        "score": 0.6803048849105835,
+        "label": "crunchy cartilage chewing with occasional clicks"
+      },
+      {
+        "score": 0.18954139947891235,
+        "label": "footsteps on gravel"
+      },
+      {
+        "score": 0.0695151537656784,
+        "label": "stick snapping"
+      },
+      {
+        "score": 0.06015128269791603,
+        "label": "walking on sand"
+      },
+      {
+        "score": 0.00048729695845395327,
+        "label": "typewriter click"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.5328059196472168,
+        "label": "Crunch"
+      },
+      {
+        "score": 0.12352192401885986,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.06007419526576996,
+        "label": "Speech"
+      },
+      {
+        "score": 0.04428008198738098,
+        "label": "Scrape"
+      },
+      {
+        "score": 0.022714953869581223,
+        "label": "Biting"
+      },
+      {
+        "score": 0.018301164731383324,
+        "label": "Inside, small room"
+      },
+      {
+        "score": 0.017208006232976913,
+        "label": "Tearing"
+      },
+      {
+        "score": 0.01290230080485344,
+        "label": "Crack"
+      },
+      {
+        "score": 0.01210086327046156,
+        "label": "Grunt"
+      },
+      {
+        "score": 0.009699882939457893,
+        "label": "Fart"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "09_chew_strain.wav": {
+    "intent": "a person straining and grunting while swallowing with nasal breathing",
+    "clap_ranking": [
+      {
+        "score": 0.6791690587997437,
+        "label": "a person straining and grunting while swallowing with nasal breathing"
+      },
+      {
+        "score": 0.3149535357952118,
+        "label": "pig grunting"
+      },
+      {
+        "score": 0.0033895454835146666,
+        "label": "dog whining"
+      },
+      {
+        "score": 0.0018513298127800226,
+        "label": "cow mooing"
+      },
+      {
+        "score": 0.0006364944856613874,
+        "label": "cattle bellowing"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.17382477223873138,
+        "label": "Speech"
+      },
+      {
+        "score": 0.15874969959259033,
+        "label": "Biting"
+      },
+      {
+        "score": 0.10508203506469727,
+        "label": "Crunch"
+      },
+      {
+        "score": 0.04667750000953674,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.042894091457128525,
+        "label": "Chewing, mastication"
+      },
+      {
+        "score": 0.042409613728523254,
+        "label": "Inside, small room"
+      },
+      {
+        "score": 0.029067296534776688,
+        "label": "Stomach rumble"
+      },
+      {
+        "score": 0.025391673669219017,
+        "label": "Computer keyboard"
+      },
+      {
+        "score": 0.024509795010089874,
+        "label": "Scissors"
+      },
+      {
+        "score": 0.023909136652946472,
+        "label": "Grunt"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "10_vomit_toilet_v1.wav": {
+    "intent": "a person vomiting into a toilet with liquid splashing",
+    "clap_ranking": [
+      {
+        "score": 0.9184776544570923,
+        "label": "a person vomiting into a toilet with liquid splashing"
+      },
+      {
+        "score": 0.07943106442689896,
+        "label": "arcade laser gun shot"
+      },
+      {
+        "score": 0.0010516507318243384,
+        "label": "cat meowing"
+      },
+      {
+        "score": 0.0008463465492241085,
+        "label": "cat yowling"
+      },
+      {
+        "score": 0.00019320103456266224,
+        "label": "toilet flushing"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.3918127417564392,
+        "label": "Fart"
+      },
+      {
+        "score": 0.11616700142621994,
+        "label": "Speech"
+      },
+      {
+        "score": 0.07309947162866592,
+        "label": "Fly, housefly"
+      },
+      {
+        "score": 0.07056918740272522,
+        "label": "Throat clearing"
+      },
+      {
+        "score": 0.05824002996087074,
+        "label": "Grunt"
+      },
+      {
+        "score": 0.05683838948607445,
+        "label": "Insect"
+      },
+      {
+        "score": 0.02954486757516861,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.019938336685299873,
+        "label": "Mosquito"
+      },
+      {
+        "score": 0.019359923899173737,
+        "label": "Bee, wasp, etc."
+      },
+      {
+        "score": 0.013600156642496586,
+        "label": "Frog"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "11_vomit_floor_v1.wav": {
+    "intent": "a person vomiting onto a hard floor with splatter",
+    "clap_ranking": [
+      {
+        "score": 0.9993693232536316,
+        "label": "a person vomiting onto a hard floor with splatter"
+      },
+      {
+        "score": 0.0004622036940418184,
+        "label": "arcade laser gun shot"
+      },
+      {
+        "score": 0.00015418363909702748,
+        "label": "cat yowling"
+      },
+      {
+        "score": 1.4322942661237903e-05,
+        "label": "water splashing on tile"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.26148083806037903,
+        "label": "Grunt"
+      },
+      {
+        "score": 0.1953398585319519,
+        "label": "Speech"
+      },
+      {
+        "score": 0.11624526977539062,
+        "label": "Roar"
+      },
+      {
+        "score": 0.0501437745988369,
+        "label": "Groan"
+      },
+      {
+        "score": 0.049375105649232864,
+        "label": "Fart"
+      },
+      {
+        "score": 0.044818487018346786,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.038628920912742615,
+        "label": "Animal"
+      },
+      {
+        "score": 0.020364457741379738,
+        "label": "Inside, small room"
+      },
+      {
+        "score": 0.01762339286506176,
+        "label": "Music"
+      },
+      {
+        "score": 0.015697287395596504,
+        "label": "Gasp"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "12_step_flesh_s1_v1.wav": {
+    "intent": "a single wet squelchy footstep on soft flesh",
+    "clap_ranking": [
+      {
+        "score": 0.5835195183753967,
+        "label": "a single wet squelchy footstep on soft flesh"
+      },
+      {
+        "score": 0.34001320600509644,
+        "label": "mud squelch"
+      },
+      {
+        "score": 0.0762539729475975,
+        "label": "footstep on wet sand"
+      },
+      {
+        "score": 0.0002133570669684559,
+        "label": "shovel digging in sand"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.09814497083425522,
+        "label": "Bird"
+      },
+      {
+        "score": 0.054398275911808014,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.05421263724565506,
+        "label": "Pigeon, dove"
+      },
+      {
+        "score": 0.052171263843774796,
+        "label": "Liquid"
+      },
+      {
+        "score": 0.04805748909711838,
+        "label": "Water"
+      },
+      {
+        "score": 0.04576587304472923,
+        "label": "Speech"
+      },
+      {
+        "score": 0.04183672368526459,
+        "label": "Bird vocalization, bird call, bird song"
+      },
+      {
+        "score": 0.03900866210460663,
+        "label": "Drip"
+      },
+      {
+        "score": 0.03568480536341667,
+        "label": "Gurgling"
+      },
+      {
+        "score": 0.03557411953806877,
+        "label": "Coo"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "13_step_flesh_s3_v1.wav": {
+    "intent": "a heavy wet squelchy footstep on soft flesh with more weight",
+    "clap_ranking": [
+      {
+        "score": 0.5072842836380005,
+        "label": "a heavy wet squelchy footstep on soft flesh with more weight"
+      },
+      {
+        "score": 0.40689975023269653,
+        "label": "mud squelch"
+      },
+      {
+        "score": 0.0855281725525856,
+        "label": "footstep on wet sand"
+      },
+      {
+        "score": 0.00028779322747141123,
+        "label": "shovel digging in sand"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.24788081645965576,
+        "label": "Breaking"
+      },
+      {
+        "score": 0.14644621312618256,
+        "label": "Crack"
+      },
+      {
+        "score": 0.08910725265741348,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.05236862972378731,
+        "label": "Speech"
+      },
+      {
+        "score": 0.029179148375988007,
+        "label": "Burst, pop"
+      },
+      {
+        "score": 0.025665953755378723,
+        "label": "Vehicle"
+      },
+      {
+        "score": 0.024545349180698395,
+        "label": "Thump, thud"
+      },
+      {
+        "score": 0.022569669410586357,
+        "label": "Slam"
+      },
+      {
+        "score": 0.022365203127264977,
+        "label": "Music"
+      },
+      {
+        "score": 0.02214864268898964,
+        "label": "Explosion"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "14_step_tile_s1_v1.wav": {
+    "intent": "a crisp clicking footstep on hard tile floor",
+    "clap_ranking": [
+      {
+        "score": 0.5490667819976807,
+        "label": "a crisp clicking footstep on hard tile floor"
+      },
+      {
+        "score": 0.29720959067344666,
+        "label": "footstep on sand"
+      },
+      {
+        "score": 0.08008740842342377,
+        "label": "shovel in sand"
+      },
+      {
+        "score": 0.07363620400428772,
+        "label": "typewriter click"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.2747041881084442,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.15345069766044617,
+        "label": "Crack"
+      },
+      {
+        "score": 0.08427634835243225,
+        "label": "Coin (dropping)"
+      },
+      {
+        "score": 0.07527198642492294,
+        "label": "Breaking"
+      },
+      {
+        "score": 0.04274332523345947,
+        "label": "Whack, thwack"
+      },
+      {
+        "score": 0.01909860409796238,
+        "label": "Speech"
+      },
+      {
+        "score": 0.015260063111782074,
+        "label": "Chop"
+      },
+      {
+        "score": 0.014857939444482327,
+        "label": "Smash, crash"
+      },
+      {
+        "score": 0.013445963151752949,
+        "label": "Crackle"
+      },
+      {
+        "score": 0.01144040934741497,
+        "label": "Grunt"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "15_step_tile_s3_v1.wav": {
+    "intent": "a heavy footstep on tile with wet flesh residue splatting",
+    "clap_ranking": [
+      {
+        "score": 0.5309948921203613,
+        "label": "a heavy footstep on tile with wet flesh residue splatting"
+      },
+      {
+        "score": 0.4564140737056732,
+        "label": "footstep on sand"
+      },
+      {
+        "score": 0.011073241010308266,
+        "label": "mud squelch"
+      },
+      {
+        "score": 0.001517814234830439,
+        "label": "shovel in sand"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.13115786015987396,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.08242003619670868,
+        "label": "Speech"
+      },
+      {
+        "score": 0.058934614062309265,
+        "label": "Bang"
+      },
+      {
+        "score": 0.041189298033714294,
+        "label": "Slam"
+      },
+      {
+        "score": 0.04056024178862572,
+        "label": "Tap"
+      },
+      {
+        "score": 0.03775978460907936,
+        "label": "Whack, thwack"
+      },
+      {
+        "score": 0.03748585283756256,
+        "label": "Walk, footsteps"
+      },
+      {
+        "score": 0.035129062831401825,
+        "label": "Thunk"
+      },
+      {
+        "score": 0.0300283320248127,
+        "label": "Clapping"
+      },
+      {
+        "score": 0.029528267681598663,
+        "label": "Thump, thud"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "16_toilet_flush_v1.wav": {
+    "intent": "a toilet flushing with rushing water and swirling drain",
+    "clap_ranking": [
+      {
+        "score": 0.8247109651565552,
+        "label": "a toilet flushing with rushing water and swirling drain"
+      },
+      {
+        "score": 0.06851852685213089,
+        "label": "shower running"
+      },
+      {
+        "score": 0.05406324937939644,
+        "label": "ocean waves"
+      },
+      {
+        "score": 0.05270730331540108,
+        "label": "rain falling"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.156818225979805,
+        "label": "Water"
+      },
+      {
+        "score": 0.12193910032510757,
+        "label": "Explosion"
+      },
+      {
+        "score": 0.09509870409965515,
+        "label": "Music"
+      },
+      {
+        "score": 0.08460984379053116,
+        "label": "Toilet flush"
+      },
+      {
+        "score": 0.05871557071805,
+        "label": "Speech"
+      },
+      {
+        "score": 0.04493708908557892,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.033262018114328384,
+        "label": "Burst, pop"
+      },
+      {
+        "score": 0.027577456086874008,
+        "label": "Water tap, faucet"
+      },
+      {
+        "score": 0.023585470393300056,
+        "label": "Sink (filling or washing)"
+      },
+      {
+        "score": 0.020041821524500847,
+        "label": "Eruption"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "17_canary_warn_v1.wav": {
+    "intent": "a small bird chirping a warning call, pitched up",
+    "clap_ranking": [
+      {
+        "score": 0.9448053240776062,
+        "label": "a small bird chirping a warning call, pitched up"
+      },
+      {
+        "score": 0.047687433660030365,
+        "label": "electronic chirp"
+      },
+      {
+        "score": 0.007335726171731949,
+        "label": "arcade laser gun shot"
+      },
+      {
+        "score": 0.00017158359696622938,
+        "label": "alarm beep"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.4045241177082062,
+        "label": "Chirp, tweet"
+      },
+      {
+        "score": 0.264317125082016,
+        "label": "Bird vocalization, bird call, bird song"
+      },
+      {
+        "score": 0.1679334193468094,
+        "label": "Bird"
+      },
+      {
+        "score": 0.026766764000058174,
+        "label": "Animal"
+      },
+      {
+        "score": 0.01952233351767063,
+        "label": "Owl"
+      },
+      {
+        "score": 0.011337836273014545,
+        "label": "Environmental noise"
+      },
+      {
+        "score": 0.006696679629385471,
+        "label": "Speech"
+      },
+      {
+        "score": 0.006403834093362093,
+        "label": "Music"
+      },
+      {
+        "score": 0.006035182159394026,
+        "label": "Mouse"
+      },
+      {
+        "score": 0.005823441781103611,
+        "label": "Insect"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "18_canary_wrong_v1.wav": {
+    "intent": "a small bird making a strange distorted warble",
+    "clap_ranking": [
+      {
+        "score": 0.999657392501831,
+        "label": "a small bird making a strange distorted warble"
+      },
+      {
+        "score": 0.0001623218267923221,
+        "label": "radio static"
+      },
+      {
+        "score": 9.82282726909034e-05,
+        "label": "machine malfunction beep"
+      },
+      {
+        "score": 8.215760317398235e-05,
+        "label": "synthesizer glitch"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.41634103655815125,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.12156089395284653,
+        "label": "Music"
+      },
+      {
+        "score": 0.0433444008231163,
+        "label": "Boing"
+      },
+      {
+        "score": 0.03368116542696953,
+        "label": "Theremin"
+      },
+      {
+        "score": 0.02567451074719429,
+        "label": "Animal"
+      },
+      {
+        "score": 0.019325416535139084,
+        "label": "Cat"
+      },
+      {
+        "score": 0.018640341237187386,
+        "label": "Domestic animals, pets"
+      },
+      {
+        "score": 0.017562005668878555,
+        "label": "Musical instrument"
+      },
+      {
+        "score": 0.017147382721304893,
+        "label": "Meow"
+      },
+      {
+        "score": 0.0108774583786726,
+        "label": "Opera"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  },
+  "19_amb_restroom.wav": {
+    "intent": "a restroom ambience with faint ventilation fan hum",
+    "clap_ranking": [
+      {
+        "score": 0.6020824313163757,
+        "label": "white noise"
+      },
+      {
+        "score": 0.27216097712516785,
+        "label": "air conditioner hum"
+      },
+      {
+        "score": 0.08453480154275894,
+        "label": "a restroom ambience with faint ventilation fan hum"
+      },
+      {
+        "score": 0.04122178629040718,
+        "label": "wind blowing"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.3743744492530823,
+        "label": "Static"
+      },
+      {
+        "score": 0.16813232004642487,
+        "label": "White noise"
+      },
+      {
+        "score": 0.10156509280204773,
+        "label": "Music"
+      },
+      {
+        "score": 0.029218027368187904,
+        "label": "Rustling leaves"
+      },
+      {
+        "score": 0.026574909687042236,
+        "label": "Electronic music"
+      },
+      {
+        "score": 0.0232221782207489,
+        "label": "Sine wave"
+      },
+      {
+        "score": 0.01922362670302391,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.017058968544006348,
+        "label": "Hum"
+      },
+      {
+        "score": 0.014793291687965393,
+        "label": "Pink noise"
+      },
+      {
+        "score": 0.01185368001461029,
+        "label": "Rustle"
+      }
+    ],
+    "intent_is_top": false,
+    "warn": true
+  },
+  "20_amb_body_a.wav": {
+    "intent": "a low deep ambient rumble inside a body cavity, shallow shell",
+    "clap_ranking": [
+      {
+        "score": 0.5603378415107727,
+        "label": "ocean waves"
+      },
+      {
+        "score": 0.43724095821380615,
+        "label": "wind blowing"
+      },
+      {
+        "score": 0.002068624598905444,
+        "label": "engine idling"
+      },
+      {
+        "score": 0.0003525498032104224,
+        "label": "a low deep ambient rumble inside a body cavity, shallow shell"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.18808524310588837,
+        "label": "Waves, surf"
+      },
+      {
+        "score": 0.1280861347913742,
+        "label": "Pink noise"
+      },
+      {
+        "score": 0.1262395679950714,
+        "label": "Ocean"
+      },
+      {
+        "score": 0.09489775449037552,
+        "label": "Waterfall"
+      },
+      {
+        "score": 0.06628807634115219,
+        "label": "Wind noise (microphone)"
+      },
+      {
+        "score": 0.06556007266044617,
+        "label": "Rustling leaves"
+      },
+      {
+        "score": 0.0564209409058094,
+        "label": "Wind"
+      },
+      {
+        "score": 0.040450986474752426,
+        "label": "Stream"
+      },
+      {
+        "score": 0.03010733239352703,
+        "label": "White noise"
+      },
+      {
+        "score": 0.02691148780286312,
+        "label": "Outside, rural or natural"
+      }
+    ],
+    "intent_is_top": false,
+    "warn": true
+  },
+  "21_amb_body_b.wav": {
+    "intent": "a low deep ambient rumble inside a body cavity, deep shell",
+    "clap_ranking": [
+      {
+        "score": 0.6603001952171326,
+        "label": "wind blowing"
+      },
+      {
+        "score": 0.2803892195224762,
+        "label": "ocean waves"
+      },
+      {
+        "score": 0.056510038673877716,
+        "label": "engine idling"
+      },
+      {
+        "score": 0.002800546120852232,
+        "label": "a low deep ambient rumble inside a body cavity, deep shell"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.11814349889755249,
+        "label": "Waves, surf"
+      },
+      {
+        "score": 0.11506608128547668,
+        "label": "Boat, Water vehicle"
+      },
+      {
+        "score": 0.09897804260253906,
+        "label": "Ocean"
+      },
+      {
+        "score": 0.07417545467615128,
+        "label": "Waterfall"
+      },
+      {
+        "score": 0.05468248948454857,
+        "label": "Wind noise (microphone)"
+      },
+      {
+        "score": 0.05332760512828827,
+        "label": "Vehicle"
+      },
+      {
+        "score": 0.04752599075436592,
+        "label": "White noise"
+      },
+      {
+        "score": 0.04675033688545227,
+        "label": "Motorboat, speedboat"
+      },
+      {
+        "score": 0.04624989628791809,
+        "label": "Pink noise"
+      },
+      {
+        "score": 0.03706849738955498,
+        "label": "Ship"
+      }
+    ],
+    "intent_is_top": false,
+    "warn": true
+  },
+  "22_depth_marker_v1.wav": {
+    "intent": "a soft musical chime marking depth, with faint background noise",
+    "clap_ranking": [
+      {
+        "score": 0.9841433763504028,
+        "label": "a soft musical chime marking depth, with faint background noise"
+      },
+      {
+        "score": 0.009986951015889645,
+        "label": "wind blowing"
+      },
+      {
+        "score": 0.004369792528450489,
+        "label": "alarm beep"
+      },
+      {
+        "score": 0.001499971142038703,
+        "label": "ocean waves"
+      }
+    ],
+    "audioset_top10": [
+      {
+        "score": 0.7615769505500793,
+        "label": "Bicycle bell"
+      },
+      {
+        "score": 0.05538266897201538,
+        "label": "Music"
+      },
+      {
+        "score": 0.039857469499111176,
+        "label": "Bell"
+      },
+      {
+        "score": 0.0374438613653183,
+        "label": "Sound effect"
+      },
+      {
+        "score": 0.026919778436422348,
+        "label": "Ding"
+      },
+      {
+        "score": 0.005831424612551928,
+        "label": "Speech"
+      },
+      {
+        "score": 0.004679029807448387,
+        "label": "Coin (dropping)"
+      },
+      {
+        "score": 0.003146825823932886,
+        "label": "Vehicle"
+      },
+      {
+        "score": 0.0023276943247765303,
+        "label": "Ping"
+      },
+      {
+        "score": 0.002224697731435299,
+        "label": "Clang"
+      }
+    ],
+    "intent_is_top": true,
+    "warn": false
+  }
+}

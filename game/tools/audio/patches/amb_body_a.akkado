@@ -1,11 +1,13 @@
 // flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
-// id: amb_body_a -- inside the first shells: a steady low pressure drone that slowly swells (0.125 Hz). No beat, no ticks:
+// id: amb_body_a -- inside the first shells: a low irregular wet gurgle/pressure bed, no steady engine-like drone.
 // the heart is amb_heart_a, digestion and creaks are random one-shots played by the kit.
 swell = (sine(0.125) + 1) * 0.5
-dr_l = saw(41) * (0.28 + swell * 0.10) |> lp(@, 210 + swell * 50, 0.8) |> hp(@, 36)
-dr_r = saw(41.125) * (0.28 + swell * 0.10) |> lp(@, 210 + swell * 50, 0.8) |> hp(@, 36)
-air_l = noise(0, 0, 601) * 0.26 |> lp(@, 480, 0.7) |> hp(@, 90)
-air_r = noise(0, 0, 607) * 0.26 |> lp(@, 480, 0.7) |> hp(@, 90)
-mid_l = noise(0, 0, 613) * (0.42 + swell * 0.10) |> bp(@, 420, 2.4)
-mid_r = noise(0, 0, 619) * (0.42 + swell * 0.10) |> bp(@, 420, 2.4)
-out(stereo(dr_l + air_l + mid_l, dr_r + air_r + mid_r))
+wob1 = (sine(0.041) + 1) * 0.5
+wob2 = (sine(0.067) + 1) * 0.5
+gurgle_l = noise(0, 0, 641) * gt(noise(3.1, 0, 643), 0.30 + wob1 * 0.15) * (0.30 + swell * 0.08) |> lp(@, 260 + wob1 * 60, 0.9) |> hp(@, 32)
+gurgle_r = noise(0, 0, 647) * gt(noise(2.7, 0, 653), 0.30 + wob2 * 0.15) * (0.30 + swell * 0.08) |> lp(@, 260 + wob2 * 60, 0.9) |> hp(@, 32)
+air_l = noise(0, 0, 601) * 0.24 |> lp(@, 480, 0.7) |> hp(@, 90)
+air_r = noise(0, 0, 607) * 0.24 |> lp(@, 480, 0.7) |> hp(@, 90)
+mid_l = noise(0, 0, 613) * (0.40 + swell * 0.10) |> bp(@, 420 + wob2 * 40, 2.2)
+mid_r = noise(0, 0, 619) * (0.40 + swell * 0.10) |> bp(@, 420 + wob1 * 40, 2.2)
+out(stereo(gurgle_l + air_l + mid_l, gurgle_r + air_r + mid_r))

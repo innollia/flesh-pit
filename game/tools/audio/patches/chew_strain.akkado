@@ -4,5 +4,5 @@ breath_am = (sine(0.5) + 1) * 0.5
 breath = noise(0, 0, 401) * breath_am * 0.5 |> bp(@, 1500, 1.3)
 fry = noise(0, 0, 419) * gt(noise(25, 0, 421), 0.30) * (1 - breath_am * 0.5) * 0.12 |> bp(@, 520, 3.5)
 groan_tone = tri(140 + sine(0.25) * 5) * (1 - breath_am * 0.6) * 0.12 |> bp(@, 620, 4.0)
-groan = groan_tone + fry
-out((breath + groan) * 0.35)
+groan = groan_tone * 0.4 + fry
+out((breath + groan) * 0.05)

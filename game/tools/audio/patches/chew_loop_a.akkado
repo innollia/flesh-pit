@@ -5,4 +5,4 @@ bite = ar(trig, 0.005, 0.09)
 squelch = noise(0, 0, 101) * bite * 0.6 |> bp(@, 750, 3.2)
 wetc = noise(0, 0, 211) * gt(noise(120, 0, 307), 0.35) * ar(trig, 0.02, 0.22) * 0.6 |> lp(@, 2200, 0.8)
 jaw = sine(85) * ar(trig, 0.003, 0.05) * 0.5
-out((squelch + wetc + jaw) * 0.4)
+out((squelch + wetc + jaw) * 0.06)
