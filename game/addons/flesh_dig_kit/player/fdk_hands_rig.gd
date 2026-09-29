@@ -32,6 +32,11 @@ const GRAB_TIME := 0.32
 const TEAR_TIME := 0.34
 const RELEASE_TIME := 0.4
 const SECOND_HAND_DELAY := 0.09
+## Idle pose: wrist raised so the BACK of the hand faces the camera and the
+## four-finger block + thumb read as a hand silhouette (the old pose showed
+## the hand edge-on, like a plank). pitch, yaw, roll, f1, f2, f3, t1, t2, t3, t_opp
+static var IDLE_POSE := [48.0, 14.0, -12.0, 12.0, 16.0, 12.0, -6.0, 6.0, 10.0, 0.0]
+static var IDLE_POS := Vector3(0.16, -0.175, -0.31)
 
 @export var skin_color: Color = Color(0.88, 0.72, 0.62)
 @export var palm_color: Color = Color(0.9, 0.68, 0.6)
@@ -42,6 +47,10 @@ var state: HandState = HandState.IDLE
 var mutation: float = 0.0
 ## 0 = hands free; >0 = carrying a pile of torn flesh (pile size 0..1).
 var carry_amount: float = 0.0
+## Left hand grips a held one-handed tool (the blender) at HOLD_LEFT_POS,
+## low on the left of the screen, instead of following idle/carry/chew.
+var hold_left: bool = false
+static var HOLD_LEFT_POS := Vector3(-0.27, -0.15, -0.35)
 ## Base/max scale of the carried-pile mesh (built at radius ~0.09/0.05/0.045m
 ## in _build_pile). 0.42 keeps the base pile within a hand's width and under
 ## ~20% of screen height at the default FOV/reach_distance; 0.62 is the cap
@@ -164,9 +173,8 @@ func step(delta: float) -> void:
             chunk.scale = Vector3.ONE * s
     _pile.visible = is_carrying()
     if _pile.visible:
-        # 형님 결정 2026-09-29: 기본 더미는 두 손바닥에 올라가는 정도(원래
-        # 크기의 약 45%), 화면 높이 20% 이하로 유지. 더 들면 조금씩 커지되
-        # PILE_SCALE_MAX에서 상한.
+        # ?뺣떂 寃곗젙 2026-09-29: 湲곕낯 ?붾??????먮컮?μ뿉 ?щ씪媛???뺣룄(?먮옒
+        # ?ш린????45%), ?붾㈃ ?믪씠 20% ?댄븯濡??좎?. ???ㅻ㈃ 議곌툑??而ㅼ???        # PILE_SCALE_MAX?먯꽌 ?곹븳.
         var ps := lerpf(PILE_SCALE_BASE, PILE_SCALE_MAX, carry_amount)
         _pile.scale = Vector3(ps, ps * (0.8 + 0.2 * sin(_time * 3.0) * 0.1 + 0.2), ps)
         _pile.position = Vector3(0, -0.2 + _bob.y * 1.1, -0.36)
@@ -180,10 +188,10 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
     var is_lead: bool = h["index"] == _lead
     var breathe := sin(_time * 1.7 + side) * 1.5
     var idle := {
-        "wrist_pitch": 14.0 + breathe, "wrist_yaw": 10.0 * side, "wrist_roll": -32.0 * side,
-        "f1": 18.0 + breathe, "f2": 24.0, "f3": 14.0,
-        "t1": 2.0, "t2": 8.0, "t3": 10.0, "t_opp": 3.0,
-        "pos": Vector3(0.2 * side, -0.215, -0.4),
+        "wrist_pitch": IDLE_POSE[0] + breathe, "wrist_yaw": IDLE_POSE[1] * side, "wrist_roll": IDLE_POSE[2] * side,
+        "f1": IDLE_POSE[3] + breathe, "f2": IDLE_POSE[4], "f3": IDLE_POSE[5],
+        "t1": IDLE_POSE[6], "t2": IDLE_POSE[7], "t3": IDLE_POSE[8], "t_opp": IDLE_POSE[9],
+        "pos": Vector3(IDLE_POS.x * side, IDLE_POS.y, IDLE_POS.z),
     }
     var p := idle.duplicate()
     var t := maxf(0.0, _state_time - delay)
@@ -197,6 +205,14 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
         p["f3"] = 20.0
         p["t_opp"] = 8.0
         p["pos"] = Vector3(0.1 * side, -0.24, -0.38)
+    if hold_left and side < 0.0:
+        # fingers wrapped round the jar handle, palm turned inward, thumb on top
+        return {
+            "wrist_pitch": 4.0 + breathe * 0.5, "wrist_yaw": -8.0, "wrist_roll": 60.0,
+            "f1": 62.0, "f2": 78.0, "f3": 56.0,
+            "t1": 20.0, "t2": 30.0, "t3": 30.0, "t_opp": 36.0,
+            "pos": HOLD_LEFT_POS + Vector3(0.0, _bob.y * bob_follow * 1.1, 0.0),
+        }
     match state:
         HandState.GRAB:
             var g := t / GRAB_TIME
@@ -316,12 +332,14 @@ func _to_rig(n: Node3D) -> Transform3D:
 
 ## Cross-section of the fused finger block: four rounded fingers side by
 ## side, with grooves between them on the back AND the palm side.
+## Grooves are deep (|y| ~0.3) so the four fingers read as four rounded
+## ridges under the flat PS1 shading, not as one plank.
 const FINGER_PROFILE := [
-    Vector2(1.0, -0.1), Vector2(0.95, 0.55), Vector2(0.75, 1.0), Vector2(0.5, 0.58),
-    Vector2(0.25, 1.0), Vector2(0.0, 0.6), Vector2(-0.25, 1.0), Vector2(-0.5, 0.58),
-    Vector2(-0.75, 0.95), Vector2(-0.95, 0.5), Vector2(-1.0, -0.15), Vector2(-0.92, -0.72),
-    Vector2(-0.75, -1.0), Vector2(-0.5, -0.66), Vector2(-0.25, -1.0), Vector2(0.0, -0.66),
-    Vector2(0.25, -1.0), Vector2(0.5, -0.66), Vector2(0.75, -1.0), Vector2(0.92, -0.72),
+    Vector2(1.0, -0.1), Vector2(0.97, 0.6), Vector2(0.75, 1.0), Vector2(0.5, 0.3),
+    Vector2(0.25, 1.0), Vector2(0.0, 0.32), Vector2(-0.25, 1.0), Vector2(-0.5, 0.3),
+    Vector2(-0.75, 0.97), Vector2(-0.97, 0.55), Vector2(-1.0, -0.15), Vector2(-0.95, -0.75),
+    Vector2(-0.75, -1.0), Vector2(-0.5, -0.38), Vector2(-0.25, -1.0), Vector2(0.0, -0.38),
+    Vector2(0.25, -1.0), Vector2(0.5, -0.38), Vector2(0.75, -1.0), Vector2(0.95, -0.75),
 ]
 
 func _build_hand(side: float) -> Dictionary:
@@ -337,7 +355,7 @@ func _build_hand(side: float) -> Dictionary:
 
     var palm_len := 0.088
     var f_len := [0.044, 0.031, 0.025]
-    var f_half := [Vector2(0.047, 0.0215), Vector2(0.044, 0.0195), Vector2(0.04, 0.017)]
+    var f_half := [Vector2(0.047, 0.025), Vector2(0.044, 0.0228), Vector2(0.041, 0.0205)]
     var f1 := _joint(wrist, "Finger1", Vector3(0, 0.001, -palm_len))
     _add_mesh(f1, "Seg", _finger_mesh(f_len[0], f_half[0], f_half[1], thumb_side, false))
     var f2 := _joint(f1, "Finger2", Vector3(0, 0, -f_len[0]))
@@ -418,11 +436,11 @@ func _palm_mesh(thumb_side: float) -> Mesh:
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var prof := FDKLowPoly.round_profile(10, 0.35)
     var rings := [
-        FDKLowPoly.ring(prof, 0.014, Vector2(0.027, 0.018)),
-        FDKLowPoly.ring(prof, -0.022, Vector2(0.042, 0.02), Vector2(thumb_side * 0.002, 0)),
-        FDKLowPoly.ring(prof, -0.058, Vector2(0.049, 0.02)),
-        FDKLowPoly.ring(prof, -0.086, Vector2(0.05, 0.021), Vector2(0, 0.001)),
-        FDKLowPoly.ring(prof, -0.093, Vector2(0.048, 0.0215), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, 0.014, Vector2(0.03, 0.022)),
+        FDKLowPoly.ring(prof, -0.022, Vector2(0.043, 0.026), Vector2(thumb_side * 0.002, 0)),
+        FDKLowPoly.ring(prof, -0.058, Vector2(0.049, 0.027)),
+        FDKLowPoly.ring(prof, -0.086, Vector2(0.05, 0.027), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, -0.093, Vector2(0.048, 0.026), Vector2(0, 0.001)),
     ]
     FDKLowPoly.loft(st, rings, [skin_color, skin_color, skin_color.lightened(0.04), skin_color], true, true)
     FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.02, -0.011, -0.03), Vector3(0.017, 0.011, 0.026), 0.18, 3, palm_color, palm_color.darkened(0.08))
@@ -443,6 +461,10 @@ func _finger_mesh(length: float, half_start: Vector2, half_end: Vector2, thumb_s
         _shape_tip(r2, prof, thumb_side, length, 1.0)
         var r3 := FDKLowPoly.ring(prof, -length - 0.007, half_end * Vector2(0.9, 0.55), Vector2(0, -0.001))
         _shape_tip(r3, prof, thumb_side, length + 0.007, 1.0)
+        # notch the tip between fingers so the silhouette ends in four
+        # rounded fingertips instead of one straight edge
+        _notch_tip(r2, prof, 0.003)
+        _notch_tip(r3, prof, 0.009)
         FDKLowPoly.loft(st, [r0, r1, r2, r3], [skin_color, skin_color.lightened(0.03), nail_color], false, true)
     else:
         FDKLowPoly.loft(st, [r0, r1, r2], [skin_color, skin_color.lightened(0.02)], false, false)
@@ -456,11 +478,19 @@ func _shape_tip(r: PackedVector3Array, prof: PackedVector2Array, thumb_side: flo
         p.z = -depth * lerpf(1.0, f, amount)
         r[i] = p
 
+func _notch_tip(r: PackedVector3Array, prof: PackedVector2Array, back: float) -> void:
+    for i in range(r.size()):
+        var q: Vector2 = prof[i]
+        if absf(q.y) < 0.5 and absf(q.x) < 0.9:
+            var p := r[i]
+            p.z += back
+            r[i] = p
+
 func _thumb_mesh(length: float, half_start: Vector2, half_end: Vector2, tip: bool) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var prof := FDKLowPoly.round_profile(7, 0.25)
-    var r0 := FDKLowPoly.ring(prof, 0.006, half_start * 1.05)
+    var r0 := FDKLowPoly.ring(prof, 0.006, half_start * 1.12)
     var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 1.05))
     var r2 := FDKLowPoly.ring(prof, -length, half_end)
     if tip:

@@ -33,8 +33,8 @@ func _ready() -> void:
         pts.append(Vector3(0, sin(t * PI) * 0.006, -LEN * t))
         radii.append(lerpf(0.042, 0.028, t) + sin(t * PI) * 0.004)
     K.tube(st, Transform3D.IDENTITY, pts, radii, 9, [skin, skin, under], true, 1.2)
-    # wrist knob + back of the hand stub
-    K.blob(st, Transform3D.IDENTITY, Vector3(0.0, 0.002, -LEN - 0.02), Vector3(0.036, 0.02, 0.04), 0.12, 4, skin, under)
+    # no wrist knob here: the rig's own palm starts at the wrist, and a
+    # fixed blob there stuck out as a dark lump whenever the wrist bent
     K.add_mesh(self, "Forearm", K.finish(st, 6.0), K.mat("tex_skin_128.png", 0.3, false))
     for i in range(MAX_SLOTS):
         var along := 0.03 + K.h(i, 11) * (LEN - 0.04)

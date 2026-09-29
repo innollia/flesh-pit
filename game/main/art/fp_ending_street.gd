@@ -12,6 +12,13 @@ extends Node3D
 const K := preload("res://main/art/fp_art_kit.gd")
 const Sphere := preload("res://main/art/fp_rolling_sphere.gd")
 const LEN := 260.0
+## Blocks and lamps beyond this z are rubble: the ball (radius 34 m) is far
+## wider than the 20 m street, so standing buildings would hide its sides
+## and leave only a vertical strip between them (read as a pillar).
+const CRUSH_Z := -18.0
+## Where the ball starts: far enough that the intact blocks near the landing
+## point never overlap its silhouette from the landing camera.
+const ROLL_START_Z := -115.0
 var _sphere: Node3D
 var _time := 0.0
 
@@ -46,6 +53,15 @@ func _ready() -> void:
             var depth := 10.0
             var col: Color = facades[(i + (1 if sx > 0 else 3)) % 5]
             var cx: float = sx * (10.0 + depth * 0.5)
+            if bz - w * 0.5 < CRUSH_Z:
+                # the sphere already rolled over this block: a flattened
+                # slab of rubble low enough that it never hides the ball
+                K.rbox(st, K.T(Vector3(cx, 0.45, bz - w * 0.5), Vector3(0, 0, sx * 2.0)), Vector3(depth * 0.5, 0.45, w * 0.5 - 0.2), 0.2, col.darkened(0.1), col.darkened(0.3))
+                for k in range(3):
+                    K.rbox(st, K.T(Vector3(cx + (K.h(i, k, 3) - 0.5) * 6.0, 1.0, bz - w * (0.25 + 0.25 * k)), Vector3(0, K.h(i, k) * 90.0, 8.0)), Vector3(1.2, 0.35, 0.9), 0.1, col.darkened(0.2))
+                bz -= w
+                i += 1
+                continue
             K.rbox(st, K.T(Vector3(cx, hgt * 0.5, bz - w * 0.5)), Vector3(depth * 0.5, hgt * 0.5, w * 0.5 - 0.2), 0.25, col, col.darkened(0.15))
             # cornice
             K.rbox(st, K.T(Vector3(cx, hgt + 0.2, bz - w * 0.5)), Vector3(depth * 0.5 + 0.3, 0.2, w * 0.5 - 0.05), 0.08, col.lightened(0.2))
@@ -67,6 +83,8 @@ func _ready() -> void:
     st = K.begin()
     for k in range(12):
         var lz := 10.0 - k * 22.0
+        if lz < CRUSH_Z:
+            break  # lamps and trees on the sphere's path were flattened with the blocks
         for sx in [-1, 1]:
             K.tube(st, Transform3D.IDENTITY, [Vector3(sx * 6.6, 0.15, lz), Vector3(sx * 6.6, 5.5, lz), Vector3(sx * 5.8, 6.0, lz)], [0.09, 0.07, 0.06], 6, [Color(0.3, 0.33, 0.32)])
             K.lathe(st, K.T(Vector3(sx * 5.6, 5.9, lz)), [Vector2(0.0, -0.1), Vector2(0.3, -0.05), Vector2(0.2, 0.1), Vector2(0.0, 0.12)], 6, [Color(0.25, 0.28, 0.27)])
@@ -82,7 +100,7 @@ func _ready() -> void:
 
 func set_roll(t: float) -> void:
     var tt := clampf(t, 0.0, 1.0)
-    var z := lerpf(-50.0, -LEN + 40.0, tt)
+    var z := lerpf(ROLL_START_Z, -LEN + 40.0, tt)
     _sphere.position = Vector3(0, _sphere.get("radius"), z)
     _sphere.call("set_roll", -z / float(_sphere.get("radius")))
     _sphere.rotation.y = PI * 0.5

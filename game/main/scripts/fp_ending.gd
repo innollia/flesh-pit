@@ -80,7 +80,7 @@ func _pose_camera(k: float) -> void:
 		return
 	var e := 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 3.0)
 	street_camera.position = Vector3(0.4, lerpf(7.0, 1.3, e), 2.0)
-	street_camera.look_at(street.global_position + Vector3(0, lerpf(-2.0, 22.0, e), -70.0), Vector3.UP)
+	street_camera.look_at(street.global_position + Vector3(0, lerpf(-2.0, 30.0, e), -110.0), Vector3.UP)
 
 func tick(delta: float) -> void:
 	if not active:

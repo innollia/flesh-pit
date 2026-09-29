@@ -14,6 +14,9 @@ var _fill_mi: MeshInstance3D
 var _fill := 0.0
 var _spin := false
 var _time := 0.0
+## -1 when the blender is mounted turned 180 degrees about Y (handle on the
+## outer side for the left hand), so drinking still tips it toward the mouth.
+var tilt_dir := 1.0
 
 func _ready() -> void:
     var st := K.begin()
@@ -76,7 +79,7 @@ func set_spin(on: bool) -> void:
 
 func set_tilt(t: float) -> void:
     # tip the whole blender toward the viewer (+Z) and up, as when drinking
-    rotation_degrees.x = 115.0 * clampf(t, 0.0, 1.0)
+    rotation_degrees.x = 115.0 * clampf(t, 0.0, 1.0) * tilt_dir
 
 func play_drink() -> void:
     var tw := create_tween()

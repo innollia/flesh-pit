@@ -86,8 +86,14 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(knife, rw, Vector3(0, -0.015, -0.06))
 	_put(hand_tumor, rw, Vector3(0, -0.06, -0.08))
 	_put(scissors, lw, Vector3(0, -0.012, -0.07))
-	var grip: Vector3 = blender.call("hand_grip") * blender.scale.x
-	_put(blender, lw, Vector3(0.0, -0.03, -0.05) - grip)
+	# the blender hangs in camera space low on the left, handle turned
+	# outward, and the rig's left hand grips that handle (hold_left), so
+	# the whole jar reads on screen instead of a corner under the wrist
+	blender.rotation_degrees = Vector3(0, 180, 0)
+	blender.set("tilt_dir", -1.0)
+	var grip: Vector3 = (Basis(Vector3.UP, PI) * (blender.call("hand_grip") as Vector3)) * blender.scale.x
+	var hold: Vector3 = FDKHandsRig.HOLD_LEFT_POS
+	_put(blender, rig, hold + Vector3(0.028, 0.01, -0.05) - grip)
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.3))
@@ -121,6 +127,8 @@ func _process(_delta: float) -> void:
 	knife.visible = eq == "knife"
 	scissors.visible = eq == "knife" and m.carried_flesh <= 0.0
 	blender.visible = eq == "blender" or (prog.owns("blender") and m.carry_mode)
+	if _rig != null:
+		_rig.set("hold_left", blender.visible)
 	saw.visible = eq == "big_saw"
 	hand_tumor.visible = prog.tumor_in_hand()
 	knife.call("set_bloody", m.hand_blood)
