@@ -46,7 +46,8 @@ func build() -> void:
     for i in range(PILE_MAX):
         var ps := SurfaceTool.new()
         ps.begin(Mesh.PRIMITIVE_TRIANGLES)
-        var r := 0.035 + FDKLowPoly.hash3(i, 3, 9) * 0.03
+        # 형님 결정 2026-09-29: 넘겨 먹기 더미도 화면 높이 20% 이하 기준.
+        var r := 0.01 + FDKLowPoly.hash3(i, 3, 9) * 0.008
         FDKLowPoly.add_blob(ps, Vector3.ZERO, Vector3(r * 1.3, r, r), 0.4, 40 + i, Color(0.55, 0.05, 0.08), Color(0.85, 0.22, 0.2))
         var mi := MeshInstance3D.new()
         mi.name = "Pile%d" % i
@@ -55,7 +56,7 @@ func build() -> void:
         mi.visible = false
         var u := (float(i) + 0.5) / PILE_MAX
         var row := i % 2
-        mi.position = Vector3(lerpf(-0.24, 0.24, u) + (FDKLowPoly.hash3(i, 1, 1) - 0.5) * 0.04, -0.255 + row * 0.035, -0.33 - row * 0.01)
+        mi.position = Vector3(lerpf(-0.22, 0.22, u) + (FDKLowPoly.hash3(i, 1, 1) - 0.5) * 0.03, -0.29 + row * 0.02, -0.34 - row * 0.006)
         mi.rotation = Vector3(FDKLowPoly.hash3(i, 2, 2) * 3.0, FDKLowPoly.hash3(i, 3, 3) * 3.0, 0)
         add_child(mi)
         _pile.append(mi)

@@ -42,6 +42,12 @@ var state: HandState = HandState.IDLE
 var mutation: float = 0.0
 ## 0 = hands free; >0 = carrying a pile of torn flesh (pile size 0..1).
 var carry_amount: float = 0.0
+## Base/max scale of the carried-pile mesh (built at radius ~0.09/0.05/0.045m
+## in _build_pile). 0.42 keeps the base pile within a hand's width and under
+## ~20% of screen height at the default FOV/reach_distance; 0.62 is the cap
+## for a fully-loaded pile so it never grows unbounded.
+const PILE_SCALE_BASE := 0.38
+const PILE_SCALE_MAX := 0.56
 
 var _hands: Array = []
 var _time: float = 0.0
@@ -158,7 +164,10 @@ func step(delta: float) -> void:
             chunk.scale = Vector3.ONE * s
     _pile.visible = is_carrying()
     if _pile.visible:
-        var ps := 0.6 + 0.6 * carry_amount
+        # 형님 결정 2026-09-29: 기본 더미는 두 손바닥에 올라가는 정도(원래
+        # 크기의 약 45%), 화면 높이 20% 이하로 유지. 더 들면 조금씩 커지되
+        # PILE_SCALE_MAX에서 상한.
+        var ps := lerpf(PILE_SCALE_BASE, PILE_SCALE_MAX, carry_amount)
         _pile.scale = Vector3(ps, ps * (0.8 + 0.2 * sin(_time * 3.0) * 0.1 + 0.2), ps)
         _pile.position = Vector3(0, -0.2 + _bob.y * 1.1, -0.36)
 

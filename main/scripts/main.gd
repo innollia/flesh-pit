@@ -10,6 +10,12 @@ const RESTROOM_CENTER := Vector3(0, 1, 0)
 ## cell (0.5 m) inside the solid side, so this must exceed one cell or flesh
 ## pokes through the restroom corners.
 const ROOM_MARGIN := 0.65
+## Design-core 8: opening the door must reveal flesh immediately. The empty
+## margin above is wide everywhere else (surface-nets needs it, see the
+## comment on ROOM_MARGIN's declaration site), but right in front of the
+## door column it is pulled back down to under 5 cm so the wall starts at
+## the doorway rather than 0.65 m past it.
+const DOOR_GAP := 0.04
 const MEMBRANE_THICKNESS := 0.9
 ## Overfill ratio past which the on-screen vomit button appears.
 const VOMIT_BUTTON_OVERFILL := 0.35
@@ -163,7 +169,13 @@ func _room_dist(p: Vector3) -> float:
 
 func _world_density(p: Vector3) -> float:
     var h := FPRestroom.HALF
-    if absf(p.x) <= h.x + ROOM_MARGIN and p.y >= -ROOM_MARGIN and p.y <= 2.0 * h.y + ROOM_MARGIN and absf(p.z) <= h.z + ROOM_MARGIN:
+    # Narrow the empty margin to DOOR_GAP just past the door plane, in the
+    # door's own column, so the flesh wall sits right outside the doorway
+    # instead of ROOM_MARGIN further out.
+    var margin := ROOM_MARGIN
+    if p.z > h.z and absf(p.x) < FPRestroom.DOOR_HALF_W and p.y > -0.1 and p.y < FPRestroom.DOOR_H:
+        margin = DOOR_GAP
+    if absf(p.x) <= h.x + margin and p.y >= -margin and p.y <= 2.0 * h.y + margin and absf(p.z) <= h.z + margin:
         return 0.0
     return 1.0
 

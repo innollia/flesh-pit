@@ -102,6 +102,10 @@ func _run() -> void:
             if absf(w.x) < h.x + 0.05 and w.y > -0.05 and w.y < 2.0 * h.y + 0.05 and absf(w.z) < h.z + 0.05:
                 inside += 1
     _assert(inside == 0, "no flesh vertex inside the restroom box (+5 cm) (found %d)" % inside)
+    # opening the door reveals flesh immediately (design-core 8): density
+    # just past the door plane, at door height, must already be solid
+    var door_probe := Vector3(0.0, 1.0, FPRestroom.HALF.z + m.DOOR_GAP + 0.03)
+    _assert(m.terrain.density_at(door_probe) >= 0.5, "flesh starts within %0.2f m past the door (design-core 8)" % (m.DOOR_GAP + 0.03))
     # first shell is mostly red flesh; fat only near the shell boundary
     var fat_inner := 0
     var fat_edge := 0
@@ -134,6 +138,23 @@ func _run() -> void:
     m.has_blender = true
     m.toggle_carry()
     m._on_cell_torn(Vector3(0, 1, 3))
+    # 형님 결정 2026-09-29: 손에 든 살 더미는 화면 높이 20% 이하여야 한다.
+    m.hands_rig.set_carry(clampf(m.carried_flesh / 40.0, 0.0, 1.0))
+    for i in range(8):
+        m.hands_rig.step(1.0 / 60.0)
+    var pile: MeshInstance3D = m.hands_rig._pile
+    var aabb: AABB = pile.mesh.get_aabb()
+    var cam: Camera3D = m.player.camera
+    var min_y := INF
+    var max_y := -INF
+    for i in range(8):
+        var local: Vector3 = aabb.position + Vector3(aabb.size.x * (i & 1), aabb.size.y * ((i >> 1) & 1), aabb.size.z * ((i >> 2) & 1))
+        var wp: Vector3 = pile.global_transform * local
+        var sp := cam.unproject_position(wp)
+        min_y = minf(min_y, sp.y)
+        max_y = maxf(max_y, sp.y)
+    var pct := 100.0 * (max_y - min_y) / float(cam.get_viewport().size.y)
+    _assert(pct <= 20.0, "carry pile stays within 20%% of screen height (got %.1f%%)" % pct)
     _assert(m.carried_flesh > 0.0 and not m.two_handed_tools_available(), "carrying torn flesh blocks two-handed tools")
     m.toggle_carry()
     _assert(m.two_handed_tools_available(), "putting the pile down frees both hands")

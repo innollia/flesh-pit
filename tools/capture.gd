@@ -5,7 +5,7 @@ extends SceneTree
 ## Writes res://captures/<W>x<H>/<stage>.png for each resolution, then quits.
 
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1920, 1080)]
-const STAGES := ["01_restroom", "02_flesh_wall", "03_dug_tunnel", "04_regrowing_tunnel", "05_hand_grab", "06_overfilled", "07_toilet_settlement", "08_carry_pile"]
+const STAGES := ["01_restroom", "02_flesh_wall", "03_dug_tunnel", "04_regrowing_tunnel", "05_hand_grab", "06_overfilled", "07_toilet_settlement", "08_carry_pile", "09_korean_fixtures"]
 const SETTLE := 40
 
 var _stage := 0
@@ -97,6 +97,11 @@ func _apply_stage(i: int) -> void:
             m.toggle_carry()
             m.carried_flesh = 30.0
             _pose(Vector3(0.0, 0.95, 4.0), PI, deg_to_rad(-2.0))
+        8:
+            # 형님 결정: 한국식 요소(샤워 수전/봉/헤드/호스, 바닥 배수구,
+            # 휴지걸이)가 한 화면에 들어오는 캡처. 문은 닫아 살이 안 보임.
+            m.restroom.set_door_open(false, true)
+            _pose(Vector3(-0.55, 0.95, 0.6), deg_to_rad(200.0), deg_to_rad(6.0))
     m.apply_atmosphere_now()
 
 func _per_frame(i: int) -> void:
