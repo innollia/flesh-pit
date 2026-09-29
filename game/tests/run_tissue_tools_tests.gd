@@ -72,7 +72,9 @@ func _unit_tests() -> void:
 	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, ""), 0.6), "W20 compressive tissue chews in 0.6 s")
 	_assert(is_equal_approx(R.chew_time(R.CONTRACTILE, ""), 0.84), "W20 contractile tissue chews in 0.84 s (x1.4)")
 	_assert(is_equal_approx(R.chew_time(R.NERVE, ""), 0.72), "W20 nerve-dense tissue chews in 0.72 s (x1.2)")
-	_assert(is_equal_approx(R.chew_time(R.MEMBRANE, "knife"), 1.2), "W10 membrane with a knife chews in 1.2 s")
+	_assert(is_equal_approx(R.chew_time(R.MEMBRANE, "knife"), 0.75), "W10 membrane with a knife chews in 0.75 s (1.2 / knife x1.6)")
+	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, "knife"), 0.375), "knife digs 1.6x faster (0.6 -> 0.375 s)")
+	_assert(not R.can_grab(R.CONTRACTILE, "") and R.can_grab(R.CONTRACTILE, "knife") and R.can_grab(R.CONTRACTILE, "big_saw"), "contractile muscle needs a blade")
 	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, "", 3.0), 1.8), "W20 overfill multiplies the chew time")
 	# W10 membrane needs a blade
 	_assert(not R.can_grab(R.MEMBRANE, ""), "W10 bare hands cannot grab membrane")
@@ -229,7 +231,7 @@ func _main_tests(m) -> void:
 	while torn[0] == 0 and t < 3.0:
 		tools.chew_at(mem, mem, Vector3(1, 0, 0), 1.0 / 60.0)
 		t += 1.0 / 60.0
-	_assert(torn[0] == 1 and absf(t - 1.2) < 0.05, "W10 with a knife the membrane tears in 1.2 s (got %.2f)" % t)
+	_assert(torn[0] == 1 and absf(t - 0.75) < 0.05, "W10 with a knife the membrane tears in 0.75 s (got %.2f)" % t)
 	m.chewer.stop()
 	# W22 rest points
 	var rp: Array[Vector3] = m.rest_points

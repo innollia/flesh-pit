@@ -38,6 +38,9 @@ const CONTRACT_WARN := 1.0 ## the squeeze sound plays this long before it starts
 ## Cells below this density count as empty for "touches an empty cell".
 const EMPTY_DENSITY := 0.5
 
+## Knife digs every tissue this much faster.
+const KNIFE_SPEED := 1.6
+
 static func hardness(tissue: int) -> float:
 	return float(HARDNESS.get(tissue, 1.0))
 
@@ -53,6 +56,8 @@ static func can_grab(tissue: int, tool: String, opts: Dictionary = {}) -> bool:
 		return false
 	if tissue == MEMBRANE:
 		return tool == "knife" or tool == "big_saw" or bool(opts.get("thick_nails", false)) or bool(opts.get("split_jaw", false))
+	if tissue == CONTRACTILE:
+		return tool == "knife" or tool == "big_saw" # muscle needs a blade
 	return true
 
 ## Effective hardness for this tool (membrane rules depend on how it is cut).
@@ -72,6 +77,8 @@ static func chew_time(tissue: int, tool: String, overfill_multiplier: float = 1.
 	var t := BASE_CHEW_TIME * effective_hardness(tissue, tool, opts) * overfill_multiplier
 	if tool == "big_saw":
 		t *= SAW_TIME_FACTOR
+	elif tool == "knife":
+		t /= KNIFE_SPEED # the knife digs 1.6x faster
 	return t
 
 ## Delta scale to feed FDKChewer.process_chew (which already applies the

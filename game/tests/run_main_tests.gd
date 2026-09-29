@@ -190,7 +190,7 @@ func _run_systems() -> void:
     prog.grant_item("knife")
     prog.grant_item("big_saw")
     prog.grant_item("blender")
-    _assert(not FDKTissueRules.can_grab(FDKTissueRules.MEMBRANE, "") and FDKTissueRules.can_grab(FDKTissueRules.CONTRACTILE, ""), "bare hands tear contractile flesh but not membrane")
+    _assert(not FDKTissueRules.can_grab(FDKTissueRules.MEMBRANE, "") and not FDKTissueRules.can_grab(FDKTissueRules.CONTRACTILE, "") and FDKTissueRules.can_grab(FDKTissueRules.CONTRACTILE, "knife"), "bare hands tear neither contractile flesh nor membrane; a knife does")
     _assert(m.equip_tool("knife") and FDKTissueRules.can_grab(FDKTissueRules.MEMBRANE, prog.equipped()), "the knife cuts membrane")
     _assert(m.equip_tool("big_saw") and not prog.one_handed_action_allowed(), "the two-handed saw blocks one-handed actions")
     m.toggle_carry()
