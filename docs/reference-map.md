@@ -7,6 +7,12 @@ The point of this document is not to copy whole games. Each reference is attache
 **Worldbuilding note:** this project uses an original setting. Mystery Flesh Pit National Park and other works below are reference material only, not shared continuity.
 
 
+## Cross-game research
+
+- [Digging-game success cases](research/digging-success-cases.md) — commercial signals, loop structure, progression failures, and flesh-pit design rules
+
+---
+
 ## Detailed reference studies
 
 - [A Game About Digging A Hole](references/a-game-about-digging-a-hole.md) — compact loop, return cadence, tool progression
