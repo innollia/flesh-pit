@@ -1,0 +1,118 @@
+extends Node3D
+
+## What the player sees looking down: the waist. Leather belt with a
+## buckle, up to 3 spray cans in clip holsters on the right hip (cheap can =
+## white/yellow, expensive = black/red), and the canary riding in the left
+## front trouser POCKET (design-core 4: pocket, no cage), head peeking out.
+## Origin = centre of the waist at belt height; the player faces -Z.
+## Public: set_spray_count(cheap, expensive) (total capped at 3),
+## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool).
+
+const K := preload("res://main/art/fp_art_kit.gd")
+const RX := 0.17
+const RZ := 0.12
+var _cans: Array = []
+var _canary: Node3D
+var _canary_head: Node3D
+var _scared := false
+var _time := 0.0
+
+func _ready() -> void:
+    var st := K.begin()
+    var cloth := Color(0.28, 0.3, 0.36)    # worn work trousers
+    var cloth_d := Color(0.2, 0.21, 0.26)
+    # trousers: a lofted hip + two leg stubs down to the knees
+    var hip: Array = []
+    for k in range(4):
+        var y := -k * 0.07
+        var ring := PackedVector3Array()
+        for j in range(12):
+            var a := TAU * j / 12.0
+            ring.append(Vector3(cos(a) * RX * (1.0 + k * 0.04), y, sin(a) * RZ * (1.0 + k * 0.06)))
+        hip.append(ring)
+    FDKLowPoly.loft(st, hip, [cloth, cloth, cloth_d], true, false)
+    for sx in [-1, 1]:
+        K.tube(st, Transform3D.IDENTITY, [Vector3(sx * 0.09, -0.2, -0.01), Vector3(sx * 0.1, -0.38, -0.05), Vector3(sx * 0.1, -0.55, -0.09)], [0.085, 0.075, 0.068], 8, [cloth, cloth_d])
+    # left front pocket opening (dark slit)
+    K.quad(st, Transform3D.IDENTITY, Vector3(-0.13, -0.035, -RZ - 0.006), Vector3(-0.06, -0.03, -RZ - 0.012), Vector3(-0.07, -0.1, -RZ - 0.016), Vector3(-0.14, -0.1, -RZ - 0.008), Vector3(0, 0, -1), Color(0.07, 0.07, 0.09))
+    K.add_mesh(self, "Trousers", K.finish(st, 5.0), K.mat("tex_fixture_128.png", 0.1, true))
+    # belt band (a flattened loop just outside the waist)
+    st = K.begin()
+    var leather := Color(0.3, 0.17, 0.09)
+    var loop: Array = []
+    for j in range(17):
+        var a := TAU * j / 16.0
+        loop.append(Vector3(cos(a) * (RX + 0.008), 0.0, sin(a) * (RZ + 0.008)))
+    K.tube(st, Transform3D.IDENTITY, loop, [0.022], 4, [leather], false, 0.25)
+    # buckle
+    K.rbox(st, K.T(Vector3(0, 0, -RZ - 0.018)), Vector3(0.032, 0.026, 0.006), 0.005, Color(0.7, 0.66, 0.5))
+    K.rbox(st, K.T(Vector3(0, 0, -RZ - 0.024)), Vector3(0.02, 0.014, 0.003), 0.002, Color(0.2, 0.15, 0.1))
+    K.add_mesh(self, "Belt", K.finish(st, 6.0), K.mat("tex_fixture_64.png", 0.25, true))
+    # 3 holster clips + cans on the right hip
+    for i in range(3):
+        var a := -0.55 + i * 0.42
+        var p := Vector3(cos(a) * (RX + 0.04), -0.05, sin(a) * (RZ + 0.04))
+        var holder := K.pivot(self, "Can%d" % i, p)
+        holder.rotation.y = -a + PI * 0.5
+        st = K.begin()
+        K.rbox(st, K.T(Vector3(0, 0.05, -0.028)), Vector3(0.012, 0.012, 0.01), 0.003, Color(0.2, 0.2, 0.22))
+        K.tube(st, Transform3D.IDENTITY, [Vector3(0, -0.02, 0), Vector3(0, 0.0, 0)], [0.036], 8, [Color(0.25, 0.25, 0.27)], false)
+        K.add_mesh(holder, "Clip", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.2, true))
+        var can := K.pivot(holder, "Spray")
+        _cans.append(can)
+    _canary = K.pivot(self, "Canary", Vector3(-0.1, -0.03, -RZ - 0.02))
+    _build_canary()
+    set_spray_count(2, 1)
+    set_canary(true)
+
+func _can_mesh(expensive: bool) -> ArrayMesh:
+    var st := K.begin()
+    var body := Color(0.12, 0.1, 0.1) if expensive else Color(0.9, 0.88, 0.8)
+    var band := Color(0.75, 0.08, 0.06) if expensive else Color(0.9, 0.75, 0.1)
+    var metal := Color(0.75, 0.76, 0.78)
+    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -0.07), Vector2(0.028, -0.07), Vector2(0.031, -0.064), Vector2(0.031, -0.02), Vector2(0.031, 0.02), Vector2(0.031, 0.05), Vector2(0.024, 0.066), Vector2(0.012, 0.072), Vector2(0.012, 0.085), Vector2(0.0, 0.088)], 8, [metal, metal, body, band, body, metal, metal, Color(0.95, 0.95, 0.95)])
+    return K.finish(st, 8.0)
+
+func _build_canary() -> void:
+    var st := K.begin()
+    var yellow := Color(0.98, 0.84, 0.18)
+    K.blob(st, Transform3D.IDENTITY, Vector3(0, -0.01, 0), Vector3(0.022, 0.02, 0.02), 0.1, 3, yellow, Color(0.9, 0.72, 0.1))
+    K.add_mesh(_canary, "Body", K.finish(st), K.mat("tex_skin_64.png", 0.1, true))
+    _canary_head = K.pivot(_canary, "Head", Vector3(0, 0.022, -0.004))
+    st = K.begin()
+    K.blob(st, Transform3D.IDENTITY, Vector3.ZERO, Vector3(0.016, 0.015, 0.016), 0.1, 5, yellow, Color(1.0, 0.9, 0.35))
+    K.lathe(st, K.T(Vector3(0, -0.002, -0.016), Vector3(-90, 0, 0)), [Vector2(0.0, 0.0), Vector2(0.005, 0.0), Vector2(0.0, 0.012)], 4, [Color(0.95, 0.55, 0.2)])
+    for sx in [-1, 1]:
+        K.blob(st, Transform3D.IDENTITY, Vector3(sx * 0.011, 0.004, -0.009), Vector3(0.0035, 0.0035, 0.0035), 0.0, 1, Color(0.02, 0.02, 0.02), Color(0.02, 0.02, 0.02))
+    K.add_mesh(_canary_head, "HeadMesh", K.finish(st), K.mat("tex_skin_64.png", 0.2, true))
+
+func set_spray_count(cheap: int, expensive: int) -> void:
+    var c := clampi(cheap, 0, 3)
+    var e := clampi(expensive, 0, 3 - c)
+    for i in range(3):
+        var slot: Node3D = _cans[i]
+        for ch in slot.get_children():
+            ch.queue_free()
+        if i < c + e:
+            K.add_mesh(slot, "CanMesh", _can_mesh(i >= c), K.mat("tex_chrome_64.png", 0.35, true))
+
+func set_canary(present: bool) -> void:
+    _canary.visible = present
+
+func canary_look(yaw_deg: float) -> void:
+    _canary_head.rotation_degrees.y = yaw_deg
+
+func set_canary_scared(on: bool) -> void:
+    _scared = on
+
+func _process(delta: float) -> void:
+    _time += delta
+    if _canary_head != null:
+        var bob := sin(_time * (14.0 if _scared else 2.3)) * (0.006 if _scared else 0.002)
+        _canary_head.position.y = 0.022 + bob
+        _canary_head.rotation_degrees.z = sin(_time * 1.7) * (25.0 if _scared else 8.0)
+
+func capture_setup() -> Dictionary:
+    set_spray_count(2, 1)
+    # first-person: eye above and slightly behind the waist, looking down
+    return {"cam_pos": Vector3(0.03, 0.42, 0.06), "look_at": Vector3(0.0, -0.12, -0.1), "env": "dark", "fov": 70.0}
