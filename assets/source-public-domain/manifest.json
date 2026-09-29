@@ -1,0 +1,191 @@
+{
+  "generated_for": "innollia/flesh-pit",
+  "purpose": "Raw public-domain / no-known-restrictions image source pool for asset creation",
+  "download_width_px": 1600,
+  "groups": [
+    {
+      "pack": "victorian-narrative-wood-engraving",
+      "source_work": "The Illustrated London News",
+      "year": "1860-1861",
+      "rights": "Public domain / no known copyright restrictions on Wikimedia Commons",
+      "items": [
+        {
+          "path": "001_new_india_museum.jpg",
+          "file_title": "The New India Museum, Whitehall-Yard. ILN 1861 (14799675223) (cropped).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:The_New_India_Museum%2C_Whitehall-Yard._ILN_1861_(14799675223)_(cropped).jpg"
+        },
+        {
+          "path": "002_pneumatic_despatch_battersea.jpg",
+          "file_title": "The Pneumatic letter and parcel conveyance. The despatch tube at Battersea - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:The_Pneumatic_letter_and_parcel_conveyance._The_despatch_tube_at_Battersea_-_ILN_1861.jpg"
+        },
+        {
+          "path": "003_agricultural_hall_islington.jpg",
+          "file_title": "Agricultural Hall Islington ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Agricultural_Hall_Islington_ILN_1861.jpg"
+        },
+        {
+          "path": "004_lago_d_orta.jpg",
+          "file_title": "The Lago d'Orta - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:The_Lago_d'Orta_-_ILN_1861.jpg"
+        },
+        {
+          "path": "005_cape_race_telegraphs.jpg",
+          "file_title": "Cape Race, Newfoundland, the Termination of the American System of Telegraphs - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Cape_Race%2C_Newfoundland%2C_the_Termination_of_the_American_System_of_Telegraphs_-_ILN_1861.jpg"
+        },
+        {
+          "path": "006_scottish_hero_swords.jpg",
+          "file_title": "Swords of Scottish Heroes exhibited at the Laying of the Foundation-Stone of the Wallace Monument at Stirling - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Swords_of_Scottish_Heroes_exhibited_at_the_Laying_of_the_Foundation-Stone_of_the_Wallace_Monument_at_Stirling_-_ILN_1861.jpg"
+        },
+        {
+          "path": "007_hms_warrior.jpg",
+          "file_title": "Her Majesty's Iron-Clad Steam-Frigate Warrior, 40 Guns - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Her_Majesty's_Iron-Clad_Steam-Frigate_Warrior%2C_40_Guns_-_ILN_1861.jpg"
+        },
+        {
+          "path": "008_italian_exposition_florence.jpg",
+          "file_title": "Opening of the Italian Exposition at Florence by Victor Emmanuel - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Opening_of_the_Italian_Exposition_at_Florence_by_Victor_Emmanuel_-_ILN_1861.jpg"
+        },
+        {
+          "path": "009_mahmal_cairo.jpg",
+          "file_title": "Dispatching the Mahmal, or Holy Carpet, from Cairo to Mecca - ILN 1861.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Dispatching_the_Mahmal%2C_or_Holy_Carpet%2C_from_Cairo_to_Mecca_-_ILN_1861.jpg"
+        },
+        {
+          "path": "010_new_cattle_market_derby.jpg",
+          "file_title": "The illustrated London news (1861) (14780800155).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:The_illustrated_London_news_(1861)_(14780800155).jpg"
+        },
+        {
+          "path": "011_quays_of_paris.jpg",
+          "file_title": "The illustrated London news (1861) (14779618602).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:The_illustrated_London_news_(1861)_(14779618602).jpg"
+        },
+        {
+          "path": "012_man_overboard_boat_system.jpg",
+          "file_title": "A Man Overboard!, New System of lowering and detaching Ships' Boats - ILN 1860.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:A_Man_Overboard!%2C_New_System_of_lowering_and_detaching_Ships'_Boats_-_ILN_1860.jpg"
+        }
+      ]
+    },
+    {
+      "pack": "victorian-encyclopaedic-engraving/natural-history",
+      "source_work": "Brehms Tierleben",
+      "year": "19th-century source work; digitized public-domain scans",
+      "rights": "Public-domain scan / public-domain original on Wikimedia Commons",
+      "items": [
+        {
+          "path": "001_frogs_plate.jpg",
+          "file_title": "Brehms Tierleben (Plate- Froschlurche I) BHL2977598.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Froschlurche_I)_BHL2977598.jpg"
+        },
+        {
+          "path": "002_horned_frog.jpg",
+          "file_title": "Brehms Tierleben (Plate- Hornfrosch) BHL2977699.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Hornfrosch)_BHL2977699.jpg"
+        },
+        {
+          "path": "003_bullfrog.jpg",
+          "file_title": "Brehms Tierleben (Plate- Ochsenfrosch) BHL2977753.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Ochsenfrosch)_BHL2977753.jpg"
+        },
+        {
+          "path": "004_snake_anatomy_a.jpg",
+          "file_title": "Brehms Tierleben (Plate- Anatomie...Ringelnat) BHL2977791.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Anatomie...Ringelnat)_BHL2977791.jpg"
+        },
+        {
+          "path": "005_snake_anatomy_b.jpg",
+          "file_title": "Brehms Tierleben (Plate- Anatomie...Ringelnat) BHL2977793.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Anatomie...Ringelnat)_BHL2977793.jpg"
+        },
+        {
+          "path": "006_tuatara.jpg",
+          "file_title": "Brehms Tierleben (Plate- Brückenechse) BHL2977821.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Br%C3%BCckenechse)_BHL2977821.jpg"
+        },
+        {
+          "path": "007_turtles.jpg",
+          "file_title": "Brehms Tierleben (Plate- Schildkröten I) BHL2977879.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Schildkr%C3%B6ten_I)_BHL2977879.jpg"
+        },
+        {
+          "path": "008_south_african_landscape_fauna.jpg",
+          "file_title": "Brehms Tierleben (Plate- Südafrikanische Land) BHL2977905.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_S%C3%BCdafrikanische_Land)_BHL2977905.jpg"
+        },
+        {
+          "path": "009_black_caiman.jpg",
+          "file_title": "Brehms Tierleben (Plate- Mohrenkaiman) BHL2978049.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_(Plate-_Mohrenkaiman)_BHL2978049.jpg"
+        },
+        {
+          "path": "010_giant_salamander.jpg",
+          "file_title": "Brehms Tierleben BHL2977468.jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Brehms_Tierleben_BHL2977468.jpg"
+        }
+      ]
+    },
+    {
+      "pack": "victorian-encyclopaedic-engraving/industrial",
+      "source_work": "Appletons' cyclopaedia of applied mechanics: a dictionary of mechanical engineering and the mechanical arts",
+      "year": "1880",
+      "rights": "No known copyright restrictions on Wikimedia Commons; 1880 US publication is public domain in the US",
+      "items": [
+        {
+          "path": "001_mechanics_14593883509.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14593883509).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14593883509).jpg"
+        },
+        {
+          "path": "002_mechanics_14757776946.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14757776946).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14757776946).jpg"
+        },
+        {
+          "path": "003_mechanics_14594233508.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14594233508).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14594233508).jpg"
+        },
+        {
+          "path": "004_mechanics_14779974605.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14779974605).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14779974605).jpg"
+        },
+        {
+          "path": "005_mechanics_14593477517.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14593477517).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14593477517).jpg"
+        },
+        {
+          "path": "006_mechanics_14780541212.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14780541212).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14780541212).jpg"
+        },
+        {
+          "path": "007_mechanics_14780216252.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14780216252).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14780216252).jpg"
+        },
+        {
+          "path": "008_mechanics_14757482046.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14757482046).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14757482046).jpg"
+        },
+        {
+          "path": "009_mechanics_14594169870.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14594169870).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14594169870).jpg"
+        },
+        {
+          "path": "010_mechanics_14593944448.jpg",
+          "file_title": "Appletons' cyclopaedia of applied mechanics- a dictionary of mechanical engineering and the mechanical arts (1880) (14593944448).jpg",
+          "commons_page": "https://commons.wikimedia.org/wiki/File:Appletons'_cyclopaedia_of_applied_mechanics-_a_dictionary_of_mechanical_engineering_and_the_mechanical_arts_(1880)_(14593944448).jpg"
+        }
+      ]
+    }
+  ]
+}
