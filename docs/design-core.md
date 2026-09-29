@@ -113,7 +113,11 @@ Biome-finding should use a **mixed information model**:
 
 The exact canary behavior is still open, but if it contributes to biome finding it should provide ambiguous long-range foreshadowing rather than exact destination tracking.
 
-The game must remain navigable despite player-made tunnels and flesh regeneration.
+Biome geography is not fully static. As flesh regenerates, biome boundaries can drift and reshape over time rather than returning to an identical prior layout.
+
+This drift should preserve the sense that the organism is alive and changing, but it must not make navigation or recovery objectives arbitrarily impossible.
+
+The game must remain navigable despite player-made tunnels, flesh regeneration, and gradual biome-boundary drift.
 
 ## 8. Restroom
 
