@@ -15,11 +15,13 @@
 - [ ] Tune permanent biosecurity spray: can price, application rate, per-can coverage, performance differences between surface treatment and deeper-volume dissolution, and how sacrificing edible flesh balances permanent non-regenerating routes. Carry cap is 3 cans.
 - [ ] Design tool progression across the already accepted roles: portable blender, tissue-specific tools, route/return tools, physical barriers, and permanent biosecurity spray.
 - [ ] Define portable blender handling: how much loose flesh can be visibly held in the hands before blending, how batching works, how much stomach efficiency it grants, and which tools count as one-handed versus two-handed.
-- [ ] Define exact mutation-point gain formula around the established depth × flesh-amount basis, including how biome-specific point progression is represented.
-- [ ] Define parent-child upgrade costs and biome branch contents for the toilet-side organization-chart / family-tree-like mutation UI.
-- [ ] Define money gain formula, prices, sinks, and how money is presented alongside mutation points during toilet settlement.
-- [ ] Define the vomiting settlement presentation precisely: how dark-gray existing totals and green newly gained amounts count upward for both mutation points and money.
-- [ ] Decide what happens to unsettled mutation-point / money value when the player vomits outside the restroom; outside vomiting itself has no special lethal penalty.
+- [ ] Define exact mutation-point gain formula around the established depth × flesh-amount basis, including the split between common mutation points and biome-specific mutation points.
+- [ ] Define parent-child mutation upgrade costs and branch contents; mutation upgrades can be purchased anywhere and are not part of the toilet UI.
+- [ ] Define money formula around biome/rarity × flesh amount, including the premium value of tumors and other unusually valuable material.
+- [ ] Define shop inventory, prices, and money sinks.
+- [ ] Define the toilet settlement presentation precisely: how dark-gray existing totals and green newly gained amounts count upward for mutation points and money while the shop occupies the right side.
+- [ ] Define toilet-shop purchase pacing and animation: coin thrown into the toilet, then purchased item retrieved by opening the toilet cistern.
+- [ ] Outside vomiting awards no mutation points or money; verify in prototype that emergency stomach relief remains useful without undermining the return loop.
 - [ ] Brainstorm long-term restroom expansion / structural changes while preserving the clean safe-room identity; keep the prototype restroom fixed.
 - [ ] Decide after the prototype whether cancer/tumor codex completion ever grants a practical benefit; prototype behavior is collection-only.
 - [ ] Tune normal stomach capacity, overfill slowdown, visible flesh buildup, and overflow-bar growth against flesh-regeneration speed.
