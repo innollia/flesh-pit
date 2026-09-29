@@ -269,6 +269,8 @@ func _register_inputs() -> void:
         rk.physical_keycode = KEY_R
         InputMap.action_add_event("fp_pick", rk)
     _register_keybinds()
+    # W32: gamepad sticks/triggers and mouse-only bindings (fp_input_modes.gd)
+    (load("res://main/scripts/fp_input_modes.gd") as GDScript).call("register")
 
 ## Default keys live in main/data/keybinds.json. A player's own changes go to
 ## user://keybinds.json (same shape) and win over the defaults.
@@ -452,6 +454,9 @@ func _build_ui() -> void:
     vomit_button.name = "VomitButton"
     layer.add_child(vomit_button)
     vomit_button.pressed.connect(request_vomit)
+    interact_ring = (load("res://main/scripts/fp_interact_ring.gd") as GDScript).new()
+    interact_ring.name = "InteractRing"
+    layer.add_child(interact_ring)
     mirror = FPMirror.new()
     mirror.name = "Mirror"
     add_child(mirror)
@@ -625,6 +630,14 @@ func step_world(delta: float) -> void:
     _step_nerve_touch(delta)
     _step_hazards(delta)
     _step_canary(delta)
+    _step_canary_pull(delta)
+    if danger_show == null and hands_rig != null:
+        danger_show = (load("res://main/scripts/fp_danger_show.gd") as GDScript).new()
+        danger_show.setup(self)
+    if danger_show != null:
+        danger_show.tick(delta)
+    if interact_ring != null:
+        interact_ring.set("shown", interact_target() != "")
     _step_death_drop(delta)
     terrain.step_contraction(delta, player.global_position)
     tissue_tools.step_charge(delta, Input.is_action_pressed("fp_blend"))
@@ -652,8 +665,8 @@ func _interact() -> void:
     var p := player.global_position
     if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
         open_mirror()
-    elif _looking_at(canary_hole_point(), 25.0, 1.4):
-        take_canary()
+    elif not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
+        begin_canary_pull()
     elif _near_toilet() and _looking_at(lever_point(), 12.0, 1.4):
         pull_lever()
     elif _near_toilet() and _pitch() > 0.45:
@@ -950,6 +963,64 @@ func take_canary() -> bool:
         return false
     has_canary = true
     return true
+
+# --- W03 canary pull: lie down, reach into the hole, pocket one bird --------
+const CANARY_PULL_TIME := 1.6
+## -1 = not pulling; otherwise seconds into the pull.
+var canary_pull_t: float = -1.0
+var interact_ring: Control
+## W27 wordless danger (bruised hands, crush squeeze); fp_danger_show.gd.
+var danger_show = null
+var _pull_eye_y: float = 0.0
+
+func is_pulling_canary() -> bool:
+    return canary_pull_t >= 0.0
+
+func begin_canary_pull() -> bool:
+    if has_canary or is_pulling_canary():
+        return false
+    canary_pull_t = 0.0
+    _pull_eye_y = player.camera_pivot.position.y
+    return true
+
+## Drives the prone pose: the eye sinks to the floor and tilts at the hole,
+## the canary is pocketed at the bottom of the reach, then the player gets up.
+func _step_canary_pull(delta: float) -> void:
+    if not is_pulling_canary():
+        return
+    canary_pull_t += delta
+    var k := clampf(canary_pull_t / CANARY_PULL_TIME, 0.0, 1.0)
+    var down := sin(k * PI) # 0 -> 1 (prone) -> 0
+    player.camera_pivot.position.y = lerpf(_pull_eye_y, 0.18, down)
+    var a := _aim_pitch_at(canary_hole_point())
+    player.camera_pivot.rotation.x = lerpf(player.camera_pivot.rotation.x, a, down * 0.5)
+    hands_rig.set_carry(down * 0.6) # both hands reach forward into the hole
+    if k >= 0.5 and not has_canary:
+        take_canary()
+    if k >= 1.0:
+        player.camera_pivot.position.y = _pull_eye_y
+        canary_pull_t = -1.0
+
+func _aim_pitch_at(p: Vector3) -> float:
+    var eye: Vector3 = player.camera_pivot.global_position
+    var d := (p - eye).normalized()
+    return asin(clampf(d.y, -1.0, 1.0))
+
+# --- W32 interaction affordance: a ring round the aim dot, no words ---------
+## What fp_interact would do right now ("" = nothing but digging).
+func interact_target() -> String:
+    var p := player.global_position
+    if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
+        return "mirror"
+    if not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
+        return "canary"
+    if _near_toilet():
+        return "toilet"
+    if p.distance_to(sink_point()) < 0.9:
+        return "sink"
+    if p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6:
+        return "door"
+    return ""
 
 func feed_canary() -> bool:
     if not has_canary or not progression.feed_canary():

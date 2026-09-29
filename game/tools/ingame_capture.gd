@@ -82,6 +82,14 @@ func _setup() -> void:
 			_pose(r + Vector3(0, -0.2, 1.6), 0.0, deg_to_rad(-8.0))
 		"ending":
 			m.reach_ending()
+		"canary_pull":
+			m.restroom.set_door_open(false, true)
+			_look(Vector3(-0.3, 0.95, -0.2), m.canary_hole_point())
+			m.begin_canary_pull()
+		"crushed":
+			m.restroom.set_door_open(true, true)
+			_dig_tunnel()
+			_pose(Vector3(0.0, 0.95, 3.2), PI, deg_to_rad(-5.0))
 	m.apply_atmosphere_now()
 
 func _process(_delta: float) -> bool:
@@ -91,6 +99,11 @@ func _process(_delta: float) -> bool:
 	if _frame > 2 and _shot == "rest_point":
 		var r: Vector3 = _main.rest_points[0]
 		_pose(r + Vector3(0, -0.2, 1.6), 0.0, deg_to_rad(-8.0))
+	if _frame > 2 and _shot == "canary_pull":
+		_main.canary_pull_t = 0.75
+	if _frame > 2 and _shot == "crushed":
+		_main.hazard.health = 25.0
+		_main._crush_t = _main.progression.crush_time() * 0.85
 	if _frame > 2 and _shot == "blender":
 		_main.carried_flesh = 26.0
 	return false

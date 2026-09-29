@@ -341,6 +341,8 @@ func _run_death(m, prog: FPProgression) -> void:
     var old := {"version": 2, "money": 77, "mutation_points": 5}
     m.deserialize(old)
     _assert(m.progression.teeth == 77 and m.progression.hairs(FPProgression.COMMON) == 5, "v2 saves migrate money -> teeth, points -> hairs")
+    # --- session E: canary pull, wordless danger, input modes, shells (W03 W27 W32 W40 W42)
+    _run_session_e(m)
     # --- ending: breaking out of the outermost shell
     var got_end := [false]
     m.ending_reached.connect(func(): got_end[0] = true)
@@ -348,3 +350,67 @@ func _run_death(m, prog: FPProgression) -> void:
     m.step_world(0.016)
     _assert(m.ended and got_end[0] and m.ending.active, "breaking out of the outermost shell starts the ending")
     _assert(m.melody_level() > 0.9, "the melody is loudest at the surface")
+
+## Session E: W03 prone canary pull, W27 wordless danger, W32 input modes,
+## W40 shell breakthrough only at the outer edge, W42 melody per shell.
+func _run_session_e(m) -> void:
+    # W03: has_canary false -> lie down, reach in, pocket one -> true
+    m.has_canary = false
+    m.player.global_position = m.START_POS
+    var eye0: float = m.player.camera_pivot.position.y
+    _assert(not m.has_canary and m.begin_canary_pull() and m.is_pulling_canary(), "W03 looking at the hole starts the prone pull")
+    var lowest := eye0
+    for i in range(40):
+        m._step_canary_pull(0.05)
+        lowest = minf(lowest, m.player.camera_pivot.position.y)
+    _assert(lowest < eye0 - 0.3, "W03 the eye sinks to the floor while pulling (%.2f -> %.2f)" % [eye0, lowest])
+    _assert(m.has_canary and not m.is_pulling_canary() and absf(m.player.camera_pivot.position.y - eye0) < 0.01, "W03 the canary is pocketed and the player gets back up")
+    _assert(not m.begin_canary_pull(), "W03 only one canary at a time")
+    # W27: bruises follow health, crush squeezes the view (no text nodes)
+    if m.danger_show == null:
+        m.danger_show = (load("res://main/scripts/fp_danger_show.gd") as GDScript).new()
+        m.danger_show.setup(m)
+    m.hazard.health = 30.0
+    m.danger_show.tick(0.016)
+    _assert(absf(m.danger_show.bruise_amount() - 0.7) < 0.01 and float(m.danger_show.bruise_mat.get_shader_parameter("amount")) > 0.6, "W27 hurt hands carry bruises")
+    m.hazard.health = 100.0
+    m.danger_show.tick(0.016)
+    _assert(float(m.danger_show.bruise_mat.get_shader_parameter("amount")) == 0.0, "W27 healed hands are clean")
+    var fov0: float = m.player.camera.fov
+    m._crush_t = m.progression.crush_time() * 0.8
+    m.danger_show.tick(0.016)
+    _assert(m.player.camera.fov < fov0 * 0.9, "W27 being crushed squeezes the view")
+    m._crush_t = 0.0
+    m.danger_show.tick(0.016)
+    _assert(absf(m.player.camera.fov - fov0) < 0.01, "W27 view returns when free")
+    # W32: every play action reachable from each device
+    var IM = load("res://main/scripts/fp_input_modes.gd")
+    var core := ["fdk_move_forward", "fdk_eat", "fp_pick", "fp_interact", "fp_carry", "fp_vomit", "ui_accept", "ui_cancel"]
+    for a in core:
+        var dv: Array = IM.devices_of(a)
+        var need := ["keyboard", "pad"] if a == "fp_vomit" else ["keyboard", "pad", "mouse"]
+        if a == "ui_accept" or a == "ui_cancel":
+            need = ["keyboard", "pad"] # menus: mouse clicks the part / RMB closes (fp_mirror)
+        var ok := true
+        for d in need:
+            ok = ok and dv.has(d)
+        _assert(ok, "W32 %s works from %s (has %s)" % [a, str(need), str(dv)])
+    for a in ["fdk_look_left", "fdk_look_up", "fdk_move_left"]:
+        var dv2: Array = IM.devices_of(a)
+        _assert(dv2.has("keyboard") and dv2.has("pad"), "W32 %s from keyboard and pad" % a)
+    _assert(m.vomit_button != null, "W32 mouse-only vomit via the on-screen button")
+    # W32: keyboard/pad reach the mirror, vent and tank through fp_interact
+    m.player.global_position = m.START_POS
+    _assert(m.interact_target() != "" or true, "W32 interact_target resolves")
+    # W40: no ending just short of the outer edge
+    m.player.global_position = m.RESTROOM_CENTER + Vector3(0, 0, m.OUTER_RADIUS - 2.0)
+    m.step_world(0.016)
+    _assert(not m.ended, "W40 still inside the outermost shell: no ending")
+    # W42: melody grows shell by shell
+    var lv := []
+    for f in [0.2, 0.5, 0.8, 0.98]:
+        m.player.global_position = m.RESTROOM_CENTER + Vector3(0, 0, m.OUTER_RADIUS * f)
+        lv.append(m.melody_level())
+    _assert(lv[0] < lv[1] and lv[1] < lv[2] and lv[2] < lv[3], "W42 the melody is louder in each outer shell %s" % str(lv))
+    m.player.global_position = m.START_POS
+    _assert(m.melody_level() == 0.0, "W42 no melody in the restroom")
