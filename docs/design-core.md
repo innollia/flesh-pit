@@ -30,7 +30,15 @@ The player can keep eating past normal capacity, but the body visibly struggles:
 
 The purpose is to let the player choose to push farther at worsening efficiency rather than imposing an abrupt capacity wall.
 
-After the player exceeds a certain overfill threshold, a **vomit button** appears on screen. Vomiting is therefore available before reaching the restroom once the body is sufficiently overfilled; the exact consequence of vomiting outside the restroom is still unresolved.
+After the player exceeds a certain overfill threshold, a **vomit button** appears on screen.
+
+Vomiting outside the restroom is lethal:
+- vomit that touches the surrounding flesh wall hardens almost immediately into a rigid stalactite-like organic mass
+- the hardened vomit remains connected back to the player's mouth
+- the flesh still inside the stomach becomes continuous with the wall through that hardened mass
+- the player is effectively incorporated into the surrounding tissue and dies
+
+This makes the on-screen vomit button a desperate but deadly option outside the safe restroom, while preserving the restroom as the only safe place to empty the stomach.
 
 ## 2. Regenerating flesh is a core pressure
 
@@ -46,6 +54,8 @@ Early-game stomach capacity and flesh-regeneration speed should be intentionally
 The first version should make the phenomenon obvious but recoverable rather than punitive.
 
 A later tool role is established: the player can **slow local regeneration** to keep selected routes useful for longer. It should not permanently delete regeneration pressure.
+
+Regeneration-slowing devices are limited by **how many can be installed at once**. This forces the player to choose which routes or areas are worth stabilizing instead of suppressing regeneration everywhere.
 
 ## 3. Eating feel
 
@@ -64,7 +74,7 @@ Start:
 Tool progression must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
 Established tool directions:
-- **portable blender:** torn flesh can be collected visibly in the player's hands, then blended in batches and consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently
+- **portable blender:** torn flesh can be collected visibly in the player's hands, then blended in batches and consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently. While carrying a pile of flesh, the player can still use one hand for other actions.
 - **tissue-specific tools:** some tools can improve handling of particular tissue types
 - **route / return tools:** tools can support navigation, route maintenance, or return travel
 - **regeneration-control tools:** some tools can slow local flesh regeneration
@@ -87,7 +97,9 @@ Major mutations should be perceptible immediately.
 
 Mutation progression includes **player choice** rather than being purely automatic.
 
-Mutation choice is presented when the player returns to the restroom and vomits into the toilet. The mutation UI appears beside the toilet rather than as a detached menu. The exact number and content of choices remain unresolved.
+Mutation choice is presented when the player returns to the restroom and vomits into the toilet. The mutation UI appears beside the toilet rather than as a detached menu.
+
+The offered mutation choices are determined by the **types of tissue the player has eaten** during the excursion. Exact weighting and option count remain unresolved.
 
 ## 5. Tissue-specific rules
 
@@ -127,7 +139,7 @@ On death:
 - the player can return and recover them
 - failing to recover them should not create a severe long-term penalty
 - navigation only preserves the **last known location** of the drop
-- dropped belongings can be physically displaced by moving / regenerating tissue after death, so the marker does not magically update to the item's new exact position
+- dropped belongings can be physically displaced continuously by moving / regenerating tissue after death, with no fixed displacement cap, so the marker does not magically update to the item's new exact position
 
 Death should create a small recovery objective, not wipe progression.
 
