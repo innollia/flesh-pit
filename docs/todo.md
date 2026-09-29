@@ -5,10 +5,10 @@
 - [ ] Brainstorm depth-by-depth gameplay differences using Mystery Flesh Pit and other giant-organism references only as inspiration; keep the world original.
 - [ ] Design the actual biome-region layouts inside concentric shells. Work toward multiple biome regions per shell; if production cost is too high, fall back to one dominant biome per shell.
 - [ ] Design hybrid shell transitions: gradual tissue-composition change approaching the boundary plus a clearer final boundary signal / membrane / transition feature.
-- [ ] Decide how players can infer nearby biome regions before blindly tunneling into them; otherwise directional freedom may not create meaningful route choice.
+- [ ] Define the canary's exact long-range hint language without turning it into exact destination tracking.
+- [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
 - [ ] Design tool progression without losing the core identity of **eating** the terrain.
 - [ ] Brainstorm progression content/events for the clean white restroom.
-- [ ] Define the canary's exact gameplay function.
 - [ ] Decide whether cancer/tumor codex completion grants any practical benefit or stays purely collectible.
 - [ ] Tune stomach capacity against flesh-regeneration speed using successful digging-game return cadences as baseline.
 
