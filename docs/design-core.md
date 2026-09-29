@@ -45,6 +45,8 @@ Start:
 
 Tool progression is unresolved and must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
+One tool role is already expected: the player can eventually use a tool or device that **suppresses or prevents flesh regeneration locally**, allowing selected routes or areas to remain open longer.
+
 See TODOs.
 
 ## 4. Mutation feedback
@@ -113,11 +115,13 @@ Biome-finding should use a **mixed information model**:
 
 The exact canary behavior is still open, but if it contributes to biome finding it should provide ambiguous long-range foreshadowing rather than exact destination tracking.
 
-Biome geography is not fully static. As flesh regenerates, biome boundaries can drift and reshape over time rather than returning to an identical prior layout.
+Biome geography is not fully static. As flesh regenerates, biome boundaries drift and reshape continuously during play rather than only between expeditions.
+
+The world can shift enough that, on return, the restroom doorway and previously excavated tunnel may be slightly misaligned with where the player remembers them. This should read as living tissue moving and regrowing, not as a discrete map reroll.
 
 This drift should preserve the sense that the organism is alive and changing, but it must not make navigation or recovery objectives arbitrarily impossible.
 
-The game must remain navigable despite player-made tunnels, flesh regeneration, and gradual biome-boundary drift.
+The game must remain navigable despite player-made tunnels, continuous flesh regeneration, and biome-boundary drift.
 
 ## 8. Restroom
 
