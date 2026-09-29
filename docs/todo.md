@@ -3,8 +3,9 @@
 ## High priority design
 
 - [ ] Brainstorm depth-by-depth gameplay differences using Mystery Flesh Pit and other giant-organism references only as inspiration; keep the world original.
-- [ ] Decide whether **deeper** is defined by nested roughly spherical layers around the restroom; current candidate is concentric shells that work in every excavation direction.
-- [ ] Decide biome topology inside each shell: one dominant biome per shell, multiple biome regions per shell, or a hybrid where each shell has a dominant biome plus local intrusions/patches.
+- [ ] Design the actual biome-region layouts inside concentric shells. Work toward multiple biome regions per shell; if production cost is too high, fall back to one dominant biome per shell.
+- [ ] Design hybrid shell transitions: gradual tissue-composition change approaching the boundary plus a clearer final boundary signal / membrane / transition feature.
+- [ ] Decide how players can infer nearby biome regions before blindly tunneling into them; otherwise directional freedom may not create meaningful route choice.
 - [ ] Design tool progression without losing the core identity of **eating** the terrain.
 - [ ] Brainstorm progression content/events for the clean white restroom.
 - [ ] Define the canary's exact gameplay function.
