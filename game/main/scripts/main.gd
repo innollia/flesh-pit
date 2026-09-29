@@ -572,6 +572,8 @@ func _interact() -> void:
         open_mirror()
     elif _looking_at(canary_hole_point(), 25.0, 1.4):
         take_canary()
+    elif _near_toilet() and _looking_at(lever_point(), 12.0, 1.4):
+        pull_lever()
     elif _near_toilet() and _pitch() > 0.45:
         use_vent()
     elif p.distance_to(sink_point()) < 0.9:
@@ -640,19 +642,27 @@ func start_settlement() -> void:
 
 ## Pressing the lever settles: teeth in the tank, hairs on the arm, and the
 ## flush sets the vent being off.
-func flush() -> Dictionary:
-    if not _settling:
-        return {}
+## The lever is just a thing on the toilet: it can be pressed at any time,
+## sitting or standing, full bowl or empty. Settles whatever is in the bowl.
+func pull_lever() -> Dictionary:
     if toilet.tank_node == null:
         toilet.tank_node = restroom.tank_art
     var got := toilet.press_lever(progression)
-    _settling = false
     vent.on_flush()
     flushed.emit(got["teeth"], got["hairs"])
-    player.camera.current = true
-    if player.mouse_look_enabled:
-        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+    if _settling:
+        _settling = false
+        player.camera.current = true
+        if player.mouse_look_enabled:
+            Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
     return got
+
+func flush() -> Dictionary:
+    return pull_lever()
+
+## Where the flush lever sits on the tank, in world space.
+func lever_point() -> Vector3:
+    return restroom.toilet.to_global(Vector3(-0.16, 0.733, 0.185))
 
 func end_settlement() -> void:
     flush()

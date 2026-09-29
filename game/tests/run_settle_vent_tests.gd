@@ -73,7 +73,12 @@ func _settlement() -> void:
     _assert(FPToiletSettlement.rattle_duration(0, 0) == 0.0, "W04 an empty flush does not rattle")
     m.toilet.tick(10.0)
     _assert(not m.toilet.is_rattling(), "W04 the rattle ends")
-    _assert(m.flush().is_empty(), "W04 the lever only works while settling")
+    var t0: int = prog.teeth
+    var empty: Dictionary = m.pull_lever()
+    _assert(not empty.is_empty() and empty["teeth"] == 0 and prog.teeth == t0 and not m.is_settling(), "W04 the lever works standing with an empty bowl")
+    m.stomach.add_flesh(100.0)
+    m.toilet.vomit_into(m.stomach.vomit())
+    _assert(not m.is_settling() and m.pull_lever()["teeth"] > 0, "W04 the lever settles the bowl while standing")
 
 # --- 04-economy hairs ------------------------------------------------------------
 
