@@ -2,4 +2,4 @@
 *.tmp
 /captures/
 /dist/
-.godot_run_*
+/logs/
