@@ -18,6 +18,20 @@ Copy `addons/flesh_dig_kit/` into your project's `addons/` folder, then
 enable it in Project Settings > Plugins (the plugin itself has no editor
 UI; enabling just registers it as present).
 
+## What is in 0.2
+
+- `terrain/` FDKTerrainField + FDKChunk (surface-nets faceted low-poly
+  meshing, tissue vertex colours, depth tone), FDKNerveStalk.
+- `eat/` FDKChewer (grab_started / chew_progress / cell_torn / released),
+  FDKStomach.
+- `player/` FDKFirstPersonController with FDKHandsRig (two low-poly hands,
+  3-joint finger block + 3-joint thumb). Connect the chewer signals to
+  `on_grab_started`, `on_chew_progress`, `on_cell_torn`, `on_released`.
+- `common/` FDKLowPoly mesh helpers, `fdk_viewmodel.gdshader`.
+
+한국어 요약: 각진 로우폴리 살 지형(표면 그물), 조직별 색, 꿈틀대는 신경,
+손가락 덩어리·엄지가 각각 3관절로 굽는 두 손, 씹기·위 상태. MIT.
+
 ## Quick start
 
 See `demo/fdk_demo.tscn` for a complete standalone example. In short:

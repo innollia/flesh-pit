@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0
+
+- Terrain meshing rewritten as true surface nets: slanted faceted walls
+  (one flat normal per triangle, stable per-vertex jitter), vertex colours
+  by tissue plus a depth tone, seamless chunk borders (neighbour corners are
+  read and shared corners are dug in every chunk that stores them).
+- Terrain field: density/tissue samplers for endless generation,
+  generate_region(), remesh_all(), per-frame remesh budget, tissue_at(),
+  density_at(), is_edible_at() with `inedible_tissues`.
+- Chewer refuses inedible tissue and digs through the field (no seams).
+- New low-poly hands (FDKHandsRig): palm with thenar pad, fused 4-finger
+  block with 3 joints, separate 3-joint thumb with opposition; idle / grab
+  (joints curl in order) / chew pull + tremble / tear jerk with torn chunk /
+  release / carry pile; walking sway from footstep_bob; joint limits.
+- FDKNerveStalk: wriggling yellow nerve that hides when its base is eaten.
+- FDKLowPoly mesh helpers and a view-model shader (hands never clip into
+  nearby walls).
+
 ## 0.1.0
 
 - Initial release: chunked density-grid terrain with low-poly surface-nets
