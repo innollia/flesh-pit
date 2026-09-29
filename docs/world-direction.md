@@ -4,62 +4,66 @@ Status: original setting required.
 
 ## Core premise
 
-The game takes place in or around a **colossal living organism whose body functions as explorable terrain**.
+The game takes place inside a colossal living organism whose body functions as explorable terrain.
 
-The organism is large enough for:
-- rooms, shafts, tunnels, platforms, pipes, doors, ladders, lights, and utility spaces to exist against or inside tissue
-- recognizable anatomical regions to function as depth zones
-- previous human activity to have left infrastructure and traces
+The world can contain old infrastructure embedded in or built against tissue, but the exact origin and purpose remain open.
 
-The tone benefits from treating impossible biology as mundane working space.
+## Central visual contrast
+
+The main world is:
+- red
+- wet/dirty
+- organic
+- unstable
+- gradually regrowing after excavation
+
+The restroom is the exception:
+- clean
+- white
+- safe
+- visually controlled
+
+That contrast should remain strong. The restroom should not secretly become another filthy flesh room simply for horror aesthetics.
 
 ## Separation rule
 
-**Mystery Flesh Pit National Park is reference material only.**
+Mystery Flesh Pit National Park is reference material only.
 
-Do not directly import:
-- Anodyne
-- Permian Basin Superorganism
-- specific park names
-- specific attractions
-- specific organizations
-- specific creatures
-- specific maps
-- specific disaster history
-- proprietary terminology or continuity
+Do not directly import names, companies, park identity, creatures, maps, attractions, history, terminology, or continuity.
 
-Instead, extract abstract design principles:
+Extract only abstract design principles:
 - organism as geography
-- biology as infrastructure problem
-- human systems built into impossible anatomy
-- industrial normalcy around grotesque scale
-- anatomical depth functioning like geological strata
+- mundane infrastructure inside impossible anatomy
+- anatomical depth as world progression
+- humans normalizing bizarre biology
+- strong location identity without requiring huge playable spaces
 
-## Questions the original world must answer later
+## Navigation language
 
-Not all of these need explicit exposition.
+Accepted:
+- compass
+- canary
 
-- What is this organism?
-- Is it alive in a normal biological sense?
-- Why is there a restroom/base where the player starts?
-- Who built the infrastructure?
-- Is the place abandoned, active, or partially maintained?
-- Why does eating the organism mutate the player?
-- Does the organism react globally to damage, or only locally?
-- Are deeper anatomical regions stable or changing?
-- What counts as “outside” the organism?
+The canary's exact role is still undecided.
 
-The answers should support mechanics rather than expand scope for their own sake.
+## Open world questions
 
-## Tone target
+These remain unresolved unless mechanics require answers:
+- what exactly is the organism?
+- who built the restroom/infrastructure?
+- why does eating cause mutation?
+- is the player human, altered human, parasite, or something else?
+- what counts as outside?
+- why does flesh regenerate?
+- what is at the deepest reachable point?
 
-Not pure body horror.
+Do not answer these merely to complete lore.
 
-Prefer the friction between:
-- grotesque biology
-- banal infrastructure
-- repetitive labor
-- cheerful or utilitarian signage
-- increasingly impossible anatomy
+## Non-canon ending hypotheses
 
-The strange thing should become routine through play, then become strange again as depth escalates.
+Possible endings currently include:
+- mutation reaches a biological singularity
+- the restroom is in the large intestine and the player eventually exits through the anus
+- the player is revealed to be a parasite moving through a human/organism body
+
+These are brainstorming material only.
