@@ -1,0 +1,124 @@
+{
+ "_안내": "시간 값과 상황별 대사 묶음. 대사 글은 vent_lines.json의 ko를 고치면 됨. 여기 대사 칸에는 vent_lines.json의 id를 적음. 고친 뒤 python game/tools/check_vent_lines.py 로 검사.",
+ "시간": {
+  "FRANTIC_TIME": {
+   "값": 20.0,
+   "설명": "당황 상태가 이어지는 초"
+  },
+  "CALM_TIME": {
+   "값": 30.0,
+   "설명": "진정되기까지 초"
+  },
+  "NAG_INTERVAL": {
+   "값": 6.0,
+   "설명": "무시당할 때 다음 대사까지 초"
+  },
+  "TOGGLE_WINDOW": {
+   "값": 5.0,
+   "설명": "이 초 안에 다시 열면 여닫기 반복"
+  },
+  "IDLE_TIME": {
+   "값": 12.0,
+   "설명": "가만히 있으면 말 거는 초"
+  },
+  "STARE_TIME": {
+   "값": 5.0,
+   "설명": "뚜껑 열고 쳐다만 볼 때 초"
+  },
+  "PICK_LONG_TIME": {
+   "값": 15.0,
+   "설명": "고르기 오래 걸릴 때 초"
+  },
+  "LONG_AWAY": {
+   "값": 120.0,
+   "설명": "오래 안 왔다고 치는 초"
+  },
+  "SPRAY_SULK": {
+   "값": 40.0,
+   "설명": "스프레이 맞고 숨는 초"
+  },
+  "TOGGLE_HIDE": {
+   "값": 20.0,
+   "설명": "여닫기 5번 뒤 숨는 초"
+  },
+  "REMARK_COOLDOWN": {
+   "값": 90.0,
+   "설명": "같은 혼잣말 다시 하기까지 초"
+  }
+ },
+ "대사묶음": {
+  "FIRST_CHAIN": {
+   "설명": "처음 소리 들었을 때 순서대로",
+   "대사": [
+    "first.heard",
+    "first.nobody",
+    "first.hello",
+    "first.tsk"
+   ]
+  },
+  "FLUSH_A": {
+   "설명": "물 내린 뒤 부르기 A (순서대로)",
+   "대사": [
+    "flush.a1",
+    "flush.a2",
+    "flush.a3",
+    "flush.a4",
+    "flush.a5"
+   ]
+  },
+  "FLUSH_B": {
+   "설명": "물 내린 뒤 부르기 B (순서대로)",
+   "대사": [
+    "flush.b1",
+    "flush.b2",
+    "flush.b3",
+    "flush.b4"
+   ]
+  },
+  "OPEN_TEETH": {
+   "설명": "이빨 있을 때 열면 (무작위 하나)",
+   "대사": [
+    "open.teeth1",
+    "open.teeth2",
+    "open.teeth3"
+   ]
+  },
+  "APPRAISE": {
+   "설명": "이빨 올렸을 때 감정 (무작위)",
+   "대사": [
+    "appraise.1",
+    "appraise.2",
+    "appraise.3",
+    "appraise.4",
+    "appraise.5",
+    "appraise.6"
+   ]
+  },
+  "UNAWARE": {
+   "설명": "빈손으로 열었을 때, 모르는 척 (무작위)",
+   "대사": [
+    "empty.unaware1",
+    "empty.unaware2",
+    "empty.unaware3",
+    "empty.unaware4",
+    "empty.unaware5"
+   ]
+  },
+  "AWARE": {
+   "설명": "빈손인 걸 알 때 (무작위)",
+   "대사": [
+    "empty.aware1",
+    "empty.aware2",
+    "empty.aware3"
+   ]
+  },
+  "TAKE": {
+   "설명": "물건 집을 때 (무작위)",
+   "대사": [
+    "pick.take1",
+    "pick.take2",
+    "pick.take3"
+   ]
+  }
+ }
+}

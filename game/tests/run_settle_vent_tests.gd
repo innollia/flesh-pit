@@ -73,6 +73,10 @@ func _settlement() -> void:
     _assert(FPToiletSettlement.rattle_duration(0, 0) == 0.0, "W04 an empty flush does not rattle")
     m.toilet.tick(10.0)
     _assert(not m.toilet.is_rattling(), "W04 the rattle ends")
+    var fk := false
+    for e in InputMap.action_get_events("fp_interact"):
+        fk = fk or (e is InputEventKey and e.physical_keycode == KEY_F)
+    _assert(fk, "keybinds.json gives fp_interact its default key")
     var t0: int = prog.teeth
     var empty: Dictionary = m.pull_lever()
     _assert(not empty.is_empty() and empty["teeth"] == 0 and prog.teeth == t0 and not m.is_settling(), "W04 the lever works standing with an empty bowl")

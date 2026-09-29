@@ -15,29 +15,51 @@ signal offers_changed(ids: Array)
 ## Early items spilled out on an absurd overpay (already granted).
 signal spilled(ids: Array)
 
-const FRANTIC_TIME := 20.0
-const CALM_TIME := 30.0
-## Seconds between escalating nags while the player ignores the being.
-const NAG_INTERVAL := 6.0
-## Opens within this window count as "여닫기 반복".
-const TOGGLE_WINDOW := 5.0
-const IDLE_TIME := 12.0
-const STARE_TIME := 5.0
-const PICK_LONG_TIME := 15.0
-## Away this long counts as "한참 뒤 돌아옴" / "오래 안 옴".
-const LONG_AWAY := 120.0
-const SPRAY_SULK := 40.0
-const TOGGLE_HIDE := 20.0
-const REMARK_COOLDOWN := 90.0
+## Timings and line pools are editable in main/data/vent_rules.json.
+const RULES_PATH := "res://main/data/vent_rules.json"
+static var _rules: Dictionary = {}
 
-const FIRST_CHAIN: Array[String] = ["first.heard", "first.nobody", "first.hello", "first.tsk"]
-const FLUSH_A: Array[String] = ["flush.a1", "flush.a2", "flush.a3", "flush.a4", "flush.a5"]
-const FLUSH_B: Array[String] = ["flush.b1", "flush.b2", "flush.b3", "flush.b4"]
-const OPEN_TEETH: Array[String] = ["open.teeth1", "open.teeth2", "open.teeth3"]
-const APPRAISE: Array[String] = ["appraise.1", "appraise.2", "appraise.3", "appraise.4", "appraise.5", "appraise.6"]
-const UNAWARE: Array[String] = ["empty.unaware1", "empty.unaware2", "empty.unaware3", "empty.unaware4", "empty.unaware5"]
-const AWARE: Array[String] = ["empty.aware1", "empty.aware2", "empty.aware3"]
-const TAKE: Array[String] = ["pick.take1", "pick.take2", "pick.take3"]
+static func _rule_data() -> Dictionary:
+    if _rules.is_empty() and FileAccess.file_exists(RULES_PATH):
+        var d = JSON.parse_string(FileAccess.get_file_as_string(RULES_PATH))
+        _rules = d if d is Dictionary else {"_bad": true}
+    return _rules
+
+static func _num(key: String, fallback: float) -> float:
+    var t = _rule_data().get("시간", {}).get(key, {})
+    return float(t.get("값", fallback)) if t is Dictionary else fallback
+
+static func _pool(key: String, fallback: Array) -> Array[String]:
+    var out: Array[String] = []
+    var p = _rule_data().get("대사묶음", {}).get(key, {})
+    var ids = p.get("대사", fallback) if p is Dictionary else fallback
+    for i in ids:
+        out.append(String(i))
+    return out
+
+static var FRANTIC_TIME: float = _num("FRANTIC_TIME", 20.0)
+static var CALM_TIME: float = _num("CALM_TIME", 30.0)
+## Seconds between escalating nags while the player ignores the being.
+static var NAG_INTERVAL: float = _num("NAG_INTERVAL", 6.0)
+## Opens within this window count as "여닫기 반복".
+static var TOGGLE_WINDOW: float = _num("TOGGLE_WINDOW", 5.0)
+static var IDLE_TIME: float = _num("IDLE_TIME", 12.0)
+static var STARE_TIME: float = _num("STARE_TIME", 5.0)
+static var PICK_LONG_TIME: float = _num("PICK_LONG_TIME", 15.0)
+## Away this long counts as "한참 뒤 돌아옴" / "오래 안 옴".
+static var LONG_AWAY: float = _num("LONG_AWAY", 120.0)
+static var SPRAY_SULK: float = _num("SPRAY_SULK", 40.0)
+static var TOGGLE_HIDE: float = _num("TOGGLE_HIDE", 20.0)
+static var REMARK_COOLDOWN: float = _num("REMARK_COOLDOWN", 90.0)
+
+static var FIRST_CHAIN: Array[String] = _pool("FIRST_CHAIN", ["first.heard", "first.nobody", "first.hello", "first.tsk"])
+static var FLUSH_A: Array[String] = _pool("FLUSH_A", ["flush.a1", "flush.a2", "flush.a3", "flush.a4", "flush.a5"])
+static var FLUSH_B: Array[String] = _pool("FLUSH_B", ["flush.b1", "flush.b2", "flush.b3", "flush.b4"])
+static var OPEN_TEETH: Array[String] = _pool("OPEN_TEETH", ["open.teeth1", "open.teeth2", "open.teeth3"])
+static var APPRAISE: Array[String] = _pool("APPRAISE", ["appraise.1", "appraise.2", "appraise.3", "appraise.4", "appraise.5", "appraise.6"])
+static var UNAWARE: Array[String] = _pool("UNAWARE", ["empty.unaware1", "empty.unaware2", "empty.unaware3", "empty.unaware4", "empty.unaware5"])
+static var AWARE: Array[String] = _pool("AWARE", ["empty.aware1", "empty.aware2", "empty.aware3"])
+static var TAKE: Array[String] = _pool("TAKE", ["pick.take1", "pick.take2", "pick.take3"])
 
 var is_open: bool = false
 var offers: Array[String] = []

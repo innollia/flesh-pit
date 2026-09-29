@@ -247,22 +247,57 @@ func _register_inputs() -> void:
         var rk := InputEventKey.new()
         rk.physical_keycode = KEY_R
         InputMap.action_add_event("fp_pick", rk)
-    var keys := [["fp_vomit", KEY_V, JOY_BUTTON_Y], ["fp_interact", KEY_F, JOY_BUTTON_X], ["fp_carry", KEY_Q, JOY_BUTTON_B],
-        ["fp_barrier", KEY_G, JOY_BUTTON_DPAD_UP], ["fp_spray", KEY_H, JOY_BUTTON_DPAD_DOWN], ["fp_blend", KEY_B, JOY_BUTTON_DPAD_LEFT],
-        ["fp_eat_tumor", KEY_T, JOY_BUTTON_DPAD_RIGHT], ["fp_feed_canary", KEY_Z, JOY_BUTTON_BACK],
-        ["fp_tool_next", KEY_TAB, JOY_BUTTON_RIGHT_SHOULDER], ["fp_tool_1", KEY_1, -1], ["fp_tool_2", KEY_2, -1],
-        ["fp_tool_3", KEY_3, -1], ["fp_tool_4", KEY_4, -1]]
-    for k in keys:
-        if InputMap.has_action(k[0]):
-            continue
-        InputMap.add_action(k[0])
-        var ev := InputEventKey.new()
-        ev.physical_keycode = k[1]
-        InputMap.action_add_event(k[0], ev)
-        if k[2] >= 0:
+    _register_keybinds()
+
+## Default keys live in main/data/keybinds.json. A player's own changes go to
+## user://keybinds.json (same shape) and win over the defaults.
+const KEYBINDS_PATH := "res://main/data/keybinds.json"
+const USER_KEYBINDS_PATH := "user://keybinds.json"
+
+func _register_keybinds() -> void:
+    var binds: Dictionary = {}
+    for path in [KEYBINDS_PATH, USER_KEYBINDS_PATH]:
+        if FileAccess.file_exists(path):
+            var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+            if d is Dictionary:
+                for k in d.get("키", {}):
+                    binds[k] = d["키"][k]
+    for action in binds:
+        var b: Dictionary = binds[action]
+        if not InputMap.has_action(action):
+            InputMap.add_action(action)
+        else:
+            InputMap.action_erase_events(action)
+        var code := OS.find_keycode_from_string(String(b.get("키보드", "")))
+        if code != KEY_NONE:
+            var ev := InputEventKey.new()
+            ev.physical_keycode = code
+            InputMap.action_add_event(action, ev)
+        if int(b.get("패드", -1)) >= 0:
             var jb := InputEventJoypadButton.new()
-            jb.button_index = k[2]
-            InputMap.action_add_event(k[0], jb)
+            jb.button_index = int(b["패드"])
+            InputMap.action_add_event(action, jb)
+
+## Change one key and save it for this player (for a future settings screen).
+func rebind_key(action: String, key_name: String) -> bool:
+    var code := OS.find_keycode_from_string(key_name)
+    if code == KEY_NONE or not InputMap.has_action(action):
+        return false
+    var d: Dictionary = {"키": {}}
+    if FileAccess.file_exists(USER_KEYBINDS_PATH):
+        var old = JSON.parse_string(FileAccess.get_file_as_string(USER_KEYBINDS_PATH))
+        if old is Dictionary:
+            d = old
+    var pad := -1
+    for e in InputMap.action_get_events(action):
+        if e is InputEventJoypadButton:
+            pad = e.button_index
+    d["키"][action] = {"키보드": key_name, "패드": pad}
+    var f := FileAccess.open(USER_KEYBINDS_PATH, FileAccess.WRITE)
+    f.store_string(JSON.stringify(d, " "))
+    f.close()
+    _register_keybinds()
+    return true
 
 # --- world generation ---------------------------------------------------------
 
