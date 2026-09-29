@@ -10,17 +10,18 @@
 - [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
 - [ ] Tune how much continuous tissue / biome drift can misalign old tunnels and the restroom approach without making navigation feel arbitrary.
 - [ ] Decide whether indefinitely drifting death drops with only a stale last-known-location marker are acceptable in playtesting, or whether recovery becomes too punitive.
-- [ ] Tune physical barriers: placement rules, total durability, how much biome motion they can hold, stress accumulation, the three 33%-step damage transitions plus broken state, and how the final elastic "boing" release reads.
+- [ ] Tune consumable physical barriers: purchase/carry rules, placement rules, total durability, how much biome motion they can hold, stress accumulation, the three 33%-step damage transitions plus broken state, and how the final elastic "boing" release reads.
 - [ ] Produce / specify 4 barrier visual states/assets for the 33%-step durability presentation.
 - [ ] Tune permanent biosecurity spray: can price, application rate, per-can coverage, performance differences between surface treatment and deeper-volume dissolution, and how sacrificing edible flesh balances permanent non-regenerating routes. Carry cap is 3 cans.
 - [ ] Design tool progression across the already accepted roles: portable blender, tissue-specific tools, route/return tools, physical barriers, and permanent biosecurity spray.
 - [ ] Define portable blender handling: how much loose flesh can be visibly held in the hands before blending, how batching works, how much stomach efficiency it grants, and which tools count as one-handed versus two-handed.
 - [ ] Define exact mutation-point gain formula around the established depth × flesh-amount basis, including the split between common mutation points and biome-specific mutation points.
-- [ ] Define parent-child mutation upgrade costs and branch contents; mutation upgrades can be purchased anywhere and are not part of the toilet UI.
-- [ ] Define money formula around biome/rarity × flesh amount, including the premium value of tumors and other unusually valuable material.
-- [ ] Define shop inventory, prices, and money sinks.
+- [ ] Define costs and contents for the mutation tree: common trunk → biome-specific branches → selected late reconvergence / combination nodes. Mutation upgrades can be purchased anywhere and are not part of the toilet UI.
+- [ ] Define ordinary-flesh money formula around biome/rarity × amount.
+- [ ] Define tumor tradeoff tuning: mutation value when eaten versus high money payout when collected intact and put into the toilet.
+- [ ] Define shop inventory, prices, money sinks, and mixed unlock conditions combining depth gates with other requirements.
 - [ ] Define the toilet settlement presentation precisely: how dark-gray existing totals and green newly gained amounts count upward for mutation points and money while the shop occupies the right side.
-- [ ] Define toilet-shop purchase pacing and animation: coin thrown into the toilet, then purchased item retrieved by opening the toilet cistern.
+- [ ] Define toilet-shop purchase pacing and animation: coin thrown into the toilet, multiple purchased items accumulate in the cistern, and each is picked up by looking at it and right-clicking.
 - [ ] Outside vomiting awards no mutation points or money; verify in prototype that emergency stomach relief remains useful without undermining the return loop.
 - [ ] Brainstorm long-term restroom expansion / structural changes while preserving the clean safe-room identity; keep the prototype restroom fixed.
 - [ ] Decide after the prototype whether cancer/tumor codex completion ever grants a practical benefit; prototype behavior is collection-only.
