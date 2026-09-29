@@ -146,11 +146,13 @@ Going deeper is the core-loop objective and does not require a conventional ques
 
 Because excavation can proceed in multiple directions from the restroom doorway, **deeper does not automatically mean downward on the world Y-axis**. The exact rule that defines progression depth is unresolved.
 
-Current promising structure — **not yet locked as canon**:
+Current working structure:
 - the restroom sits near the center of multiple nested roughly spherical layers
-- crossing outward through shells can define increasing depth regardless of excavation direction
-- a shell may contain one dominant biome, or several biomes mixed across different regions of the same shell
-- this allows omnidirectional digging while still giving the world ordered progression bands
+- crossing outward through shells defines increasing depth regardless of excavation direction
+- **Primary target:** each shell contains multiple biome regions, so different excavation directions can encounter different tissue environments at the same depth
+- **Scope fallback:** if production cost becomes too high, reduce to one dominant biome per shell rather than expanding scope
+- shell boundaries use a **hybrid transition**: tissue composition changes gradually as the player approaches the next shell, followed by a clearer boundary signal / membrane / distinctive transition feature near the actual crossing
+- the transition should preserve an organic continuous-body feeling while still making a new depth band legible
 
 Depth must change play, not only HP/resistance values.
 
