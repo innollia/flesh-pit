@@ -32,14 +32,9 @@ The purpose is to let the player choose to push farther at worsening efficiency 
 
 After the player exceeds a certain overfill threshold, a **vomit button** appears on screen.
 
-Vomiting outside the restroom is lethal:
-- vomit that touches the surrounding flesh wall hardens almost immediately into a rigid stalactite-like organic mass
-- the hardened vomit remains connected back to the player's mouth
-- the flesh still inside the stomach becomes continuous with the wall through that hardened mass
-- the player is effectively incorporated into the surrounding tissue and dies
-- the vomit button does **not** explicitly explain this outcome; danger is communicated indirectly through presentation such as button behavior, sound, animation, or other warning cues
+Vomiting outside the restroom has **no special lethal penalty**. It can be used as an emergency way to empty stomach contents away from the toilet.
 
-This makes the on-screen vomit button a desperate but deadly option outside the safe restroom, while preserving the restroom as the only safe place to empty the stomach.
+The important distinction is settlement: vomiting into the restroom toilet is where carried excursion value is converted / counted into **mutation points and money**. Exact handling of value lost or retained when vomiting outside remains to be defined.
 
 ## 2. Regenerating flesh is a core pressure
 
@@ -57,9 +52,16 @@ The first version should make the phenomenon obvious but recoverable rather than
 Route control uses two distinct tools:
 
 - **physical barriers:** temporarily hold back moving / regenerating tissue. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier can eventually break; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
-- **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent.
+- **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent. Spray is purchased by the can, and the player can carry up to **3 cans** at once. Depending on spray performance, treatment can range from a thinner surface-level application to dissolving a deeper volume of tissue.
 
 Permanent spray is intended to be the default route-maintenance tool. Its built-in cost is that sprayed tissue is removed as edible material instead of being consumed. Barriers are the temporary alternative when the player wants to hold a route without permanently dissolving it.
+
+Physical barriers telegraph failure physically:
+- they bend under load
+- they make cracking / straining sounds
+- their appearance changes in roughly **33% durability steps**
+- implementation therefore needs **4 barrier visual states/assets**, including the intact-to-broken progression
+- when failure finally occurs, accumulated biome stress releases in the established elastic **boing**
 
 ## 3. Eating feel
 
@@ -102,16 +104,19 @@ Major mutations should be perceptible immediately.
 
 Mutation progression uses a **point-based upgrade structure** rather than a one-time choice screen after each expedition.
 
-Progression points accumulate and are settled while the player vomits into the restroom toilet.
+Mutation points and money are both settled while the player vomits into the restroom toilet.
+
+Mutation-point gain scales with **depth × amount of flesh eaten**. The biome of the flesh also matters: flesh from different biomes yields different mutation-point progression rather than all eaten material feeding one undifferentiated result.
 
 During the toilet sequence:
 - the toilet fills most of the screen
 - a branching upgrade structure appears on the right, visually closer to an organization chart / family tree than a detached menu
-- the current point total is shown beneath the upgrade structure
-- while vomiting continues, the settlement number visibly counts upward
+- the upgrade structure uses a true **parent → child unlock hierarchy**
+- the current mutation-point total and money settlement are shown as part of the sequence
+- while vomiting continues, both mutation points and money visibly count upward
 - the intended number treatment is a dark-gray existing total plus a green newly gained amount, for example **5000 + +2293**
 
-The player then spends accumulated points through this branching structure. Exact point sources, costs, branch contents, and pacing remain unresolved.
+The player spends accumulated mutation points through the parent-child upgrade structure. Exact costs, biome branch contents, money values, and pacing remain unresolved.
 
 ## 5. Tissue-specific rules
 
@@ -211,6 +216,7 @@ It should feel genuinely safe and clean rather than secretly disgusting.
 
 Primary functions:
 - empty stomach by vomiting
+- settle excursion gains into mutation points and money
 - mark the end of one expedition cycle
 - expose mutation/progression
 - provide a strong visual reset between excursions
