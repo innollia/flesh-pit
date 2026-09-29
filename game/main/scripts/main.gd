@@ -12,6 +12,8 @@ signal ending_reached
 signal canary_chirp(urgency: float)
 signal canary_cry(frightened: bool)
 signal flushed(teeth_gain: int, hair_gain: int)
+## Opening: the flush heard on the black screen (audio: game/audio_HOOKUP.md).
+signal opening_flush
 
 const SAVE_VERSION := 3
 
@@ -30,7 +32,7 @@ const START_POS := Vector3(-0.95, 0.95, 0.75)
 const START_YAW := -PI * 0.5 - 0.02
 const START_PITCH := -0.32
 const SEAT_POS := Vector3(0.75, 0.55, -1.05)
-const OPENING_TIME := 2.2
+const OPENING_TIME := FPOpening.TOTAL
 const BODY_PROTECT_RADIUS := 0.9
 const CRUSH_TIME := 6.0
 const CRUSH_BLOCK := 0.8
@@ -221,7 +223,7 @@ func _ready() -> void:
 
     vent = FPVent.new()
     vent.name = "Vent"
-    vent.position = Vector3(0.75, 2.0 * FPRestroom.HALF.y - 0.03, 0.75)
+    vent.position = FPRestroom.VENT_CENTER - Vector3(0, 0.03, 0)
     add_child(vent)
     vent.drawing_dropped.connect(_on_drawing_dropped)
     toilet = FPToiletSettlement.new()
@@ -249,6 +251,7 @@ func _ready() -> void:
     _build_ui()
     _build_settle_camera()
     _spawn_door_nerves()
+    _setup_restroom_front()
     _begin_opening()
 
 func _on_canary_route(u: float) -> void:
@@ -469,29 +472,64 @@ func _build_settle_camera() -> void:
 
 # --- opening ----------------------------------------------------------------------
 
+## Session A (restroom look): opening cover, vent subtitles, blood on hands.
+const OPENING_SEAT_PITCH := -0.28
+var opening_view: FPOpening
+var subtitles: FPSubtitles
+var hand_blood_mat: ShaderMaterial
+
+func _setup_restroom_front() -> void:
+    opening_view = FPOpening.new()
+    opening_view.name = "OpeningView"
+    add_child(opening_view)
+    subtitles = FPSubtitles.new()
+    subtitles.name = "Subtitles"
+    add_child(subtitles)
+    vent.line_spoken.connect(func(id: String): subtitles.show_line(id))
+    hand_blood_mat = FPHandBlood.make_material()
+    FPHandBlood.attach(hands_rig, hand_blood_mat)
+
+func _update_restroom_front() -> void:
+    FPHandBlood.set_amount(hand_blood_mat, hand_blood)
+
 ## The player finishes on the toilet, stands up, opens the stall door.
 func _begin_opening() -> void:
     _opening_t = 0.0
     player.global_position = SEAT_POS
     player.set("_yaw", PI)
     player.rotation.y = PI
+    player.set("_pitch", OPENING_SEAT_PITCH)
+    player.camera_pivot.rotation.x = OPENING_SEAT_PITCH
     player.set_physics_process(false)
+    if opening_view != null:
+        opening_view.apply(0.0)
+    opening_flush.emit()
 
 func _process_opening(delta: float) -> void:
     if _opening_t < 0.0:
         return
     _opening_t += delta
-    var k := clampf(_opening_t / OPENING_TIME, 0.0, 1.0)
-    k = k * k * (3.0 - 2.0 * k)
-    player.global_position = SEAT_POS.lerp(Vector3(SEAT_POS.x, START_POS.y, SEAT_POS.z + 0.25), k)
+    apply_opening_at(_opening_t)
     if _opening_t >= OPENING_TIME:
         finish_opening()
+
+## Poses the opening at time t (also used by captures and tests).
+func apply_opening_at(t: float) -> void:
+    var k := FPOpening.rise_at(t)
+    player.global_position = SEAT_POS.lerp(Vector3(SEAT_POS.x, START_POS.y, SEAT_POS.z + 0.25), k)
+    var pitch := lerpf(OPENING_SEAT_PITCH, 0.0, k)
+    player.set("_pitch", pitch)
+    player.camera_pivot.rotation.x = pitch
+    if opening_view != null:
+        opening_view.apply(t)
 
 func finish_opening() -> void:
     if _opening_t < 0.0:
         return
     _opening_t = -1.0
     opening_done = true
+    if opening_view != null:
+        opening_view.done()
     player.set_physics_process(true)
 
 func is_opening() -> bool:
@@ -503,6 +541,7 @@ func _process(delta: float) -> void:
     if player == null or chewer == null:
         return
     _update_atmosphere(delta)
+    _update_restroom_front()
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
     hands_rig.set_mutation(progression.mutation_amount())
@@ -651,7 +690,7 @@ func sink_point() -> Vector3:
     return Vector3(-FPRestroom.HALF.x + 0.3, 0.95, -0.35)
 
 func canary_hole_point() -> Vector3:
-    return Vector3(-FPRestroom.HALF.x + 0.03, 0.1, -0.95)
+    return FPRestroom.CANARY_HOLE + Vector3(0.03, 0.0, 0.0)
 
 func _near_toilet() -> bool:
     return player.global_position.distance_to(restroom.toilet.global_position + Vector3(0, 0.9, 0.5)) < 1.3

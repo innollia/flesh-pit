@@ -324,3 +324,13 @@ depth_at 기반 biome 헬퍼 등) 대응 대기.
 - 큰 톱: 한 번에 6셀, 시간 x1.5, 바로 위장. 죽음: 마지막 위치에 붉은 등 말뚝 표지(드롭이 밀려도 제자리).
 - 테스트: tests/run_tissue_tools_tests.gd. 캡처: captures/session_d/ (tools/session_d_capture.gd).
 - 소리 연결 필요(소리 세션): FDKTerrainField.contraction_warning(world_pos) → 수축 조임 소리 1초 전.
+
+## 세션 A — W01 W02 W07 W09 W13 W14 (화장실 생김새, 2026-09-30)
+
+- W01 방: 형님 지시로 좌우(X)를 넓힘 4.5 x 2.6 x 3 m(HALF 2.25, 1.3, 1.5). 오른쪽(+X) 벽에 두 칸 서랍장(WallDrawer, DrawerTop/DrawerBottom 노드). 환풍구 위치는 FPRestroom.VENT_CENTER(변기 맞은편 벽 쪽 천장, 좌석 정면). 카나리아 구멍 FPRestroom.CANARY_HOLE: 세면대 아래 구석 벽 밑, 반치마(SinkApron, 바닥에서 0.34 m까지) 뒤라 서서는 안 보이고 쪼그려야 보임.
+- W02 오프닝: FPOpening(검정 1.6초 -> 0.7초 밝아짐 -> 1.6초 일어남). main.apply_opening_at(t), 신호 opening_flush.
+- W07 자막: FPSubtitles. vent.line_spoken(id) -> main/data/vent_lines.json 의 ko 문장(없으면 내장 표). 환풍구 눈은 더 크고 낮게(덕트 입구에서 보이게).
+- W09 팔 털: 핵 털 색 진분홍(spec 02), 40가닥 초과 시 길고 굵은 덥수룩 모양.
+- W13 손 피: FPHandBlood 오버레이(손끝부터 번짐, hand_blood 0~1). 세면대에서 씻으면 0.
+- W14 문 빛: 문이 열린 만큼 DoorSpill(스포트)·DoorSpillFill 이 통로로 빛을 던짐. 돌아올 때 눈부심은 기존 _flash.
+- 캡처: tools/restroom_capture.gd (창 모드 --write-movie, shots.txt에 샷별 프레임). 결과 captures/restroom_a/*.png.

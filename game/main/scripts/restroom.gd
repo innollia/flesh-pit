@@ -1,18 +1,30 @@
-class_name FPRestroom
+﻿class_name FPRestroom
 extends Node3D
 
-## The clean white restroom (design-core 8): low-poly tiled walls/floor,
+## The clean white restroom (docs/spec/03-restroom.md): low-poly tiled walls/floor,
 ## ceiling light panel, toilet with an openable tank lid, sink with mirror,
 ## and a hinged door in the +Z wall. Beyond the doorway the flesh wall
 ## begins right away. Built entirely in code, flat-shaded vertex colours.
 
-const HALF := Vector3(1.5, 1.3, 1.5) # room half-size (floor at y = 0)
+## room half-size (floor at y = 0). 형님 2026-09-29: wider left-right (X, door is the front +Z wall): 4.5 x 2.6 x 3 m.
+const HALF := Vector3(2.25, 1.3, 1.5)
 const TILE := 0.3
 const DOOR_HALF_W := 0.45
 const DOOR_H := 2.05
 ## Ceiling opening for the art vent (main.gd places it at x=z=0.75, its
 ## grate opening is 0.52 m square): [x0, z0, x1, z1].
 const VENT_HOLE := [0.49, 0.49, 1.01, 1.01]
+## Where the vent sits (spec 03 §2): on the ceiling toward the wall facing
+## the toilet wall, straight ahead of the seat, so lifting the head about
+## 45 degrees on the toilet brings it into view. main.gd places FPVent here.
+const VENT_CENTER := Vector3(0.75, 2.0 * 1.3, 0.75)
+## The canary hole (spec 03 §2, §9): low on the -X wall, in the corner under
+## the sink. The sink's half-pedestal apron hides it from standing height;
+## it shows only when crouching or lying down.
+const CANARY_HOLE := Vector3(-2.25, 0.09, -0.56)
+const CANARY_HOLE_HALF := Vector2(0.065, 0.07) # half width (z), half height
+## Bottom edge of the ceramic apron under the basin.
+const APRON_BOTTOM := 0.34
 
 var door_pivot: Node3D
 var toilet: Node3D
@@ -24,6 +36,12 @@ var mirror_art: Node3D
 var bowl_center: Vector3
 var _door_target: float = 0.0
 var _lid_target: float = 0.0
+## Light that spills out of the open door into the flesh passage (spec 03
+## §4: the open door is a lighthouse on the way back).
+var door_spill: SpotLight3D
+var door_spill_fill: OmniLight3D
+const DOOR_SPILL_ENERGY := 3.2
+const DOOR_FILL_ENERGY := 1.1
 
 func _ready() -> void:
     build()
@@ -37,9 +55,12 @@ func build() -> void:
     var ceramic_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, false, 0.45, 0.25, 1.0, false)
     _build_toilet(ceramic_mat)
     _build_sink(ceramic_mat)
+    _build_sink_apron(ceramic_mat)
+    _build_canary_hole()
     var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, false, 0.2, 0.5, 1.0, false)
     _build_door(door_mat, fixture_mat)
     _build_korean(fixture_mat)
+    _build_drawer(ceramic_mat, fixture_mat)
     _build_light()
     _build_collision()
 
@@ -348,6 +369,145 @@ func _build_sink(mat: Material) -> void:
     mirror_art.rotation.y = PI * 0.5
     add_child(mirror_art)
 
+## Half-pedestal apron (a common Korean sink shroud): a curved ceramic skirt
+## hanging from the basin to APRON_BOTTOM. It hides the pipes and, with
+## them, the canary hole in the corner behind it from standing height.
+func _build_sink_apron(mat: Material) -> void:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var x0 := -HALF.x
+    var cz := -0.35
+    var white := Color(0.97, 0.97, 0.98)
+    var shade := Color(0.88, 0.89, 0.91)
+    var top := 0.62
+    var seg := 10
+    # half-ellipse in the XZ plane: out 0.34 from the wall, 0.25 each side
+    var pts := PackedVector3Array()
+    for i in range(seg + 1):
+        var a := PI * float(i) / seg
+        pts.append(Vector3(x0 + sin(a) * 0.34, 0, cz - cos(a) * 0.25))
+    for i in range(seg):
+        var a := pts[i]
+        var b := pts[i + 1]
+        var mid := (a + b) * 0.5
+        var n := Vector3(mid.x - x0, 0, mid.z - cz).normalized()
+        var c := white if i % 2 == 0 else white.darkened(0.02)
+        FDKLowPoly.add_quad(st, Vector3(a.x, APRON_BOTTOM, a.z), Vector3(b.x, APRON_BOTTOM, b.z), Vector3(b.x, top, b.z), Vector3(a.x, top, a.z), n, c)
+        # inside face so the back of the skirt is not see-through
+        FDKLowPoly.add_quad(st, Vector3(b.x, APRON_BOTTOM, b.z), Vector3(a.x, APRON_BOTTOM, a.z), Vector3(a.x, top, a.z), Vector3(b.x, top, b.z), -n, shade.darkened(0.25))
+        # rolled bottom lip
+        var lip_o := n * 0.012
+        FDKLowPoly.add_quad(st, Vector3(a.x, APRON_BOTTOM, a.z), Vector3(a.x, APRON_BOTTOM, a.z) + lip_o + Vector3(0, 0.012, 0), Vector3(b.x, APRON_BOTTOM, b.z) + lip_o + Vector3(0, 0.012, 0), Vector3(b.x, APRON_BOTTOM, b.z), Vector3.DOWN, shade)
+    _add(st, mat, "SinkApron")
+
+## The canary hole: a small arched gap at the foot of the wall, dark inside,
+## with a few chipped tile edges round it. Only visible from low down.
+func _build_canary_hole() -> void:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var hw := CANARY_HOLE_HALF.x
+    var hh := CANARY_HOLE_HALF.y
+    var cx := CANARY_HOLE.x + 0.013 # just proud of the raised tiles
+    var cz := CANARY_HOLE.z
+    var y0 := CANARY_HOLE.y - hh
+    # outline: flat bottom, straight sides, round arch top
+    var outline := PackedVector2Array() # (z, y)
+    outline.append(Vector2(cz - hw, y0))
+    var arch_y := y0 + hh * 2.0 - hw
+    for i in range(9):
+        var a := PI * float(i) / 8.0
+        outline.append(Vector2(cz - cos(a) * hw, arch_y + sin(a) * hw))
+    outline.append(Vector2(cz + hw, y0))
+    var black := Color(0.015, 0.012, 0.012)
+    var inner := Color(0.07, 0.06, 0.06)
+    # the wall tiles are solid, so the hole is a flat dark arch laid just in front of them (reads as depth from its dark inner band)
+    var depth := -0.002
+    var center := Vector3(cx, y0 + hh * 0.9, cz)
+    # tunnel walls going into the wall (-X), dark grey fading to black
+    for i in range(outline.size()):
+        var p := outline[i]
+        var q := outline[(i + 1) % outline.size()]
+        var a := Vector3(cx, p.y, p.x)
+        var b := Vector3(cx, q.y, q.x)
+        var n := Vector3(0, center.y - (p.y + q.y) * 0.5, center.z - (p.x + q.x) * 0.5).normalized()
+        FDKLowPoly.add_quad(st, a, b, b + Vector3(-depth, 0, 0), a + Vector3(-depth, 0, 0), n, inner)
+    # back: pure black
+    for i in range(1, outline.size() - 1):
+        var p0 := outline[0]
+        var p1 := outline[i]
+        var p2 := outline[i + 1]
+        FDKLowPoly.add_tri(st, Vector3(cx - depth, p0.y, p0.x), Vector3(cx - depth, p2.y, p2.x), Vector3(cx - depth, p1.y, p1.x), Vector3.RIGHT, black)
+    # chipped rim: a thin broken-tile frame just outside the opening
+    var rim := Color(0.74, 0.76, 0.78)
+    for i in range(outline.size() - 1):
+        var p := outline[i]
+        var q := outline[i + 1]
+        var mid := (p + q) * 0.5
+        var out := (mid - Vector2(cz, center.y)).normalized()
+        var w := 0.008 + 0.01 * FDKLowPoly.hash3(i, 7, 3)
+        var a := Vector3(cx + 0.004, p.y, p.x)
+        var b := Vector3(cx + 0.004, q.y, q.x)
+        FDKLowPoly.add_quad(st, a, b, b + Vector3(0, out.y * w, out.x * w), a + Vector3(0, out.y * w, out.x * w), Vector3.RIGHT, rim.darkened(0.1 * FDKLowPoly.hash3(i, 2, 9)))
+    var m := StandardMaterial3D.new()
+    m.vertex_color_use_as_albedo = true
+    m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    m.roughness = 1.0
+    m.cull_mode = BaseMaterial3D.CULL_DISABLED
+    var mi := MeshInstance3D.new()
+    mi.name = "CanaryHole"
+    mi.mesh = st.commit()
+    mi.material_override = m
+    add_child(mi)
+
+## Wall drawer unit (형님 2026-09-29): a white two-drawer cabinet hung on the
+## +X wall, chrome bar pulls. Decorative for now; the drawers are nodes
+## (DrawerTop / DrawerBottom) so they can be opened later.
+const DRAWER_CENTER := Vector3(2.25, 0.95, 0.45) # on the +X wall, centre of the back face
+const DRAWER_SIZE := Vector3(0.36, 0.5, 0.62)   # depth (x), height, width (z)
+var drawers: Array[Node3D] = []
+
+func _build_drawer(mat: Material, chrome_mat: Material) -> void:
+    var root := Node3D.new()
+    root.name = "WallDrawer"
+    root.position = DRAWER_CENTER
+    add_child(root)
+    var d := DRAWER_SIZE
+    var white := Color(0.96, 0.96, 0.95)
+    var side := Color(0.86, 0.87, 0.88)
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    # carcass: back at x=0, front open toward -X (into the room)
+    var t := 0.018
+    _box(st, Vector3(-d.x, -d.y * 0.5, -d.z * 0.5), Vector3(0, -d.y * 0.5 + t, d.z * 0.5), white, side)
+    _box(st, Vector3(-d.x, d.y * 0.5 - t, -d.z * 0.5), Vector3(0, d.y * 0.5, d.z * 0.5), white, side)
+    _box(st, Vector3(-d.x, -d.y * 0.5, -d.z * 0.5), Vector3(0, d.y * 0.5, -d.z * 0.5 + t), white, side)
+    _box(st, Vector3(-d.x, -d.y * 0.5, d.z * 0.5 - t), Vector3(0, d.y * 0.5, d.z * 0.5), white, side)
+    _box(st, Vector3(-d.x + 0.02, -0.006, -d.z * 0.5), Vector3(0, 0.006, d.z * 0.5), side, side)
+    _add(st, mat, "Carcass", root)
+    for i in range(2):
+        var dr := Node3D.new()
+        dr.name = "DrawerTop" if i == 0 else "DrawerBottom"
+        var cy := d.y * 0.25 * (1 if i == 0 else -1)
+        dr.position = Vector3(-d.x, cy, 0)
+        root.add_child(dr)
+        var fs := SurfaceTool.new()
+        fs.begin(Mesh.PRIMITIVE_TRIANGLES)
+        var hh := d.y * 0.25 - 0.012
+        var hw := d.z * 0.5 - 0.012
+        # front panel with a slight raised centre
+        _box(fs, Vector3(-0.022, -hh, -hw), Vector3(0.0, hh, hw), white, side)
+        _box(fs, Vector3(-0.028, -hh + 0.03, -hw + 0.03), Vector3(-0.022, hh - 0.03, hw - 0.03), Color(0.98, 0.98, 0.97), side)
+        # drawer box behind the front
+        _box(fs, Vector3(0.0, -hh + 0.01, -hw + 0.02), Vector3(d.x - 0.03, -hh + 0.022, hw - 0.02), side, side.darkened(0.1))
+        _add(fs, mat, "Front", dr)
+        var ps := SurfaceTool.new()
+        ps.begin(Mesh.PRIMITIVE_TRIANGLES)
+        _box(ps, Vector3(-0.06, -0.008, -0.1), Vector3(-0.05, 0.008, 0.1), Color(1, 1, 1), Color(0.88, 0.9, 0.92))
+        _box(ps, Vector3(-0.05, -0.006, -0.09), Vector3(-0.028, 0.006, -0.075), Color(0.9, 0.9, 0.92), Color(0.8, 0.8, 0.84))
+        _box(ps, Vector3(-0.05, -0.006, 0.075), Vector3(-0.028, 0.006, 0.09), Color(0.9, 0.9, 0.92), Color(0.8, 0.8, 0.84))
+        _add(ps, chrome_mat, "Pull", dr)
+        drawers.append(dr)
+
 ## Old code-built sink (kept for reference, no longer called).
 func _build_sink_placeholder(mat: Material) -> void:
     var st := SurfaceTool.new()
@@ -424,6 +584,26 @@ func _build_light() -> void:
     l.shadow_enabled = true
     l.light_color = Color(0.95, 0.98, 1.0) # cold fluorescent
     add_child(l)
+    # door spill: a cold cone of tube light thrown out into the passage, and
+    # a soft fill just past the threshold. Both scale with how open the door is.
+    door_spill = SpotLight3D.new()
+    door_spill.name = "DoorSpill"
+    door_spill.position = Vector3(0, DOOR_H - 0.1, HALF.z - 0.25)
+    door_spill.rotation = Vector3(deg_to_rad(-8.0), PI, 0) # spot points -Z; turn it to +Z
+    door_spill.spot_range = 9.0
+    door_spill.spot_angle = 34.0
+    door_spill.spot_attenuation = 0.8
+    door_spill.light_color = Color(0.9, 0.96, 1.0)
+    door_spill.light_energy = 0.0
+    door_spill.shadow_enabled = true
+    add_child(door_spill)
+    door_spill_fill = OmniLight3D.new()
+    door_spill_fill.name = "DoorSpillFill"
+    door_spill_fill.position = Vector3(0, 1.2, HALF.z + 0.35)
+    door_spill_fill.omni_range = 2.2
+    door_spill_fill.light_color = Color(0.88, 0.94, 1.0)
+    door_spill_fill.light_energy = 0.0
+    add_child(door_spill_fill)
 
 func _build_collision() -> void:
     var body := StaticBody3D.new()
@@ -442,6 +622,7 @@ func _build_collision() -> void:
         [Vector3(0, (DOOR_H + 2 * h.y) * 0.5, h.z + t * 0.5), Vector3(2 * DOOR_HALF_W, 2 * h.y - DOOR_H, t)],
         [toilet.position + Vector3(0, 0.4, 0.2), Vector3(0.45, 0.8, 0.5)],
         [Vector3(-h.x + 0.25, 0.45, -0.35), Vector3(0.5, 0.9, 0.45)],
+        [DRAWER_CENTER + Vector3(-DRAWER_SIZE.x * 0.5, 0, 0), DRAWER_SIZE],
     ]
     for b in boxes:
         var cs := CollisionShape3D.new()
@@ -457,6 +638,7 @@ func set_door_open(open: bool, instant: bool = false) -> void:
     _door_target = deg_to_rad(100.0) if open else 0.0
     if instant:
         door_pivot.rotation.y = _door_target
+        _update_door_spill()
 
 func is_door_open() -> bool:
     return absf(_door_target) > 0.01
@@ -472,6 +654,20 @@ func _process(delta: float) -> void:
     tank_lid.rotation.x = lerpf(tank_lid.rotation.x, _lid_target, k)
     if tank_art != null:
         tank_art.call("set_lid_open", tank_lid.rotation.x / deg_to_rad(-75.0))
+    _update_door_spill()
+
+## 0 (shut) .. 1 (fully open), from the door's actual swing.
+func door_open_amount() -> float:
+    return clampf(door_pivot.rotation.y / deg_to_rad(100.0), 0.0, 1.0)
+
+func _update_door_spill() -> void:
+    if door_spill == null:
+        return
+    var k := door_open_amount()
+    door_spill.light_energy = DOOR_SPILL_ENERGY * k
+    door_spill_fill.light_energy = DOOR_FILL_ENERGY * k
+    door_spill.visible = k > 0.01
+    door_spill_fill.visible = k > 0.01
 
 ## Is this world point inside the room box?
 func contains(p: Vector3) -> bool:

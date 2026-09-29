@@ -1,4 +1,4 @@
-extends Node3D
+﻿extends Node3D
 
 ## Forearm with arm hairs (mutation points). Origin = elbow; the forearm
 ## runs toward -Z to the wrist (the same direction the first-person hands
@@ -11,9 +11,10 @@ extends Node3D
 const K := preload("res://main/art/fp_art_kit.gd")
 const LEN := 0.26
 const MAX_SLOTS := 90
+const SHAGGY_AT := 40
 const COLORS := {
     "common": Color(0.05, 0.035, 0.03),
-    "core": Color(0.5, 0.04, 0.08),      # compressive tissue: dark wine red
+    "core": Color(0.93, 0.33, 0.55),     # compressive tissue: deep pink (spec 02)
     "mantle": Color(0.36, 0.12, 0.46),   # contractile tissue: bruise purple
     "surface": Color(0.86, 0.76, 0.12),  # nerve tissue: bile/nerve yellow
 }
@@ -61,6 +62,8 @@ func _rebuild() -> void:
     var st := K.begin()
     var slot := 0
     var any := false
+    # spec 04 §2: past 40 strands the arm reads as a shaggy tuft
+    var shaggy := hair_total() > SHAGGY_AT
     for kind in ["common", "core", "mantle", "surface"]:
         for n in range(int(_counts[kind])):
             if slot >= MAX_SLOTS:
@@ -68,12 +71,12 @@ func _rebuild() -> void:
             var s: Array = _slots[slot]
             var base: Vector3 = s[0]
             var nrm: Vector3 = s[1]
-            var length := 0.016 + float(s[2]) * 0.012
+            var length := (0.02 + float(s[2]) * 0.014) * (1.7 if shaggy else 1.0)
             # hairs lie back toward the elbow (+Z) and curl a little
             var lean := Vector3(0, 0, 1)
             var p1 := base + nrm * length * 0.45 + lean * length * 0.35
             var p2 := base + nrm * length * 0.6 + lean * length * 0.9 + Vector3(0.004 * (float(s[2]) - 0.5), 0, 0)
-            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0022, 0.0016, 0.0006], 3, [COLORS[kind]], false)
+            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0026 if shaggy else 0.0022, 0.0018, 0.0006], 3, [COLORS[kind]], false)
             slot += 1
             any = true
     _hair_mi.mesh = K.finish(st, 40.0) if any else ArrayMesh.new()

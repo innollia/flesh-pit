@@ -14,3 +14,8 @@
 - `main.mutation_apply` 신호 `echo_click()`: T1 반향정위 혀 딸깍(1.2초마다).
 - `main.mutation_apply.magnet_hum_level()` (0~1): M03 자기장 눈. 화장실 쪽을 볼수록 귀에서 낮게 윙.
 - `main.progression.has_mutation("M02")`: 넓은 목구멍이면 삼키는 소리를 굵게. `has_mutation("M04")`: 불거진 턱이면 씹는 소리를 바꿈.
+
+## 세션 A (화장실 생김새)
+- main.gd 신호 opening_flush(): 게임 시작 직후 검은 화면(약 1.6초) 동안 변기 물 내리는 소리. _begin_opening()에서 한 번. 오프닝 전체 길이 FPOpening.TOTAL(3.9초).
+- 카나리아 새소리 발원 위치: FPRestroom.CANARY_HOLE (세면대 아래 구석, 바닥 근처, 반치마 뒤).
+- 문 열린 정도: restroom.door_open_amount() (0~1). 형광등 웅웅 소리가 통로로 새어 나가는 데 쓸 수 있음.

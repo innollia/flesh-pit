@@ -1,4 +1,4 @@
-extends Node3D
+﻿extends Node3D
 
 const K := preload("res://main/art/fp_art_kit.gd")
 
@@ -63,14 +63,14 @@ func _ready() -> void:
     K.add_mesh(_grate, "Grate", K.finish(st, 8.0), metal)
     # eyes in the dark
     for sx in [-1, 1]:
-        var e := K.pivot(self, "Eye" + ("R" if sx > 0 else "L"), Vector3(sx * 0.055, 0.34, 0.02))
+        var e := K.pivot(self, "Eye" + ("R" if sx > 0 else "L"), Vector3(sx * 0.07, 0.24, 0.02))
         st = K.begin()
         K.lathe(st, K.T(Vector3.ZERO, Vector3(180, 0, 0)), [Vector2(0, -0.02), Vector2(0.018, -0.014), Vector2(0.024, 0.0), Vector2(0.018, 0.012), Vector2(0.0, 0.016)], 8, [Color(0.95, 0.9, 0.62)])
         K.add_mesh(e, "White", K.finish(st), K.glow(Color(1, 1, 1)))
         st = K.begin()
         K.lathe(st, K.T(Vector3(0, -0.017, 0), Vector3(180, 0, 0)), [Vector2(0, -0.004), Vector2(0.008, -0.002), Vector2(0.0, 0.003)], 6, [Color(0.03, 0.02, 0.01)])
         K.add_mesh(e, "Pupil", K.finish(st), K.glow(Color(1, 1, 1)))
-        e.scale = Vector3(1.4, 1.0, 0.7)
+        e.scale = Vector3(2.2, 1.6, 1.1)
         _eyes.append(e)
         _lids.append(e)
     # offered items: the being never shows more than its eyes; it pushes a
@@ -137,9 +137,9 @@ func _process(delta: float) -> void:
     var closed := sin(lid * PI)
     for i in range(_eyes.size()):
         var e: Node3D = _eyes[i]
-        e.scale.z = lerpf(0.7, 0.05, closed)
+        e.scale.z = lerpf(1.1, 0.06, closed)
         # frantic mood: eyes jitter
-        e.position.x = (0.055 if i == 1 else -0.055) + sin(_time * 31.0 + i) * 0.004 * _mood
+        e.position.x = (0.07 if i == 1 else -0.07) + sin(_time * 31.0 + i) * 0.004 * _mood
 
 func set_open(amount: float) -> void:
     _grate.rotation_degrees.z = -100.0 * clampf(amount, 0.0, 1.0)
