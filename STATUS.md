@@ -303,3 +303,14 @@ depth_at 기반 biome 헬퍼 등) 대응 대기.
 ## 보류 / 형님께 물을 것
 
 (현재 없음 -- 범위 변경 지시는 반영 완료)
+
+## 소리 1차 (사운드 작업자, 2026-09-29)
+
+- 라이선스: nkido 0.4.9는 **MIT (Copyright 2026 Moritz Laass)**, 렌더 전용 외부 도구로만 사용(샘플 뱅크 끔, 합성만). 판정·루프 도구는 형님 TINProject nkido_pipeline에서 수정 없이 복사한 우리 코드. 자세히: `tools/audio/PROVENANCE.md`. 공유 zip에는 WAV와 우리 코드만 들어간다.
+- 소리 32종: 효과음 26종 × 변주 4벌 = 104 WAV, 반복음 8개(씹기 2, 넘겨먹기 신음, 화장실, 몸 드론 2, 심장 2). 목록: `audio/SOUND_LIST.md`. 생성: `tools/audio/build_audio.py`.
+- 판정(`audio/REPORT.md`): 183개 전부 PASS, FAIL 0. 기준은 TINProject 값 그대로. 예외 목록은 이름 붙여 적음: 씹기 2개·넘겨먹기 신음·심장 2개는 의도된 박자(반복 티 검사 제외, TIN 드럼·amb_pulse 선례), 입·목·심장 소리는 모노 의도. 몸 드론·화장실 배경은 예외 없이 통과(불규칙한 삐걱임·소화음은 루프에 굽지 않고 키트가 무작위로 재생).
+  - 변주는 후보 8개를 렌더해 레벨 차가 가장 작은 4개를 골라 싣는다(선별 후 기준 그대로 판정).
+- 키트: `addons/flesh_dig_kit/audio/` FDKSoundBank(연속 중복 없는 변주 선택), FDKAudioDirector(시그널 구독, 배경 크로스페이드, 씹기 속도=1/씹기배율, 발걸음 검출, 3D 위치 재생).
+- 게임 연결: `audio/fp_audio_hookup.gd`. **main.gd에 한 줄이 필요하지만** 작업 시점에 main.gd가 프론트엔드 미커밋 변경 중이라 넣지 않았다 → `audio/HOOKUP.md`.
+- 검증(Godot 4.7.2 console): import 0, run_tests 51/0, run_main_tests 26/0, run_save_load 3/0, run_audio_tests 118/0(실제 main.tscn에 연결해 검사 포함), run_headless 300프레임 0, 재메싱 5.86ms(예산 8ms, 변화 없음).
+- 들어 볼 파일: `audio/listen/`(23개, README.txt).

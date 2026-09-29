@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: door_open -- latch clicks, hinge creaks as a light restroom door swings.
+latch = noise(0, 0, SEED) * (clamp((t - 0.02) / 0.001, 0, 1) * exp(neg(clamp(t - 0.02, 0, 100)) / 0.012)) * 0.8 |> bp(@, 3100 * PITCH, 3.0)
+latch_t = sine(1800 * PITCH) * (clamp((t - 0.02) / 0.001, 0, 1) * exp(neg(clamp(t - 0.02, 0, 100)) / 0.03)) * 0.25
+creak_env = clamp((t - 0.1) / 0.1, 0, 1) * clamp((0.9 - t) / 0.2, 0, 1)
+rate = (30 + clamp(t, 0, 1) * 45) * PITCH
+creak = saw(rate) * creak_env * 0.35 |> bp(@, 950 * PITCH, 6.0)
+out((latch + latch_t + creak) |> delay(@, 0.07, 0.3, 1.0, 0.3))

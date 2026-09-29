@@ -1,0 +1,14 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: coin_drop -- a coin rings off porcelain twice and plops into the bowl.
+k1 = (clamp((t - 0.0) / 0.001, 0, 1) * exp(neg(clamp(t - 0.0, 0, 100)) / 0.09))
+k2 = (clamp((t - 0.13) / 0.001, 0, 1) * exp(neg(clamp(t - 0.13, 0, 100)) / 0.07))
+tink = (sine(2130 * PITCH) + sine(3420 * PITCH) * 0.6 + sine(5190 * PITCH) * 0.35) * (k1 + k2 * 0.6) * 0.25
+plop_env = (clamp((t - 0.3) / 0.005, 0, 1) * exp(neg(clamp(t - 0.3, 0, 100)) / 0.1))
+plop = sine(400 + clamp((t - 0.3) * 12, 0, 1) * 900) * plop_env * 0.35
+drops = noise(0, 0, SEED) * plop_env * 0.3 |> bp(@, 1800, 3.0)
+out((tink + plop + drops) |> delay(@, 0.08, 0.3, 1.0, 0.3))

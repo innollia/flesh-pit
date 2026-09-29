@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: door_close -- swing, hollow thud against the frame, latch catch.
+air = noise(0, 0, SEED2) * clamp(t / 0.1, 0, 1) * clamp((0.25 - t) / 0.05, 0, 1) * 0.15 |> lp(@, 600, 0.7)
+thud_env = (clamp((t - 0.25) / 0.003, 0, 1) * exp(neg(clamp(t - 0.25, 0, 100)) / 0.09))
+thud = sine(95 * PITCH) * thud_env * 0.7
+knock = noise(0, 0, SEED) * thud_env * 0.5 |> bp(@, 400 * PITCH, 1.5)
+latch = noise(0, 0, SEED) * (clamp((t - 0.29) / 0.001, 0, 1) * exp(neg(clamp(t - 0.29, 0, 100)) / 0.012)) * 0.6 |> bp(@, 3200 * PITCH, 3.0)
+out((air + thud + knock + latch) |> delay(@, 0.07, 0.3, 1.0, 0.3))

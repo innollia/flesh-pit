@@ -1,0 +1,60 @@
+{
+ "_note": "Copied unchanged from TINProject tools/nkido_pipeline/analysis_targets.json (stem thresholds). A missing key means the limit is ON. Only the exception lists below are flesh-pit specific; each is named and explained, nothing is silently widened.",
+ "stem": {
+  "category_lufs": {
+   "ambience": [
+    -46.0,
+    -9.0
+   ],
+   "music_layer": [
+    -46.0,
+    -9.0
+   ],
+   "sfx": [
+    -40.0,
+    -6.0
+   ]
+  },
+  "no_clipping": true,
+  "true_peak_max_db": -1.0,
+  "max_dc_offset": 0.002,
+  "loop_jump_ratio_max": 3.0,
+  "loop_wrap_hf_max_db": 3.0,
+  "low_band_max_db": -3.0,
+  "stereo_width_max_db": 12.0,
+  "channel_correlation_max": 0.98,
+  "repetition_tick_max_db": -8.0,
+  "rhythmic_ok": [
+   "chew_loop_a.wav",
+   "chew_loop_b.wav",
+   "chew_strain.wav",
+   "amb_heart_a.wav",
+   "amb_heart_b.wav"
+  ],
+  "_rhythmic_ok_note": "Named intentional rhythms only. Chewing (2.5 Hz bite) is a beat by definition, like TINProject's drum stems. chew_strain is one laboured breath per 2 s. amb_heart_a/b are the body's heartbeat, the same class as TINProject amb_pulse which the owner confirmed as an intended beat (2026-09-29). The drone beds amb_body_a/b and amb_restroom are NOT exempt and must pass; their irregular life (digestion, creaks) is played as random one-shots by the kit instead of being baked into a loop.",
+  "mono_ok": [
+   "chew_loop_a.wav",
+   "chew_loop_b.wav",
+   "chew_strain.wav",
+   "amb_heart_a.wav",
+   "amb_heart_b.wav"
+  ],
+  "_mono_ok_note": "Mouth and throat sounds sit dead centre inside the head; the heart is a sub layer and a wide sub only smears the centre (TINProject amb_pressure/amb_pulse precedent)."
+ },
+ "variation": {
+  "level_spread_max_lu": 1.5,
+  "spectral_distance_min_db": 0.5,
+  "_note": "Same limits as TINProject render_variations.py. Level spread is measured on the RAW renders before mastering, so normalising cannot hide it."
+ },
+ "masking": {
+  "min_margin_db": -10.0,
+  "_note": "Same limit as TINProject event_bed_pairs.json, judged on own_energy_weighted_margin_db, with each file at its mastered level and in-game volume."
+ },
+ "sfx_not_applicable": [
+  "loop_wrap",
+  "channel_correlation",
+  "stereo_width",
+  "repetition_tick"
+ ],
+ "_sfx_note": "One-shots are mono and do not loop, so loop-wrap / width / correlation / hidden-loop checks do not describe them. TINProject also gates only stems with these; its events get masking only. Everything else (category LUFS, clipping, true peak, DC, low band, silence) applies to sfx."
+}

@@ -1,0 +1,9 @@
+// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
+// id: amb_body_a -- inside the first shells: a steady low pressure drone that slowly swells (0.125 Hz). No beat, no ticks:
+// the heart is amb_heart_a, digestion and creaks are random one-shots played by the kit.
+swell = (sine(0.125) + 1) * 0.5
+dr_l = saw(41) * (0.2 + swell * 0.08) |> lp(@, 150 + swell * 40, 0.8) |> hp(@, 36)
+dr_r = saw(41.125) * (0.2 + swell * 0.08) |> lp(@, 150 + swell * 40, 0.8) |> hp(@, 36)
+air_l = noise(0, 0, 601) * 0.12 |> lp(@, 260, 0.7) |> hp(@, 60)
+air_r = noise(0, 0, 607) * 0.12 |> lp(@, 260, 0.7) |> hp(@, 60)
+out(stereo(dr_l + air_l, dr_r + air_r))

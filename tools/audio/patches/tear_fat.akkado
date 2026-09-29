@@ -1,0 +1,14 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: tear_fat -- greasy, soft, smearing. Less crackle than muscle, a slippery squelch that wobbles.
+env = (clamp((t - 0.04) / 0.04, 0, 1) * exp(neg(clamp(t - 0.04, 0, 100)) / 0.24))
+wob = sine(9 * PITCH) * 160
+cf = (540 + wob - clamp(t, 0, 1) * 260) * PITCH
+smear = noise(0, 0, SEED) * env * 1.1 |> bp(@, cf, 4.0)
+crk = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.6) * env * 0.5 |> lp(@, 1400, 0.8)
+slip = sine(95 * PITCH - t * 30) * env * 0.35
+out(smear + crk + slip)

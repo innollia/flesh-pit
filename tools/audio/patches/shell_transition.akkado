@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: shell_transition -- crossing into the next shell: the whole body shifts, a groan that drops, pressure, creaks.
+env = clamp(t / 0.6, 0, 1) * clamp((3.0 - t) / 1.2, 0, 1)
+groan = saw((70 - clamp(t / 2.5, 0, 1) * 24) * PITCH) * env * 0.35 |> lp(@, 300, 1.5)
+press = noise(0, 0, SEED) * env * 0.4 |> lp(@, 180, 0.8)
+creak = noise(0, 0, SEED2) * gt(noise(25, 0, SEED), 0.55) * env * 0.35 |> bp(@, 650, 4.0)
+out(groan + press + creak |> hp(@, 38))

@@ -1,0 +1,11 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: depth_marker -- a new depth: a slow, low swell far away inside the body. Soft attack, no stinger.
+env = clamp(t / 0.8, 0, 1) * clamp((2.6 - t) / 1.4, 0, 1)
+tone = (sine(46 * PITCH) + sine(69 * PITCH) * 0.6 + sine(92.2 * PITCH) * 0.4) * env * 0.4
+res = noise(0, 0, SEED) * env * 0.5 |> bp(@, 300 * PITCH, 12.0)
+out(tone + res |> hp(@, 42))

@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: canary_wrong -- a cry that should be a canary but is not: slowed, sagging, doubled at a wrong interval, gargling underneath.
+env = clamp(t / 0.25, 0, 1) * clamp((1.6 - t) / 0.5, 0, 1)
+f = (1500 - clamp(t / 1.4, 0, 1) * 700 + sine(6.3) * 90) * PITCH
+cry = (tri(f) + tri(f * 1.47) * 0.5) * env * 0.25 |> bp(@, 1600, 1.2)
+garg = noise(0, 0, SEED) * env * ((sine(23) + 1) * 0.5) * 0.35 |> bp(@, 420 * PITCH, 5.0)
+out(cry + garg)

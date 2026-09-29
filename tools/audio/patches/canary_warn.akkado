@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: canary_warn -- warning: fast, repeated, too many chirps, each a little higher. Anxious, not loud.
+k = floor(t / 0.11)
+ph = fmod(t, 0.11)
+gate_on = clamp(ph / 0.008, 0, 1) * clamp((0.07 - ph) / 0.015, 0, 1) * lt(t, 0.8)
+f = (2900 + k * 120 + ph * 11000) * PITCH
+out(tri(f) * gate_on * 0.35 |> hp(@, 900))

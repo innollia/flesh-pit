@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: swallow -- a throat gulp: rising wet bandpass, a knock of the larynx, a little slick crackle.
+g = (clamp((t - 0.05) / 0.04, 0, 1) * exp(neg(clamp(t - 0.05, 0, 100)) / 0.18))
+cf = (180 + clamp(t, 0, 0.4) * 900) * PITCH
+gulp = noise(0, 0, SEED) * g * 1.3 |> bp(@, cf, 6.0)
+knock = sine(90 * PITCH) * (clamp((t - 0.22) / 0.01, 0, 1) * exp(neg(clamp(t - 0.22, 0, 100)) / 0.08)) * 0.55
+wetc = noise(0, 0, SEED2) * gt(noise(50, 0, SEED2), 0.7) * g * 0.45 |> lp(@, 1800, 0.8)
+out(gulp + knock + wetc)
