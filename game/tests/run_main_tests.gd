@@ -138,11 +138,11 @@ func _run() -> void:
     var fat_edge := 0
     for i in range(400):
         var dir := Vector3(sin(i * 1.7), cos(i * 0.9), sin(i * 2.3)).normalized()
-        if m._world_tissue(m.RESTROOM_CENTER + dir * (4.0 + fposmod(i * 0.37, 3.5))) == 2:
+        if m._world_tissue(m.RESTROOM_CENTER + dir * (4.6 + fposmod(i * 0.37, 2.9))) == 3:
             fat_inner += 1
-        if m._world_tissue(m.RESTROOM_CENTER + dir * 8.6) == 2:
+        if m._world_tissue(m.RESTROOM_CENTER + dir * 8.6) == 3:
             fat_edge += 1
-    _assert(fat_inner == 0 and fat_edge > 100, "fat appears only as the shell boundary band (inner %d, edge %d)" % [fat_inner, fat_edge])
+    _assert(fat_inner == 0 and fat_edge > 100, "membrane appears as the shell boundary band, not inside the core (inner %d, edge %d)" % [fat_inner, fat_edge])
     _assert(m._world_tissue(m.RESTROOM_CENTER + Vector3(12.5, 0.3, 0.2)) in [1, 2, 4], "mantle shell is contractile tissue")
     # chew press
     m.terrain.set_press(Vector3(0, 1, 2.3), Vector3(0, 0, -1), 0.6)
@@ -191,8 +191,8 @@ func _run_systems() -> void:
     prog.grant_item("knife")
     prog.grant_item("big_saw")
     prog.grant_item("blender")
-    _assert(not prog.can_tear(true), "bare hands cannot tear contractile fibers")
-    _assert(m.equip_tool("knife") and prog.can_tear(true) and prog.dig_multiplier() > 1.0, "the knife cuts tough flesh")
+    _assert(not FDKTissueRules.can_grab(FDKTissueRules.MEMBRANE, "") and FDKTissueRules.can_grab(FDKTissueRules.CONTRACTILE, ""), "bare hands tear contractile flesh but not membrane")
+    _assert(m.equip_tool("knife") and FDKTissueRules.can_grab(FDKTissueRules.MEMBRANE, prog.equipped()), "the knife cuts membrane")
     _assert(m.equip_tool("big_saw") and not prog.one_handed_action_allowed(), "the two-handed saw blocks one-handed actions")
     m.toggle_carry()
     m._on_cell_torn(Vector3(0, 1, 3))
@@ -217,7 +217,7 @@ func _run_systems() -> void:
     m.blender_charge = 1.0
     var f0: float = m.stomach.fill
     var pile_amt: float = m.carried_flesh
-    _assert(m.drink_blender() and is_equal_approx(m.stomach.fill - f0, pile_amt * FPProgression.BLENDER_PACKING), "the blender packs the pile tighter into the stomach")
+    _assert(m.drink_blender() and is_equal_approx(m.stomach.fill - f0, pile_amt * FPTissueTools.BLEND_RATIO), "the blender packs the pile tighter into the stomach")
     m.toggle_carry()
     _assert(m.two_handed_tools_available(), "putting the pile down frees both hands")
     m.equip_tool("")
@@ -301,8 +301,8 @@ func _run_death(m, prog: FPProgression) -> void:
     m._step_canary(0.3)
     _assert(m.canary.block_density < 0.85, "a fed canary counts looser flesh as blocking")
     # --- rest points: settle there, nothing else
-    var rp: Vector3 = m.rest_points[0]
-    _assert(m.rest_points.size() == 9 and m.terrain.density_at(rp) < 0.5, "9 identical rest points, hollow inside the flesh")
+    var rp: Vector3 = m.rest_points[m.rest_points.size() - 1]
+    _assert(m.rest_points.size() == 12 and m.terrain.density_at(rp) < 0.5, "12 identical rest points (2/4/6), hollow inside the flesh")
     m.player.global_position = rp + Vector3(0, -FPWorldFeatures.CONTAINER_HALF.y + 0.9, -FPWorldFeatures.CONTAINER_HALF.z + 0.5)
     m.stomach.add_flesh(50.0)
     prog.on_flesh_eaten(0, 2)

@@ -133,7 +133,7 @@ func apply_bob(offset: Vector3) -> void:
 func set_mutation(amount: float) -> void:
     mutation = clampf(amount, 0.0, 1.0)
 
-## Show/hide the carried flesh pile (design-core: carried pile blocks
+## Show/hide the carried flesh pile (docs/spec/01-body-eating.md: carried pile blocks
 ## two-handed tools). amount 0 = hands free.
 func set_carry(amount: float) -> void:
     carry_amount = clampf(amount, 0.0, 1.0)
@@ -225,9 +225,9 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["f1"] = lerpf(idle["f1"], 62.0 * strength, c1)
             p["f2"] = lerpf(idle["f2"], 82.0 * strength, c2)
             p["f3"] = lerpf(idle["f3"], 62.0 * strength, c3)
-            p["t_opp"] = lerpf(idle["t_opp"], 44.0, ct)
-            p["t1"] = lerpf(idle["t1"], 26.0, ct)
-            p["t2"] = lerpf(idle["t2"], 40.0, ct)
+            p["t_opp"] = lerpf(idle["t_opp"], 52.0, ct)
+            p["t1"] = lerpf(idle["t1"], 30.0, ct)
+            p["t2"] = lerpf(idle["t2"], 46.0, ct)
             p["t3"] = lerpf(idle["t3"], 44.0, ct)
             p["wrist_pitch"] = lerpf(idle["wrist_pitch"], 62.0, reach)
             p["wrist_yaw"] = lerpf(idle["wrist_yaw"], 6.0 * side, reach)

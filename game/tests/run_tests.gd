@@ -399,7 +399,7 @@ func _run_spray_tests() -> void:
 	_assert(field.density_at(Vector3(0, 0, 0)) < 0.5, "spray: sealed tissue does not regenerate even after time passes")
 
 	var deep := FDKSprayCan.new(FDKSprayCan.Tier.DEEP)
-	_assert(deep.radius() > can.radius(), "spray: DEEP tier reaches farther than CHEAP tier")
+	_assert(deep.depth() > can.depth(), "spray: DEEP tier melts deeper than CHEAP tier")
 
 	var inv := FDKSprayCan.Inventory.new()
 	_assert(inv.add(FDKSprayCan.new()), "spray_inventory: can add under cap")
@@ -407,8 +407,10 @@ func _run_spray_tests() -> void:
 	_assert(inv.add(FDKSprayCan.new()), "spray_inventory: can add third (cap)")
 	_assert(not inv.add(FDKSprayCan.new()), "spray_inventory: refuses a 4th can (cap is 3)")
 	var used := inv.use(field, Vector3(-1, -1, -1), FDKSprayCan.Tier.CHEAP)
-	_assert(used >= 0, "spray_inventory: use() applies and removes a matching can")
-	_assert(inv.count() == 2, "spray_inventory: count decrements after use (got %d)" % inv.count())
+	_assert(used >= 0 and inv.count() == 3, "spray_inventory: one spray leaves the can on the belt (6 per can)")
+	for i in range(FDKSprayCan.SPRAYS_PER_CAN - 1):
+		inv.use(field, Vector3(-1, -1, -1), FDKSprayCan.Tier.CHEAP)
+	_assert(inv.count() == 2, "spray_inventory: the can is gone after its 6th spray (got %d)" % inv.count())
 
 func _run_mutation_tests() -> void:
 	var tree := FDKMutationTree.new()

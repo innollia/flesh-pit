@@ -40,16 +40,19 @@ var _collision: CollisionShape3D
 var _static_body: StaticBody3D
 var _dirty: bool = false
 
-## Tissue ids (design-core 7): 0 core/compressive (default flesh), 1 nerve
+## Tissue ids (docs/spec/02-world-tissue.md): 0 core/compressive (default flesh), 1 nerve
 ## bundle (surface shell precursor + door nerves), 2 fat band (shell-boundary
 ## signal), 3 membrane (inedible, around the restroom), 4 mantle/contractile
 ## (mantle shell). Placeholder textures only; final art is frontend scope.
+## Textures from tools/bake_tissue_textures.py (asset-list TIS-01..05). Index
+## = FDKTissueRules id; 5 (melted) skins faces that border a sprayed cell.
 const TISSUE_TEXTURES: Array[String] = [
-    "res://addons/flesh_dig_kit/textures/tex_flesh_128.png",
-    "res://addons/flesh_dig_kit/textures/tex_nerve_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_compressive_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_nerve_128.png",
     "res://addons/flesh_dig_kit/textures/tex_fat_128.png",
-    "res://addons/flesh_dig_kit/textures/tex_membrane_128.png",
-    "res://addons/flesh_dig_kit/textures/tex_skin_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_membrane_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_contractile_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_melted_64.png",
 ]
 const UV_SCALE := 0.9
 
@@ -107,6 +110,7 @@ func fill_uniform(density: float, tissue_id: int) -> void:
         _original_density[i] = density
     for i in range(_tissue.size()):
         _tissue[i] = tissue_id
+    tissue_changed()
     _dirty = true
 
 func fill_from_callable(sampler_density: Callable, sampler_tissue: Callable) -> void:
@@ -126,6 +130,7 @@ func fill_from_callable(sampler_density: Callable, sampler_tissue: Callable) -> 
             for x in range(s):
                 var world_pos: Vector3 = origin + (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * config.cell_size
                 _tissue[_cell_index(x, y, z)] = int(sampler_tissue.call(world_pos))
+    tissue_changed()
     _dirty = true
 
 func get_density_at_corner(x: int, y: int, z: int) -> float:
@@ -152,6 +157,7 @@ func set_tissue_at_cell(x: int, y: int, z: int, tissue_id: int) -> void:
     if x < 0 or y < 0 or z < 0 or x >= s or y >= s or z >= s:
         return
     _tissue[_cell_index(x, y, z)] = tissue_id
+    tissue_changed()
     _dirty = true
 
 ## Lowers density at the 8 corners of one local cell. When the chunk has a
@@ -169,13 +175,145 @@ func dig_cell(local_cell: Vector3i, amount: float) -> void:
                 _density[idx] = clampf(_density[idx] - amount, 0.0, 1.0)
     _dirty = true
 
-## Flesh around a sprayed tunnel squeezes back faster (design-core 3).
-const SPRAYED_REGEN_BOOST := 1.8
 var _any_sealed: bool = false
 
+## Per-corner regrowth multiplier: tissue regen (FDKTissueRules.REGEN) x the
+## spray-neighbourhood boost (06-tools.md 5: x2.0 within 1.0 m of a melted
+## cell). Rebuilt lazily when tissue or boost changes.
+var _regen_mult: PackedFloat32Array = PackedFloat32Array()
+var _regen_mult_dirty: bool = true
+## Per-corner spray boost (1.0 = none). Set by FDKTerrainField.spray_surface.
+var _boost: PackedFloat32Array = PackedFloat32Array()
+
+## Contractile squeeze (02-world-tissue.md 3): corners of contractile cells
+## that touch an empty cell, their phase, and the density currently added.
+var _contract: PackedFloat32Array = PackedFloat32Array()
+var _has_contract: bool = false
+var _contract_idx: PackedInt32Array = PackedInt32Array()
+var _contract_phase: PackedFloat32Array = PackedFloat32Array()
+var _contract_list_age: float = 999.0
+var _has_contractile_tissue: int = -1 ## -1 unknown, 0 no, 1 yes
+
+func _rebuild_regen_mult() -> void:
+    var n := config.chunk_size + 1
+    var s := config.chunk_size
+    if _regen_mult.size() != n * n * n:
+        _regen_mult.resize(n * n * n)
+    if _boost.size() != n * n * n:
+        _boost.resize(n * n * n)
+        _boost.fill(1.0)
+    for z in range(n):
+        var cz := mini(z, s - 1)
+        for y in range(n):
+            var cy := mini(y, s - 1)
+            for x in range(n):
+                var t: int = _tissue[mini(x, s - 1) + cy * s + cz * s * s]
+                var i := x + y * n + z * n * n
+                _regen_mult[i] = FDKTissueRules.regen_multiplier(t) * _boost[i]
+    _regen_mult_dirty = false
+
+## Sets the spray boost on one corner (x1.0 .. x2.0).
+func set_corner_boost(idx: int, mult: float) -> void:
+    var n := config.chunk_size + 1
+    if _boost.size() != n * n * n:
+        _boost.resize(n * n * n)
+        _boost.fill(1.0)
+    if mult > _boost[idx]:
+        _boost[idx] = mult
+        _regen_mult_dirty = true
+
+func corner_regen_multiplier(x: int, y: int, z: int) -> float:
+    if _regen_mult_dirty:
+        _rebuild_regen_mult()
+    var n := config.chunk_size + 1
+    return _regen_mult[x + y * n + z * n * n]
+
+func has_contractile_tissue() -> bool:
+    if _has_contractile_tissue < 0:
+        _has_contractile_tissue = 1 if _tissue.has(FDKTissueRules.CONTRACTILE) else 0
+    return _has_contractile_tissue == 1
+
+## Advances the contractile squeeze to `time`. Returns true if the shape
+## changed enough to need a remesh (the chunk is then marked dirty).
+func step_contraction(time: float, delta: float) -> bool:
+    if not has_contractile_tissue():
+        return false
+    var n := config.chunk_size + 1
+    var s := config.chunk_size
+    _contract_list_age += delta
+    if _contract_list_age >= 1.0:
+        _contract_list_age = 0.0
+        _rebuild_contract_list()
+    if _contract.size() != n * n * n:
+        _contract.resize(n * n * n)
+    var changed := false
+    if _contract_idx.is_empty():
+        if _has_contract:
+            _contract.fill(0.0)
+            _has_contract = false
+            _dirty = true
+            return true
+        return false
+    var any := false
+    for k in range(_contract_idx.size()):
+        var i: int = _contract_idx[k]
+        var v := FDKTissueRules.CONTRACT_GAIN * FDKTissueRules.contract_envelope(time + _contract_phase[k])
+        if absf(v - _contract[i]) > 0.02 or (v == 0.0 and _contract[i] != 0.0):
+            _contract[i] = v
+            changed = true
+        if v > 0.0:
+            any = true
+    _has_contract = any or changed
+    if changed:
+        _dirty = true
+    return changed
+
+func _rebuild_contract_list() -> void:
+    var n := config.chunk_size + 1
+    var s := config.chunk_size
+    var iso := FDKTissueRules.EMPTY_DENSITY
+    var keep := {}
+    for k in range(_contract_idx.size()):
+        keep[_contract_idx[k]] = true
+    var idx := PackedInt32Array()
+    var ph := PackedFloat32Array()
+    var origin := Vector3(chunk_coord) * s * config.cell_size
+    for z in range(1, n - 1):
+        for y in range(1, n - 1):
+            for x in range(1, n - 1):
+                var i := x + y * n + z * n * n
+                var t: int = _tissue[mini(x, s - 1) + mini(y, s - 1) * s + mini(z, s - 1) * s * s]
+                if t != FDKTissueRules.CONTRACTILE:
+                    continue
+                if _sealed_corner_touches_sealed_cell(x, y, z, s):
+                    continue
+                var touches := _density[i] < iso or _density[i - 1] < iso or _density[i + 1] < iso \
+                    or _density[i - n] < iso or _density[i + n] < iso \
+                    or _density[i - n * n] < iso or _density[i + n * n] < iso
+                if not touches:
+                    continue
+                idx.append(i)
+                ph.append(FDKTissueRules.contract_phase(origin + Vector3(x, y, z) * config.cell_size))
+    # corners that dropped off the list relax back to 0
+    if _contract.size() == n * n * n:
+        for i in keep.keys():
+            if not ph.is_empty() and idx.has(i):
+                continue
+            if _contract[i] != 0.0:
+                _contract[i] = 0.0
+                _dirty = true
+    _contract_idx = idx
+    _contract_phase = ph
+
+## Current squeeze offset at a corner (0 when none).
+func contract_at_corner(idx: int) -> float:
+    if not _has_contract or _contract.size() <= idx:
+        return 0.0
+    return _contract[idx]
+
 func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_radius: float, blockers: Array = []) -> void:
-    if _any_sealed:
-        rate *= SPRAYED_REGEN_BOOST
+    if _regen_mult_dirty:
+        _rebuild_regen_mult()
     var n := config.chunk_size + 1
     var s := config.chunk_size
     var changed := false
@@ -203,7 +341,10 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
             continue
         if _sealed_corner_touches_sealed_cell(x, y, z, s):
             continue
-        _density[i] = minf(orig, cur + rate * delta)
+        var m: float = _regen_mult[i]
+        if m <= 0.0:
+            continue
+        _density[i] = minf(orig, cur + rate * m * delta)
         changed = true
     if changed:
         _dirty = true
@@ -236,6 +377,12 @@ func seal_cell(x: int, y: int, z: int) -> void:
     _sealed[_cell_index(x, y, z)] = 1
     _any_sealed = true
 
+## Call after writing _tissue directly: drops the cached per-tissue tables.
+func tissue_changed() -> void:
+    _regen_mult_dirty = true
+    _has_contractile_tissue = -1
+    _contract_list_age = 999.0
+
 func is_dirty() -> bool:
     return _dirty
 
@@ -253,6 +400,8 @@ func _build_padded(s: int) -> PackedFloat32Array:
                 var v: float
                 if inside_yz and x >= 0 and x < n:
                     v = _density[x + y * n + z * n * n]
+                    if _has_contract:
+                        v += _contract[x + y * n + z * n * n]
                 elif field != null:
                     v = field.corner_density_global(base + Vector3i(x, y, z))
                 else:
@@ -418,6 +567,13 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
     var v3 := cell_vert[i3]
     var s := config.chunk_size
     var tissue := get_tissue_at_cell(clampi(tx, 0, s - 1), clampi(ty, 0, s - 1), clampi(tz, 0, s - 1))
+    if _any_sealed:
+        # the empty cell this face looks into was sprayed: show melted flesh
+        var ex := clampi(tx + int(round(outward.x)), 0, s - 1)
+        var ey := clampi(ty + int(round(outward.y)), 0, s - 1)
+        var ez := clampi(tz + int(round(outward.z)), 0, s - 1)
+        if _sealed[_cell_index(ex, ey, ez)] != 0:
+            tissue = FDKTissueRules.MELTED
     # world-aligned planar UV: pick the two axes with the least outward
     # component (i.e. the plane the face roughly lies in)
     var ax := absf(outward.x)
@@ -472,7 +628,15 @@ func serialize() -> Dictionary:
         "density": Array(_density),
         "tissue": Array(_tissue),
         "sealed": Array(_sealed),
+        "boost": _boost_sparse(),
     }
+
+func _boost_sparse() -> Array:
+    var out: Array = []
+    for i in range(_boost.size()):
+        if _boost[i] > 1.0:
+            out.append([i, _boost[i]])
+    return out
 
 func deserialize(data: Dictionary) -> void:
     var dd: Array = data.get("density", [])
@@ -485,4 +649,7 @@ func deserialize(data: Dictionary) -> void:
     for i in range(min(sl.size(), _sealed.size())):
         _sealed[i] = int(sl[i])
     _any_sealed = _sealed.has(1)
+    for e in (data.get("boost", []) as Array):
+        set_corner_boost(int(e[0]), float(e[1]))
+    tissue_changed()
     _dirty = true

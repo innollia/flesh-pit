@@ -1,48 +1,62 @@
 class_name FDKSprayCan
 extends RefCounted
 
-## Biosecurity spray inventory (design-core 2/3): the player carries up to 3
-## cans. A can permanently dissolves flesh in a sphere via
-## FDKTerrainField.spray_sphere -- sprayed tissue becomes inedible and never
-## regenerates again. Performance is sold in price tiers that trade can cost
-## for how deep one application reaches:
-##   TIER_CHEAP  -- treats mainly the surface layer (small radius)
-##   TIER_DEEP   -- clears a thicker volume (larger radius), costs more
-##
-## This is plain data/logic (no visuals, no shop UI) so the game wires its
-## own purchase flow and hands out FDKSprayCan instances.
+## Biosecurity spray (docs/spec/06-tools.md 5). The player carries up to 3
+## cans; each can sprays 6 times. One spray melts the wall the player aims at
+## (FDKTerrainField.spray_surface): melted cells never regrow and cannot be
+## eaten, and the flesh within 1.0 m of them regrows x2.0 faster, so the
+## squeeze never goes away.
+##   CHEAP -- melts one cell layer (0.5 m) into the surface
+##   DEEP  -- melts three layers (1.5 m)
+## Plain data/logic (no visuals, no shop UI).
 
 enum Tier { CHEAP, DEEP }
 
 const MAX_CARRIED: int = 3
-
-## Radius in world meters per tier (placeholder tuning, see STATUS.md).
-const TIER_RADIUS := {
-	Tier.CHEAP: 0.6,
-	Tier.DEEP: 1.3,
+const SPRAYS_PER_CAN: int = 6
+const SPRAY_RADIUS := 0.75
+const BOOST_RANGE := 1.0
+const BOOST_MULT := 2.0
+const TIER_DEPTH := {
+	Tier.CHEAP: 0.5,
+	Tier.DEEP: 1.5,
 }
 
 var tier: Tier = Tier.CHEAP
+var uses_left: int = SPRAYS_PER_CAN
 
 func _init(p_tier: Tier = Tier.CHEAP) -> void:
 	tier = p_tier
 
-func radius() -> float:
-	return TIER_RADIUS.get(tier, TIER_RADIUS[Tier.CHEAP])
+func depth() -> float:
+	return TIER_DEPTH.get(tier, TIER_DEPTH[Tier.CHEAP])
 
-## Applies this can at world_pos on the given terrain field, permanently
-## sealing tissue in its tier's radius. One can = one use (consumed after
-## application); the inventory holder is responsible for removing it.
-func apply(terrain: FDKTerrainField, world_pos: Vector3) -> int:
-	if terrain == null:
+## Kept for older callers: the reach of one spray.
+func radius() -> float:
+	return SPRAY_RADIUS
+
+## One spray at the aimed wall point, melting along `into` (the look
+## direction). Uses one of the can's sprays. Returns cells melted.
+func apply(terrain: FDKTerrainField, world_pos: Vector3, into: Vector3 = Vector3.ZERO) -> int:
+	if terrain == null or uses_left <= 0:
 		return 0
-	return terrain.spray_sphere(world_pos, radius())
+	if into.length() < 0.01:
+		into = (world_pos - terrain.depth_origin).normalized()
+		if into.length() < 0.01:
+			into = Vector3.FORWARD
+	uses_left -= 1
+	return terrain.spray_surface(world_pos, into, SPRAY_RADIUS, depth(), BOOST_RANGE, BOOST_MULT)
+
+func is_empty() -> bool:
+	return uses_left <= 0
 
 func serialize() -> Dictionary:
-	return {"version": 1, "tier": tier}
+	return {"version": 2, "tier": tier, "uses_left": uses_left}
 
 static func deserialize_new(data: Dictionary) -> FDKSprayCan:
-	return FDKSprayCan.new(int(data.get("tier", Tier.CHEAP)) as Tier)
+	var c := FDKSprayCan.new(int(data.get("tier", Tier.CHEAP)) as Tier)
+	c.uses_left = int(data.get("uses_left", SPRAYS_PER_CAN))
+	return c
 
 
 ## Holds the player's current can inventory (carry cap 3, mixed tiers).
@@ -60,14 +74,15 @@ class Inventory:
 		cans.append(can)
 		return true
 
-	## Uses (and removes) the first can of the given tier, if any. Returns
-	## the number of cells sealed, or -1 if no matching can was carried.
-	func use(terrain: FDKTerrainField, world_pos: Vector3, tier: FDKSprayCan.Tier) -> int:
+	## One spray from the first can of the given tier; an emptied can is
+	## dropped. Returns cells melted, or -1 if no matching can was carried.
+	func use(terrain: FDKTerrainField, world_pos: Vector3, tier: FDKSprayCan.Tier, into: Vector3 = Vector3.ZERO) -> int:
 		for i in range(cans.size()):
-			if cans[i].tier == tier:
-				var sealed := cans[i].apply(terrain, world_pos)
-				cans.remove_at(i)
-				return sealed
+			if cans[i].tier == tier and not cans[i].is_empty():
+				var melted := cans[i].apply(terrain, world_pos, into)
+				if cans[i].is_empty():
+					cans.remove_at(i)
+				return melted
 		return -1
 
 	func count() -> int:
@@ -80,11 +95,19 @@ class Inventory:
 				n += 1
 		return n
 
+	## Sprays left across every can of a tier (the belt shows the cans).
+	func sprays_left(tier: FDKSprayCan.Tier) -> int:
+		var n := 0
+		for c in cans:
+			if c.tier == tier:
+				n += c.uses_left
+		return n
+
 	func serialize() -> Dictionary:
 		var arr: Array = []
 		for c in cans:
 			arr.append(c.serialize())
-		return {"version": 1, "cans": arr}
+		return {"version": 2, "cans": arr}
 
 	func deserialize(data: Dictionary) -> void:
 		cans.clear()

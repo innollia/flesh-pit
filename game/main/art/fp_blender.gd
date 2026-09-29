@@ -28,7 +28,7 @@ func _ready() -> void:
     for sx in [-1, 1]:
         K.rbox(st, K.T(Vector3(sx * 0.035, 0.035, 0.068), Vector3(0, sx * 20, 0)), Vector3(0.01, 0.006, 0.006), 0.003, Color(0.9, 0.9, 0.88))
     # power cord out of the back, ending in a two-prong plug (it is charged
-    # by plugging it into nerve-dense tissue, design-core 4)
+    # by plugging it into nerve-dense tissue, docs/spec/06-tools.md)
     K.tube(st, Transform3D.IDENTITY, [Vector3(0, 0.02, -0.075), Vector3(0.0, 0.01, -0.12), Vector3(0.04, 0.005, -0.17), Vector3(0.09, 0.012, -0.19), Vector3(0.12, 0.02, -0.17)], [0.005], 4, [dark], false)
     K.rbox(st, K.T(Vector3(0.13, 0.022, -0.16), Vector3(0, -50, 0)), Vector3(0.012, 0.01, 0.018), 0.004, Color(0.15, 0.15, 0.15))
     for sx in [-1, 1]:
@@ -59,6 +59,49 @@ func _ready() -> void:
     K.add_mesh(_blade, "BladeMesh", K.finish(st, 8.0), K.mat("tex_chrome_64.png", 0.5, false))
     _fill_mi = K.add_mesh(_jar, "Contents", ArrayMesh.new(), K.mat("tex_torn_chunk_64.png", 0.8, false))
     set_fill(0.0)
+    _build_lights()
+
+## Charge shown as lamps on the base's side (06-tools.md 2: no numbers).
+## One lamp per blend: full charge = 10 lit.
+const LIGHT_COUNT := 10
+var _lights: Array[MeshInstance3D] = []
+var _lit := -1
+var _lamp_on: StandardMaterial3D
+var _lamp_off: StandardMaterial3D
+
+func _build_lights() -> void:
+    _lamp_on = StandardMaterial3D.new()
+    _lamp_on.albedo_color = Color(0.55, 1.0, 0.35)
+    _lamp_on.emission_enabled = true
+    _lamp_on.emission = Color(0.45, 1.0, 0.25)
+    _lamp_on.emission_energy_multiplier = 3.0
+    _lamp_off = StandardMaterial3D.new()
+    _lamp_off.albedo_color = Color(0.12, 0.16, 0.1)
+    var bm := BoxMesh.new()
+    bm.size = Vector3(0.009, 0.007, 0.004)
+    for i in range(LIGHT_COUNT):
+        # a row wrapping round the left-front of the base, 0.08 m up
+        var a := deg_to_rad(-70.0 + float(i) * 14.0)
+        var mi := MeshInstance3D.new()
+        mi.name = "ChargeLight%d" % i
+        mi.mesh = bm
+        mi.position = Vector3(sin(a) * 0.075, 0.085, cos(a) * 0.075)
+        mi.rotation.y = a
+        mi.material_override = _lamp_off
+        add_child(mi)
+        _lights.append(mi)
+    set_charge_lights(0)
+
+func set_charge_lights(n: int) -> void:
+    n = clampi(n, 0, LIGHT_COUNT)
+    if n == _lit:
+        return
+    _lit = n
+    for i in range(_lights.size()):
+        _lights[i].material_override = _lamp_on if i < n else _lamp_off
+
+func charge_lights_lit() -> int:
+    return maxi(0, _lit)
 
 func set_fill(amount: float) -> void:
     _fill = clampf(amount, 0.0, 1.0)

@@ -65,6 +65,10 @@ var barrier_field: FDKBarrierField
 var canary: FDKCanary
 var hazard: FDKHazardCheck = FDKHazardCheck.new()
 var death_drop: FDKDeathDrop
+## Session D glue: tissue-aware chewing, saw, blender, spray (fp_tissue_tools.gd).
+var tissue_tools: FPTissueTools
+## Per-game random rotation of the rest points (saved).
+var rest_seed: int = 0
 var vent: FPVent
 ## W04 toilet bowl + lever settlement (no numbers, no shop).
 var toilet: FPToiletSettlement
@@ -122,7 +126,10 @@ func _ready() -> void:
     _noise = FastNoiseLite.new()
     _noise.seed = 1337
     _noise.frequency = 0.35
-    rest_points = FPWorldFeatures.rest_points(RESTROOM_CENTER)
+    if rest_seed == 0:
+        rest_seed = randi_range(1, 999999)
+    rest_points = FPWorldFeatures.rest_points(RESTROOM_CENTER, rest_seed)
+    tissue_tools = FPTissueTools.new(self)
 
     terrain = FDKTerrainField.new()
     terrain.name = "TerrainField"
@@ -328,19 +335,8 @@ func shell_at(p: Vector3) -> int:
 ## Tissue ids: 0 flesh, 1 nerve bundle, 2 fat band (shell boundary),
 ## 3 membrane (restroom shell), 4 contractile fibers (mantle, needs a blade).
 func _world_tissue(p: Vector3) -> int:
-    if _room_dist(p) < MEMBRANE_THICKNESS + ROOM_MARGIN and not _in_door_column(p):
-        return 3
-    var n := _noise.get_noise_3dv(p)
-    var depth := p.distance_to(RESTROOM_CENTER)
-    var shell := FPWorldFeatures.shell_of_depth(depth)
-    var nerve_cut := 0.42 if shell < 2 else 0.12
-    if n > nerve_cut:
-        return 1
-    if fposmod(depth, SHELL_THICKNESS) > SHELL_THICKNESS - 0.9 and n < 0.1:
-        return 2
-    if shell == 1:
-        return 4
-    return 0
+    var room := _room_dist(p) < MEMBRANE_THICKNESS + ROOM_MARGIN and not _in_door_column(p)
+    return FPWorldFeatures.world_tissue(p, RESTROOM_CENTER, _noise.get_noise_3dv(p), room)
 
 func _regen_scale(p: Vector3) -> float:
     return FDKDepthDanger.danger_multiplier(p.distance_to(RESTROOM_CENTER), SHELL_THICKNESS)
@@ -559,13 +555,9 @@ func _chew_step(delta: float) -> void:
         return
     var dir: Vector3 = player.get_look_ray()[1]
     var target: Vector3 = hit.position + dir * terrain_config.cell_size * 0.5
-    if progression.can_tear(terrain.tissue_at(target) == 4):
-        chewer.try_start(target)
-        chewer.process_chew(delta * progression.dig_multiplier())
-        terrain.set_press(hit.position, -dir, _chew_ratio if chewer.is_chewing() else 0.0)
-    else:
-        chewer.stop() # contractile fibers: bare hands only press
-        terrain.set_press(hit.position, -dir, 0.25)
+    # hardness per tissue, membrane only with a blade (fp_tissue_tools.gd)
+    if tissue_tools.chew_at(target, hit.position, dir, delta):
+        terrain.set_press(hit.position, -dir, _chew_ratio)
 
 ## Everything that moves on its own each frame (tests drive it directly).
 func step_world(delta: float) -> void:
@@ -582,6 +574,9 @@ func step_world(delta: float) -> void:
     _step_hazards(delta)
     _step_canary(delta)
     _step_death_drop(delta)
+    terrain.step_contraction(delta, player.global_position)
+    tissue_tools.step_charge(delta, Input.is_action_pressed("fp_blend"))
+    tissue_tools.step_blend(delta)
     if not ended and player.global_position.distance_to(RESTROOM_CENTER) >= OUTER_RADIUS - 0.3:
         reach_ending()
 
@@ -878,32 +873,12 @@ func two_handed_tools_available() -> bool:
 ## Blender: aimed at nerve-dense tissue it plugs in and charges (and may set
 ## off a contraction); otherwise the pile is poured in and drunk.
 func use_blender() -> bool:
-    if not progression.owns("blender"):
-        return false
-    var hit := _look_hit()
-    if not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk"):
-        var dir: Vector3 = player.get_look_ray()[1]
-        if terrain.tissue_at(hit.position + dir * terrain_config.cell_size * 0.5) == 1:
-            blender_charge = 1.0
-            var n := _nearest_nerve(hit.position, 2.0)
-            if n != null:
-                _disturb_nerve(n, 0.8)
-            else:
-                _on_nerve_disturbed(hit.position)
-            return true
-    return drink_blender()
+    return tissue_tools.use_blender()
 
+## Blend the carried pile and drink it at once (the timed version runs from
+## use_blender: 1.5 s spin + 1.5 s drink).
 func drink_blender() -> bool:
-    if blender_charge <= 0.0 or carried_flesh <= 0.0:
-        return false
-    stomach.add_flesh(carried_flesh * FPProgression.BLENDER_PACKING)
-    for s in carried_units.keys():
-        progression.on_flesh_eaten(int(s), int(carried_units[s]))
-    carried_flesh = 0.0
-    carried_units.clear()
-    blender_charge = maxf(0.0, blender_charge - 0.25)
-    progression.refresh_hands(carry_mode)
-    return true
+    return tissue_tools.blend_now()
 
 # --- barrier, spray --------------------------------------------------------------
 
@@ -954,7 +929,7 @@ func use_spray(deep: bool = false) -> int:
     var hit := _look_hit()
     if hit.is_empty():
         return -1
-    return progression.sprays.use(terrain, hit.position, tier)
+    return progression.sprays.use(terrain, hit.position, tier, player.get_look_ray()[1])
 
 # --- tumors -------------------------------------------------------------------------
 
@@ -1035,7 +1010,7 @@ func crush_progress() -> float:
     return clampf(_crush_t / CRUSH_TIME, 0.0, 1.0)
 
 func _step_hazards(delta: float) -> void:
-    if restroom.contains(player.global_position):
+    if restroom.contains(player.global_position) or FPWorldFeatures.in_container(player.global_position, rest_points):
         _crush_t = 0.0
         hazard.health = minf(100.0, hazard.health + HEALTH_REGEN * delta)
         return
@@ -1121,6 +1096,7 @@ func reach_ending() -> void:
 func _on_cell_torn(world_pos: Vector3) -> void:
     var shell := shell_at(world_pos)
     hand_blood = minf(1.0, hand_blood + 0.05)
+    tissue_tools.on_cell_torn(world_pos)
     if carry_mode:
         carried_flesh += stomach_config.flesh_per_cell
         carried_units[shell] = int(carried_units.get(shell, 0)) + 1
@@ -1156,6 +1132,7 @@ func serialize() -> Dictionary:
         "canary_feed_left": canary_feed_left,
         "hand_blood": hand_blood,
         "deaths": deaths,
+        "rest_seed": rest_seed,
         "opening_done": opening_done or not is_opening(),
         "ended": ended,
         "taken_tumor_spots": taken_tumor_spots.duplicate(),
@@ -1191,6 +1168,8 @@ func deserialize(data: Dictionary) -> void:
     canary_feed_left = float(data.get("canary_feed_left", 0.0))
     hand_blood = float(data.get("hand_blood", 0.0))
     deaths = int(data.get("deaths", 0))
+    if data.has("rest_seed"):
+        tissue_tools.relayout_rest_points(int(data["rest_seed"]))
     ended = bool(data.get("ended", false))
     if bool(data.get("opening_done", v < 3)):
         finish_opening()

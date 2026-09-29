@@ -1,7 +1,7 @@
 extends Node3D
 
 ## Industrial tension barrier that auto-expands across a tunnel cross-section
-## (design-core 3). Four telescoping struts in a star from a central hub to
+## (docs/spec/06-tools.md). Four telescoping struts in a star from a central hub to
 ## foot pads pressed into the flesh, with a yellow/black hazard web between.
 ## Four visual damage states (stress 0-33-66-99%) then a break:
 ##   0 taut and straight   1 struts bowed, web sagging

@@ -31,14 +31,51 @@ var _chunks: Dictionary = {}
 func _ready() -> void:
     set_process(true)
 
+## Per-frame remesh time budget (ms). At least one dirty chunk is always
+## remeshed; more only while the frame stays under this budget, so a burst
+## of dirty chunks (contraction wave, spray) never stalls a frame.
+var remesh_ms_per_frame: float = 8.0
+## Seconds of simulated time for the contractile squeeze clock.
+var contract_time: float = 0.0
+## Emitted once per chunk per squeeze cycle, CONTRACT_WARN seconds before the
+## squeeze starts there (the sound plays 1 s early -- 02-world-tissue.md 3).
+signal contraction_warning(world_pos: Vector3)
+var _warned: Dictionary = {}
+
 func _process(_delta: float) -> void:
     var done := 0
+    var start := Time.get_ticks_usec()
     for chunk in _chunks.values():
         if chunk.is_dirty():
             chunk.remesh()
             done += 1
             if done >= remesh_budget_per_frame:
                 break
+            if (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
+                break
+
+## Advances the contractile squeeze (only chunks within `radius` of `near`,
+## which is where the player can see or feel it). Returns chunks changed.
+func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
+    contract_time += delta
+    var chunk_world := float(config.chunk_size) * config.cell_size
+    var changed := 0
+    for cc in _chunks.keys():
+        var chunk: FDKChunk = _chunks[cc]
+        var mid: Vector3 = chunk.position + Vector3.ONE * chunk_world * 0.5
+        if mid.distance_to(near) > radius + chunk_world:
+            continue
+        if chunk.step_contraction(contract_time, delta):
+            changed += 1
+        if chunk.has_contractile_tissue() and not chunk._contract_idx.is_empty():
+            var k: int = chunk._contract_idx.size() / 2
+            var phase: float = chunk._contract_phase[k]
+            var tt := contract_time + phase
+            var cycle := int(floor((tt + FDKTissueRules.CONTRACT_WARN) / FDKTissueRules.CONTRACT_PERIOD))
+            if fposmod(tt, FDKTissueRules.CONTRACT_PERIOD) >= FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.CONTRACT_WARN and int(_warned.get(cc, -1)) != cycle:
+                _warned[cc] = cycle
+                contraction_warning.emit(mid)
+    return changed
 
 ## Remeshes every dirty chunk now (used at start-up and by capture tools).
 func remesh_all() -> void:
@@ -108,7 +145,8 @@ func corner_density_global(g: Vector3i) -> float:
     var chunk: FDKChunk = _chunks.get(cc, null)
     if chunk != null:
         var l := g - cc * s
-        return chunk._density[chunk._corner_index(l.x, l.y, l.z)]
+        var ci := chunk._corner_index(l.x, l.y, l.z)
+        return chunk._density[ci] + chunk.contract_at_corner(ci)
     if density_sampler.is_valid():
         return float(density_sampler.call(Vector3(g) * config.cell_size))
     return 1.0
@@ -148,6 +186,7 @@ func dig_at(world_pos: Vector3, amount: float) -> void:
                 _add_corner_global(g + Vector3i(dx, dy, dz), -amount)
 
 ## Tissue id at a world position (cell center lookup).
+## Sprayed cells report FDKTissueRules.MELTED ("���� ��").
 func tissue_at(world_pos: Vector3) -> int:
     var result := world_to_cell(world_pos)
     var chunk: FDKChunk = _chunks.get(result[0], null)
@@ -156,14 +195,93 @@ func tissue_at(world_pos: Vector3) -> int:
             return int(tissue_sampler.call(world_pos))
         return 0
     var lc: Vector3i = result[1]
+    if chunk.is_sealed_at_cell(lc.x, lc.y, lc.z):
+        return FDKTissueRules.MELTED
     return chunk.get_tissue_at_cell(lc.x, lc.y, lc.z)
+
+## Biosecurity spray (06-tools.md 5): melts the wall the player aims at.
+## Cells within `radius` of the aim line and from just in front of the
+## surface to `depth` metres into it are melted (density 0, sealed, never
+## regrow, inedible). Every corner within `boost_range` of a melted cell
+## regrows `boost_mult` times faster, so the flesh beside a sprayed tunnel
+## squeezes in from the side. Returns the number of cells melted.
+func spray_surface(hit: Vector3, into: Vector3, radius: float, depth: float,
+        boost_range: float = 1.0, boost_mult: float = 2.0) -> int:
+    var n_dir := into.normalized()
+    var reach := maxf(radius, depth) + boost_range + config.cell_size
+    var min_coord := world_to_chunk_coord(hit - Vector3.ONE * reach)
+    var max_coord := world_to_chunk_coord(hit + Vector3.ONE * reach)
+    var s := config.chunk_size
+    var n := s + 1
+    var melted: Array[Vector3] = []
+    for cz in range(min_coord.z, max_coord.z + 1):
+        for cy in range(min_coord.y, max_coord.y + 1):
+            for cx in range(min_coord.x, max_coord.x + 1):
+                var chunk := get_or_create_chunk(Vector3i(cx, cy, cz))
+                var origin: Vector3 = chunk.position
+                var any := false
+                for z in range(s):
+                    for y in range(s):
+                        for x in range(s):
+                            var c: Vector3 = origin + (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * config.cell_size
+                            var v := c - hit
+                            var along := v.dot(n_dir)
+                            if along < -config.cell_size * 0.5 or along > depth:
+                                continue
+                            if (v - n_dir * along).length() > radius:
+                                continue
+                            if chunk.is_sealed_at_cell(x, y, z):
+                                continue
+                            chunk.seal_cell(x, y, z)
+                            melted.append(c)
+                            any = true
+                            for dz in range(2):
+                                for dy in range(2):
+                                    for dx in range(2):
+                                        var idx := (x + dx) + (y + dy) * n + (z + dz) * n * n
+                                        chunk._density[idx] = 0.0
+                                        chunk._original_density[idx] = 0.0
+                if any:
+                    chunk.tissue_changed()
+                    chunk._dirty = true
+    if melted.is_empty():
+        return 0
+    # regrowth boost ring (corners in neighbour chunks too)
+    for cz in range(min_coord.z, max_coord.z + 1):
+        for cy in range(min_coord.y, max_coord.y + 1):
+            for cx in range(min_coord.x, max_coord.x + 1):
+                var chunk: FDKChunk = _chunks.get(Vector3i(cx, cy, cz), null)
+                if chunk == null:
+                    continue
+                var origin: Vector3 = chunk.position
+                for z in range(n):
+                    for y in range(n):
+                        for x in range(n):
+                            var p: Vector3 = origin + Vector3(x, y, z) * config.cell_size
+                            if p.distance_to(hit) > reach:
+                                continue
+                            for m in melted:
+                                if p.distance_to(m) <= boost_range:
+                                    chunk.set_corner_boost(x + y * n + z * n * n, boost_mult)
+                                    break
+    return melted.size()
+
+## Regrowth multiplier at a world corner (tissue x spray boost). For tests.
+func regen_multiplier_at(world_pos: Vector3) -> float:
+    var cc := world_to_chunk_coord(world_pos)
+    var chunk: FDKChunk = _chunks.get(cc, null)
+    if chunk == null:
+        return 1.0
+    var l := Vector3i(((world_pos - chunk.position) / config.cell_size).round())
+    l = l.clamp(Vector3i.ZERO, Vector3i.ONE * config.chunk_size)
+    return chunk.corner_regen_multiplier(l.x, l.y, l.z)
 
 func is_edible_at(world_pos: Vector3) -> bool:
     if is_sealed_at(world_pos):
         return false
     return not inedible_tissues.has(tissue_at(world_pos))
 
-## True where biosecurity spray has permanently dissolved tissue (design-core
+## True where biosecurity spray has permanently dissolved tissue (docs/spec/02-world-tissue.md
 ## 2): the cell is neither edible nor eligible for regeneration ever again.
 func is_sealed_at(world_pos: Vector3) -> bool:
     var result := world_to_cell(world_pos)
@@ -248,7 +366,7 @@ func get_press_amount() -> float:
     var v = FDKChunk.terrain_material(0).get_shader_parameter("press_amount")
     return float(v) if v != null else 0.0
 
-## Strong local contraction (design-core 7/8, nerve tissue): the tunnel
+## Strong local contraction (docs/spec/02-world-tissue.md, nerve tissue): the tunnel
 ## squeezes shut around `center` -- density jumps back toward its original
 ## value by up to `amount` (more at the middle). Sprayed cells stay open.
 ## Returns how many corners moved.
@@ -340,6 +458,7 @@ func fill_box_uniform(aabb: AABB, density: float, tissue_id: int) -> void:
                             var c: Vector3 = origin + (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * config.cell_size
                             if aabb.has_point(c):
                                 chunk._tissue[x + y * s + z * s * s] = tissue_id
+                chunk.tissue_changed()
                 chunk._dirty = true
 
 func serialize() -> Dictionary:
