@@ -33,18 +33,23 @@ var _density: PackedFloat32Array = PackedFloat32Array()
 ## Tissue id per cell (chunk_size^3). See TISSUE_TEXTURES.
 var _tissue: PackedByteArray = PackedByteArray()
 var _original_density: PackedFloat32Array = PackedFloat32Array()
+var _sealed: PackedByteArray = PackedByteArray()
 
 var _mesh_instance: MeshInstance3D
 var _collision: CollisionShape3D
 var _static_body: StaticBody3D
 var _dirty: bool = false
 
-## 0 flesh, 1 nerve, 2 fat, 3 membrane (inedible, around the restroom)
+## Tissue ids (design-core 7): 0 core/compressive (default flesh), 1 nerve
+## bundle (surface shell precursor + door nerves), 2 fat band (shell-boundary
+## signal), 3 membrane (inedible, around the restroom), 4 mantle/contractile
+## (mantle shell). Placeholder textures only; final art is frontend scope.
 const TISSUE_TEXTURES: Array[String] = [
     "res://addons/flesh_dig_kit/textures/tex_flesh_128.png",
     "res://addons/flesh_dig_kit/textures/tex_nerve_128.png",
     "res://addons/flesh_dig_kit/textures/tex_fat_128.png",
     "res://addons/flesh_dig_kit/textures/tex_membrane_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_skin_128.png",
 ]
 const UV_SCALE := 0.9
 
@@ -71,6 +76,8 @@ func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
     _original_density.resize(n * n * n)
     _tissue = PackedByteArray()
     _tissue.resize(config.chunk_size * config.chunk_size * config.chunk_size)
+    _sealed = PackedByteArray()
+    _sealed.resize(config.chunk_size * config.chunk_size * config.chunk_size)
 
     _static_body = StaticBody3D.new()
     _static_body.name = "Body"
@@ -162,8 +169,15 @@ func dig_cell(local_cell: Vector3i, amount: float) -> void:
                 _density[idx] = clampf(_density[idx] - amount, 0.0, 1.0)
     _dirty = true
 
-func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_radius: float) -> void:
+## Flesh around a sprayed tunnel squeezes back faster (design-core 3).
+const SPRAYED_REGEN_BOOST := 1.8
+var _any_sealed: bool = false
+
+func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_radius: float, blockers: Array = []) -> void:
+    if _any_sealed:
+        rate *= SPRAYED_REGEN_BOOST
     var n := config.chunk_size + 1
+    var s := config.chunk_size
     var changed := false
     var r2 := protect_radius * protect_radius
     for i in range(_density.size()):
@@ -179,10 +193,48 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
         var dz := z - protect_local_pos.z
         if dx * dx + dy * dy + dz * dz <= r2:
             continue
+        var blocked := false
+        for b in blockers:
+            var bv: Vector4 = b
+            if (x - bv.x) * (x - bv.x) + (y - bv.y) * (y - bv.y) + (z - bv.z) * (z - bv.z) <= bv.w * bv.w:
+                blocked = true
+                break
+        if blocked:
+            continue
+        if _sealed_corner_touches_sealed_cell(x, y, z, s):
+            continue
         _density[i] = minf(orig, cur + rate * delta)
         changed = true
     if changed:
         _dirty = true
+
+## True if any of the (up to 8) cells sharing corner (x,y,z) is sealed. A
+## sealed corner never regenerates, so sprayed tissue stays open permanently.
+func _sealed_corner_touches_sealed_cell(x: int, y: int, z: int, s: int) -> bool:
+    for dz in range(-1, 1):
+        for dy in range(-1, 1):
+            for dx in range(-1, 1):
+                var cx := x + dx
+                var cy := y + dy
+                var cz := z + dz
+                if cx < 0 or cy < 0 or cz < 0 or cx >= s or cy >= s or cz >= s:
+                    continue
+                if _sealed[_cell_index(cx, cy, cz)] != 0:
+                    return true
+    return false
+
+func is_sealed_at_cell(x: int, y: int, z: int) -> bool:
+    var s := config.chunk_size
+    if x < 0 or y < 0 or z < 0 or x >= s or y >= s or z >= s:
+        return false
+    return _sealed[_cell_index(x, y, z)] != 0
+
+func seal_cell(x: int, y: int, z: int) -> void:
+    var s := config.chunk_size
+    if x < 0 or y < 0 or z < 0 or x >= s or y >= s or z >= s:
+        return
+    _sealed[_cell_index(x, y, z)] = 1
+    _any_sealed = true
 
 func is_dirty() -> bool:
     return _dirty
@@ -419,13 +471,18 @@ func serialize() -> Dictionary:
         "chunk_coord": [chunk_coord.x, chunk_coord.y, chunk_coord.z],
         "density": Array(_density),
         "tissue": Array(_tissue),
+        "sealed": Array(_sealed),
     }
 
 func deserialize(data: Dictionary) -> void:
     var dd: Array = data.get("density", [])
     var t: Array = data.get("tissue", [])
+    var sl: Array = data.get("sealed", [])
     for i in range(min(dd.size(), _density.size())):
         _density[i] = float(dd[i])
     for i in range(min(t.size(), _tissue.size())):
         _tissue[i] = int(t[i])
+    for i in range(min(sl.size(), _sealed.size())):
+        _sealed[i] = int(sl[i])
+    _any_sealed = _sealed.has(1)
     _dirty = true

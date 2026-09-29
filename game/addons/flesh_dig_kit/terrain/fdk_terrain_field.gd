@@ -19,6 +19,12 @@ var tissue_sampler: Callable
 var inedible_tissues: PackedInt32Array = PackedInt32Array([3])
 ## Max chunks remeshed per frame (keeps a frame from stalling).
 var remesh_budget_per_frame: int = 6
+## Extra no-regen spheres (Vector4: world xyz + radius), e.g. placed
+## barriers holding a tunnel open. Game code refreshes this list each frame.
+var regen_blockers: Array = []
+## Optional Callable(world_pos: Vector3) -> float regen-rate multiplier,
+## sampled once per chunk (e.g. danger rising per shell).
+var regen_rate_scale: Callable
 
 var _chunks: Dictionary = {}
 
@@ -153,7 +159,54 @@ func tissue_at(world_pos: Vector3) -> int:
     return chunk.get_tissue_at_cell(lc.x, lc.y, lc.z)
 
 func is_edible_at(world_pos: Vector3) -> bool:
+    if is_sealed_at(world_pos):
+        return false
     return not inedible_tissues.has(tissue_at(world_pos))
+
+## True where biosecurity spray has permanently dissolved tissue (design-core
+## 2): the cell is neither edible nor eligible for regeneration ever again.
+func is_sealed_at(world_pos: Vector3) -> bool:
+    var result := world_to_cell(world_pos)
+    var chunk: FDKChunk = _chunks.get(result[0], null)
+    if chunk == null:
+        return false
+    var lc: Vector3i = result[1]
+    return chunk.is_sealed_at_cell(lc.x, lc.y, lc.z)
+
+## Permanently dissolves tissue in a sphere: clears density to 0 (like
+## carve_sphere) AND marks every cell whose center falls inside the sphere as
+## sealed, so it is inedible and never regenerates. Used by the biosecurity
+## spray can; radius depends on the can tier (cheap = surface only, expensive
+## = deeper). Returns the number of cells sealed (for tests / tuning).
+func spray_sphere(center: Vector3, radius: float) -> int:
+    var min_coord := world_to_chunk_coord(center - Vector3.ONE * radius)
+    var max_coord := world_to_chunk_coord(center + Vector3.ONE * radius)
+    var sealed_count := 0
+    for cz in range(min_coord.z, max_coord.z + 1):
+        for cy in range(min_coord.y, max_coord.y + 1):
+            for cx in range(min_coord.x, max_coord.x + 1):
+                var chunk_coord := Vector3i(cx, cy, cz)
+                var chunk := get_or_create_chunk(chunk_coord)
+                var n := config.chunk_size + 1
+                var origin: Vector3 = Vector3(chunk_coord) * config.chunk_size * config.cell_size
+                for z in range(n):
+                    for y in range(n):
+                        for x in range(n):
+                            var world_corner: Vector3 = origin + Vector3(x, y, z) * config.cell_size
+                            if world_corner.distance_to(center) <= radius:
+                                var idx := x + y * n + z * n * n
+                                chunk._density[idx] = 0.0
+                                chunk._original_density[idx] = 0.0
+                var s := config.chunk_size
+                for z in range(s):
+                    for y in range(s):
+                        for x in range(s):
+                            var c: Vector3 = origin + (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * config.cell_size
+                            if c.distance_to(center) <= radius and not chunk.is_sealed_at_cell(x, y, z):
+                                chunk.seal_cell(x, y, z)
+                                sealed_count += 1
+                chunk._dirty = true
+    return sealed_count
 
 ## Density at a world position (nearest lower corner of its cell, max of 8).
 func density_at(world_pos: Vector3) -> float:
@@ -172,7 +225,19 @@ func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: fl
         var chunk_origin: Vector3 = Vector3(chunk_coord) * config.chunk_size * config.cell_size
         var local_protect: Vector3 = (protect_world_pos - chunk_origin) / config.cell_size
         var local_radius: float = protect_radius / config.cell_size
-        chunk.regenerate(delta, config.regen_rate, local_protect, local_radius)
+        var rate: float = config.regen_rate
+        var chunk_world := float(config.chunk_size) * config.cell_size
+        if regen_rate_scale.is_valid():
+            rate *= float(regen_rate_scale.call(chunk_origin + Vector3.ONE * chunk_world * 0.5))
+        var local_blockers: Array = []
+        for b in regen_blockers:
+            var bv: Vector4 = b
+            var bc := Vector3(bv.x, bv.y, bv.z)
+            var closest := bc.clamp(chunk_origin, chunk_origin + Vector3.ONE * chunk_world)
+            if closest.distance_to(bc) <= bv.w:
+                var lc := (bc - chunk_origin) / config.cell_size
+                local_blockers.append(Vector4(lc.x, lc.y, lc.z, bv.w / config.cell_size))
+        chunk.regenerate(delta, rate, local_protect, local_radius, local_blockers)
 
 ## Chew press visual: dents then stretches the wall around `center` toward
 ## `toward` (usually the player) as amount goes 0..1. amount 0 = off.
@@ -182,6 +247,50 @@ func set_press(center: Vector3, toward: Vector3, amount: float) -> void:
 func get_press_amount() -> float:
     var v = FDKChunk.terrain_material(0).get_shader_parameter("press_amount")
     return float(v) if v != null else 0.0
+
+## Strong local contraction (design-core 7/8, nerve tissue): the tunnel
+## squeezes shut around `center` -- density jumps back toward its original
+## value by up to `amount` (more at the middle). Sprayed cells stay open.
+## Returns how many corners moved.
+func contract_sphere(center: Vector3, radius: float, amount: float) -> int:
+    var moved := 0
+    var min_coord := world_to_chunk_coord(center - Vector3.ONE * radius)
+    var max_coord := world_to_chunk_coord(center + Vector3.ONE * radius)
+    var n := config.chunk_size + 1
+    var s := config.chunk_size
+    for cz in range(min_coord.z, max_coord.z + 1):
+        for cy in range(min_coord.y, max_coord.y + 1):
+            for cx in range(min_coord.x, max_coord.x + 1):
+                var chunk: FDKChunk = _chunks.get(Vector3i(cx, cy, cz), null)
+                if chunk == null:
+                    continue
+                var origin: Vector3 = Vector3(cx, cy, cz) * s * config.cell_size
+                var lc := (center - origin) / config.cell_size
+                var lr := radius / config.cell_size
+                var x0 := maxi(0, int(floor(lc.x - lr)))
+                var x1 := mini(n - 1, int(ceil(lc.x + lr)))
+                var y0 := maxi(0, int(floor(lc.y - lr)))
+                var y1 := mini(n - 1, int(ceil(lc.y + lr)))
+                var z0 := maxi(0, int(floor(lc.z - lr)))
+                var z1 := mini(n - 1, int(ceil(lc.z + lr)))
+                var changed := false
+                for z in range(z0, z1 + 1):
+                    for y in range(y0, y1 + 1):
+                        for x in range(x0, x1 + 1):
+                            var dist := Vector3(x - lc.x, y - lc.y, z - lc.z).length()
+                            if dist > lr:
+                                continue
+                            var idx := x + y * n + z * n * n
+                            var orig: float = chunk._original_density[idx]
+                            var cur: float = chunk._density[idx]
+                            if cur >= orig or chunk._sealed_corner_touches_sealed_cell(x, y, z, s):
+                                continue
+                            chunk._density[idx] = minf(orig, cur + amount * (1.0 - dist / lr))
+                            moved += 1
+                            changed = true
+                if changed:
+                    chunk._dirty = true
+    return moved
 
 func depth_at(world_pos: Vector3) -> float:
     return world_pos.distance_to(depth_origin)

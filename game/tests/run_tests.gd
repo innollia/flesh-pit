@@ -17,6 +17,12 @@ func _init() -> void:
 	_run_surface_tests()
 	_run_hand_tests()
 	_run_ps1_tests()
+	_run_barrier_tests()
+	_run_spray_tests()
+	_run_mutation_tests()
+	_run_nerve_disturb_tests()
+	_run_canary_tests()
+	_run_death_drop_tests()
 	for n in _to_free:
 		if is_instance_valid(n):
 			n.free()
@@ -323,3 +329,176 @@ func _on_test_cell_torn(_pos: Vector3) -> void:
 
 func _on_test_released() -> void:
 	_chewer_release_count += 1
+
+func _run_barrier_tests() -> void:
+	var b := _track(FDKBarrier.new()) as FDKBarrier
+	b.break_threshold = 10.0
+	b.stress_decay = 0.0
+	_assert(b.damage_step() == 0, "barrier: starts intact (step 0)")
+
+	var steps: Array = []
+	b.damage_step_changed.connect(func(s): steps.append(s))
+	var broke_ratio := [-1.0] # lambdas capture locals by value: use a box
+	b.broke.connect(func(r): broke_ratio[0] = r)
+
+	b.absorb_pressure(4.0, 1.0) # 40%
+	_assert(b.damage_step() == 1, "barrier: 40%% stress reaches step 1 (got %d)" % b.damage_step())
+	b.absorb_pressure(3.0, 1.0) # 70%
+	_assert(b.damage_step() == 2, "barrier: 70%% stress reaches step 2 (got %d)" % b.damage_step())
+	b.absorb_pressure(4.0, 1.0) # 110% -> breaks
+	_assert(b.is_broken(), "barrier: exceeding break_threshold breaks it")
+	_assert(b.damage_step() == 3, "barrier: broken reports step 3")
+	_assert(broke_ratio[0] > 0.0, "barrier: broke signal fires with a positive release ratio (got %f)" % broke_ratio[0])
+	_assert(steps.has(1) and steps.has(2) and steps.has(3), "barrier: damage_step_changed fired for each 33%% transition (got %s)" % [steps])
+
+	var b2 := _track(FDKBarrier.new()) as FDKBarrier
+	b2.absorb_pressure(5.0, 1.0)
+	var saved := b2.serialize()
+	var b3 := _track(FDKBarrier.new()) as FDKBarrier
+	b3.deserialize(saved)
+	_assert(is_equal_approx(b3.stress, b2.stress), "barrier: serialize/deserialize round-trips stress")
+
+	var config := FDKTerrainConfig.new()
+	config.chunk_size = 4
+	config.cell_size = 0.5
+	config.regen_rate = 1.0
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
+	field.config = config
+	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
+	field.dig_at(Vector3(0, 0, 0), 1.0)
+	var bfield := _track(FDKBarrierField.new()) as FDKBarrierField
+	bfield.terrain = field
+	var placed := bfield.place(Vector3(0, 0, 0))
+	_assert(placed != null, "barrier_field: place succeeds under carry cap")
+	_assert(bfield.carried_remaining() == 2, "barrier_field: carry cap decrements (got %d)" % bfield.carried_remaining())
+	for i in range(3):
+		bfield.place(Vector3(1, 0, 0))
+	_assert(bfield.carried_remaining() == 0, "barrier_field: carry cap caps at MAX_CARRIED (got %d)" % bfield.carried_remaining())
+	bfield.update(1.0)
+	_assert(placed.stress > 0.0, "barrier_field: update feeds pressure from regen deficit at its position (got %f)" % placed.stress)
+
+func _run_spray_tests() -> void:
+	var config := FDKTerrainConfig.new()
+	config.chunk_size = 4
+	config.cell_size = 0.5
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
+	field.config = config
+	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
+
+	var can := FDKSprayCan.new(FDKSprayCan.Tier.CHEAP)
+	var sealed := can.apply(field, Vector3(0, 0, 0))
+	_assert(sealed > 0, "spray: apply seals at least one cell (got %d)" % sealed)
+	_assert(not field.is_edible_at(Vector3(0, 0, 0)), "spray: sealed cell is not edible")
+	_assert(field.is_sealed_at(Vector3(0, 0, 0)), "spray: is_sealed_at reports true after spraying")
+
+	# the cheap radius only clears the corners nearest the centre; a deep can
+	# clears the whole cell, so the probe cell reads open before regen
+	FDKSprayCan.new(FDKSprayCan.Tier.DEEP).apply(field, Vector3(0.25, 0.25, 0.25))
+	_assert(field.density_at(Vector3(0, 0, 0)) < 0.5, "spray: deep can opens the whole probe cell")
+	field.regenerate_all(1000.0, Vector3(100, 100, 100), 0.5)
+	_assert(field.density_at(Vector3(0, 0, 0)) < 0.5, "spray: sealed tissue does not regenerate even after time passes")
+
+	var deep := FDKSprayCan.new(FDKSprayCan.Tier.DEEP)
+	_assert(deep.radius() > can.radius(), "spray: DEEP tier reaches farther than CHEAP tier")
+
+	var inv := FDKSprayCan.Inventory.new()
+	_assert(inv.add(FDKSprayCan.new()), "spray_inventory: can add under cap")
+	_assert(inv.add(FDKSprayCan.new()), "spray_inventory: can add second")
+	_assert(inv.add(FDKSprayCan.new()), "spray_inventory: can add third (cap)")
+	_assert(not inv.add(FDKSprayCan.new()), "spray_inventory: refuses a 4th can (cap is 3)")
+	var used := inv.use(field, Vector3(-1, -1, -1), FDKSprayCan.Tier.CHEAP)
+	_assert(used >= 0, "spray_inventory: use() applies and removes a matching can")
+	_assert(inv.count() == 2, "spray_inventory: count decrements after use (got %d)" % inv.count())
+
+func _run_mutation_tests() -> void:
+	var tree := FDKMutationTree.new()
+	tree.define_node("root", [], FDKMutationTree.COMMON, 10)
+	tree.define_node("biome_a_1", [], "biome_a", 5)
+	tree.define_node("biome_b_1", [], "biome_b", 5)
+	tree.define_node("combo", ["biome_a_1", "biome_b_1"], "biome_a", 20, ["biome_a", "biome_b"])
+
+	_assert(not tree.can_purchase("root"), "mutation: cannot purchase with 0 points")
+	tree.grant_reward("biome_a", 10, 8) # common += 10, biome_a += 8
+	_assert(tree.points(FDKMutationTree.COMMON) == 10, "mutation: grant_reward adds to common pool (got %d)" % tree.points(FDKMutationTree.COMMON))
+	_assert(tree.points("biome_a") == 8, "mutation: grant_reward adds to the biome pool (got %d)" % tree.points("biome_a"))
+	_assert(tree.can_purchase("root"), "mutation: can_purchase true once common affords it")
+	_assert(tree.purchase("root"), "mutation: purchase succeeds")
+	_assert(tree.points(FDKMutationTree.COMMON) == 0, "mutation: purchase deducts cost")
+	_assert(not tree.purchase("root"), "mutation: cannot re-purchase an owned node")
+
+	_assert(not tree.can_purchase("combo"), "mutation: combo node blocked until both parents purchased")
+	tree.grant_reward("biome_a", 0, 0)
+	tree._points["biome_a"] = 5
+	_assert(tree.purchase("biome_a_1"), "mutation: biome_a_1 purchasable from its own pool")
+	tree._points["biome_b"] = 5
+	_assert(tree.purchase("biome_b_1"), "mutation: biome_b_1 purchasable from its own pool")
+	_assert(not tree.can_purchase("combo"), "mutation: combo still blocked, neither pool has 20 yet")
+	tree._points["biome_a"] = 20
+	_assert(tree.can_purchase("combo"), "mutation: combo purchasable once parents done and one pool affords it")
+	_assert(tree.purchase("combo"), "mutation: combo purchase succeeds, paid from biome_a")
+	_assert(tree.points("biome_a") == 0, "mutation: combo payment deducted from the affordable pool")
+
+	var saved := tree.serialize()
+	var tree2 := FDKMutationTree.new()
+	tree2.deserialize(saved)
+	_assert(tree2.is_purchased("combo"), "mutation: deserialize restores purchased nodes")
+
+func _run_nerve_disturb_tests() -> void:
+	var config := FDKTerrainConfig.new()
+	config.chunk_size = 4
+	config.cell_size = 0.5
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
+	field.config = config
+	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
+
+	var n := _track(FDKNerveStalk.new()) as FDKNerveStalk
+	n.terrain = field
+	n.place(Vector3(0, 0, 0), Vector3(0, 0, 1))
+	var got_signal := [false]
+	n.disturbed.connect(func(_p): got_signal[0] = true)
+	var density_before := field.density_at(n.base_probe)
+	n.disturb(1.0)
+	_assert(got_signal[0], "nerve: disturb() emits disturbed signal")
+	var density_after := field.density_at(n.base_probe)
+	_assert(density_after < density_before, "nerve: disturb() locally contracts tissue at its base (got %f -> %f)" % [density_before, density_after])
+
+func _run_canary_tests() -> void:
+	var config := FDKTerrainConfig.new()
+	config.chunk_size = 4
+	config.cell_size = 0.5
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
+	field.config = config
+	field.fill_box_uniform(AABB(Vector3(-4, -4, -4), Vector3(8, 8, 8)), 1.0, 0)
+
+	var canary := _track(FDKCanary.new()) as FDKCanary
+	canary.terrain = field
+	canary.route_samples = 4
+
+	var warnings: Array = []
+	canary.route_warning.connect(func(u): warnings.append(u))
+	canary.update(Vector3(0, 0, 0), Vector3(1.5, 0, 0)) # entirely solid tissue between: fully blocked
+	_assert(warnings.size() > 0, "canary: emits route_warning when urgency changes")
+	_assert(canary.last_route_urgency > 0.5, "canary: reports high urgency through solid tissue (got %f)" % canary.last_route_urgency)
+
+	field.dig_at(Vector3(0.75, 0, 0), 1.0)
+	field.dig_at(Vector3(0.4, 0, 0), 1.0)
+	field.dig_at(Vector3(1.1, 0, 0), 1.0)
+	canary.update(Vector3(0, 0, 0), Vector3(1.5, 0, 0))
+	_assert(canary.last_route_urgency < 1.0, "canary: dug-out route lowers urgency (got %f)" % canary.last_route_urgency)
+
+func _run_death_drop_tests() -> void:
+	var drop := _track(FDKDeathDrop.new()) as FDKDeathDrop
+	drop.drop(Vector3(1, 0, 1), {"gold": 3})
+	_assert(drop.active, "death_drop: drop() activates it")
+	_assert(drop.last_known_position == Vector3(1, 0, 1), "death_drop: last_known_position set at drop time")
+
+	drop.carry_along(Vector3(1.5, 0, 0))
+	_assert(drop.current_position.is_equal_approx(Vector3(2.5, 0, 1)), "death_drop: carry_along displaces current_position")
+	_assert(drop.last_known_position == Vector3(1, 0, 1), "death_drop: last_known_position stays stale after drift (no auto-update)")
+
+	var too_far := drop.try_recover(Vector3(1, 0, 1), 1.0) # stale marker, but drop actually moved
+	_assert(too_far.is_empty(), "death_drop: recovery at the stale marker fails once it has drifted out of range")
+
+	var got := drop.try_recover(Vector3(2.5, 0, 1), 1.0)
+	_assert(got.has("gold") and got["gold"] == 3, "death_drop: recovery at the real current position returns the items")
+	_assert(not drop.active, "death_drop: recovered drop becomes inactive")

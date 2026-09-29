@@ -78,14 +78,40 @@ func build() -> void:
         j.add_child(mi)
         parent = j
 
+signal disturbed(world_pos: Vector3)
+
+## How strongly a disturbance shakes the stalk (added to wiggle for a burst,
+## decaying back to the ambient wiggle_amount).
+@export var disturb_kick: float = 55.0
+@export var disturb_decay: float = 3.0
+
+var _disturb_extra: float = 0.0
+
+## Design-core 5: touching/damaging a nerve can cause local tissue
+## contraction/shifting, and the reaction must read as caused by the
+## player's action. Call this when the chewer targets this stalk (or a cell
+## adjacent to its base) instead of tearing it cleanly -- it kicks the
+## wiggle amplitude up sharply (a visible flinch) and, if `terrain` supports
+## dig_at, nudges nearby tissue to shift by digging a small amount at the
+## stalk's own root so the wall visibly contracts/moves away from the poke.
+func disturb(strength: float = 1.0) -> void:
+    _disturb_extra += disturb_kick * clampf(strength, 0.0, 1.0)
+    if terrain != null and terrain.has_method("dig_at"):
+        # local contraction: the tissue right around the root recoils,
+        # reading as the organism flinching away from the disturbance
+        terrain.dig_at(base_probe, 0.12 * clampf(strength, 0.0, 1.0))
+    disturbed.emit(global_position)
+
 func _process(delta: float) -> void:
+    if _disturb_extra > 0.0:
+        _disturb_extra = maxf(0.0, _disturb_extra - disturb_decay * disturb_kick * delta)
     step(delta)
 
 func step(delta: float) -> void:
     _time += delta
     for i in range(_joints.size()):
         var t := _time * wiggle_speed + _phase - float(i) * 0.7
-        var a := deg_to_rad(wiggle_amount) * (0.4 + 0.6 * float(i) / _joints.size())
+        var a := deg_to_rad(wiggle_amount + _disturb_extra) * (0.4 + 0.6 * float(i) / _joints.size())
         _joints[i].rotation = Vector3(sin(t) * a, 0.0, cos(t * 0.8) * a * 0.7)
     if terrain != null and terrain.has_method("density_at"):
         visible = terrain.density_at(base_probe) >= 0.5
