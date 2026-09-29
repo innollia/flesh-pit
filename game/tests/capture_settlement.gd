@@ -5,7 +5,8 @@ extends SceneTree
 ##     --write-movie <dir>/f.png --fixed-fps 10 --quit-after 30
 ##     --script res://tests/capture_settlement.gd -- <shot>
 ## Shots: settle (looking into the bowl before the lever, no text/numbers),
-## tank (after the lever, tank lid open, teeth piled inside).
+## tank (after the lever, tank lid open, teeth piled inside),
+## tank_pov (one lever pull only, seen from the standing player's own eyes).
 
 var _main: Node3D
 var _shot := "settle"
@@ -38,4 +39,16 @@ func _process(_d: float) -> bool:
             cam.global_position = eye
             cam.look_at(tank, Vector3.UP)
             cam.current = true
+        elif _shot == "tank_pov":
+            m.flush()
+            m.restroom.set_tank_open(true, true)
+            var tank2: Vector3 = (m.restroom.tank_art as Node3D).global_position + Vector3(0, 0.2, 0)
+            m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.95)
+            var eye2: Vector3 = m.player.global_position + Vector3(0, 0.9, 0)
+            var pitch := -atan2(eye2.y - tank2.y, Vector2(eye2.x - tank2.x, eye2.z - tank2.z).length())
+            m.player.set("_yaw", 0.0)
+            m.player.rotation.y = 0.0
+            m.player.set("_pitch", pitch)
+            m.player.camera_pivot.rotation.x = pitch
+            m.player.camera.current = true
     return false

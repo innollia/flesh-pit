@@ -12,6 +12,8 @@ const D := 0.095
 const H := 0.34
 const HANDFUL := 4
 const MAX_TEETH := 260
+## Height of the inner shelf the teeth rest on (tank-local).
+const SHELF := H * 0.5
 
 var _lid: Node3D
 var _teeth: MultiMeshInstance3D
@@ -31,17 +33,21 @@ func _ready() -> void:
     K.rbox(st, K.T(Vector3(W - wall, H * 0.5, 0)), Vector3(wall, H * 0.5, D - 0.004), 0.01, white, shade)
     K.rbox(st, K.T(Vector3(-W + wall, H * 0.5, 0)), Vector3(wall, H * 0.5, D - 0.004), 0.01, white, shade)
     K.rbox(st, K.T(Vector3(0, 0.01, 0)), Vector3(W, 0.01, D), 0.006, shade)
+    # raised inner shelf just under the water line: the teeth pile on it, so
+    # they sit high enough to be seen over the front wall from a standing eye
+    K.rbox(st, K.T(Vector3(0, SHELF - 0.008, 0)), Vector3(W - wall * 2.0, 0.008, D - wall * 2.0), 0.004, shade)
     # flush lever on the front-left
     K.lathe(st, K.T(Vector3(-W + 0.05, H - 0.05, D + 0.002), Vector3(90, 0, 0)), [Vector2(0.0, -0.012), Vector2(0.018, -0.012), Vector2(0.018, 0.0), Vector2(0.0, 0.002)], 8, [Color(0.85, 0.86, 0.88)])
     K.tube(st, Transform3D.IDENTITY, [Vector3(-W + 0.05, H - 0.05, D + 0.012), Vector3(-W + 0.1, H - 0.052, D + 0.02), Vector3(-W + 0.12, H - 0.06, D + 0.022)], [0.006, 0.006, 0.008], 5, [Color(0.8, 0.82, 0.84)])
     K.add_mesh(self, "Tank", K.finish(st, 5.0), ceramic)
-    # water surface, dark, 70% up
+    # water: dark, right under the shelf the teeth lie on, so the ivory
+    # teeth read against it from a standing eye
     st = K.begin()
-    var wy := H * 0.45
+    var wy := SHELF + 0.004
     K.quad(st, Transform3D.IDENTITY, Vector3(-W + 0.02, wy, -D + 0.02), Vector3(W - 0.02, wy, -D + 0.02), Vector3(W - 0.02, wy, D - 0.02), Vector3(-W + 0.02, wy, D - 0.02), Vector3.UP, Color(0.35, 0.45, 0.48))
     var wm := StandardMaterial3D.new()
     wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-    wm.albedo_color = Color(0.14, 0.24, 0.26, 0.7)
+    wm.albedo_color = Color(0.1, 0.17, 0.19, 0.85)
     wm.roughness = 0.1
     wm.metallic_specular = 0.9
     _water = K.add_mesh(self, "Water", K.finish(st, 3.0), wm)
@@ -61,6 +67,8 @@ func _ready() -> void:
     mm.instance_count = MAX_TEETH
     _teeth.multimesh = mm
     _teeth.material_override = K.mat("tex_ceramic_64.png", 0.5, false)
+    # fixed bounds: the multimesh AABB came out empty, so the pile was culled
+    _teeth.custom_aabb = AABB(Vector3(-W, 0.0, -D), Vector3(W * 2.0, H, D * 2.0))
     add_child(_teeth)
     _build_slots()
     set_amount(_amount)
@@ -82,7 +90,7 @@ func _build_slots() -> void:
     var i := 0
     var layer := 0
     while _slots.size() < MAX_TEETH:
-        var y := 0.03 + layer * 0.024
+        var y := SHELF + 0.022 + layer * 0.026
         var shrink := clampf(float(layer) / 11.0, 0.0, 0.85)
         var cols := 5
         var rows := 3
@@ -97,9 +105,9 @@ func _build_slots() -> void:
                 var jy := K.h(i, 3) * 0.008
                 var rot := Vector3(K.h(i, 4) * 360.0, K.h(i, 5) * 360.0, K.h(i, 6) * 360.0)
                 for q in range(HANDFUL):
-                    var qo := Vector3((q % 2 - 0.5) * 0.017, (q / 2) * 0.008, ((q / 2) - 0.5) * 0.013)
+                    var qo := Vector3((q % 2 - 0.5) * 0.024, (q / 2) * 0.011, ((q / 2) - 0.5) * 0.018)
                     var qr := rot + Vector3(q * 71.0, q * 43.0, q * 29.0)
-                    _slots.append(Transform3D(Basis.from_euler(qr * PI / 180.0).scaled(Vector3.ONE * 1.7), Vector3(x + jx, y + jy, z + jz) + qo))
+                    _slots.append(Transform3D(Basis.from_euler(qr * PI / 180.0).scaled(Vector3.ONE * 2.4), Vector3(x + jx, y + jy, z + jz) + qo))
                 i += 1
                 if _slots.size() >= MAX_TEETH:
                     break

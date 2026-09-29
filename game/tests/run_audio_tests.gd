@@ -15,12 +15,11 @@ func _initialize() -> void:
 	_test_bed_transition()
 	_test_chew_speed()
 	_test_signals_and_steps()
-	# integration: the real main scene with the hookup added from outside,
-	# exactly as the one line in audio/HOOKUP.md would add it
+	# integration: the real main scene; main.gd adds the hookup itself (the
+	# one line in audio/HOOKUP.md), so use that node, never a second one
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(_main)
-	_hook = (load("res://audio/fp_audio_hookup.gd") as GDScript).new()
-	_main.add_child(_hook)
+	# (_hook is looked up once main's _ready has run, in _process)
 
 var _main: Node
 var _hook: Node
@@ -30,6 +29,12 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	if _frames < 90:
 		return false
+	_hook = _main.get_node_or_null("AudioHookup")
+	_ok(_hook != null, "main.gd adds the audio hookup itself")
+	if _hook == null:
+		print("--- %d passed, %d failed ---" % [_passed, _failed])
+		quit(1)
+		return true
 	var d: FDKAudioDirector = _hook.get("director")
 	_ok(d != null, "hookup creates the director inside main")
 	if d != null:
@@ -56,6 +61,21 @@ func _process(_delta: float) -> bool:
 		if mirror != null and mirror.has_signal("mutated"):
 			mirror.emit_signal("mutated", "test")
 			_ok(d.last_played == "mirror_mutate", "mirror.mutated plays the mutation sound (%s)" % d.last_played)
+		# the seven events that got signals in main now reach their sounds
+		var dirs := _main.find_children("*", "FDKAudioDirector", true, false).size()
+		_ok(dirs == 1, "exactly one audio director under main (%d)" % dirs)
+		var sigs := [["spray_used", [Vector3(0, 1, 3)], "spray_hiss"], ["blender_drunk", [], "blender_drink"],
+			["scissors_snipped", [], "scissors_snip"], ["saw_stroked", [], "saw_stroke"],
+			["settle_ticked", [4], "settle_tick"], ["ui_clicked", [], "ui_click"]]
+		for s in sigs:
+			_main.callv("emit_signal", [s[0]] + s[1])
+			_ok(d.last_played == s[2], "main.%s plays %s (%s)" % [s[0], s[2], d.last_played])
+		_main.mutation_apply.tumor_eaten.emit()
+		_ok(d.last_played == "tumor_eat", "mutation_apply.tumor_eaten plays tumor_eat (%s)" % d.last_played)
+		_main.flush()
+		_ok(_hook.get("played_events").has("settle_tick"), "the lever's flush ticks the settle sound")
+		_main.vomit_button.pressed.emit()
+		_ok(d.last_played == "ui_click" or _hook.get("played_events").back() == "ui_click", "the vomit button clicks")
 	_main.free()
 	FDKPs1Material.clear_cache()
 	print("--- %d passed, %d failed ---" % [_passed, _failed])

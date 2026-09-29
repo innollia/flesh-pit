@@ -2,7 +2,8 @@ extends RefCounted
 
 ## W27: danger shown without words (spec 07 §1).
 ## - Tissue attack: health lives on the hands. Bruise overlay (blue-purple
-##   blotches from the back of the hand outward) grows as health drops and
+##   small spots on the back of the hand and fingers; more spots, a little
+##   larger, as health drops) grows as health drops and
 ##   fades as it regenerates. Chained as next_pass on the blood overlay so
 ##   both show at once.
 ## - Crush: no screen-edge effect (spec 07 §1). The body shows it: the hands
@@ -23,15 +24,24 @@ float n3(vec3 q) {
 }
 void vertex() { p = VERTEX; }
 void fragment() {
-	float n = n3(p * 160.0) * 0.7 + n3(p * 520.0) * 0.3;
-	// bruises bloom on palm/back of hand first (along ~0.4), then spread
-	float m = smoothstep(0.0, 0.08, amount * 0.55 - n * 0.95 + 0.08);
-	m *= step(0.001, amount);
+	// a few small bruise spots on the back of the hand and fingers, not a
+	// coat over the whole hand: the hand is cut into small cells and only
+	// some cells (more as health drops) carry one round spot
+	vec3 q = p * 55.0;
+	vec3 cell = floor(q);
+	vec3 f = fract(q) - 0.5;
+	float pick = h(cell + vec3(7.1, 3.3, 5.9));
+	float on = step(1.0 - amount * 0.5, pick);
+	vec3 off = (vec3(h(cell + 1.7), h(cell + 4.1), h(cell + 9.3)) - 0.5) * 0.35;
+	float r = 0.2 + 0.14 * h(cell + 2.2) * amount;
+	float spot = 1.0 - smoothstep(r * 0.55, r, length(f - off));
+	float n = n3(p * 420.0);
+	float m = spot * on * (0.65 + 0.35 * n) * step(0.001, amount);
 	vec3 fresh = vec3(0.30, 0.10, 0.28);
 	vec3 deep = vec3(0.14, 0.10, 0.26);
 	ALBEDO = mix(fresh, deep, n);
 	ROUGHNESS = 0.7;
-	ALPHA = m * 0.55;
+	ALPHA = m * 0.8;
 }
 """
 

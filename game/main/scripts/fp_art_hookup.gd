@@ -92,6 +92,9 @@ func _attach_to_rig(rig: Node3D) -> void:
 	blender.rotation_degrees = Vector3(0, 180, 0)
 	blender.set("tilt_dir", -1.0)
 	var grip: Vector3 = (Basis(Vector3.UP, PI) * (blender.call("hand_grip") as Vector3)) * blender.scale.x
+	# grip spot pushed out to the lower-left corner so the jar sits clear of
+	# the flesh pile in the middle of the view (the left hand follows it)
+	FDKHandsRig.HOLD_LEFT_POS = Vector3(-0.34, -0.165, -0.35)
 	var hold: Vector3 = FDKHandsRig.HOLD_LEFT_POS
 	_put(blender, rig, hold + Vector3(0.028, 0.01, -0.05) - grip)
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
@@ -116,8 +119,10 @@ func _on_torn(_p: Vector3) -> void:
 	match m.progression.equipped():
 		"knife":
 			scissors.call("play_snip")
+			m.scissors_snipped.emit()
 		"big_saw":
 			saw.call("play_stroke")
+			m.saw_stroked.emit()
 
 func _process(_delta: float) -> void:
 	if m == null:

@@ -18,6 +18,8 @@ var _in_room := true
 var _vent_open := false
 var _barrier_count := 0
 var _hooked_barriers: Array = []
+## Every play_event name so far, in order (tests and the run log read it).
+var played_events: Array[String] = []
 
 ## Stage-5 events that the game has no signal for yet. The game calls
 ## play_event(<name>) (or the named helper below); nothing else is needed.
@@ -70,6 +72,20 @@ func _wire() -> void:
 	var vent = main.get("vent")
 	if vent != null and vent.get("is_open") != null:
 		_vent_open = bool(vent.get("is_open"))
+	# the seven events that got their own signals in main (5th pass hookup)
+	var ma = main.get("mutation_apply")
+	if ma != null and ma.has_signal("tumor_eaten"):
+		ma.connect("tumor_eaten", on_tumor_eaten)
+	_hook("spray_used", func(pos): on_spray(pos))
+	_hook("blender_drunk", on_blender_drink)
+	_hook("scissors_snipped", on_scissors)
+	_hook("saw_stroked", on_saw_stroke)
+	_hook("settle_ticked", func(_teeth): on_settle_tick())
+	_hook("ui_clicked", on_ui_click)
+
+func _hook(sig: String, cb: Callable) -> void:
+	if main.has_signal(sig):
+		main.connect(sig, cb)
 
 func _process(_delta: float) -> void:
 	if main == null or director == null:
@@ -141,6 +157,9 @@ func _process(_delta: float) -> void:
 func play_event(event_name: String, world_pos: Variant = null) -> void:
 	if director == null:
 		return
+	played_events.append(event_name)
+	if OS.is_debug_build() and OS.get_environment("FP_AUDIO_LOG") != "":
+		print("[audio] play_event ", event_name)
 	director.play(String(EVENT_SOUNDS.get(event_name, event_name)), world_pos)
 
 func on_tumor_eaten() -> void: play_event("tumor_eat")

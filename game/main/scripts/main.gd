@@ -14,6 +14,13 @@ signal canary_cry(frightened: bool)
 signal flushed(teeth_gain: int, hair_gain: int)
 ## Opening: the flush heard on the black screen (audio: game/audio_HOOKUP.md).
 signal opening_flush
+## Sound hooks for stage-5 events that had no signal (game/audio/HOOKUP.md).
+signal spray_used(world_pos: Vector3)
+signal blender_drunk
+signal scissors_snipped
+signal saw_stroked
+signal settle_ticked(teeth_gain: int)
+signal ui_clicked
 
 const SAVE_VERSION := 3
 
@@ -257,6 +264,18 @@ func _ready() -> void:
     _spawn_door_nerves()
     _setup_restroom_front()
     _begin_opening()
+    # every on-screen button clicks (vomit button, key settings, mirror ...)
+    get_tree().node_added.connect(_on_node_added_for_click)
+    for b in find_children("*", "BaseButton", true, false):
+        _on_node_added_for_click(b)
+    flushed.connect(func(teeth, _hairs): settle_ticked.emit(teeth))
+    var audio_hookup: Node = preload("res://audio/fp_audio_hookup.gd").new()
+    audio_hookup.name = "AudioHookup"
+    add_child(audio_hookup)
+
+func _on_node_added_for_click(n: Node) -> void:
+    if n is BaseButton and is_ancestor_of(n) and not n.pressed.is_connected(ui_clicked.emit):
+        (n as BaseButton).pressed.connect(ui_clicked.emit)
 
 func _on_canary_route(u: float) -> void:
     canary_urgency = u
@@ -458,6 +477,7 @@ func _build_ui() -> void:
     vomit_button.name = "VomitButton"
     layer.add_child(vomit_button)
     vomit_button.pressed.connect(request_vomit)
+    vomit_button.pressed.connect(ui_clicked.emit)
     interact_ring = (load("res://main/scripts/fp_interact_ring.gd") as GDScript).new()
     interact_ring.name = "InteractRing"
     layer.add_child(interact_ring)
@@ -1225,7 +1245,10 @@ func use_spray(deep: bool = false) -> int:
     var hit := _look_hit()
     if hit.is_empty():
         return -1
-    return progression.sprays.use(terrain, hit.position, tier, player.get_look_ray()[1])
+    var used := progression.sprays.use(terrain, hit.position, tier, player.get_look_ray()[1])
+    if used >= 0:
+        spray_used.emit(hit.position)
+    return used
 
 # --- tumors -------------------------------------------------------------------------
 

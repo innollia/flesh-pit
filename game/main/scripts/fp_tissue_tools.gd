@@ -211,6 +211,7 @@ func step_blend(delta: float) -> void:
 		blend_state = Blend.DRINK
 		blend_t = 0.0
 		_pitch_before = pivot.rotation.x
+		m.blender_drunk.emit()
 	if blend_state == Blend.DRINK:
 		var k := clampf(blend_t / DRINK_TIME, 0.0, 1.0)
 		pivot.rotation.x = _pitch_before + DRINK_PITCH * sin(k * PI)
@@ -232,6 +233,7 @@ func blend_now() -> bool:
 	if not start_blend():
 		return false
 	blend_state = Blend.DRINK
+	m.blender_drunk.emit()
 	finish_drink()
 	return true
 

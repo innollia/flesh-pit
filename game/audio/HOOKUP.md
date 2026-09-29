@@ -27,3 +27,9 @@
 
 `fp_audio_hookup.gd`가 이미 있는 신호는 스스로 구독한다: `main.died`->player_death, `main.ending_reached`->ending_roll, `mirror.mutated`->mirror_mutate, `barrier_field.barrier_broke`->barrier_break, 장벽 개수 증가->barrier_deploy, 각 장벽 `damage_step_changed`->barrier_strain, `vent.is_open` 켜짐->vent_open.
 게임에 신호가 없는 것은 부를 함수만 있다(main에서 hookup 노드를 찾아 호출): `on_tumor_eaten()`, `on_spray(pos)`, `on_blender_drink()`, `on_scissors()`, `on_saw_stroke()`, `on_settle_tick()`, `on_ui_click()`, 또는 `play_event(이름, 위치)`(이름 표는 `EVENT_SOUNDS`).
+
+## 연결 완료 (2026-09-30)
+
+- `main.gd` `_ready()` 끝에서 `AudioHookup` 노드로 붙였다(위 한 줄).
+- 신호가 없던 7개에 신호를 만들어 연결했다: `mutation_apply.tumor_eaten`->tumor_eat, `main.spray_used(pos)`->spray, `main.blender_drunk`(마시기 시작)->blender_drink, `main.scissors_snipped`/`main.saw_stroked`(칼·톱으로 뜯을 때)->scissors/saw, `main.settle_ticked(teeth)`(레버·쉼터 정산)->settle_tick, `main.ui_clicked`(main 아래 모든 버튼과 토하기 버튼)->ui_click.
+- `FP_AUDIO_LOG=1` 환경변수를 켜고 실행하면 `[audio] play_event <이름>`이 로그에 찍힌다. `played_events`에 순서대로 남는다.

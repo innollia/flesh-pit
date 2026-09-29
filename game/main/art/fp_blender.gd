@@ -14,6 +14,7 @@ var _fill_mi: MeshInstance3D
 var _fill := 0.0
 var _spin := false
 var _time := 0.0
+var _jar_base := Vector3.INF
 ## -1 when the blender is mounted turned 180 degrees about Y (handle on the
 ## outer side for the left hand), so drinking still tips it toward the mouth.
 var tilt_dir := 1.0
@@ -137,9 +138,15 @@ func _process(delta: float) -> void:
     _time += delta
     if _spin:
         _blade.rotate_y(delta * 60.0)
-        position.x = sin(_time * 70.0) * 0.0015
+        # shake the jar, not this node: the holder places this node (e.g.
+        # low on the left of the screen) and must keep that spot
+        if _jar_base == Vector3.INF:
+            _jar_base = _jar.position
+        _jar.position = _jar_base + Vector3(sin(_time * 70.0) * 0.0015, 0, 0)
         if _fill_mi.visible:
             _fill_mi.rotate_y(delta * 9.0)
+    elif _jar_base != Vector3.INF:
+        _jar.position = _jar_base
 
 func capture_setup() -> Dictionary:
     set_fill(0.6)
