@@ -54,7 +54,7 @@ The first version should make the phenomenon obvious but recoverable rather than
 
 Route control uses two distinct tools:
 
-- **physical barriers:** consumable route-control items that temporarily hold back moving / regenerating tissue. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier eventually breaks and is lost; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
+- **physical barriers:** consumable route-control items that temporarily hold back moving / regenerating tissue. The player can carry up to **3 barriers** at once. When placed, a barrier automatically expands to block the local **tunnel cross-section** rather than requiring manual width placement. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier eventually breaks and is lost; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
 - **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent. Spray is purchased by the can, and the player can carry up to **3 cans** at once. Depending on spray performance, treatment can range from a thinner surface-level application to dissolving a deeper volume of tissue.
 
 Permanent spray is intended to be the default route-maintenance tool. Its built-in cost is that sprayed tissue is removed as edible material instead of being consumed. Barriers are the temporary alternative when the player wants to hold a route without permanently dissolving it.
@@ -113,9 +113,11 @@ There are two mutation-point layers:
 - **common mutation points**, used for the shared / foundational mutation line
 - **biome-specific mutation points**, determined by which biome's flesh was eaten and used for that biome's branch
 
-Mutation-point gain scales from the established **depth × amount of flesh eaten** basis, with biome identity determining the biome-specific portion.
+Every flesh-eating reward generates **both** a common-point component and the relevant biome-specific component at the same time. Mutation-point gain still scales from the established **depth × amount of flesh eaten** basis; the exact ratio between common and biome-specific gain remains a tuning question.
 
 The mutation structure begins from a **central common trunk**, then branches into biome-specific parent → child lines. Some later biome branches can **reconverge into shared combination nodes**, so the tree is not permanently separated after the first split.
+
+For a reconverged combination node, both prerequisite branches must already be satisfied, but the final purchase can be paid with **either one of the contributing biome point pools** rather than requiring both currencies simultaneously.
 
 Money is awarded through the toilet and is based primarily on **biome/rarity × amount** for ordinary flesh.
 
@@ -123,7 +125,9 @@ Tumors have a deliberate split use:
 - **eat the tumor:** it contributes mutation progression / mutation points like biological material
 - **collect the tumor as an item instead of eating it:** it can be brought back and put into the toilet for a **large money payout**
 
-This makes the tumor a choice between bodily progression and high-value cash rather than granting both rewards from the same use.
+An intact collected tumor initially has to be **carried in one hand**, occupying that hand during the return trip. A **bag sold through the shop** later provides a way to carry collected tumors without permanently dedicating a hand to each one.
+
+This makes the tumor a choice between bodily progression and high-value cash, with an additional early-game carrying cost for choosing cash.
 
 During the toilet sequence:
 - the toilet fills most of the screen
