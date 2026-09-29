@@ -1,0 +1,431 @@
+class_name FDKChunk
+extends Node3D
+
+## One cubic chunk of the density-grid terrain field.
+##
+## Meshing: surface nets. Every cell whose 8 corners straddle the iso level
+## gets one vertex (average of its edge crossings, plus a small stable
+## jitter so walls read as organic facets instead of a grid). Every corner
+## edge that crosses the iso level emits one quad joining the 4 cells around
+## it. Triangles never share vertices, so each gets its own flat normal.
+##
+## PS1 tone (docs/tone-and-manner.md): crude low-poly shapes wearing real
+## low-res textures, not flat vertex-colour shading. Each tissue id gets its
+## own mesh surface with its own PS1 material (nearest-filtered, dithered,
+## vertex-snapped); a world-aligned UV (two dominant axes of the face
+## normal) keeps texture scale consistent across the organic geometry.
+##
+## The chunk reads a 1-corner border from its neighbours through its
+## parent FDKTerrainField, and each corner edge is owned by exactly one
+## chunk, so there are no seams between chunks.
+##
+## Density convention: 1.0 = solid tissue, 0.0 = empty. Solid when >= iso.
+
+signal remeshed(elapsed_ms: float)
+
+var chunk_coord: Vector3i = Vector3i.ZERO
+var config: FDKTerrainConfig
+## Parent field (set by FDKTerrainField). Null = standalone chunk, whose
+## outside is treated as solid.
+var field: Node = null
+
+var _density: PackedFloat32Array = PackedFloat32Array()
+## Tissue id per cell (chunk_size^3). See TISSUE_TEXTURES.
+var _tissue: PackedByteArray = PackedByteArray()
+var _original_density: PackedFloat32Array = PackedFloat32Array()
+
+var _mesh_instance: MeshInstance3D
+var _collision: CollisionShape3D
+var _static_body: StaticBody3D
+var _dirty: bool = false
+
+## 0 flesh, 1 nerve, 2 fat, 3 membrane (inedible, around the restroom)
+const TISSUE_TEXTURES: Array[String] = [
+    "res://addons/flesh_dig_kit/textures/tex_flesh_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_nerve_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_fat_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_membrane_128.png",
+]
+const UV_SCALE := 0.9
+
+static func terrain_material(tissue_id: int) -> ShaderMaterial:
+    var path: String = TISSUE_TEXTURES[tissue_id % TISSUE_TEXTURES.size()]
+    return FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6)
+
+## Applies the chew-press deformation to the material of every tissue this
+## chunk currently uses (kept as a single call site so main.gd's per-frame
+## set_press still works with one material per tissue).
+static func set_press_all(center: Vector3, toward: Vector3, amount: float) -> void:
+    for i in range(TISSUE_TEXTURES.size()):
+        var m := terrain_material(i)
+        m.set_shader_parameter("press_center", center)
+        m.set_shader_parameter("press_amount", amount)
+
+func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
+    chunk_coord = p_chunk_coord
+    config = p_config
+    var n := config.chunk_size + 1
+    _density = PackedFloat32Array()
+    _density.resize(n * n * n)
+    _original_density = PackedFloat32Array()
+    _original_density.resize(n * n * n)
+    _tissue = PackedByteArray()
+    _tissue.resize(config.chunk_size * config.chunk_size * config.chunk_size)
+
+    _static_body = StaticBody3D.new()
+    _static_body.name = "Body"
+    _static_body.set_meta("fdk_terrain_chunk", true)
+    add_child(_static_body)
+    _mesh_instance = MeshInstance3D.new()
+    _mesh_instance.name = "Mesh"
+    _static_body.add_child(_mesh_instance)
+    _collision = CollisionShape3D.new()
+    _collision.name = "Collision"
+    _static_body.add_child(_collision)
+
+func get_body() -> StaticBody3D:
+    return _static_body
+
+func _corner_index(x: int, y: int, z: int) -> int:
+    var n := config.chunk_size + 1
+    return x + y * n + z * n * n
+
+func _cell_index(x: int, y: int, z: int) -> int:
+    var s := config.chunk_size
+    return x + y * s + z * s * s
+
+func fill_uniform(density: float, tissue_id: int) -> void:
+    for i in range(_density.size()):
+        _density[i] = density
+        _original_density[i] = density
+    for i in range(_tissue.size()):
+        _tissue[i] = tissue_id
+    _dirty = true
+
+func fill_from_callable(sampler_density: Callable, sampler_tissue: Callable) -> void:
+    var n := config.chunk_size + 1
+    var origin := Vector3(chunk_coord) * config.chunk_size * config.cell_size
+    for z in range(n):
+        for y in range(n):
+            for x in range(n):
+                var world_pos: Vector3 = origin + Vector3(x, y, z) * config.cell_size
+                var d: float = sampler_density.call(world_pos)
+                var idx := _corner_index(x, y, z)
+                _density[idx] = d
+                _original_density[idx] = d
+    var s := config.chunk_size
+    for z in range(s):
+        for y in range(s):
+            for x in range(s):
+                var world_pos: Vector3 = origin + (Vector3(x, y, z) + Vector3(0.5, 0.5, 0.5)) * config.cell_size
+                _tissue[_cell_index(x, y, z)] = int(sampler_tissue.call(world_pos))
+    _dirty = true
+
+func get_density_at_corner(x: int, y: int, z: int) -> float:
+    var n := config.chunk_size + 1
+    if x < 0 or y < 0 or z < 0 or x >= n or y >= n or z >= n:
+        return 1.0
+    return _density[_corner_index(x, y, z)]
+
+func set_density_at_corner(x: int, y: int, z: int, d: float) -> void:
+    var n := config.chunk_size + 1
+    if x < 0 or y < 0 or z < 0 or x >= n or y >= n or z >= n:
+        return
+    _density[_corner_index(x, y, z)] = d
+    _dirty = true
+
+func get_tissue_at_cell(x: int, y: int, z: int) -> int:
+    var s := config.chunk_size
+    if x < 0 or y < 0 or z < 0 or x >= s or y >= s or z >= s:
+        return 0
+    return _tissue[_cell_index(x, y, z)]
+
+func set_tissue_at_cell(x: int, y: int, z: int, tissue_id: int) -> void:
+    var s := config.chunk_size
+    if x < 0 or y < 0 or z < 0 or x >= s or y >= s or z >= s:
+        return
+    _tissue[_cell_index(x, y, z)] = tissue_id
+    _dirty = true
+
+## Lowers density at the 8 corners of one local cell. When the chunk has a
+## parent field, use FDKTerrainField.dig_at instead so shared border
+## corners in neighbour chunks change too.
+func dig_cell(local_cell: Vector3i, amount: float) -> void:
+    var s := config.chunk_size
+    if local_cell.x < 0 or local_cell.y < 0 or local_cell.z < 0 \
+            or local_cell.x >= s or local_cell.y >= s or local_cell.z >= s:
+        return
+    for dz in range(2):
+        for dy in range(2):
+            for dx in range(2):
+                var idx := _corner_index(local_cell.x + dx, local_cell.y + dy, local_cell.z + dz)
+                _density[idx] = clampf(_density[idx] - amount, 0.0, 1.0)
+    _dirty = true
+
+func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_radius: float) -> void:
+    var n := config.chunk_size + 1
+    var changed := false
+    var r2 := protect_radius * protect_radius
+    for i in range(_density.size()):
+        var orig: float = _original_density[i]
+        var cur: float = _density[i]
+        if cur >= orig:
+            continue
+        var x := i % n
+        var y := (i / n) % n
+        var z := i / (n * n)
+        var dx := x - protect_local_pos.x
+        var dy := y - protect_local_pos.y
+        var dz := z - protect_local_pos.z
+        if dx * dx + dy * dy + dz * dz <= r2:
+            continue
+        _density[i] = minf(orig, cur + rate * delta)
+        changed = true
+    if changed:
+        _dirty = true
+
+func is_dirty() -> bool:
+    return _dirty
+
+## Padded corner density, coords -1..s (size s+2 per axis).
+func _build_padded(s: int) -> PackedFloat32Array:
+    var n := s + 1
+    var p := s + 2
+    var out := PackedFloat32Array()
+    out.resize(p * p * p)
+    var base := chunk_coord * s
+    for z in range(-1, s + 1):
+        for y in range(-1, s + 1):
+            var inside_yz := y >= 0 and z >= 0 and y < n and z < n
+            for x in range(-1, s + 1):
+                var v: float
+                if inside_yz and x >= 0 and x < n:
+                    v = _density[x + y * n + z * n * n]
+                elif field != null:
+                    v = field.corner_density_global(base + Vector3i(x, y, z))
+                else:
+                    v = 1.0
+                out[(x + 1) + (y + 1) * p + (z + 1) * p * p] = v
+    return out
+
+func remesh() -> float:
+    var start_usec := Time.get_ticks_usec()
+    var s := config.chunk_size
+    var cs := config.cell_size
+    var iso := config.iso_level
+    var p := s + 2
+    var pp := p * p
+    var d := _build_padded(s)
+
+    var first_solid := d[0] >= iso
+    var uniform := true
+    for i in range(d.size()):
+        if (d[i] >= iso) != first_solid:
+            uniform = false
+            break
+
+    # one bucket per tissue id, so each can get its own textured surface
+    var n_tissues := FDKChunk.TISSUE_TEXTURES.size()
+    var verts: Array = []
+    var normals: Array = []
+    var uvs: Array = []
+    for i in range(n_tissues):
+        verts.append(PackedVector3Array())
+        normals.append(PackedVector3Array())
+        uvs.append(PackedVector2Array())
+    var all_verts := PackedVector3Array() # for the single collision shape
+
+    if not uniform:
+        var cp := s + 1
+        var cell_vert := PackedVector3Array()
+        cell_vert.resize(cp * cp * cp)
+        var cell_has := PackedByteArray()
+        cell_has.resize(cp * cp * cp)
+        var gbase := chunk_coord * s
+        for cz in range(cp):
+            for cy in range(cp):
+                for cx in range(cp):
+                    var i0 := cx + cy * p + cz * pp
+                    var c000 := d[i0]
+                    var c100 := d[i0 + 1]
+                    var c010 := d[i0 + p]
+                    var c110 := d[i0 + p + 1]
+                    var c001 := d[i0 + pp]
+                    var c101 := d[i0 + pp + 1]
+                    var c011 := d[i0 + pp + p]
+                    var c111 := d[i0 + pp + p + 1]
+                    var mask := 0
+                    if c000 >= iso: mask |= 1
+                    if c100 >= iso: mask |= 2
+                    if c010 >= iso: mask |= 4
+                    if c110 >= iso: mask |= 8
+                    if c001 >= iso: mask |= 16
+                    if c101 >= iso: mask |= 32
+                    if c011 >= iso: mask |= 64
+                    if c111 >= iso: mask |= 128
+                    if mask == 0 or mask == 255:
+                        continue
+                    var sum := Vector3.ZERO
+                    var cnt := 0
+                    var e := [
+                        [c000, c100, Vector3(0, 0, 0), Vector3(1, 0, 0)],
+                        [c010, c110, Vector3(0, 1, 0), Vector3(1, 1, 0)],
+                        [c001, c101, Vector3(0, 0, 1), Vector3(1, 0, 1)],
+                        [c011, c111, Vector3(0, 1, 1), Vector3(1, 1, 1)],
+                        [c000, c010, Vector3(0, 0, 0), Vector3(0, 1, 0)],
+                        [c100, c110, Vector3(1, 0, 0), Vector3(1, 1, 0)],
+                        [c001, c011, Vector3(0, 0, 1), Vector3(0, 1, 1)],
+                        [c101, c111, Vector3(1, 0, 1), Vector3(1, 1, 1)],
+                        [c000, c001, Vector3(0, 0, 0), Vector3(0, 0, 1)],
+                        [c100, c101, Vector3(1, 0, 0), Vector3(1, 0, 1)],
+                        [c010, c011, Vector3(0, 1, 0), Vector3(0, 1, 1)],
+                        [c110, c111, Vector3(1, 1, 0), Vector3(1, 1, 1)],
+                    ]
+                    for ed in e:
+                        var a: float = ed[0]
+                        var b: float = ed[1]
+                        if (a >= iso) != (b >= iso):
+                            var t := clampf((iso - a) / (b - a), 0.0, 1.0)
+                            sum += (ed[2] as Vector3).lerp(ed[3], t)
+                            cnt += 1
+                    var local := sum / float(cnt)
+                    var gx := gbase.x + cx - 1
+                    var gy := gbase.y + cy - 1
+                    var gz := gbase.z + cz - 1
+                    local += Vector3(
+                        FDKLowPoly.hash3(gx, gy, gz) - 0.5,
+                        FDKLowPoly.hash3(gy, gz, gx) - 0.5,
+                        FDKLowPoly.hash3(gz, gx, gy) - 0.5) * 2.0 * config.facet_jitter
+                    var ci := cx + cy * cp + cz * cp * cp
+                    cell_vert[ci] = (Vector3(cx - 1, cy - 1, cz - 1) + local) * cs
+                    cell_has[ci] = 1
+        for z in range(s):
+            for y in range(s):
+                for x in range(s):
+                    var i0 := (x + 1) + (y + 1) * p + (z + 1) * pp
+                    var a0 := d[i0] >= iso
+                    if a0 != (d[i0 + 1] >= iso):
+                        _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
+                            Vector3i(x, y - 1, z - 1), Vector3i(x, y, z - 1), Vector3i(x, y, z), Vector3i(x, y - 1, z),
+                            Vector3(1, 0, 0) * (1.0 if a0 else -1.0), x if a0 else x + 1, y, z)
+                    if a0 != (d[i0 + p] >= iso):
+                        _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
+                            Vector3i(x - 1, y, z - 1), Vector3i(x, y, z - 1), Vector3i(x, y, z), Vector3i(x - 1, y, z),
+                            Vector3(0, 1, 0) * (1.0 if a0 else -1.0), x, y if a0 else y + 1, z)
+                    if a0 != (d[i0 + pp] >= iso):
+                        _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
+                            Vector3i(x - 1, y - 1, z), Vector3i(x, y - 1, z), Vector3i(x, y, z), Vector3i(x - 1, y, z),
+                            Vector3(0, 0, 1) * (1.0 if a0 else -1.0), x, y, z if a0 else z + 1)
+
+    var mesh := ArrayMesh.new()
+    var have_any := false
+    for i in range(n_tissues):
+        if verts[i].size() == 0:
+            continue
+        have_any = true
+        var arrays := []
+        arrays.resize(Mesh.ARRAY_MAX)
+        arrays[Mesh.ARRAY_VERTEX] = verts[i]
+        arrays[Mesh.ARRAY_NORMAL] = normals[i]
+        arrays[Mesh.ARRAY_TEX_UV] = uvs[i]
+        mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+        mesh.surface_set_material(mesh.get_surface_count() - 1, FDKChunk.terrain_material(i))
+
+    if have_any:
+        _mesh_instance.mesh = mesh
+        var shape := ConcavePolygonShape3D.new()
+        shape.set_faces(all_verts)
+        _collision.shape = shape
+    else:
+        _mesh_instance.mesh = null
+        _collision.shape = null
+
+    _dirty = false
+    var elapsed_ms := (Time.get_ticks_usec() - start_usec) / 1000.0
+    remeshed.emit(elapsed_ms)
+    return elapsed_ms
+
+## Emits one quad (two flat triangles) into the tissue-appropriate bucket,
+## joining 4 cell vertices around a crossing edge. `outward` points from
+## solid toward empty. (tx,ty,tz) is the solid-side corner (used to pick the
+## tissue and to build a world-aligned UV using the two axes closest to the
+## face plane, which keeps texel size roughly constant across the terrain).
+func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVector3Array,
+        cell_vert: PackedVector3Array, cell_has: PackedByteArray, cp: int,
+        c0: Vector3i, c1: Vector3i, c2: Vector3i, c3: Vector3i, outward: Vector3,
+        tx: int, ty: int, tz: int) -> void:
+    var i0 := (c0.x + 1) + (c0.y + 1) * cp + (c0.z + 1) * cp * cp
+    var i1 := (c1.x + 1) + (c1.y + 1) * cp + (c1.z + 1) * cp * cp
+    var i2 := (c2.x + 1) + (c2.y + 1) * cp + (c2.z + 1) * cp * cp
+    var i3 := (c3.x + 1) + (c3.y + 1) * cp + (c3.z + 1) * cp * cp
+    if cell_has[i0] == 0 or cell_has[i1] == 0 or cell_has[i2] == 0 or cell_has[i3] == 0:
+        return
+    var v0 := cell_vert[i0]
+    var v1 := cell_vert[i1]
+    var v2 := cell_vert[i2]
+    var v3 := cell_vert[i3]
+    var s := config.chunk_size
+    var tissue := get_tissue_at_cell(clampi(tx, 0, s - 1), clampi(ty, 0, s - 1), clampi(tz, 0, s - 1))
+    # world-aligned planar UV: pick the two axes with the least outward
+    # component (i.e. the plane the face roughly lies in)
+    var ax := absf(outward.x)
+    var ay := absf(outward.y)
+    var az := absf(outward.z)
+    var world_off := chunk_coord * s * config.cell_size
+    var uv0: Vector2
+    var uv1: Vector2
+    var uv2: Vector2
+    var uv3: Vector2
+    if ax >= ay and ax >= az:
+        uv0 = Vector2((v0 + world_off).z, (v0 + world_off).y)
+        uv1 = Vector2((v1 + world_off).z, (v1 + world_off).y)
+        uv2 = Vector2((v2 + world_off).z, (v2 + world_off).y)
+        uv3 = Vector2((v3 + world_off).z, (v3 + world_off).y)
+    elif ay >= ax and ay >= az:
+        uv0 = Vector2((v0 + world_off).x, (v0 + world_off).z)
+        uv1 = Vector2((v1 + world_off).x, (v1 + world_off).z)
+        uv2 = Vector2((v2 + world_off).x, (v2 + world_off).z)
+        uv3 = Vector2((v3 + world_off).x, (v3 + world_off).z)
+    else:
+        uv0 = Vector2((v0 + world_off).x, (v0 + world_off).y)
+        uv1 = Vector2((v1 + world_off).x, (v1 + world_off).y)
+        uv2 = Vector2((v2 + world_off).x, (v2 + world_off).y)
+        uv3 = Vector2((v3 + world_off).x, (v3 + world_off).y)
+    all_verts.append(v0); all_verts.append(v1); all_verts.append(v2)
+    all_verts.append(v0); all_verts.append(v2); all_verts.append(v3)
+    _tri(verts[tissue], normals[tissue], uvs[tissue], v0, v1, v2, uv0, uv1, uv2, outward)
+    _tri(verts[tissue], normals[tissue], uvs[tissue], v0, v2, v3, uv0, uv2, uv3, outward)
+
+func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array,
+        a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2, outward: Vector3) -> void:
+    var n := (b - a).cross(c - a)
+    if n.length_squared() < 1e-12:
+        return
+    if n.dot(outward) > 0.0:
+        var tmp_v := b
+        b = c
+        c = tmp_v
+        var tmp_uv := uvb
+        uvb = uvc
+        uvc = tmp_uv
+        n = -n
+    var nn := -n.normalized()
+    verts.append(a); verts.append(b); verts.append(c)
+    normals.append(nn); normals.append(nn); normals.append(nn)
+    uvs.append(uva); uvs.append(uvb); uvs.append(uvc)
+
+func serialize() -> Dictionary:
+    return {
+        "chunk_coord": [chunk_coord.x, chunk_coord.y, chunk_coord.z],
+        "density": Array(_density),
+        "tissue": Array(_tissue),
+    }
+
+func deserialize(data: Dictionary) -> void:
+    var dd: Array = data.get("density", [])
+    var t: Array = data.get("tissue", [])
+    for i in range(min(dd.size(), _density.size())):
+        _density[i] = float(dd[i])
+    for i in range(min(t.size(), _tissue.size())):
+        _tissue[i] = int(t[i])
+    _dirty = true

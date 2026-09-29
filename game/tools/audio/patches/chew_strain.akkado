@@ -1,0 +1,6 @@
+// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
+// id: chew_strain -- eating past full: laboured breathing through the nose and a throat that does not want more. 4 s loop, one breath per 2 s.
+breath_am = (sine(0.5) + 1) * 0.5
+breath = noise(0, 0, 401) * breath_am * 0.4 |> bp(@, 1300, 1.5)
+groan = saw(72 + sine(0.25) * 4) * (1 - breath_am * 0.6) * 0.25 |> bp(@, 380, 3.0)
+out(breath + groan)

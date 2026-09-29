@@ -1,0 +1,335 @@
+{
+ "version": 1,
+ "rate": 48000,
+ "sounds": {
+  "tear_flesh": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_flesh_v1.wav",
+    "res://audio/sfx/tear_flesh_v2.wav",
+    "res://audio/sfx/tear_flesh_v3.wav",
+    "res://audio/sfx/tear_flesh_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tear_fat": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_fat_v1.wav",
+    "res://audio/sfx/tear_fat_v2.wav",
+    "res://audio/sfx/tear_fat_v3.wav",
+    "res://audio/sfx/tear_fat_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tear_nerve": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_nerve_v1.wav",
+    "res://audio/sfx/tear_nerve_v2.wav",
+    "res://audio/sfx/tear_nerve_v3.wav",
+    "res://audio/sfx/tear_nerve_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tear_membrane": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_membrane_v1.wav",
+    "res://audio/sfx/tear_membrane_v2.wav",
+    "res://audio/sfx/tear_membrane_v3.wav",
+    "res://audio/sfx/tear_membrane_v4.wav"
+   ],
+   "spatial": true
+  },
+  "swallow": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/swallow_v1.wav",
+    "res://audio/sfx/swallow_v2.wav",
+    "res://audio/sfx/swallow_v3.wav",
+    "res://audio/sfx/swallow_v4.wav"
+   ],
+   "spatial": false
+  },
+  "stomach_gurgle": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/stomach_gurgle_v1.wav",
+    "res://audio/sfx/stomach_gurgle_v2.wav",
+    "res://audio/sfx/stomach_gurgle_v3.wav",
+    "res://audio/sfx/stomach_gurgle_v4.wav"
+   ],
+   "spatial": false
+  },
+  "vomit_toilet": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/vomit_toilet_v1.wav",
+    "res://audio/sfx/vomit_toilet_v2.wav",
+    "res://audio/sfx/vomit_toilet_v3.wav",
+    "res://audio/sfx/vomit_toilet_v4.wav"
+   ],
+   "spatial": false
+  },
+  "vomit_floor": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/vomit_floor_v1.wav",
+    "res://audio/sfx/vomit_floor_v2.wav",
+    "res://audio/sfx/vomit_floor_v3.wav",
+    "res://audio/sfx/vomit_floor_v4.wav"
+   ],
+   "spatial": false
+  },
+  "step_flesh_s1": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/step_flesh_s1_v1.wav",
+    "res://audio/sfx/step_flesh_s1_v2.wav",
+    "res://audio/sfx/step_flesh_s1_v3.wav",
+    "res://audio/sfx/step_flesh_s1_v4.wav"
+   ],
+   "spatial": false
+  },
+  "step_flesh_s2": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/step_flesh_s2_v1.wav",
+    "res://audio/sfx/step_flesh_s2_v2.wav",
+    "res://audio/sfx/step_flesh_s2_v3.wav",
+    "res://audio/sfx/step_flesh_s2_v4.wav"
+   ],
+   "spatial": false
+  },
+  "step_flesh_s3": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/step_flesh_s3_v1.wav",
+    "res://audio/sfx/step_flesh_s3_v2.wav",
+    "res://audio/sfx/step_flesh_s3_v3.wav",
+    "res://audio/sfx/step_flesh_s3_v4.wav"
+   ],
+   "spatial": false
+  },
+  "step_tile_s1": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/step_tile_s1_v1.wav",
+    "res://audio/sfx/step_tile_s1_v2.wav",
+    "res://audio/sfx/step_tile_s1_v3.wav",
+    "res://audio/sfx/step_tile_s1_v4.wav"
+   ],
+   "spatial": false
+  },
+  "step_tile_s2": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/step_tile_s2_v1.wav",
+    "res://audio/sfx/step_tile_s2_v2.wav",
+    "res://audio/sfx/step_tile_s2_v3.wav",
+    "res://audio/sfx/step_tile_s2_v4.wav"
+   ],
+   "spatial": false
+  },
+  "step_tile_s3": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/step_tile_s3_v1.wav",
+    "res://audio/sfx/step_tile_s3_v2.wav",
+    "res://audio/sfx/step_tile_s3_v3.wav",
+    "res://audio/sfx/step_tile_s3_v4.wav"
+   ],
+   "spatial": false
+  },
+  "regen_creak": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/regen_creak_v1.wav",
+    "res://audio/sfx/regen_creak_v2.wav",
+    "res://audio/sfx/regen_creak_v3.wav",
+    "res://audio/sfx/regen_creak_v4.wav"
+   ],
+   "spatial": true
+  },
+  "nerve_twitch": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/nerve_twitch_v1.wav",
+    "res://audio/sfx/nerve_twitch_v2.wav",
+    "res://audio/sfx/nerve_twitch_v3.wav",
+    "res://audio/sfx/nerve_twitch_v4.wav"
+   ],
+   "spatial": true
+  },
+  "door_open": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/door_open_v1.wav",
+    "res://audio/sfx/door_open_v2.wav",
+    "res://audio/sfx/door_open_v3.wav",
+    "res://audio/sfx/door_open_v4.wav"
+   ],
+   "spatial": true
+  },
+  "door_close": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/door_close_v1.wav",
+    "res://audio/sfx/door_close_v2.wav",
+    "res://audio/sfx/door_close_v3.wav",
+    "res://audio/sfx/door_close_v4.wav"
+   ],
+   "spatial": true
+  },
+  "toilet_flush": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/toilet_flush_v1.wav",
+    "res://audio/sfx/toilet_flush_v2.wav",
+    "res://audio/sfx/toilet_flush_v3.wav",
+    "res://audio/sfx/toilet_flush_v4.wav"
+   ],
+   "spatial": true
+  },
+  "coin_drop": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/coin_drop_v1.wav",
+    "res://audio/sfx/coin_drop_v2.wav",
+    "res://audio/sfx/coin_drop_v3.wav",
+    "res://audio/sfx/coin_drop_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tank_lid": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tank_lid_v1.wav",
+    "res://audio/sfx/tank_lid_v2.wav",
+    "res://audio/sfx/tank_lid_v3.wav",
+    "res://audio/sfx/tank_lid_v4.wav"
+   ],
+   "spatial": true
+  },
+  "canary_chirp": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/canary_chirp_v1.wav",
+    "res://audio/sfx/canary_chirp_v2.wav",
+    "res://audio/sfx/canary_chirp_v3.wav",
+    "res://audio/sfx/canary_chirp_v4.wav"
+   ],
+   "spatial": true
+  },
+  "canary_warn": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/canary_warn_v1.wav",
+    "res://audio/sfx/canary_warn_v2.wav",
+    "res://audio/sfx/canary_warn_v3.wav",
+    "res://audio/sfx/canary_warn_v4.wav"
+   ],
+   "spatial": true
+  },
+  "canary_wrong": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/canary_wrong_v1.wav",
+    "res://audio/sfx/canary_wrong_v2.wav",
+    "res://audio/sfx/canary_wrong_v3.wav",
+    "res://audio/sfx/canary_wrong_v4.wav"
+   ],
+   "spatial": true
+  },
+  "depth_marker": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/depth_marker_v1.wav",
+    "res://audio/sfx/depth_marker_v2.wav",
+    "res://audio/sfx/depth_marker_v3.wav",
+    "res://audio/sfx/depth_marker_v4.wav"
+   ],
+   "spatial": false
+  },
+  "shell_transition": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/shell_transition_v1.wav",
+    "res://audio/sfx/shell_transition_v2.wav",
+    "res://audio/sfx/shell_transition_v3.wav",
+    "res://audio/sfx/shell_transition_v4.wav"
+   ],
+   "spatial": false
+  },
+  "chew_loop_a": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/chew_loop_a.wav"
+   ],
+   "loop_seconds": 1.6
+  },
+  "chew_loop_b": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/chew_loop_b.wav"
+   ],
+   "loop_seconds": 1.6
+  },
+  "chew_strain": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/chew_strain.wav"
+   ],
+   "loop_seconds": 4.0
+  },
+  "amb_restroom": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_restroom.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_body_a": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_body_a.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_body_b": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_body_b.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_heart_a": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_heart_a.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_heart_b": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_heart_b.wav"
+   ],
+   "loop_seconds": 8.0
+  }
+ },
+ "beds": {
+  "restroom": [
+   "amb_restroom"
+  ],
+  "body_a": [
+   "amb_body_a",
+   "amb_heart_a"
+  ],
+  "body_b": [
+   "amb_body_b",
+   "amb_heart_b"
+  ]
+ }
+}

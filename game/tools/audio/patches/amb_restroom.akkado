@@ -1,0 +1,13 @@
+// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
+// id: amb_restroom -- the clean room: fluorescent hum and buzz, an extractor fan, a cistern trickle. 8 s loop.
+// Stereo rule: difference made at the bare sources (detuned hum, separate noise seeds), each chain filtered mono, widened once.
+hum_l = sine(60) * 0.10 + sine(120) * 0.06 + sine(180) * 0.025
+hum_r = sine(60.125) * 0.10 + sine(120.25) * 0.06 + sine(180.375) * 0.025
+buzz_l = saw(120) * 0.03 |> bp(@, 2400, 6.0) |> hp(@, 200)
+buzz_r = saw(120.25) * 0.03 |> bp(@, 2410, 6.0) |> hp(@, 200)
+fan_l = noise(0, 0, 501) * 0.30 |> lp(@, 700, 0.8) |> hp(@, 80)
+fan_r = noise(0, 0, 907) * 0.30 |> lp(@, 700, 0.8) |> hp(@, 80)
+trk_am = (sine(0.125) + 1) * 0.5
+trk_l = noise(0, 0, 613) * trk_am * 0.05 |> hp(@, 3000)
+trk_r = noise(0, 0, 719) * trk_am * 0.05 |> hp(@, 3000)
+out(stereo(hum_l + buzz_l + fan_l + trk_l, hum_r + buzz_r + fan_r + trk_r))

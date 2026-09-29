@@ -1,0 +1,17 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: vomit_floor -- heave and gush, but it hits the floor: thick splat, no water, dribble after.
+heave_env = clamp(t / 0.12, 0, 1) * clamp((0.5 - t) / 0.12, 0, 1)
+groan = saw(88 * PITCH + sine(5) * 6) * heave_env * 0.35 |> bp(@, 420, 2.5)
+retch = noise(0, 0, SEED) * heave_env * 0.35 |> bp(@, 1500, 2.0)
+gush_env = clamp((t - 0.45) / 0.05, 0, 1) * clamp((1.25 - t) / 0.35, 0, 1)
+gush = noise(0, 0, SEED2) * gush_env * 1.2 |> lp(@, 900 * PITCH, 1.2)
+splat_env = (clamp((t - 0.52) / 0.01, 0, 1) * exp(neg(clamp(t - 0.52, 0, 100)) / 0.2))
+splat = noise(0, 0, SEED) * splat_env * 1.2 |> lp(@, 650, 1.0)
+thud = sine(70 * PITCH) * splat_env * 0.5
+drib = noise(0, 0, SEED2) * gt(noise(40, 0, SEED), 0.55) * clamp((t - 0.7) / 0.1, 0, 1) * clamp((1.6 - t) / 0.4, 0, 1) * 0.5 |> bp(@, 900, 3.0)
+out(groan + retch + gush + splat + thud + drib)

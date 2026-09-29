@@ -1,0 +1,6 @@
+// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
+// id: amb_heart_a -- the body's heart, felt more than heard: lub-dub every 1.333 s (0.75 Hz, 6 beats per 8 s). Mono sub.
+hb = trigger(0.75)
+lub = sine(52) * ar(hb, 0.04, 0.28) * 0.35
+dub = lub |> delay(@, 0.3, 0.0, 1.0, 0.55)
+out(dub |> hp(@, 36))

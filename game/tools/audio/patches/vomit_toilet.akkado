@@ -1,0 +1,17 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: vomit_toilet -- heave, gush, and it lands in bowl water: bright splash, bubbles, tile echo.
+heave_env = clamp(t / 0.12, 0, 1) * clamp((0.5 - t) / 0.12, 0, 1)
+groan = saw(88 * PITCH + sine(5) * 6) * heave_env * 0.35 |> bp(@, 420, 2.5)
+retch = noise(0, 0, SEED) * heave_env * 0.35 |> bp(@, 1500, 2.0)
+gush_env = clamp((t - 0.45) / 0.05, 0, 1) * clamp((1.25 - t) / 0.35, 0, 1)
+gush = noise(0, 0, SEED2) * gush_env * 1.2 |> lp(@, 900 * PITCH, 1.2)
+splash_env = clamp((t - 0.55) / 0.02, 0, 1) * exp(neg(clamp(t - 0.55, 0, 100)) / 0.35)
+splash = noise(0, 0, SEED) * gt(noise(90, 0, SEED2), 0.2) * splash_env * 0.9 |> bp(@, 2600 * PITCH, 1.5)
+bubble = noise(0, 0, SEED2) * splash_env * 0.5 |> bp(@, 700 + sine(11) * 250, 8.0)
+dry = groan + retch + gush + splash + bubble
+out(dry |> delay(@, 0.085, 0.35, 1.0, 0.35))

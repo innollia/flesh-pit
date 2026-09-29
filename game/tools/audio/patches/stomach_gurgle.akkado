@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: stomach_gurgle -- the stomach filling: slow random bubbles through a narrow wet resonance, under the skin.
+env = clamp(t / 0.2, 0, 1) * clamp((1.4 - t) / 0.45, 0, 1)
+cf = 130 + (noise(6, 0, SEED) + 1) * 170 |> lp(@, 8, 0.7)
+am = gt(noise(13, 0, SEED2), 0.1) |> lp(@, 30, 0.7)
+g = noise(0, 0, SEED) * env * am * 1.8 |> bp(@, cf * PITCH, 9.0)
+low = sine(64 * PITCH) * env * 0.10
+out(g + low |> hp(@, 70))

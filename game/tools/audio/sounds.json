@@ -1,0 +1,409 @@
+{
+ "_note": "flesh-pit sound manifest (build input). One entry per sound. kind sfx = one-shot rendered as 4 seeded/pitched variations; kind loop = seamless loop folded by loopify.py. target_lufs is the mastered level of the WAV; the game plays it at volume_db. bed = the background it must stay readable over (masking check).",
+ "rate": 48000,
+ "variations": [
+  [
+   101,
+   211,
+   1.0
+  ],
+  [
+   907,
+   433,
+   0.97
+  ],
+  [
+   233,
+   617,
+   1.03
+  ],
+  [
+   619,
+   859,
+   0.985
+  ],
+  [
+   359,
+   139,
+   1.015
+  ],
+  [
+   811,
+   547,
+   0.975
+  ],
+  [
+   157,
+   953,
+   1.025
+  ],
+  [
+   733,
+   281,
+   0.99
+  ]
+ ],
+ "sounds": [
+  {
+   "id": "tear_flesh",
+   "kind": "sfx",
+   "seconds": 0.75,
+   "target_lufs": -16,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "tear_fat",
+   "kind": "sfx",
+   "seconds": 0.8,
+   "target_lufs": -17,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "tear_nerve",
+   "kind": "sfx",
+   "seconds": 0.6,
+   "target_lufs": -17,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "tear_membrane",
+   "kind": "sfx",
+   "seconds": 0.7,
+   "target_lufs": -18,
+   "spatial": true,
+   "bed": [
+    "body_a"
+   ]
+  },
+  {
+   "id": "swallow",
+   "kind": "sfx",
+   "seconds": 0.6,
+   "target_lufs": -18,
+   "spatial": false,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "stomach_gurgle",
+   "kind": "sfx",
+   "seconds": 1.4,
+   "target_lufs": -22,
+   "spatial": false,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "vomit_toilet",
+   "kind": "sfx",
+   "seconds": 1.8,
+   "target_lufs": -15,
+   "spatial": false,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "vomit_floor",
+   "kind": "sfx",
+   "seconds": 1.6,
+   "target_lufs": -15,
+   "spatial": false,
+   "bed": [
+    "body_a",
+    "restroom"
+   ]
+  },
+  {
+   "id": "step_flesh_s1",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -24,
+   "spatial": false,
+   "bed": [
+    "body_a"
+   ]
+  },
+  {
+   "id": "step_flesh_s2",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -22,
+   "spatial": false,
+   "bed": [
+    "body_a"
+   ]
+  },
+  {
+   "id": "step_flesh_s3",
+   "kind": "sfx",
+   "seconds": 0.55,
+   "target_lufs": -20,
+   "spatial": false,
+   "bed": [
+    "body_b"
+   ]
+  },
+  {
+   "id": "step_tile_s1",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -24,
+   "spatial": false,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "step_tile_s2",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -22,
+   "spatial": false,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "step_tile_s3",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -20,
+   "spatial": false,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "regen_creak",
+   "kind": "sfx",
+   "seconds": 1.1,
+   "target_lufs": -26,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "nerve_twitch",
+   "kind": "sfx",
+   "seconds": 0.7,
+   "target_lufs": -19,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "door_open",
+   "kind": "sfx",
+   "seconds": 1.0,
+   "target_lufs": -20,
+   "spatial": true,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "door_close",
+   "kind": "sfx",
+   "seconds": 0.6,
+   "target_lufs": -19,
+   "spatial": true,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "toilet_flush",
+   "kind": "sfx",
+   "seconds": 3.0,
+   "target_lufs": -19,
+   "spatial": true,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "coin_drop",
+   "kind": "sfx",
+   "seconds": 0.9,
+   "target_lufs": -21,
+   "spatial": true,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "tank_lid",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -21,
+   "spatial": true,
+   "bed": [
+    "restroom"
+   ]
+  },
+  {
+   "id": "canary_chirp",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -24,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "canary_warn",
+   "kind": "sfx",
+   "seconds": 0.9,
+   "target_lufs": -21,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "canary_wrong",
+   "kind": "sfx",
+   "seconds": 1.6,
+   "target_lufs": -22,
+   "spatial": true,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "depth_marker",
+   "kind": "sfx",
+   "seconds": 2.6,
+   "target_lufs": -22,
+   "spatial": false,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "shell_transition",
+   "kind": "sfx",
+   "seconds": 3.0,
+   "target_lufs": -22,
+   "spatial": false,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "chew_loop_a",
+   "kind": "loop",
+   "loop_seconds": 1.6,
+   "fade_seconds": 0.2,
+   "target_lufs": -18,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "rotate_seconds": 0.2
+  },
+  {
+   "id": "chew_loop_b",
+   "kind": "loop",
+   "loop_seconds": 1.6,
+   "fade_seconds": 0.2,
+   "target_lufs": -17,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "rotate_seconds": 0.2
+  },
+  {
+   "id": "chew_strain",
+   "kind": "loop",
+   "loop_seconds": 4.0,
+   "fade_seconds": 0.5,
+   "target_lufs": -24,
+   "bed": [
+    "body_a",
+    "body_b"
+   ]
+  },
+  {
+   "id": "amb_restroom",
+   "kind": "loop",
+   "loop_seconds": 8.0,
+   "fade_seconds": 1.0,
+   "target_lufs": -34
+  },
+  {
+   "id": "amb_body_a",
+   "kind": "loop",
+   "loop_seconds": 8.0,
+   "fade_seconds": 1.0,
+   "target_lufs": -30
+  },
+  {
+   "id": "amb_body_b",
+   "kind": "loop",
+   "loop_seconds": 8.0,
+   "fade_seconds": 1.0,
+   "target_lufs": -29
+  },
+  {
+   "id": "amb_heart_a",
+   "kind": "loop",
+   "loop_seconds": 8.0,
+   "fade_seconds": 1.0,
+   "target_lufs": -33,
+   "rotate_seconds": 1.1
+  },
+  {
+   "id": "amb_heart_b",
+   "kind": "loop",
+   "loop_seconds": 8.0,
+   "fade_seconds": 1.0,
+   "target_lufs": -31,
+   "rotate_seconds": 1.35
+  }
+ ],
+ "beds": {
+  "restroom": [
+   "amb_restroom"
+  ],
+  "body_a": [
+   "amb_body_a",
+   "amb_heart_a"
+  ],
+  "body_b": [
+   "amb_body_b",
+   "amb_heart_b"
+  ]
+ },
+ "_beds_note": "A bed is what the game actually plays under the player: the steady drone plus its heart layer, summed at mastered level. Masking is judged against these sums.",
+ "variations_keep": 4,
+ "_variations_note": "8 candidate (seed, seed2, pitch) takes are rendered; the 4 shipped are the subset with the smallest raw level spread whose pairwise spectral distance still clears the floor. Curation, not a relaxed gate: the shipped 4 are then judged against the unchanged limits."
+}

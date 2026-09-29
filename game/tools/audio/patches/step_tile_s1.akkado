@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: step_tile_s1 -- foot on hard restroom tile. Stage 1: heavier heel, and a wet smear of flesh under the sole.
+W = 1.0
+tick = noise(0, 0, SEED) * clamp(t / 0.001, 0, 1) * exp(neg(t) / 0.012) * 0.7 |> bp(@, 2900 * PITCH, 2.0)
+heel = sine((110 / W + 30) * PITCH) * clamp(t / 0.003, 0, 1) * exp(neg(t) / (0.03 * W)) * (0.25 * W)
+smear = noise(0, 0, SEED2) * clamp((t - 0.01) / 0.02, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / (0.05 * W)) * ((W - 1) * 0.35 + 0.05) |> bp(@, 900, 2.0)
+out((tick + heel + smear) |> delay(@, 0.06, 0.25, 1.0, 0.25))

@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: nerve_twitch -- touching a nerve: the surrounding flesh clenches and quivers, a squeak of pressure.
+env = (clamp((t - 0.01) / 0.03, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / 0.22))
+trem = (sine(17 * PITCH) + 1) * 0.5
+quiver = noise(0, 0, SEED) * env * trem * 1.0 |> bp(@, 1100 * PITCH, 4.0)
+squeak = tri(600 * PITCH + clamp(t, 0, 0.3) * 1200) * env * 0.12 |> bp(@, 1500, 3.0)
+clench = sine(65 * PITCH) * env * 0.35
+out(quiver + squeak + clench)
