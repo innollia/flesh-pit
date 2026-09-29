@@ -314,3 +314,13 @@ depth_at 기반 biome 헬퍼 등) 대응 대기.
 - 게임 연결: `audio/fp_audio_hookup.gd`. **main.gd에 한 줄이 필요하지만** 작업 시점에 main.gd가 프론트엔드 미커밋 변경 중이라 넣지 않았다 → `audio/HOOKUP.md`.
 - 검증(Godot 4.7.2 console): import 0, run_tests 51/0, run_main_tests 26/0, run_save_load 3/0, run_audio_tests 118/0(실제 main.tscn에 연결해 검사 포함), run_headless 300프레임 0, 재메싱 5.86ms(예산 8ms, 변화 없음).
 - 들어 볼 파일: `audio/listen/`(23개, README.txt).
+
+## 세션 D (조직·도구) — W10 W20 W21 W22 W23 W24 W25 W26 W28
+- 조직 규칙: addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd (경도 1.0/1.4/1.2/막 2.0, 재생 1.5/1.0/0.8/막 0, 수축 조직 8초 주기 +0.3, 1초 전 경고 신호 contraction_warning).
+- 막: 화장실 둘레 + 껍질 경계(9 m, 18 m) 0.9 m 띠. 맨손 불가, 칼·큰 톱 가능. 경계 앞 1.8 m는 다음 조직이 섞임.
+- 쉼터: 2/4/6곳, 껍질 가운데 깊이, 피보나치(부족하면 정다면체)+게임마다 무작위 회전(rest_seed 저장), 같은 껍질 90도 이상. 안에서 압사 0.
+- 스프레이: 통당 6번, 반경 0.75 m, 싼 통 0.5 m / 비싼 통 1.5 m 깊이, 녹은 셀 1 m 안 재생 x2. 녹은 면은 회색 텍스처.
+- 믹서기: 신경 조준 후 누르고 있으면 초당 25 충전, 1.5초 뒤·이후 1.5초마다 수축. 돌리기 1.5초 + 고개 젖혀 마시기 1.5초, 위장 60%. 옆면 불빛 10개.
+- 큰 톱: 한 번에 6셀, 시간 x1.5, 바로 위장. 죽음: 마지막 위치에 붉은 등 말뚝 표지(드롭이 밀려도 제자리).
+- 테스트: tests/run_tissue_tools_tests.gd. 캡처: captures/session_d/ (tools/session_d_capture.gd).
+- 소리 연결 필요(소리 세션): FDKTerrainField.contraction_warning(world_pos) → 수축 조임 소리 1초 전.
