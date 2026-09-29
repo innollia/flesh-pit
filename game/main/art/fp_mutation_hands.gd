@@ -106,4 +106,4 @@ func capture_setup() -> Dictionary:
     var w := _rig.get_hand_root("right").get_node("Wrist") as Node3D
     w.rotation_degrees.z = 150.0
     _rig.set_process(false)
-    return {"cam_pos": Vector3(0, 0, 0.0001), "look_at": Vector3(0, -0.12, -0.5), "env": "dark", "fov": 70.0}
+    return {"cam_pos": Vector3(0, 0, 0.0001), "look_at": Vector3(0, -0.12, -0.5), "env": "dark", "fov": 70.0, "fill_energy": 0.3}

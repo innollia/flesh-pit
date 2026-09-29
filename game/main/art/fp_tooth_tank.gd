@@ -41,7 +41,7 @@ func _ready() -> void:
     K.quad(st, Transform3D.IDENTITY, Vector3(-W + 0.02, wy, -D + 0.02), Vector3(W - 0.02, wy, -D + 0.02), Vector3(W - 0.02, wy, D - 0.02), Vector3(-W + 0.02, wy, D - 0.02), Vector3.UP, Color(0.35, 0.45, 0.48))
     var wm := StandardMaterial3D.new()
     wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-    wm.albedo_color = Color(0.25, 0.4, 0.42, 0.45)
+    wm.albedo_color = Color(0.14, 0.24, 0.26, 0.7)
     wm.roughness = 0.1
     wm.metallic_specular = 0.9
     _water = K.add_mesh(self, "Water", K.finish(st, 3.0), wm)
@@ -109,7 +109,7 @@ func _build_slots() -> void:
     for k in range(MAX_TEETH):
         _teeth.multimesh.set_instance_transform(k, _slots[k])
         var yellow := K.h(k, 9)
-        _teeth.multimesh.set_instance_color(k, Color(1.0, 1.0 - yellow * 0.12, 1.0 - yellow * 0.3))
+        _teeth.multimesh.set_instance_color(k, Color(0.9, 0.78 - yellow * 0.1, 0.55 - yellow * 0.15))
 
 func set_amount(amount: float) -> void:
     _amount = clampf(amount, 0.0, 1.0)
@@ -139,4 +139,4 @@ func play_close() -> void:
 func capture_setup() -> Dictionary:
     set_lid_open(1.0)
     set_amount(0.75)
-    return {"cam_pos": Vector3(0.18, 0.72, 0.42), "look_at": Vector3(0, 0.2, 0), "env": "restroom", "fov": 55.0}
+    return {"cam_pos": Vector3(0.32, 0.78, 0.7), "look_at": Vector3(0, 0.18, 0), "env": "restroom", "fov": 50.0, "fill_energy": 0.25}

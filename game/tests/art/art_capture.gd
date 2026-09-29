@@ -50,7 +50,7 @@ func _ready() -> void:
     var fill := OmniLight3D.new()
     fill.position = cfg.get("cam_pos", Vector3(0, 1, 2)) + Vector3(0.3, 0.4, 0.2)
     fill.omni_range = 8.0
-    fill.light_energy = 1.4
+    fill.light_energy = float(cfg.get("fill_energy", 1.4))
     add_child(fill)
     var cam := Camera3D.new()
     cam.fov = cfg.get("fov", 55.0)

@@ -16,7 +16,7 @@ var _pulse := true
 var _time := 0.0
 
 func _ready() -> void:
-    _mi = K.add_mesh(self, "Tumor", ArrayMesh.new(), K.mat("tex_flesh_128.png", 0.75, true))
+    _mi = K.add_mesh(self, "Tumor", ArrayMesh.new(), K.mat("tex_skin_128.png", 0.75, true))
     set_variant(_variant)
 
 static func build_mesh(kind: int) -> ArrayMesh:
@@ -74,7 +74,7 @@ func capture_setup() -> Dictionary:
     # capture only: all three kinds side by side
     set_variant(0)
     for i in [1, 2]:
-        var m := K.add_mesh(self, "CaptureKind%d" % i, build_mesh(i), K.mat("tex_flesh_128.png", 0.75, true))
+        var m := K.add_mesh(self, "CaptureKind%d" % i, build_mesh(i), K.mat("tex_skin_128.png", 0.75, true))
         m.position = Vector3((i - 0) * 0.28, 0, 0)
     position.x = -0.28
-    return {"cam_pos": Vector3(0.0, 0.18, 0.62), "look_at": Vector3(0, 0, 0), "env": "dark", "fov": 55.0}
+    return {"cam_pos": Vector3(0.0, 0.16, 0.6), "look_at": Vector3(0, 0, 0), "env": "lit", "fov": 55.0}

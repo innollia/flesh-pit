@@ -134,6 +134,6 @@ func capture_setup() -> Dictionary:
     for s in [1, 2, 3]:
         var b := (load("res://main/art/fp_barrier_stages.gd") as GDScript).new() as Node3D
         add_child(b)
-        b.position = Vector3(s * 1.9, 0, 0)
+        b.position = Vector3((s % 2) * 1.9, -(s / 2) * 1.9, 0)
         b.call("set_stage", s)
-    return {"cam_pos": Vector3(2.85, 0.4, 4.3), "look_at": Vector3(2.85, 0, 0), "env": "dark", "fov": 60.0}
+    return {"cam_pos": Vector3(0.95, -0.7, 3.3), "look_at": Vector3(0.95, -0.95, 0), "env": "lit", "fov": 70.0}

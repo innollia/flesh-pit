@@ -53,7 +53,7 @@ func _ready() -> void:
     K.tube(st, Transform3D.IDENTITY, pts2, radii, 7, [cord, cord_hi, cord], true, 0.55)
     _net_empty = K.add_mesh(self, "NetEmpty", K.finish(st, 8.0), mat)
     # the lump inside
-    _lump = K.add_mesh(self, "Lump", Tumor.build_mesh(0), K.mat("tex_flesh_128.png", 0.75, true))
+    _lump = K.add_mesh(self, "Lump", Tumor.build_mesh(0), K.mat("tex_skin_128.png", 0.75, true))
     _lump.position = c
     _lump.scale = Vector3.ONE * (R * 0.98 / 0.11)
     set_tumor(false)
