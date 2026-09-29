@@ -27,21 +27,21 @@ void fragment() {
 	// a few small bruise spots on the back of the hand and fingers, not a
 	// coat over the whole hand: the hand is cut into small cells and only
 	// some cells (more as health drops) carry one round spot
-	vec3 q = p * 55.0;
+	vec3 q = p * 22.0;
 	vec3 cell = floor(q);
 	vec3 f = fract(q) - 0.5;
 	float pick = h(cell + vec3(7.1, 3.3, 5.9));
-	float on = step(1.0 - amount * 0.5, pick);
+	float on = step(1.0 - amount * 0.28, pick);
 	vec3 off = (vec3(h(cell + 1.7), h(cell + 4.1), h(cell + 9.3)) - 0.5) * 0.35;
 	float r = 0.2 + 0.14 * h(cell + 2.2) * amount;
-	float spot = 1.0 - smoothstep(r * 0.55, r, length(f - off));
+	float spot = 1.0 - smoothstep(r * 0.2, r, length(f - off));
 	float n = n3(p * 420.0);
 	float m = spot * on * (0.65 + 0.35 * n) * step(0.001, amount);
-	vec3 fresh = vec3(0.30, 0.10, 0.28);
-	vec3 deep = vec3(0.14, 0.10, 0.26);
+	vec3 fresh = vec3(0.42, 0.14, 0.24);
+	vec3 deep = vec3(0.22, 0.12, 0.30);
 	ALBEDO = mix(fresh, deep, n);
 	ROUGHNESS = 0.7;
-	ALPHA = m * 0.8;
+	ALPHA = m * 0.55;
 }
 """
 

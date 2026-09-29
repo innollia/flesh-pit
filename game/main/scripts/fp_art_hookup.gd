@@ -94,7 +94,7 @@ func _attach_to_rig(rig: Node3D) -> void:
 	var grip: Vector3 = (Basis(Vector3.UP, PI) * (blender.call("hand_grip") as Vector3)) * blender.scale.x
 	# grip spot pushed out to the lower-left corner so the jar sits clear of
 	# the flesh pile in the middle of the view (the left hand follows it)
-	FDKHandsRig.HOLD_LEFT_POS = Vector3(-0.34, -0.165, -0.35)
+	FDKHandsRig.HOLD_LEFT_POS = Vector3(-0.30, -0.10, -0.38)
 	var hold: Vector3 = FDKHandsRig.HOLD_LEFT_POS
 	_put(blender, rig, hold + Vector3(0.028, 0.01, -0.05) - grip)
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
