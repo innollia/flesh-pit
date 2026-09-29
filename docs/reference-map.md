@@ -20,6 +20,10 @@ The point of this document is not to copy whole games. Each reference is attache
 - [LAB MEAT](references/lab-meat.md) — deformable meat, scanning, marching-cubes implementation notes
 - [LimeFlesh](references/limeflesh.md) — living-wall tunneling and anatomy as progression gates
 - [Mystery Flesh Pit method](references/mystery-flesh-pit-method.md) — abstract worldbuilding method only; original setting remains separate
+- [SteamWorld Dig](references/steamworld-dig.md) — player-authored tunnels, return loop, playtest-driven accessibility
+- [Dome Keeper](references/dome-keeper.md) — stomach-equivalent pressure, micro-decisions, powerful upgrades
+- [Modern small digging games](references/modern-small-digging-games.md) — AGADAH, Wall World, Mining Mechs, DigDigDrill, BORE BLASTERS, Ad Fundum, Core Keeper
+- [Digging success patterns](../digging-success-patterns.md) — cross-case synthesis for flesh-pit
 
 ---
 
