@@ -1,0 +1,214 @@
+class_name FPArtHookup
+extends Node
+
+## Puts the main/art prop models where main.gd used to have placeholder
+## shapes or nothing: tools in the hands, arm hairs on the left forearm, the
+## belt and tumor bag at the waist, tumor-mutation hands, barrier models on
+## every placed barrier and the mirror highlight. Visual only: it reads game
+## state each frame and never changes it (tests drive the same logic).
+
+const KnifeScene := preload("res://main/art/fp_knife.tscn")
+const ScissorsScene := preload("res://main/art/fp_scissors.tscn")
+const BlenderScene := preload("res://main/art/fp_blender.tscn")
+const SawScene := preload("res://main/art/fp_big_saw.tscn")
+const HairScene := preload("res://main/art/fp_arm_hair.tscn")
+const BeltScene := preload("res://main/art/fp_belt.tscn")
+const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
+const TumorScene := preload("res://main/art/fp_tumor.tscn")
+const MutHandsScene := preload("res://main/art/fp_mutation_hands.tscn")
+const BarrierScene := preload("res://main/art/fp_barrier_stages.tscn")
+const MUT_KINDS := ["extra_arm", "palm_mouth", "swollen_torso"]
+
+var m: Node3D
+var knife: Node3D
+var scissors: Node3D
+var blender: Node3D
+var saw: Node3D
+var arm_hair: Node3D
+var belt: Node3D
+var bag: Node3D
+var hand_tumor: Node3D
+var mut_hands: Node3D
+var _rig: Node3D
+var _hair_key := ""
+var _mut_key := ""
+var _last_carry := 0.0
+
+func setup(main: Node3D) -> void:
+	m = main
+	_rig = m.hands_rig
+	knife = KnifeScene.instantiate()
+	knife.name = "HeldKnife"
+	knife.rotation_degrees = Vector3(-8, 0, 0)
+	scissors = ScissorsScene.instantiate()
+	scissors.name = "HeldScissors"
+	scissors.scale = Vector3.ONE * 0.8
+	blender = BlenderScene.instantiate()
+	blender.name = "HeldBlender"
+	blender.scale = Vector3.ONE * 0.55
+	hand_tumor = TumorScene.instantiate()
+	hand_tumor.name = "HeldTumor"
+	hand_tumor.scale = Vector3.ONE * 0.45
+	saw = SawScene.instantiate()
+	saw.name = "HeldSaw"
+	saw.scale = Vector3.ONE * 0.5
+	arm_hair = HairScene.instantiate()
+	arm_hair.name = "ArmHair"
+	_attach_to_rig(_rig)
+	# mutation hands: a second rig with the tumor-mutation parts, swapped in
+	# once any of those mutations is owned
+	mut_hands = MutHandsScene.instantiate()
+	mut_hands.name = "MutationHands"
+	mut_hands.visible = false
+	m.player.camera.add_child(mut_hands)
+	var r2: Node3D = mut_hands.call("rig")
+	m.chewer.grab_started.connect(r2.on_grab_started)
+	m.chewer.chew_progress.connect(r2.on_chew_progress)
+	m.chewer.cell_torn.connect(r2.on_cell_torn)
+	m.chewer.released.connect(r2.on_released)
+	m.player.footstep_bob.connect(r2.apply_bob)
+	m.chewer.cell_torn.connect(_on_torn)
+	# waist: belt with sprays + canary pocket, tumor bag on the left hip
+	belt = BeltScene.instantiate()
+	belt.name = "Belt"
+	belt.position = Vector3(0, 0.05, 0.02)
+	m.player.add_child(belt)
+	bag = BagScene.instantiate()
+	bag.name = "TumorBag"
+	bag.position = Vector3(-0.2, -0.02, 0.06)
+	bag.scale = Vector3.ONE * 0.8
+	belt.add_child(bag)
+
+func _attach_to_rig(rig: Node3D) -> void:
+	var rw := rig.get_node("HandRight/Wrist") as Node3D
+	var lw := rig.get_node("HandLeft/Wrist") as Node3D
+	var lroot := rig.get_node("HandLeft") as Node3D
+	_put(knife, rw, Vector3(0, -0.015, -0.06))
+	_put(hand_tumor, rw, Vector3(0, -0.06, -0.08))
+	_put(scissors, lw, Vector3(0, -0.012, -0.07))
+	var grip: Vector3 = blender.call("hand_grip") * blender.scale.x
+	_put(blender, lw, Vector3(0.0, -0.03, -0.05) - grip)
+	_put(saw, rig, Vector3(0, -0.2, -0.5))
+	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
+	_put(arm_hair, lroot, Vector3(0, 0.0, 0.3))
+	var fa := lroot.get_node_or_null("Forearm") as Node3D
+	if fa != null:
+		fa.visible = false
+	if _rig != rig and _rig != null:
+		var old_fa := _rig.get_node_or_null("HandLeft/Forearm") as Node3D
+		if old_fa != null:
+			old_fa.visible = true
+	_rig = rig
+
+func _put(n: Node3D, parent: Node3D, at: Vector3) -> void:
+	if n.get_parent() != null:
+		n.get_parent().remove_child(n)
+	parent.add_child(n)
+	n.position = at
+
+func _on_torn(_p: Vector3) -> void:
+	match m.progression.equipped():
+		"knife":
+			scissors.call("play_snip")
+		"big_saw":
+			saw.call("play_stroke")
+
+func _process(_delta: float) -> void:
+	if m == null:
+		return
+	var prog: FPProgression = m.progression
+	var eq := prog.equipped()
+	knife.visible = eq == "knife"
+	scissors.visible = eq == "knife" and m.carried_flesh <= 0.0
+	blender.visible = eq == "blender" or (prog.owns("blender") and m.carry_mode)
+	saw.visible = eq == "big_saw"
+	hand_tumor.visible = prog.tumor_in_hand()
+	knife.call("set_bloody", m.hand_blood)
+	blender.call("set_fill", clampf(m.carried_flesh / 40.0, 0.0, 1.0))
+	blender.call("set_spin", m.blender_charge > 0.0 and m.carried_flesh > 0.0)
+	if _last_carry > 0.0 and m.carried_flesh <= 0.0 and blender.visible and m.blender_charge < 1.0:
+		blender.call("play_drink")
+	_last_carry = m.carried_flesh
+	_sync_hairs(prog)
+	_sync_mutations(prog)
+	var sp := prog.sprays
+	belt.call("set_spray_count", sp.count_of_tier(FDKSprayCan.Tier.CHEAP), sp.count_of_tier(FDKSprayCan.Tier.DEEP))
+	belt.call("set_canary", m.has_canary)
+	belt.call("set_canary_scared", m.canary_urgency > 0.5)
+	bag.visible = prog.has_bag
+	var carried: Array = prog.tumors.get("_carried") if prog.tumors.get("_carried") != null else []
+	var in_bag := prog.has_bag and carried.size() > 0
+	if in_bag != bool(bag.call("has_tumor")):
+		bag.call("set_tumor", in_bag, _variant(carried[carried.size() - 1] if in_bag else ""))
+	_sync_barriers()
+	var mir: Node3D = m.restroom.mirror_art
+	if mir != null:
+		mir.call("set_focus", m._mirror_open or (m.player.global_position.distance_to(m.mirror_point()) < 1.1 and m._looking_at(m.mirror_point(), 35.0, 1.6)))
+
+static func _variant(kind: Variant) -> int:
+	var k := FPProgression.TUMOR_KINDS.find(str(kind))
+	return maxi(0, k) % 3
+
+func _sync_hairs(prog: FPProgression) -> void:
+	var key := "%d/%d/%d/%d" % [prog.hairs(FPProgression.COMMON), prog.hairs("core"), prog.hairs("mantle"), prog.hairs("surface")]
+	if key == _hair_key:
+		return
+	var before := _hair_key
+	_hair_key = key
+	var biome := {"core": prog.hairs("core"), "mantle": prog.hairs("mantle"), "surface": prog.hairs("surface")}
+	var total := prog.hairs(FPProgression.COMMON) + int(biome["core"]) + int(biome["mantle"]) + int(biome["surface"])
+	var shown: int = arm_hair.call("hair_total")
+	if before != "" and total < shown:
+		arm_hair.call("drop_hairs", shown - total)
+	else:
+		arm_hair.call("set_hair", prog.hairs(FPProgression.COMMON), biome)
+
+func _sync_mutations(prog: FPProgression) -> void:
+	var owned: Array = []
+	for k in MUT_KINDS:
+		if k in prog.tumor_mutations:
+			owned.append(k)
+	var key := ",".join(owned)
+	if key == _mut_key:
+		return
+	_mut_key = key
+	for k in MUT_KINDS:
+		mut_hands.call("set_mutation", k, k in owned)
+	var use_mut := not owned.is_empty()
+	var r2: Node3D = mut_hands.call("rig")
+	mut_hands.visible = use_mut
+	m.hands_rig.visible = not use_mut
+	_attach_to_rig(r2 if use_mut else m.hands_rig)
+
+## Mirrors hands state onto the mutation rig while it is the visible one.
+func _physics_process(_d: float) -> void:
+	if m == null or not mut_hands.visible:
+		return
+	var r2: FDKHandsRig = mut_hands.call("rig")
+	r2.set_mutation(m.progression.mutation_amount())
+	r2.set_carry(clampf(m.carried_flesh / 40.0, 0.0, 1.0) if m.carried_flesh > 0.0 else 0.0)
+
+func _sync_barriers() -> void:
+	for b in m.barrier_field.get_barriers():
+		var art: Node3D = b.get_meta("art") if b.has_meta("art") else null
+		if art == null:
+			art = BarrierScene.instantiate()
+			art.name = "BarrierArt"
+			b.add_child(art)
+			b.set_meta("art", art)
+			var look: Vector3 = m.player.get_look_ray()[1]
+			var flat := Vector3(look.x, 0, look.z)
+			if flat.length() > 0.1:
+				art.look_at(b.global_position - flat.normalized(), Vector3.UP)
+			art.scale = Vector3.ONE * clampf(b.radius / 0.85, 0.5, 2.5)
+			art.call("play_deploy")
+			b.set_meta("art_stage", 0)
+		if b.is_broken():
+			if not b.has_meta("art_broken"):
+				b.set_meta("art_broken", true)
+				art.call("play_break")
+			continue
+		var st := mini(b.damage_step(), 3)
+		if int(b.get_meta("art_stage")) != st:
+			b.set_meta("art_stage", st)
+			art.call("set_stage", st)

@@ -68,6 +68,7 @@ var death_drop: FDKDeathDrop
 var vent: FPVent
 var mirror: FPMirror
 var ending: FPEnding
+var art_hookup: FPArtHookup
 var rest_points: Array[Vector3] = []
 var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
@@ -213,6 +214,11 @@ func _ready() -> void:
         var t := FPWorldFeatures.build_tumor(self, spots[i])
         t.set_meta("spot", i)
         tumor_nodes.append(t)
+
+    art_hookup = FPArtHookup.new()
+    art_hookup.name = "ArtHookup"
+    add_child(art_hookup)
+    art_hookup.setup(self)
 
     _setup_environment()
     _build_ui()
@@ -646,25 +652,15 @@ func settle_at_rest_point() -> Dictionary:
     flushed.emit(got["teeth"], got["hairs"])
     return got
 
-## Tank teeth shown as a pile of placeholder cubes, never a number.
+## Tank teeth shown as a pile of real teeth in the tank model (whole
+## handfuls of 4), never a number.
 func _update_tank_teeth() -> void:
-    var shown := mini(40, int(ceil(progression.teeth / 5.0)))
+    var shown := int(ceil(progression.teeth / float(FPProgression.HANDFUL_TEETH)))
     if shown == _tank_teeth_shown:
         return
     _tank_teeth_shown = shown
-    for c in restroom.tank_items.get_children():
-        restroom.tank_items.remove_child(c)
-        c.queue_free()
-    var m := StandardMaterial3D.new()
-    m.albedo_color = Color(0.95, 0.93, 0.86)
-    for i in range(shown):
-        var t := MeshInstance3D.new()
-        var bm := BoxMesh.new()
-        bm.size = Vector3(0.02, 0.025, 0.02)
-        t.mesh = bm
-        t.material_override = m
-        t.position = Vector3(-0.14 + 0.028 * (i % 10), 0.013 * int(i / 10), -0.02 + 0.02 * ((i * 7) % 3))
-        restroom.tank_items.add_child(t)
+    if restroom.tank_art != null:
+        restroom.tank_art.call("set_handfuls", shown)
 
 func scoop_teeth() -> int:
     if restroom._lid_target == 0.0:

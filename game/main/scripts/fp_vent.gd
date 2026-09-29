@@ -19,24 +19,24 @@ var _since_flush: float = INF
 var _since_paid: float = INF
 var _eyes: Node3D
 var _offer_root: Node3D
+## The main/art vent model: grate, duct, blinking eyes, the arm and items.
+var art: Node3D
+
+## Game item id -> the art model's item kind.
+const ART_KIND := {
+	"spray_cheap": "spray_cheap", "spray_deep": "spray_expensive", "barrier": "barrier",
+	"knife": "knife", "blender": "blender_box", "big_saw": "saw_box",
+}
 
 func _ready() -> void:
+	art = (load("res://main/art/fp_vent.tscn") as PackedScene).instantiate()
+	art.name = "VentArt"
+	add_child(art)
+	art.call("set_open", 0.0)
+	art.call("set_eyes", false)
 	_eyes = Node3D.new()
 	_eyes.name = "Eyes"
 	add_child(_eyes)
-	for sx in [-0.05, 0.05]:
-		var e := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = 0.018
-		sm.height = 0.036
-		e.mesh = sm
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.95, 0.93, 0.8)
-		m.emission_enabled = true
-		m.emission = Color(0.6, 0.58, 0.4)
-		e.material_override = m
-		e.position = Vector3(sx, 0.06, 0.0)
-		_eyes.add_child(e)
 	_eyes.visible = false
 	_offer_root = Node3D.new()
 	_offer_root.name = "Offers"
@@ -45,6 +45,8 @@ func _ready() -> void:
 func tick(delta: float) -> void:
 	_since_flush += delta
 	_since_paid += delta
+	var md := mood()
+	art.call("set_eye_mood", 1.0 if md == "frantic" else (0.0 if md == "calm" else 0.5))
 
 ## "frantic" right after a flush, "calm" after being paid, else "demanding".
 func mood() -> String:
@@ -64,12 +66,21 @@ func open() -> void:
 		return
 	is_open = true
 	_eyes.visible = true
+	art.call("play_open")
+	art.call("set_eyes", true)
 	line_spoken.emit("vent_bong_" + mood())
 
 func close() -> void:
+	var was_open := is_open
 	is_open = false
 	_eyes.visible = false
 	_clear_offers()
+	art.call("set_offer_items", [])
+	art.call("set_eyes", false)
+	if was_open and is_inside_tree():
+		create_tween().tween_method(func(v): art.call("set_open", v), 1.0, 0.0, 0.35)
+	else:
+		art.call("set_open", 0.0)
 
 ## Player places `placed` teeth. Returns the offered ids ([] = the being
 ## pushes the teeth back as too few; the caller refunds them).
@@ -90,6 +101,7 @@ func take(id: String, prog: FPProgression) -> bool:
 	if id not in offers:
 		return false
 	var ok := prog.grant_item(id)
+	art.call("take_item", offers.find(id))
 	_clear_offers()
 	return ok
 
@@ -106,7 +118,13 @@ func _set_offers(ids: Array[String]) -> void:
 		b.material_override = m
 		b.position = Vector3((i - (offers.size() - 1) * 0.5) * 0.1, -0.04, 0.0)
 		b.set_meta("offer_id", offers[i])
+		b.visible = false # aim anchor only; the art arm holds the real item
 		_offer_root.add_child(b)
+	var kinds: Array = []
+	for id in offers:
+		kinds.append(ART_KIND.get(id, "junk"))
+	art.call("set_offer_items", kinds)
+	art.call("play_offer")
 	offers_changed.emit(offers)
 
 func _clear_offers() -> void:

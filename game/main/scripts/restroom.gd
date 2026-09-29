@@ -10,11 +10,17 @@ const HALF := Vector3(1.5, 1.3, 1.5) # room half-size (floor at y = 0)
 const TILE := 0.3
 const DOOR_HALF_W := 0.45
 const DOOR_H := 2.05
+## Ceiling opening for the art vent (main.gd places it at x=z=0.75, its
+## grate opening is 0.52 m square): [x0, z0, x1, z1].
+const VENT_HOLE := [0.49, 0.49, 1.01, 1.01]
 
 var door_pivot: Node3D
 var toilet: Node3D
 var tank_lid: Node3D
 var tank_items: Node3D
+## main/art models: the tooth tank on the toilet and the mirror over the sink.
+var tank_art: Node3D
+var mirror_art: Node3D
 var bowl_center: Vector3
 var _door_target: float = 0.0
 var _lid_target: float = 0.0
@@ -46,7 +52,8 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
     var h := HALF
     # grout planes (slightly behind tiles), then tiles
     _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 0, 2 * h.z), Vector3.UP, grout)
-    _plane(st, Vector3(-h.x, 2 * h.y, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 0, 2 * h.z), Vector3.DOWN, grout)
+    for r in _minus_hole([-h.x, -h.z, h.x, h.z]):
+        _plane(st, Vector3(r[0], 2 * h.y, r[1]), Vector3(r[2] - r[0], 0, 0), Vector3(0, 0, r[3] - r[1]), Vector3.DOWN, grout)
     _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.BACK, grout)
     _plane(st, Vector3(-h.x, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3(0, 2 * h.y, 0), Vector3.RIGHT, grout)
     _plane(st, Vector3(h.x, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3(0, 2 * h.y, 0), Vector3.LEFT, grout)
@@ -65,8 +72,10 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
             var c := _tile_color(i, 0, k, true)
             var o := Vector3(-h.x + i * TILE + gap, inset, -h.z + k * TILE + gap)
             _tile(st, o, Vector3(TILE - 2 * gap, 0, 0), Vector3(0, 0, TILE - 2 * gap), Vector3.UP, c)
-            var oc := Vector3(-h.x + i * TILE + gap, 2 * h.y - inset, -h.z + k * TILE + gap)
-            _tile(st, oc, Vector3(TILE - 2 * gap, 0, 0), Vector3(0, 0, TILE - 2 * gap), Vector3.DOWN, Color(0.97, 0.97, 0.96))
+            var tx := -h.x + i * TILE + gap
+            var tz := -h.z + k * TILE + gap
+            for r in _minus_hole([tx, tz, tx + TILE - 2 * gap, tz + TILE - 2 * gap]):
+                _tile(st, Vector3(r[0], 2 * h.y - inset, r[1]), Vector3(r[2] - r[0], 0, 0), Vector3(0, 0, r[3] - r[1]), Vector3.DOWN, Color(0.97, 0.97, 0.96))
     for i in range(nx):
         for j in range(ny):
             var y0 := j * TILE
@@ -103,6 +112,27 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
     tiles.name = "Tiles"
     tiles.mesh = _split_floor(st.commit() as ArrayMesh, mat, floor_mat)
     add_child(tiles)
+
+## Splits rect [x0, z0, x1, z1] into the parts outside VENT_HOLE.
+func _minus_hole(r: Array) -> Array:
+    var hx0: float = VENT_HOLE[0]
+    var hz0: float = VENT_HOLE[1]
+    var hx1: float = VENT_HOLE[2]
+    var hz1: float = VENT_HOLE[3]
+    if r[2] <= hx0 or r[0] >= hx1 or r[3] <= hz0 or r[1] >= hz1:
+        return [r]
+    var out: Array = []
+    if r[0] < hx0:
+        out.append([r[0], r[1], hx0, r[3]])
+    if r[2] > hx1:
+        out.append([hx1, r[1], r[2], r[3]])
+    var mx0 := maxf(r[0], hx0)
+    var mx1 := minf(r[2], hx1)
+    if r[1] < hz0:
+        out.append([mx0, r[1], mx1, hz0])
+    if r[3] > hz1:
+        out.append([mx0, hz1, mx1, r[3]])
+    return out.filter(func(q): return q[2] - q[0] > 0.002 and q[3] - q[1] > 0.002)
 
 func _tile_color(a: int, b: int, c: int, floor_tile: bool) -> Color:
     var hsh := FDKLowPoly.hash3(a, b, c)
@@ -209,8 +239,7 @@ func _build_toilet(mat: Material) -> void:
     var seat_i := _yring(prof, Vector3(0, 0.45, 0.31), 0.14, 0.19)
     _ring_band(st, seat_o, seat_i, Vector3.UP, Color(0.99, 0.99, 1.0))
     FDKLowPoly.loft(st, [_yring(prof, Vector3(0, 0.42, 0.31), 0.22, 0.27), seat_o], [shade], false, false)
-    # tank
-    _box(st, Vector3(-0.22, 0.42, 0.0), Vector3(0.22, 0.8, 0.17), white, shade)
+    # tank: the main/art tooth tank model (added below), not a plain box
     # flush lever
     _box(st, Vector3(-0.2, 0.72, 0.17), Vector3(-0.12, 0.745, 0.2), Color(0.75, 0.77, 0.8), Color(0.6, 0.62, 0.66))
     _add(st, mat, "Body", toilet)
@@ -219,10 +248,13 @@ func _build_toilet(mat: Material) -> void:
     tank_lid.name = "TankLid"
     tank_lid.position = Vector3(0, 0.8, 0.0)
     toilet.add_child(tank_lid)
-    var ls := SurfaceTool.new()
-    ls.begin(Mesh.PRIMITIVE_TRIANGLES)
-    _box(ls, Vector3(-0.235, 0.0, -0.01), Vector3(0.235, 0.035, 0.185), white, shade)
-    _add(ls, mat, "Lid", tank_lid)
+    # the lid pivot stays as the logic handle; the art tank draws its own lid
+    tank_art = (load("res://main/art/fp_tooth_tank.tscn") as PackedScene).instantiate()
+    tank_art.name = "ToothTank"
+    tank_art.position = Vector3(0, 0.42, 0.085)
+    tank_art.scale = Vector3(1.0, 1.1, 1.0)
+    toilet.add_child(tank_art)
+    tank_art.call("set_amount", 0.0)
     tank_items = Node3D.new()
     tank_items.name = "TankItems"
     tank_items.position = Vector3(0, 0.72, 0.085)
@@ -303,17 +335,21 @@ func _build_korean(mat: Material) -> void:
         roll_a.append(Vector3(px - 0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.93))
         roll_b.append(Vector3(px - 0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.8))
     FDKLowPoly.loft(st, [roll_a, roll_b], [Color(0.98, 0.98, 0.97)], true, true)
-    # ceiling exhaust vent
-    var cy := 2 * HALF.y - 0.005
-    _box(st, Vector3(0.6, cy - 0.02, 0.6), Vector3(0.9, cy, 0.9), Color(0.93, 0.93, 0.94), Color(0.85, 0.85, 0.86))
-    for i in range(4):
-        var vz := 0.64 + i * 0.07
-        _box(st, Vector3(0.63, cy - 0.024, vz), Vector3(0.87, cy - 0.02, vz + 0.025), Color(0.55, 0.56, 0.58), Color(0.5, 0.5, 0.52))
+    # ceiling exhaust vent: the main/art vent model sits in VENT_HOLE (main.gd)
     _add(st, mat, "KoreanFixtures")
 
 # --- sink, door, light, collision ---------------------------------------------
 
 func _build_sink(mat: Material) -> void:
+    # sink + mirror: the main/art model on the -X wall, facing into the room
+    mirror_art = (load("res://main/art/fp_mirror.tscn") as PackedScene).instantiate()
+    mirror_art.name = "MirrorSink"
+    mirror_art.position = Vector3(-HALF.x, 0.0, -0.35)
+    mirror_art.rotation.y = PI * 0.5
+    add_child(mirror_art)
+
+## Old code-built sink (kept for reference, no longer called).
+func _build_sink_placeholder(mat: Material) -> void:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var x := -HALF.x
@@ -434,6 +470,8 @@ func _process(delta: float) -> void:
     var k := 1.0 - exp(-delta * 6.0)
     door_pivot.rotation.y = lerpf(door_pivot.rotation.y, _door_target, k)
     tank_lid.rotation.x = lerpf(tank_lid.rotation.x, _lid_target, k)
+    if tank_art != null:
+        tank_art.call("set_lid_open", tank_lid.rotation.x / deg_to_rad(-75.0))
 
 ## Is this world point inside the room box?
 func contains(p: Vector3) -> bool:

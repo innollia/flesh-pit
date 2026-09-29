@@ -61,8 +61,27 @@ static func in_container(p: Vector3, rests: Array[Vector3]) -> bool:
 			return true
 	return false
 
-## Placeholder container: an open box frame plus the vomit bucket.
+## Rest point: the main/art container office model (door on its long side),
+## stretched to the logic box CONTAINER_HALF with its floor on the box floor.
 static func build_container(parent: Node3D, at: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "RestPoint"
+	root.position = at
+	parent.add_child(root)
+	var art: Node3D = (load("res://main/art/fp_rest_container.tscn") as PackedScene).instantiate()
+	art.name = "ContainerArt"
+	var h := CONTAINER_HALF
+	# art frame: long side along X (half 1.5), width Z (half 1.2), height 1.3
+	art.rotation.y = PI * 0.5
+	art.scale = Vector3(h.z / 1.5, (h.y * 2.0) / 1.3, h.x / 1.2)
+	art.position = Vector3(0, -h.y, 0)
+	root.add_child(art)
+	art.call("set_light", true)
+	art.call("set_door_open", 0.8)
+	return root
+
+## Old placeholder container (kept for reference, no longer called).
+static func build_container_placeholder(parent: Node3D, at: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.name = "RestPoint"
 	root.position = at
@@ -94,17 +113,13 @@ static func build_container(parent: Node3D, at: Vector3) -> Node3D:
 	root.add_child(bucket)
 	return root
 
+## Tumor: the main/art lump model, one of its 3 silhouettes per kind.
 static func build_tumor(parent: Node3D, spot: Dictionary) -> Node3D:
-	var t := MeshInstance3D.new()
+	var t: Node3D = (load("res://main/art/fp_tumor.tscn") as PackedScene).instantiate()
 	t.name = "Tumor_" + String(spot["kind"])
-	var sm := SphereMesh.new()
-	sm.radius = 0.22
-	sm.height = 0.4
-	t.mesh = sm
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.75, 0.62, 0.55)
-	t.material_override = m
 	t.position = spot["pos"]
 	t.set_meta("kind", spot["kind"])
 	parent.add_child(t)
+	t.call("set_variant", maxi(0, FPProgression.TUMOR_KINDS.find(String(spot["kind"]))) % 3)
+	t.call("set_pulse", true)
 	return t
