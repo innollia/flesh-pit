@@ -8,7 +8,7 @@ t = phasor(0.1) * 10
 env = (clamp((t - 0.04) / 0.04, 0, 1) * exp(neg(clamp(t - 0.04, 0, 100)) / 0.24))
 wob = sine(9 * PITCH) * 160
 cf = (540 + wob - clamp(t, 0, 1) * 260) * PITCH
-smear = noise(0, 0, SEED) * env * 1.1 |> bp(@, cf, 4.0)
-crk = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.6) * env * 0.5 |> lp(@, 1400, 0.8)
+smear = noise(0, 0, SEED) * env * 0.55 |> bp(@, cf, 7.0)
+crk = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.6) * env * 0.22 |> lp(@, 900, 0.8)
 slip = sine(95 * PITCH - t * 30) * env * 0.35
 out(smear + crk + slip)

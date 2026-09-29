@@ -1,10 +1,10 @@
 // flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
 // id: amb_body_b -- deeper shells: lower, denser, more pressure. Steady; swells over 16 s cycles folded to 8 s (0.125 Hz). No beat.
 swell = (sine(0.125) + 1) * 0.5
-dr_l = saw(46.25) * (0.22 + swell * 0.1) |> lp(@, 125 + swell * 30, 0.9) |> hp(@, 38)
-dr_r = saw(46.375) * (0.22 + swell * 0.1) |> lp(@, 125 + swell * 30, 0.9) |> hp(@, 38)
+dr_l = saw(46.25) * (0.30 + swell * 0.13) |> lp(@, 175 + swell * 35, 0.9) |> hp(@, 38)
+dr_r = saw(46.375) * (0.30 + swell * 0.13) |> lp(@, 175 + swell * 35, 0.9) |> hp(@, 38)
 sub_l = sine(69.25) * 0.05
 sub_r = sine(69.375) * 0.05
-air_l = noise(0, 0, 711) * 0.16 |> lp(@, 200, 0.7) |> hp(@, 50)
-air_r = noise(0, 0, 717) * 0.16 |> lp(@, 200, 0.7) |> hp(@, 50)
+air_l = noise(0, 0, 711) * 0.30 |> lp(@, 440, 0.7) |> hp(@, 80)
+air_r = noise(0, 0, 717) * 0.30 |> lp(@, 440, 0.7) |> hp(@, 80)
 out(stereo(dr_l + sub_l + air_l, dr_r + sub_r + air_r))

@@ -60,6 +60,79 @@ def write_wav(path, data, rate):
         w.writeframes(pcm.tobytes())
 
 
+SAMPLES_SRC = os.path.join(HERE, "samples", "src")
+
+
+def _resample_linear(mono, src_rate, dst_rate):
+    if src_rate == dst_rate:
+        return mono
+    n_out = int(round(mono.shape[0] * dst_rate / float(src_rate)))
+    x_old = np.arange(mono.shape[0], dtype=np.float64)
+    x_new = np.linspace(0.0, mono.shape[0] - 1, n_out)
+    return np.interp(x_new, x_old, mono)
+
+
+def _biquad_lp(mono, rate, cutoff):
+    """One-pole low-pass, run twice for a steeper roll-off."""
+    a = math.exp(-2.0 * math.pi * cutoff / rate)
+    for _ in range(2):
+        y = np.empty_like(mono)
+        prev = 0.0
+        for i in range(mono.size):
+            prev = (1 - a) * mono[i] + a * prev
+            y[i] = prev
+        mono = y
+    return mono
+
+
+def _biquad_hp(mono, rate, cutoff):
+    """Complement of the one-pole low-pass, run twice."""
+    for _ in range(2):
+        mono = mono - _biquad_lp(mono, rate, cutoff)
+    return mono
+
+
+def load_real_layer(spec_entry, rate, seconds):
+    """Load a CC0 recording window, resample/pitch/filter/gain it to mono,
+    trim or loop-tile it to `seconds`, and return a (seconds*rate,) array
+    ready to be summed under the synth layer. Returns None when the entry
+    has no real_layer (pure synth, unchanged behaviour)."""
+    if not spec_entry:
+        return None
+    path = os.path.join(SAMPLES_SRC, spec_entry["sample"])
+    with wave.open(path, "rb") as w:
+        ch = w.getnchannels(); src_rate = w.getframerate(); n = w.getnframes()
+        raw = w.readframes(n)
+    data = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 32768.0
+    data = data.reshape(-1, ch)
+    mono = data.mean(axis=1)
+    off = int(round(spec_entry.get("offset_s", 0.0) * src_rate))
+    dur = int(round(spec_entry.get("dur_s", seconds) * src_rate))
+    mono = mono[off:off + dur]
+    if mono.size == 0:
+        return np.zeros(int(round(seconds * rate)))
+    pitch = float(spec_entry.get("pitch", 1.0))
+    eff_rate = rate / pitch if pitch else rate
+    mono = _resample_linear(mono, src_rate, eff_rate)
+    if "hp" in spec_entry:
+        mono = _biquad_hp(mono, rate, float(spec_entry["hp"]))
+    if "lp" in spec_entry:
+        mono = _biquad_lp(mono, rate, float(spec_entry["lp"]))
+    target_n = int(round(seconds * rate))
+    if mono.size >= target_n:
+        # short fade at both ends so a trim never clicks
+        out = mono[:target_n].copy()
+    else:
+        out = np.zeros(target_n)
+        out[:mono.size] = mono
+    fade_n = min(int(round(0.01 * rate)), out.size // 2) or 1
+    fade = np.linspace(0.0, 1.0, fade_n)
+    out[:fade_n] *= fade
+    out[-fade_n:] *= fade[::-1]
+    gain = 10.0 ** (float(spec_entry.get("gain_db", 0.0)) / 20.0)
+    return out * gain
+
+
 def remove_dc(data, rate, is_loop):
     """DC removal is mastering, not a gate change. A loop only gets its mean
     subtracted (a constant keeps the wrap seamless); a one-shot gets a
@@ -138,6 +211,12 @@ def main():
                 render(patch, raw, loop + fade + 0.25, rate)
                 loopify.fold_file(raw, folded, int(round(loop * rate)), int(round(fade * rate)), quiet=True)
             data, r = A.read_wav(folded)
+            real = load_real_layer(s.get("real_layer"), rate, loop)
+            if real is not None:
+                pad = np.zeros((data.shape[0], data.shape[1]))
+                take = min(real.size, data.shape[0])
+                pad[:take, :] += real[:take, None]
+                data = data + pad
             rot = int(round(float(s.get("rotate_seconds", 0.0)) * rate))
             if rot:
                 # move the wrap point into the quiet gap between two bites
@@ -173,8 +252,13 @@ def main():
             chosen = best[1] if best else tuple(range(keep))
             raw_lufs_list = [cands[i][0] for i in chosen]
             mono_list = [cands[i][1][:, 0] for i in chosen]
+            real = load_real_layer(s.get("real_layer"), rate, float(s["seconds"]))
             for n, i in enumerate(chosen, start=1):
                 mono = cands[i][1]
+                if real is not None:
+                    take = min(real.size, mono.shape[0])
+                    mono = mono.copy()
+                    mono[:take, 0] += real[:take]
                 out, _, gain = master(remove_dc(mono, rate, False), rate, float(s["target_lufs"]))
                 rel = "audio/sfx/%s_v%d.wav" % (sid, n)
                 write_wav(os.path.join(GAME, rel), out, rate)

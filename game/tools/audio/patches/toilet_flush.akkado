@@ -8,8 +8,8 @@ t = phasor(0.1) * 10
 clack = noise(0, 0, SEED) * (clamp((t - 0.0) / 0.001, 0, 1) * exp(neg(clamp(t - 0.0, 0, 100)) / 0.02)) * 0.8 |> bp(@, 2000, 2.0)
 rush_env = clamp((t - 0.08) / 0.15, 0, 1) * clamp((2.3 - t) / 0.8, 0, 1)
 rcf = (3000 - clamp(t / 2.2, 0, 1) * 2100) * PITCH
-rush = noise(0, 0, SEED2) * rush_env * 0.9 |> lp(@, rcf, 0.9)
-swirl = noise(0, 0, SEED) * rush_env * 0.5 |> bp(@, 600 + sine(3.5) * 250, 4.0)
+rush = noise(0, 0, SEED2) * rush_env * 0.55 |> lp(@, rcf, 0.9)
+swirl = noise(0, 0, SEED) * rush_env * 0.30 |> bp(@, 600 + sine(3.5) * 250, 4.0)
 refill_env = clamp((t - 1.8) / 0.4, 0, 1) * clamp((3.0 - t) / 0.3, 0, 1)
 refill = noise(0, 0, SEED2) * refill_env * 0.18 |> hp(@, 2500)
 out((clack + rush + swirl + refill) |> delay(@, 0.085, 0.3, 1.0, 0.3))

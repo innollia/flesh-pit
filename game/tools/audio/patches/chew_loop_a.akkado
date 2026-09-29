@@ -2,7 +2,7 @@
 // id: chew_loop_a -- chewing in the mouth, right under the ears: bite, squelch, jaw knock. 4 chews per 1.6 s loop.
 trig = trigger(2.5)
 bite = ar(trig, 0.005, 0.09)
-squelch = noise(0, 0, 101) * bite * 0.9 |> bp(@, 900, 2.0)
+squelch = noise(0, 0, 101) * bite * 0.6 |> bp(@, 750, 3.2)
 wetc = noise(0, 0, 211) * gt(noise(120, 0, 307), 0.35) * ar(trig, 0.02, 0.22) * 0.6 |> lp(@, 2200, 0.8)
 jaw = sine(85) * ar(trig, 0.003, 0.05) * 0.5
 out(squelch + wetc + jaw)

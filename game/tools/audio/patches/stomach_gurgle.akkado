@@ -8,6 +8,6 @@ t = phasor(0.1) * 10
 env = clamp(t / 0.2, 0, 1) * clamp((1.4 - t) / 0.45, 0, 1)
 cf = 130 + (noise(6, 0, SEED) + 1) * 170 |> lp(@, 8, 0.7)
 am = gt(noise(13, 0, SEED2), 0.1) |> lp(@, 30, 0.7)
-g = noise(0, 0, SEED) * env * am * 1.8 |> bp(@, cf * PITCH, 9.0)
+g = noise(0, 0, SEED) * env * am * 2.4 |> bp(@, cf * PITCH, 11.0)
 low = sine(64 * PITCH) * env * 0.10
 out(g + low |> hp(@, 70))

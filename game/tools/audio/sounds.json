@@ -53,7 +53,16 @@
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "real_layer": {
+    "sample": "tear/fs530919.wav",
+    "offset_s": 0.3,
+    "dur_s": 0.85,
+    "gain_db": -3.0,
+    "pitch": 0.92,
+    "hp": 90,
+    "lp": 5500
+   }
   },
   {
    "id": "tear_fat",
@@ -64,7 +73,16 @@
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "real_layer": {
+    "sample": "tear/fs704771.wav",
+    "offset_s": 0.4,
+    "dur_s": 0.9,
+    "gain_db": -2.0,
+    "pitch": 0.85,
+    "hp": 60,
+    "lp": 3200
+   }
   },
   {
    "id": "tear_nerve",
@@ -85,18 +103,36 @@
    "spatial": true,
    "bed": [
     "body_a"
-   ]
+   ],
+   "real_layer": {
+    "sample": "tear/fs30931.wav",
+    "offset_s": 0.0,
+    "dur_s": 0.75,
+    "gain_db": -3.0,
+    "pitch": 1.05,
+    "hp": 120,
+    "lp": 5000
+   }
   },
   {
    "id": "swallow",
    "kind": "sfx",
    "seconds": 0.6,
-   "target_lufs": -18,
+   "target_lufs": -15,
    "spatial": false,
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "real_layer": {
+    "sample": "swallow/fs158479.wav",
+    "offset_s": 0.05,
+    "dur_s": 0.65,
+    "gain_db": 2.0,
+    "pitch": 0.95,
+    "hp": 80,
+    "lp": 6000
+   }
   },
   {
    "id": "stomach_gurgle",
@@ -107,7 +143,16 @@
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "real_layer": {
+    "sample": "stomach/fs696405.wav",
+    "offset_s": 2.0,
+    "dur_s": 1.5,
+    "gain_db": 1.0,
+    "pitch": 0.9,
+    "hp": 60,
+    "lp": 3000
+   }
   },
   {
    "id": "vomit_toilet",
@@ -117,7 +162,16 @@
    "spatial": false,
    "bed": [
     "restroom"
-   ]
+   ],
+   "real_layer": {
+    "sample": "vomit/fs338116.wav",
+    "offset_s": 5.0,
+    "dur_s": 1.9,
+    "gain_db": 0.0,
+    "pitch": 1.0,
+    "hp": 60,
+    "lp": 7000
+   }
   },
   {
    "id": "vomit_floor",
@@ -128,7 +182,16 @@
    "bed": [
     "body_a",
     "restroom"
-   ]
+   ],
+   "real_layer": {
+    "sample": "vomit/fs338116.wav",
+    "offset_s": 18.0,
+    "dur_s": 1.7,
+    "gain_db": 0.0,
+    "pitch": 0.95,
+    "hp": 50,
+    "lp": 6000
+   }
   },
   {
    "id": "step_flesh_s1",
@@ -168,7 +231,16 @@
    "spatial": false,
    "bed": [
     "restroom"
-   ]
+   ],
+   "real_layer": {
+    "sample": "tile/fs816017.wav",
+    "offset_s": 0.1,
+    "dur_s": 0.5,
+    "gain_db": 1.0,
+    "pitch": 1.1,
+    "hp": 200,
+    "lp": 8000
+   }
   },
   {
    "id": "step_tile_s2",
@@ -178,7 +250,16 @@
    "spatial": false,
    "bed": [
     "restroom"
-   ]
+   ],
+   "real_layer": {
+    "sample": "tile/fs816017.wav",
+    "offset_s": 0.9,
+    "dur_s": 0.5,
+    "gain_db": 2.0,
+    "pitch": 1.0,
+    "hp": 180,
+    "lp": 8000
+   }
   },
   {
    "id": "step_tile_s3",
@@ -188,7 +269,16 @@
    "spatial": false,
    "bed": [
     "restroom"
-   ]
+   ],
+   "real_layer": {
+    "sample": "tile/fs816017.wav",
+    "offset_s": 1.7,
+    "dur_s": 0.5,
+    "gain_db": 2.5,
+    "pitch": 0.9,
+    "hp": 160,
+    "lp": 7500
+   }
   },
   {
    "id": "regen_creak",
@@ -240,7 +330,16 @@
    "spatial": true,
    "bed": [
     "restroom"
-   ]
+   ],
+   "real_layer": {
+    "sample": "toilet/fs609384.wav",
+    "offset_s": 3.0,
+    "dur_s": 3.0,
+    "gain_db": 1.0,
+    "pitch": 1.0,
+    "hp": 60,
+    "lp": 9000
+   }
   },
   {
    "id": "coin_drop",
@@ -282,7 +381,16 @@
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "real_layer": {
+    "sample": "canary/fs85401.wav",
+    "offset_s": 0.2,
+    "dur_s": 0.9,
+    "gain_db": -1.0,
+    "pitch": 1.25,
+    "hp": 1200,
+    "lp": 9000
+   }
   },
   {
    "id": "canary_wrong",
@@ -327,7 +435,16 @@
     "body_a",
     "body_b"
    ],
-   "rotate_seconds": 0.2
+   "rotate_seconds": 0.2,
+   "real_layer": {
+    "sample": "chew/fs22416.wav",
+    "offset_s": 0.1,
+    "dur_s": 1.6,
+    "gain_db": -2.0,
+    "pitch": 1.0,
+    "hp": 150,
+    "lp": 5000
+   }
   },
   {
    "id": "chew_loop_b",
@@ -339,7 +456,16 @@
     "body_a",
     "body_b"
    ],
-   "rotate_seconds": 0.2
+   "rotate_seconds": 0.2,
+   "real_layer": {
+    "sample": "chew/fs22416.wav",
+    "offset_s": 1.4,
+    "dur_s": 1.6,
+    "gain_db": -1.0,
+    "pitch": 0.85,
+    "hp": 130,
+    "lp": 4200
+   }
   },
   {
    "id": "chew_strain",
@@ -350,7 +476,8 @@
    "bed": [
     "body_a",
     "body_b"
-   ]
+   ],
+   "rotate_seconds": 1.0
   },
   {
    "id": "amb_restroom",
@@ -364,14 +491,14 @@
    "kind": "loop",
    "loop_seconds": 8.0,
    "fade_seconds": 1.0,
-   "target_lufs": -30
+   "target_lufs": -24
   },
   {
    "id": "amb_body_b",
    "kind": "loop",
    "loop_seconds": 8.0,
    "fade_seconds": 1.0,
-   "target_lufs": -29
+   "target_lufs": -23
   },
   {
    "id": "amb_heart_a",
