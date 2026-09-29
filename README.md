@@ -1,60 +1,49 @@
 # flesh-pit
 
-Small indie digging/incremental game built around eating through a gigantic living organism.
+Small indie digging/incremental game about **eating through a gigantic living organism**.
 
-## Canonical core loop
+## Canonical loop
 
-**eat/dig flesh → stomach fills → return to the restroom → vomit to empty capacity → descend again → accumulate mutation points → alter the body/tools → reach deeper anatomy**
+**eat flesh → stomach fills → return through a tunnel that is slowly growing shut → vomit in the clean restroom → mutate → go deeper**
 
-Important: there is currently **no sell loop**. Vomit has no resource value. The toilet closes the expedition loop by resetting stomach capacity.
+Important:
+- no sell loop
+- vomit has no resource value
+- flesh regenerates and gradually narrows old routes
+- stomach capacity + regeneration speed define the return pressure
+- death drops belongings at the death location, but losing them is not catastrophic
 
-The player begins by tearing/eating flesh by hand. Later progression changes the way flesh is removed rather than merely increasing a damage number.
+## Identity
 
-## Why the flesh matters mechanically
+The player does not simply mine red blocks.
 
-Three accepted tissue rules:
+Eating has:
+- tissue elasticity
+- chewing time
+- visible tearing/deformation
 
-1. **Blood vessels** — cutting them causes bleeding that obscures vision / complicates excavation.
-2. **Nerves** — disturbing them can make surrounding tissue contract or deform.
-3. **Tumors / valuable growths** — careless destruction reduces their value or mutation yield.
+Mutation is communicated through:
+- sound
+- footstep/camera shake
+- visible hands/HUD
+- stomach UI
 
-The design target is not a dirt-mining game with red textures. Tissue should force decisions that ordinary soil cannot.
+Nerves are yellow, protruding, wriggling structures that can deform nearby tissue when disturbed.
 
-## Progression space
+Cancer/tumor growths are currently a collectible codex system rather than a required upgrade resource.
 
-Conventional mining language maps into bodily systems:
+The restroom is intentionally **clean and white**: the safe visual exception inside an otherwise red, dirty biological world.
 
-- inventory capacity → stomach capacity
-- return-to-base → return to restroom
-- empty inventory → vomit
-- money/upgrade currency → mutation points
-- shovel/drill tiers → hands, cutting, tearing, sawing, suction, cautery, etc.
-- depth tiers → anatomical regions / tissue systems
-
-Depth itself does not require a narrative justification. As in compact digging incrementals, **going deeper is the progression objective**. Worldbuilding exists to make each deeper layer mechanically and visually different.
+Navigation uses a **compass and canary**.
 
 ## World direction
 
-The game uses an **original setting** centered on a gigantic living body treated as explorable terrain, infrastructure, and resource.
+Original setting only. Mystery Flesh Pit National Park is a design reference, not canon.
 
-**Mystery Flesh Pit National Park is a reference, not the setting.**
-No direct lore, names, organizations, locations, terminology, or continuity from that property should be assumed canonical here.
+Depth itself is the objective. The open design problem is making each anatomical depth band create new play rather than just tougher flesh.
 
 See:
 - [docs/design-core.md](docs/design-core.md)
+- [docs/todo.md](docs/todo.md)
 - [docs/reference-map.md](docs/reference-map.md)
 - [docs/world-direction.md](docs/world-direction.md)
-
-## Working differentiator
-
-Prior examples separately cover:
-- compact dig → return → upgrade → deeper loops
-- physically digging through flesh
-- flesh/bone as resources
-- giant-organism exploration and industrial exploitation
-
-The current working combination is:
-
-> **A very small digging/incremental game where the player literally eats through a giant organism, stomach capacity creates the return loop, mutation replaces the ordinary shop economy, and progressively stranger anatomy supplies the depth tiers.**
-
-Treat this as a working prior-art hypothesis and keep checking it as the project develops.
