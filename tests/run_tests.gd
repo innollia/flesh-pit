@@ -16,11 +16,12 @@ func _init() -> void:
 	_run_chewer_tests()
 	_run_surface_tests()
 	_run_hand_tests()
+	_run_ps1_tests()
 	for n in _to_free:
 		if is_instance_valid(n):
 			n.free()
 	_to_free.clear()
-	FDKChunk._shared_material = null
+	FDKPs1Material.clear_cache()
 	print("--- %d passed, %d failed ---" % [_passed, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -285,6 +286,30 @@ func _run_hand_tests() -> void:
 		rig.step(rng.randf_range(0.001, 0.1))
 		check.call()
 	_assert(worst.is_empty(), "hands: every joint stays inside its angle limit (%s)" % str(worst.slice(0, 5)))
+
+func _run_ps1_tests() -> void:
+	# terrain material: PS1 look, one nearest-filtered texture per tissue,
+	# vertex snapping and dithering can be switched off for a clean fallback
+	var m0 := FDKChunk.terrain_material(0)
+	_assert(m0.shader != null, "ps1: terrain tissue 0 gets a PS1 shader material")
+	var tex: Texture2D = m0.get_shader_parameter("albedo_tex")
+	_assert(tex != null, "ps1: terrain material has an albedo texture assigned")
+	if tex != null:
+		_assert(tex.get_width() <= 256 and tex.get_height() <= 256, "ps1: texture resolution is low-res (<=256px, got %dx%d)" % [tex.get_width(), tex.get_height()])
+	var settings := FDKPs1Settings.active
+	_assert(settings.enabled, "ps1: settings default to enabled")
+	settings.enabled = false
+	var m1 := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_flesh_128.png", 1.0, false, 0.4, 0.5)
+	_assert(float(m1.get_shader_parameter("snap_precision")) > 9000.0, "ps1: disabling settings turns vertex snapping effectively off")
+	settings.enabled = true
+	FDKPs1Material.clear_cache()
+	# a different tissue id must get a different texture (visibly distinct materials)
+	var mat_flesh := FDKChunk.terrain_material(0)
+	var mat_nerve := FDKChunk.terrain_material(1)
+	_assert(mat_flesh.get_shader_parameter("albedo_tex") != mat_nerve.get_shader_parameter("albedo_tex"), "ps1: different tissues use different textures")
+	FDKChunk.set_press_all(Vector3.ZERO, Vector3.FORWARD, 0.4)
+	_assert(is_equal_approx(float(mat_flesh.get_shader_parameter("press_amount")), 0.4), "ps1: chew press still reaches the PS1 material")
+	FDKChunk.set_press_all(Vector3.ZERO, Vector3.FORWARD, 0.0)
 
 var _chewer_grab_count: int = 0
 var _chewer_tear_count: int = 0

@@ -38,6 +38,36 @@ static func add_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vec
     add_tri(st, a, b, c, outward, color)
     add_tri(st, a, c, d, outward, color)
 
+## PS1 tone: builds planar (world/local-position) UVs for a committed mesh
+## that only has vertex colours, so it can wear a low-res tiled texture
+## instead. Call after st.commit(). uv_scale controls texture repeats per
+## metre. Cheap CPU pass; fine for the small kit meshes (hands, fixtures).
+static func planar_uv_mesh(mesh: ArrayMesh, uv_scale: float = 3.0) -> ArrayMesh:
+    var out := ArrayMesh.new()
+    for surf in range(mesh.get_surface_count()):
+        var arrays := mesh.surface_get_arrays(surf)
+        var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+        var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+        var uvs := PackedVector2Array()
+        uvs.resize(verts.size())
+        for i in range(verts.size()):
+            var n: Vector3 = normals[i] if normals.size() > i else Vector3.UP
+            var v: Vector3 = verts[i]
+            var ax := absf(n.x)
+            var ay := absf(n.y)
+            var az := absf(n.z)
+            var uv: Vector2
+            if ax >= ay and ax >= az:
+                uv = Vector2(v.z, v.y)
+            elif ay >= ax and ay >= az:
+                uv = Vector2(v.x, v.z)
+            else:
+                uv = Vector2(v.x, v.y)
+            uvs[i] = uv * uv_scale
+        arrays[Mesh.ARRAY_TEX_UV] = uvs
+        out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+    return out
+
 ## Builds a ring of points from a 2D profile (x = width axis, y = thickness
 ## axis) placed in the XY plane at depth z, scaled, and offset.
 static func ring(profile: PackedVector2Array, z: float, scale: Vector2, offset: Vector2 = Vector2.ZERO) -> PackedVector3Array:

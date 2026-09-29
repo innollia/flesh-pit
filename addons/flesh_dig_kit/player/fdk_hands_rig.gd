@@ -64,8 +64,7 @@ func build() -> void:
     if _built:
         return
     _built = true
-    _material = ShaderMaterial.new()
-    _material.shader = load("res://addons/flesh_dig_kit/common/fdk_viewmodel.gdshader")
+    _material = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_skin_128.png", 6.0, false, 0.32, 0.55)
     _hands.append(_build_hand(1.0))
     _hands.append(_build_hand(-1.0))
     _pile = _build_pile()
@@ -351,6 +350,7 @@ func _build_hand(side: float) -> Dictionary:
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(0.03, 0.026, 0.034), 0.35, 7 + int(side), Color(0.62, 0.07, 0.1), Color(0.85, 0.2, 0.2))
     var chunk := _add_mesh(wrist, "TornChunk", st.commit())
+    chunk.material_override = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 2.0, false, 0.7, 0.4)
     chunk.position = Vector3(0, -0.03, -0.105)
     chunk.visible = false
 
@@ -378,13 +378,14 @@ func _build_pile() -> MeshInstance3D:
     FDKLowPoly.add_blob(st, Vector3(-0.045, 0.03, -0.015), Vector3(0.045, 0.035, 0.04), 0.35, 13, a, b)
     FDKLowPoly.add_blob(st, Vector3(0.0, 0.06, 0.0), Vector3(0.035, 0.03, 0.035), 0.4, 14, a, b)
     var mi := _add_mesh(self, "CarriedPile", st.commit())
+    mi.material_override = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 2.5, false, 0.7, 0.4)
     mi.visible = false
     return mi
 
 func _add_mesh(parent: Node3D, mesh_name: String, mesh: Mesh) -> MeshInstance3D:
     var mi := MeshInstance3D.new()
     mi.name = mesh_name
-    mi.mesh = mesh
+    mi.mesh = FDKLowPoly.planar_uv_mesh(mesh as ArrayMesh, 5.0)
     mi.material_override = _material
     mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(mi)

@@ -58,7 +58,12 @@ var _coin: MeshInstance3D
 var _coin_t: float = -1.0
 var _noise: FastNoiseLite
 
+var ps1_post: FDKPs1ScreenPost
+
 func _ready() -> void:
+    if FDKPs1Settings.active.enabled:
+        ps1_post = FDKPs1ScreenPost.new()
+        add_child(ps1_post)
     _register_inputs()
     _noise = FastNoiseLite.new()
     _noise.seed = 1337
@@ -115,9 +120,9 @@ func _ready() -> void:
     player_lamp = OmniLight3D.new()
     player_lamp.name = "BodyGlow"
     player_lamp.light_color = Color(1.0, 0.8, 0.72)
-    player_lamp.light_energy = 1.1
-    player_lamp.omni_range = 7.0
-    player_lamp.omni_attenuation = 1.4
+    player_lamp.light_energy = 2.4
+    player_lamp.omni_range = 6.0
+    player_lamp.omni_attenuation = 0.9
     player_lamp.position = Vector3(0.1, 0.15, 0.1)
     player.camera.add_child(player_lamp)
 
@@ -212,7 +217,7 @@ func _setup_environment() -> void:
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color(0.55, 0.22, 0.24)
     environment.ambient_light_energy = 0.35
-    environment.fog_enabled = true
+    environment.fog_enabled = false # design-core short fog now comes from the PS1 material shader itself
     environment.fog_light_color = Color(0.22, 0.03, 0.05)
     environment.fog_density = 0.09
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
@@ -228,8 +233,8 @@ func _update_atmosphere(delta: float) -> void:
     var depth_tone := clampf(terrain.depth_at(player.global_position) / terrain_config.depth_tone_distance, 0.0, 1.0)
     environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
     environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
-    environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.3, k)
-    player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.2 if inside else 1.1, k)
+    environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.42, k)
+    player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.35 if inside else 2.4, k)
     # deeper shells are darker and more purple
     var depth := terrain.depth_at(player.global_position)
     var tone := clampf(depth / terrain_config.depth_tone_distance, 0.0, 1.0)

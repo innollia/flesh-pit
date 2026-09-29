@@ -23,15 +23,13 @@ func _ready() -> void:
     build()
 
 func build() -> void:
-    var mat := StandardMaterial3D.new()
-    mat.vertex_color_use_as_albedo = true
-    mat.roughness = 0.35
-    mat.metallic_specular = 0.6
-    _build_tiles(mat)
-    _build_toilet(mat)
-    _build_sink(mat)
-    _build_door(mat)
-    _build_korean(mat)
+    var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5)
+    var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_fixture_128.png", 1.5, false, 0.35, 0.35)
+    _build_tiles(tile_mat)
+    _build_toilet(fixture_mat)
+    _build_sink(fixture_mat)
+    _build_door(fixture_mat)
+    _build_korean(fixture_mat)
     _build_light()
     _build_collision()
 
@@ -132,7 +130,7 @@ func _tile(st: SurfaceTool, o: Vector3, u: Vector3, v: Vector3, n: Vector3, c: C
 func _add(st: SurfaceTool, mat: Material, node_name: String, parent: Node3D = null) -> MeshInstance3D:
     var mi := MeshInstance3D.new()
     mi.name = node_name
-    mi.mesh = st.commit()
+    mi.mesh = FDKLowPoly.planar_uv_mesh(st.commit() as ArrayMesh, 2.2)
     mi.material_override = mat
     (parent if parent != null else self).add_child(mi)
     return mi

@@ -37,6 +37,6 @@ func _init() -> void:
 	print("average over %d more digs: %.3f ms" % [trials, total_ms / trials])
 	print("budget: 8.000 ms")
 	field.free()
-	FDKChunk._shared_material = null
+	FDKPs1Material.clear_cache()
 
 	quit(0)

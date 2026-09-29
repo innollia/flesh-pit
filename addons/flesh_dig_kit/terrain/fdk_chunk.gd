@@ -7,9 +7,13 @@ extends Node3D
 ## gets one vertex (average of its edge crossings, plus a small stable
 ## jitter so walls read as organic facets instead of a grid). Every corner
 ## edge that crosses the iso level emits one quad joining the 4 cells around
-## it. Triangles never share vertices, so each gets its own flat normal:
-## the faceted low-poly look. Vertex colors carry tissue type and a depth
-## tone.
+## it. Triangles never share vertices, so each gets its own flat normal.
+##
+## PS1 tone (docs/tone-and-manner.md): crude low-poly shapes wearing real
+## low-res textures, not flat vertex-colour shading. Each tissue id gets its
+## own mesh surface with its own PS1 material (nearest-filtered, dithered,
+## vertex-snapped); a world-aligned UV (two dominant axes of the face
+## normal) keeps texture scale consistent across the organic geometry.
 ##
 ## The chunk reads a 1-corner border from its neighbours through its
 ## parent FDKTerrainField, and each corner edge is owned by exactly one
@@ -26,7 +30,7 @@ var config: FDKTerrainConfig
 var field: Node = null
 
 var _density: PackedFloat32Array = PackedFloat32Array()
-## Tissue id per cell (chunk_size^3). See TISSUE_COLORS.
+## Tissue id per cell (chunk_size^3). See TISSUE_TEXTURES.
 var _tissue: PackedByteArray = PackedByteArray()
 var _original_density: PackedFloat32Array = PackedFloat32Array()
 
@@ -35,24 +39,27 @@ var _collision: CollisionShape3D
 var _static_body: StaticBody3D
 var _dirty: bool = false
 
-## 0 flesh, 1 nerve, 2 fat, 3 membrane (inedible, used around the restroom)
-const TISSUE_COLORS: Array[Color] = [
-    Color(0.72, 0.10, 0.14),
-    Color(0.88, 0.76, 0.16),
-    Color(0.86, 0.66, 0.46),
-    Color(0.45, 0.16, 0.22),
+## 0 flesh, 1 nerve, 2 fat, 3 membrane (inedible, around the restroom)
+const TISSUE_TEXTURES: Array[String] = [
+    "res://addons/flesh_dig_kit/textures/tex_flesh_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_nerve_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_fat_128.png",
+    "res://addons/flesh_dig_kit/textures/tex_membrane_128.png",
 ]
-## Deep-shell tint the flesh drifts toward with depth.
-const DEEP_TINT := Color(0.32, 0.04, 0.12)
+const UV_SCALE := 0.9
 
-static var _shared_material: ShaderMaterial
+static func terrain_material(tissue_id: int) -> ShaderMaterial:
+    var path: String = TISSUE_TEXTURES[tissue_id % TISSUE_TEXTURES.size()]
+    return FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6)
 
-static func terrain_material() -> ShaderMaterial:
-    if _shared_material == null:
-        var m := ShaderMaterial.new()
-        m.shader = load("res://addons/flesh_dig_kit/terrain/fdk_terrain.gdshader")
-        _shared_material = m
-    return _shared_material
+## Applies the chew-press deformation to the material of every tissue this
+## chunk currently uses (kept as a single call site so main.gd's per-frame
+## set_press still works with one material per tissue).
+static func set_press_all(center: Vector3, toward: Vector3, amount: float) -> void:
+    for i in range(TISSUE_TEXTURES.size()):
+        var m := terrain_material(i)
+        m.set_shader_parameter("press_center", center)
+        m.set_shader_parameter("press_amount", amount)
 
 func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
     chunk_coord = p_chunk_coord
@@ -71,7 +78,6 @@ func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
     add_child(_static_body)
     _mesh_instance = MeshInstance3D.new()
     _mesh_instance.name = "Mesh"
-    _mesh_instance.material_override = terrain_material()
     _static_body.add_child(_mesh_instance)
     _collision = CollisionShape3D.new()
     _collision.name = "Collision"
@@ -211,7 +217,6 @@ func remesh() -> float:
     var pp := p * p
     var d := _build_padded(s)
 
-    # quick out: uniform chunk has no surface
     var first_solid := d[0] >= iso
     var uniform := true
     for i in range(d.size()):
@@ -219,23 +224,27 @@ func remesh() -> float:
             uniform = false
             break
 
-    var verts := PackedVector3Array()
-    var normals := PackedVector3Array()
-    var colors := PackedColorArray()
+    # one bucket per tissue id, so each can get its own textured surface
+    var n_tissues := FDKChunk.TISSUE_TEXTURES.size()
+    var verts: Array = []
+    var normals: Array = []
+    var uvs: Array = []
+    for i in range(n_tissues):
+        verts.append(PackedVector3Array())
+        normals.append(PackedVector3Array())
+        uvs.append(PackedVector2Array())
+    var all_verts := PackedVector3Array() # for the single collision shape
 
     if not uniform:
-        # cell vertices for cells -1..s-1 (index c+1, s+1 per axis)
         var cp := s + 1
         var cell_vert := PackedVector3Array()
         cell_vert.resize(cp * cp * cp)
         var cell_has := PackedByteArray()
         cell_has.resize(cp * cp * cp)
-        var jitter := config.facet_jitter * cs
         var gbase := chunk_coord * s
         for cz in range(cp):
             for cy in range(cp):
                 for cx in range(cp):
-                    # padded corner index of the cell's (0,0,0) corner: cell c -> corner c, padded c+1; cell index cx = c+1
                     var i0 := cx + cy * p + cz * pp
                     var c000 := d[i0]
                     var c100 := d[i0 + 1]
@@ -258,7 +267,6 @@ func remesh() -> float:
                         continue
                     var sum := Vector3.ZERO
                     var cnt := 0
-                    # 12 edges
                     var e := [
                         [c000, c100, Vector3(0, 0, 0), Vector3(1, 0, 0)],
                         [c010, c110, Vector3(0, 1, 0), Vector3(1, 1, 0)],
@@ -291,39 +299,42 @@ func remesh() -> float:
                     var ci := cx + cy * cp + cz * cp * cp
                     cell_vert[ci] = (Vector3(cx - 1, cy - 1, cz - 1) + local) * cs
                     cell_has[ci] = 1
-        # edges owned by this chunk: base corner 0..s-1 on every axis
-        var chunk_world := position
-        var depth_origin: Vector3 = field.depth_origin if field != null else Vector3.ZERO
         for z in range(s):
             for y in range(s):
                 for x in range(s):
                     var i0 := (x + 1) + (y + 1) * p + (z + 1) * pp
                     var a0 := d[i0] >= iso
-                    # X edge (x,y,z)-(x+1,y,z): cells (x, y-1..y, z-1..z)
                     if a0 != (d[i0 + 1] >= iso):
-                        _emit_quad(verts, normals, colors, cell_vert, cell_has, cp,
+                        _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
                             Vector3i(x, y - 1, z - 1), Vector3i(x, y, z - 1), Vector3i(x, y, z), Vector3i(x, y - 1, z),
-                            Vector3(1, 0, 0) * (1.0 if a0 else -1.0), x if a0 else x + 1, y, z, chunk_world, depth_origin)
+                            Vector3(1, 0, 0) * (1.0 if a0 else -1.0), x if a0 else x + 1, y, z)
                     if a0 != (d[i0 + p] >= iso):
-                        _emit_quad(verts, normals, colors, cell_vert, cell_has, cp,
+                        _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
                             Vector3i(x - 1, y, z - 1), Vector3i(x, y, z - 1), Vector3i(x, y, z), Vector3i(x - 1, y, z),
-                            Vector3(0, 1, 0) * (1.0 if a0 else -1.0), x, y if a0 else y + 1, z, chunk_world, depth_origin)
+                            Vector3(0, 1, 0) * (1.0 if a0 else -1.0), x, y if a0 else y + 1, z)
                     if a0 != (d[i0 + pp] >= iso):
-                        _emit_quad(verts, normals, colors, cell_vert, cell_has, cp,
+                        _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
                             Vector3i(x - 1, y - 1, z), Vector3i(x, y - 1, z), Vector3i(x, y, z), Vector3i(x - 1, y, z),
-                            Vector3(0, 0, 1) * (1.0 if a0 else -1.0), x, y, z if a0 else z + 1, chunk_world, depth_origin)
+                            Vector3(0, 0, 1) * (1.0 if a0 else -1.0), x, y, z if a0 else z + 1)
 
-    if verts.size() > 0:
+    var mesh := ArrayMesh.new()
+    var have_any := false
+    for i in range(n_tissues):
+        if verts[i].size() == 0:
+            continue
+        have_any = true
         var arrays := []
         arrays.resize(Mesh.ARRAY_MAX)
-        arrays[Mesh.ARRAY_VERTEX] = verts
-        arrays[Mesh.ARRAY_NORMAL] = normals
-        arrays[Mesh.ARRAY_COLOR] = colors
-        var mesh := ArrayMesh.new()
+        arrays[Mesh.ARRAY_VERTEX] = verts[i]
+        arrays[Mesh.ARRAY_NORMAL] = normals[i]
+        arrays[Mesh.ARRAY_TEX_UV] = uvs[i]
         mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+        mesh.surface_set_material(mesh.get_surface_count() - 1, FDKChunk.terrain_material(i))
+
+    if have_any:
         _mesh_instance.mesh = mesh
         var shape := ConcavePolygonShape3D.new()
-        shape.set_faces(verts)
+        shape.set_faces(all_verts)
         _collision.shape = shape
     else:
         _mesh_instance.mesh = null
@@ -334,13 +345,15 @@ func remesh() -> float:
     remeshed.emit(elapsed_ms)
     return elapsed_ms
 
-## Emits one quad (two flat triangles) joining 4 cell vertices around a
-## crossing edge. `outward` points from solid toward empty. (tx,ty,tz) is
-## the solid-side corner, used to pick the tissue colour.
-func _emit_quad(verts: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray,
+## Emits one quad (two flat triangles) into the tissue-appropriate bucket,
+## joining 4 cell vertices around a crossing edge. `outward` points from
+## solid toward empty. (tx,ty,tz) is the solid-side corner (used to pick the
+## tissue and to build a world-aligned UV using the two axes closest to the
+## face plane, which keeps texel size roughly constant across the terrain).
+func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVector3Array,
         cell_vert: PackedVector3Array, cell_has: PackedByteArray, cp: int,
         c0: Vector3i, c1: Vector3i, c2: Vector3i, c3: Vector3i, outward: Vector3,
-        tx: int, ty: int, tz: int, chunk_world: Vector3, depth_origin: Vector3) -> void:
+        tx: int, ty: int, tz: int) -> void:
     var i0 := (c0.x + 1) + (c0.y + 1) * cp + (c0.z + 1) * cp * cp
     var i1 := (c1.x + 1) + (c1.y + 1) * cp + (c1.z + 1) * cp * cp
     var i2 := (c2.x + 1) + (c2.y + 1) * cp + (c2.z + 1) * cp * cp
@@ -352,50 +365,54 @@ func _emit_quad(verts: PackedVector3Array, normals: PackedVector3Array, colors: 
     var v2 := cell_vert[i2]
     var v3 := cell_vert[i3]
     var s := config.chunk_size
-    var cell := Vector3i(clampi(tx, 0, s - 1), clampi(ty, 0, s - 1), clampi(tz, 0, s - 1))
-    # tissue of the solid-side cell nearest the corner (look at the 8 cells
-    # around it and take the rarest non-flesh one so nerves show)
-    var tissue := 0
-    for oz in range(-1, 1):
-        for oy in range(-1, 1):
-            for ox in range(-1, 1):
-                var t := get_tissue_at_cell(clampi(tx + ox, 0, s - 1), clampi(ty + oy, 0, s - 1), clampi(tz + oz, 0, s - 1))
-                if t > tissue and t != 3:
-                    tissue = t
-                elif t == 3 and tissue == 0:
-                    tissue = 3
-    var base: Color = TISSUE_COLORS[tissue % TISSUE_COLORS.size()]
-    var mid := (v0 + v1 + v2 + v3) * 0.25
-    var depth := (chunk_world + mid).distance_to(depth_origin)
-    var tone := clampf(depth / maxf(config.depth_tone_distance, 0.01), 0.0, 1.0)
-    if tissue == 0:
-        base = base.lerp(DEEP_TINT, tone * 0.8)
-    var g := chunk_coord * s + cell
-    _tri(verts, normals, colors, v0, v1, v2, outward, base, g, 0)
-    _tri(verts, normals, colors, v0, v2, v3, outward, base, g, 1)
+    var tissue := get_tissue_at_cell(clampi(tx, 0, s - 1), clampi(ty, 0, s - 1), clampi(tz, 0, s - 1))
+    # world-aligned planar UV: pick the two axes with the least outward
+    # component (i.e. the plane the face roughly lies in)
+    var ax := absf(outward.x)
+    var ay := absf(outward.y)
+    var az := absf(outward.z)
+    var world_off := chunk_coord * s * config.cell_size
+    var uv0: Vector2
+    var uv1: Vector2
+    var uv2: Vector2
+    var uv3: Vector2
+    if ax >= ay and ax >= az:
+        uv0 = Vector2((v0 + world_off).z, (v0 + world_off).y)
+        uv1 = Vector2((v1 + world_off).z, (v1 + world_off).y)
+        uv2 = Vector2((v2 + world_off).z, (v2 + world_off).y)
+        uv3 = Vector2((v3 + world_off).z, (v3 + world_off).y)
+    elif ay >= ax and ay >= az:
+        uv0 = Vector2((v0 + world_off).x, (v0 + world_off).z)
+        uv1 = Vector2((v1 + world_off).x, (v1 + world_off).z)
+        uv2 = Vector2((v2 + world_off).x, (v2 + world_off).z)
+        uv3 = Vector2((v3 + world_off).x, (v3 + world_off).z)
+    else:
+        uv0 = Vector2((v0 + world_off).x, (v0 + world_off).y)
+        uv1 = Vector2((v1 + world_off).x, (v1 + world_off).y)
+        uv2 = Vector2((v2 + world_off).x, (v2 + world_off).y)
+        uv3 = Vector2((v3 + world_off).x, (v3 + world_off).y)
+    all_verts.append(v0); all_verts.append(v1); all_verts.append(v2)
+    all_verts.append(v0); all_verts.append(v2); all_verts.append(v3)
+    _tri(verts[tissue], normals[tissue], uvs[tissue], v0, v1, v2, uv0, uv1, uv2, outward)
+    _tri(verts[tissue], normals[tissue], uvs[tissue], v0, v2, v3, uv0, uv2, uv3, outward)
 
-func _tri(verts: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray,
-        a: Vector3, b: Vector3, c: Vector3, outward: Vector3, base: Color, g: Vector3i, k: int) -> void:
+func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array,
+        a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2, outward: Vector3) -> void:
     var n := (b - a).cross(c - a)
     if n.length_squared() < 1e-12:
         return
     if n.dot(outward) > 0.0:
-        var tmp := b
+        var tmp_v := b
         b = c
-        c = tmp
+        c = tmp_v
+        var tmp_uv := uvb
+        uvb = uvc
+        uvc = tmp_uv
         n = -n
     var nn := -n.normalized()
-    var h := FDKLowPoly.hash3(g.x * 2 + k, g.y, g.z)
-    var col := base.darkened(h * 0.22) if h > 0.5 else base.lightened((0.5 - h) * 0.18)
-    verts.append(a)
-    verts.append(b)
-    verts.append(c)
-    normals.append(nn)
-    normals.append(nn)
-    normals.append(nn)
-    colors.append(col)
-    colors.append(col)
-    colors.append(col)
+    verts.append(a); verts.append(b); verts.append(c)
+    normals.append(nn); normals.append(nn); normals.append(nn)
+    uvs.append(uva); uvs.append(uvb); uvs.append(uvc)
 
 func serialize() -> Dictionary:
     return {

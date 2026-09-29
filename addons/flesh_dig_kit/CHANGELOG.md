@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+- Textured PS1 look (docs/tone-and-manner.md), replacing flat vertex-colour
+  low-poly: FDKPs1Settings (one global on/off + tuning), FDKPs1Material
+  (shared nearest-filtered textured material with per-vertex snap-to-grid
+  wobble and the chew-press deformation), FDKPs1ScreenPost (screen-space
+  post shader: pixelation to a low internal resolution, 4x4 Bayer ordered
+  dithering with reduced colour depth, grain). FDKLowPoly.planar_uv_mesh()
+  adds planar UVs to any vertex-colour-only mesh so it can wear a texture.
+  Terrain now emits one mesh surface per tissue id with world-aligned UVs.
+  Textures baked by tools/bake_ps1_textures.py (64/128 px) from this
+  project's own generated source pool under assets/3d/textures, or
+  procedurally with numpy/PIL when no source exists.
 ## 0.2.0
 
 - Terrain meshing rewritten as true surface nets: slanted faceted walls

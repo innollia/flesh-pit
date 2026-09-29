@@ -18,6 +18,15 @@ Copy `addons/flesh_dig_kit/` into your project's `addons/` folder, then
 enable it in Project Settings > Plugins (the plugin itself has no editor
 UI; enabling just registers it as present).
 
+## What is in 0.3
+
+- `common/` FDKPs1Settings (global look toggle), FDKPs1Material (cached
+  textured PS1 materials), FDKPs1ScreenPost (screen post shader),
+  FDKLowPoly.planar_uv_mesh() for texturing vertex-colour meshes.
+- Ship your own textures under `textures/` (or bake with
+  `tools/bake_ps1_textures.py` if using this repo layout) -- 64-256px,
+  nearest filtering, no mipmap blur is the intended look.
+
 ## What is in 0.2
 
 - `terrain/` FDKTerrainField + FDKChunk (surface-nets faceted low-poly
