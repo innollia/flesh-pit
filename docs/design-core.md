@@ -60,9 +60,11 @@ Route control uses two distinct tools:
 Permanent spray is intended to be the default route-maintenance tool. Its built-in cost is that sprayed tissue is removed as edible material instead of being consumed. Barriers are the temporary alternative when the player wants to hold a route without permanently dissolving it.
 
 Physical barriers telegraph failure physically:
-- they bend under load
-- they make cracking / straining sounds
-- their appearance changes in roughly **33% durability steps**
+- the baseline object is an **industrial deployable / tension barrier** that automatically expands across the local tunnel cross-section
+- it should read as practical human equipment forced to work inside living tissue rather than as an organic structure
+- it bends under load
+- it makes cracking / straining sounds
+- its appearance changes in roughly **33% durability steps**
 - implementation therefore needs **4 barrier visual states/assets**, including the intact-to-broken progression
 - when failure finally occurs, accumulated biome stress releases in the established elastic **boing**
 
@@ -79,6 +81,8 @@ Start:
 - bare hands
 - tearing
 - eating
+
+The first-person hands begin **human-like and visually neutral**, with minimal forearm exposure so the player's exact identity remains unresolved. Mutation progression can progressively distort or alter the hands; major bodily changes should therefore be planned as variants of the same first-person presentation rather than replacing an unrelated placeholder rig later.
 
 Tool progression must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
@@ -211,6 +215,8 @@ The canary also has a lightweight secondary response to unusual nearby biome con
 - it may make a noticeably different, odd cry such as **"우에엥?"**
 - it may visibly act frightened
 
+For presentation, the canary uses a **small portable cage / carrier** rather than permanently sitting on the player's shoulder. It does not need to occupy the screen continuously; the carrier can enter view when its physical reaction matters, so chirping and frightened movement remain readable without paying the full cost of a constantly visible companion.
+
 This is qualitative behavior, not a precise biome detector or GPS arrow.
 
 Biome geography is not fully static. As flesh regenerates, biome boundaries drift and reshape continuously during play rather than only between expeditions.
@@ -271,7 +277,7 @@ When the player buys items:
 
 This keeps buying and item delivery physically tied to the restroom fixture rather than a detached shop menu.
 
-**Prototype:** keep the restroom visually and structurally fixed as the clean white safe room.
+**Prototype:** keep the restroom visually and structurally fixed as the clean white safe room. The initial restroom should be produced close to final visual quality rather than as a disposable graybox, but its **walls, floor, ceiling, pipes, toilet, sink, door, and other fixture groups should be modular** so later structural expansion can reuse the same kit.
 
 **Long-term direction:** the restroom itself can gradually become larger or change its internal structure as progression advances, while remaining the clean safe exception rather than being invaded by flesh.
 
@@ -287,9 +293,18 @@ Current working structure:
 - the restroom sits near the center of multiple nested roughly spherical layers
 - crossing outward through shells defines increasing depth regardless of excavation direction
 - **Primary target:** each shell contains multiple biome regions, so different excavation directions can encounter different tissue environments at the same depth
+- **Initial asset-production target:** pre-produce / define **4 biome languages** early enough to test whether regions feel mechanically and visually distinct before the rest of the world is authored
 - **Scope fallback:** if production cost becomes too high, reduce to one dominant biome per shell rather than expanding scope
 - shell boundaries use a **hybrid transition**: tissue composition changes gradually as the player approaches the next shell, followed by a clearer boundary signal / membrane / distinctive transition feature near the actual crossing
 - the transition should preserve an organic continuous-body feeling while still making a new depth band legible
+
+For art production, do not treat a biome as either a full bespoke environment or a mere recolor. The current preferred decomposition is:
+1. a shared deformable / excavatable flesh substrate
+2. tissue-specific material and deformation rules
+3. biome-specific embedded biological structures and surface-pattern assets
+4. reusable human infrastructure residue that can intersect with multiple tissues
+
+This supports the setting's "organism as geography" and "old serviced infrastructure inside biology" direction while keeping the asset count compatible with a small indie scope.
 
 Depth must change play, not only HP/resistance values.
 
