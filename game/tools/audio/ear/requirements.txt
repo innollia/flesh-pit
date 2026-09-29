@@ -1,0 +1,5 @@
+﻿torch==2.4.1
+transformers==4.44.2
+soundfile==0.12.1
+numpy==1.26.4
+librosa==0.10.2.post1
