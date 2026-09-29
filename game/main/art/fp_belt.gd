@@ -3,7 +3,7 @@ extends Node3D
 ## What the player sees looking down: the waist. Leather belt with a
 ## buckle, up to 3 spray cans in clip holsters on the right hip (cheap can =
 ## white/yellow, expensive = black/red), and the canary riding in the left
-## front trouser POCKET (design-core 4: pocket, no cage), head peeking out.
+## front trouser POCKET (docs/spec/07-danger-navigation.md: pocket, no cage), head peeking out.
 ## Origin = centre of the waist at belt height; the player faces -Z.
 ## Public: set_spray_count(cheap, expensive) (total capped at 3),
 ## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool).

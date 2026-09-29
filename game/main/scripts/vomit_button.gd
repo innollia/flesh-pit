@@ -2,7 +2,7 @@ class_name FPVomitButton
 extends Control
 
 ## A round, wordless on-screen button that appears once the player has
-## overfilled past a threshold (design-core 1). Drawn in code: a sick-green
+## overfilled past a threshold (docs/spec/01-body-eating.md). Drawn in code: a sick-green
 ## disc with a mouth and a drip. Click it (or press fdk_vomit) to vomit.
 
 signal pressed

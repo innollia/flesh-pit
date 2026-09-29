@@ -2,7 +2,7 @@ class_name FDKBarrierField
 extends Node3D
 
 ## Owns the player's currently-placed FDKBarrier instances (carry cap 3,
-## design-core 2) and feeds them regeneration pressure from an FDKTerrainField
+## docs/spec/06-tools.md) and feeds them regeneration pressure from an FDKTerrainField
 ## each tick, so barriers accumulate stress from the actual biome motion they
 ## are holding back instead of a scripted timer.
 ##
@@ -72,7 +72,7 @@ func update(delta: float) -> void:
 ## tissue it was holding resumes regenerating on the terrain's own next
 ## regenerate_all pass -- no separate catch-up push is needed, since the
 ## deficit is exactly what accumulated while the barrier stood. The "boing"
-## itself (design-core 2) is a presentation event: `release_ratio` (how
+## itself (docs/spec/06-tools.md) is a presentation event: `release_ratio` (how
 ## loaded the barrier was at the instant it broke, 0..1) tells the frontend
 ## how big a pop to play. `barrier_broke` re-emits this at the field level so
 ## game code has one place to hook the FX regardless of which barrier broke.

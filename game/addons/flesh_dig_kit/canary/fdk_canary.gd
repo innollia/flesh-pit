@@ -1,7 +1,7 @@
 class_name FDKCanary
 extends Node
 
-## Return-route + anomaly warning companion (design-core 7). Pure
+## Return-route + anomaly warning companion (docs/spec/07-danger-navigation.md). Pure
 ## logic/signals -- no cage mesh, no chirp audio, no visuals (frontend
 ## scope; see STATUS.md handoff pattern). Presentation note for the
 ## frontend: the design calls for a small portable cage/carrier that can
@@ -16,7 +16,7 @@ extends Node
 ##  2. Anomaly reaction: an odd cry / frightened reaction near unusual
 ##     nearby biome conditions (qualitative, not a precise detector).
 ##
-## No exact direction is ever given for either signal (design-core 7).
+## No exact direction is ever given for either signal (docs/spec/07-danger-navigation.md).
 
 signal route_warning(urgency: float) ## 0..1, rising as the return route narrows
 signal anomaly_reaction(frightened: bool) ## qualitative "something's off" cue
@@ -61,7 +61,7 @@ func _sample_route_block(a: Vector3, b: Vector3) -> float:
 
 ## Heuristic-only: counts distinct tissue ids in a small ring around the
 ## player. A biome edge/anomaly tends to mix tissues that are otherwise
-## uniform locally. This is deliberately qualitative (design-core 7: "not a
+## uniform locally. This is deliberately qualitative (docs/spec/07-danger-navigation.md: "not a
 ## precise biome detector"), tuned loosely rather than exactly.
 func _sample_anomaly(p: Vector3) -> bool:
 	var seen: Dictionary = {}

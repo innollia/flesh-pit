@@ -1,7 +1,7 @@
 class_name FDKHazardCheck
 extends RefCounted
 
-## Danger/death checks (design-core 8), pure logic against a terrain field.
+## Danger/death checks (docs/spec/07-danger-navigation.md), pure logic against a terrain field.
 ## Two death causes:
 ##  - crush death: the player''s own position becomes solid because
 ##    regenerating flesh closed the passage around them (checked every

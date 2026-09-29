@@ -1,7 +1,7 @@
 class_name FPEnding
 extends CanvasLayer
 
-## Ending signal (design-core 10): breaking through the outermost shell.
+## Ending signal (docs/spec/00-overview.md): breaking through the outermost shell.
 ## A white flash, then the player lands on an empty city street in bright
 ## daylight while the building-sized meat sphere rolls away down it
 ## (main/art fp_ending_street), then a credits card. `voice_layers` tells

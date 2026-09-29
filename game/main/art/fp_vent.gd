@@ -74,7 +74,7 @@ func _ready() -> void:
         _eyes.append(e)
         _lids.append(e)
     # offered items: the being never shows more than its eyes; it pushes a
-    # few items out of the dark onto the duct lip (design-core 5: "pushes
+    # few items out of the dark onto the duct lip (docs/spec/03-restroom.md: "pushes
     # out a few items ... The player picks one up by hand; the rest are
     # pulled back")
     _offer_root = K.pivot(self, "Offers", Vector3(0, 0.02, 0))

@@ -1,12 +1,12 @@
 class_name FDKDepthDanger
 extends RefCounted
 
-## Per-shell danger scaling (design-core 13: "left for tuning by playtest").
+## Per-shell danger scaling (docs/spec/07-danger-navigation.md: "left for tuning by playtest").
 ## Pure function of depth -> multipliers; callers apply these to regen
 ## rate, nerve disturb chance/strength, and hazard damage.
 ##
 ## Baseline: core (shell 0) is calm; each further shell scales danger up
-## by DANGER_STEP, matching design-core 7 ("danger rises outward").
+## by DANGER_STEP, matching docs/spec/07-danger-navigation.md ("danger rises outward").
 
 const DANGER_STEP := 0.35 ## +35% per shell past the first
 

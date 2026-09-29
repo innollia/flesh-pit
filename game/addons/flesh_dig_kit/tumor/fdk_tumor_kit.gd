@@ -1,7 +1,7 @@
 class_name FDKTumorKit
 extends RefCounted
 
-## Tumor tradeoff (design-core 6): eat it for tumor-only mutation points,
+## Tumor tradeoff (docs/spec/05-mutations.md): eat it for tumor-only mutation points,
 ## or keep it intact in the bag and throw it in the toilet for a large
 ## tooth payout + a codex entry. Pure data/logic; no visuals, no UI.
 ##
@@ -23,7 +23,7 @@ func can_carry_more() -> bool:
 	return _carried.size() < bag_capacity
 
 ## Eating a tumor: destroys it, grants tumor-only points, a large random
-## bodily change is the game's job to roll and apply (design-core 6: "every
+## bodily change is the game's job to roll and apply (docs/spec/05-mutations.md: "every
 ## tumor mutation is a large, obvious change ... added at random").
 func eat(kind: String, points: int) -> void:
 	tumor_points += points

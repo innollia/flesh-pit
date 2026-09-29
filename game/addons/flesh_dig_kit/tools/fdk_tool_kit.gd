@@ -1,7 +1,7 @@
 class_name FDKToolKit
 extends RefCounted
 
-## Minimal tool ownership/equip data structure (design-core 4, "no inventory
+## Minimal tool ownership/equip data structure (docs/spec/06-tools.md, "no inventory
 ## UI"; this is pure data, no visuals). One-handed vs two-handed rule:
 ## while carrying a flesh pile (game-side carry_mode / carried_flesh > 0),
 ## only one-handed tools may be equipped -- callers should check

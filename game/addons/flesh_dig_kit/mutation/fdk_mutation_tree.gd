@@ -1,7 +1,7 @@
 class_name FDKMutationTree
 extends RefCounted
 
-## Mutation progression data structure (design-core 4): a point-based parent
+## Mutation progression data structure (docs/spec/05-mutations.md): a point-based parent
 ## -> child upgrade tree with two point layers -- one shared "common" trunk
 ## and one pool per biome. Nodes can be purchased anywhere (no restroom/
 ## toilet gate); a node requires its parent(s) already purchased and enough
@@ -24,7 +24,7 @@ class FDKMutationNode:
 	## reconverged combination node, use `alt_pools` instead/in addition.
 	var pool: String = FDKMutationTree.COMMON
 	## For a combination node: any ONE of these pools may pay the cost
-	## (design-core 4: "paid with either one of the contributing biome point
+	## (docs/spec/05-mutations.md: "paid with either one of the contributing biome point
 	## pools rather than requiring both currencies simultaneously").
 	var alt_pools: Array[String] = []
 	var cost: int = 0
@@ -53,7 +53,7 @@ func add_points(pool: String, amount: int) -> void:
 	_points[pool] = int(_points.get(pool, 0)) + amount
 
 ## Every flesh-eating reward grants both a common component and the
-## relevant biome-specific component at once (design-core 4). `common_amount`
+## relevant biome-specific component at once (docs/spec/05-mutations.md). `common_amount`
 ## and `biome_amount` are computed by the caller from depth x flesh eaten.
 func grant_reward(biome_pool: String, common_amount: int, biome_amount: int) -> void:
 	add_points(COMMON, common_amount)

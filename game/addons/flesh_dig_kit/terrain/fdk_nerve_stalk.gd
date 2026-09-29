@@ -2,7 +2,7 @@ class_name FDKNerveStalk
 extends Node3D
 
 ## A yellow nerve that sticks out of a flesh wall and wriggles like a garden
-## eel (design-core 5: nerves are conspicuous, yellow, protruding, moving).
+## eel (docs/spec/02-world-tissue.md: nerves are conspicuous, yellow, protruding, moving).
 ## Low-poly: a chain of tapered octagonal segments plus a knobbed tip, each
 ## segment on its own joint so the whole stalk sways in a travelling wave.
 ## Place it on a wall with `normal` = wall outward direction. If `terrain` is
@@ -87,7 +87,7 @@ signal disturbed(world_pos: Vector3)
 
 var _disturb_extra: float = 0.0
 
-## Design-core 5: touching/damaging a nerve can cause local tissue
+## docs/spec/02-world-tissue.md: touching/damaging a nerve can cause local tissue
 ## contraction/shifting, and the reaction must read as caused by the
 ## player's action. Call this when the chewer targets this stalk (or a cell
 ## adjacent to its base) instead of tearing it cleanly -- it kicks the

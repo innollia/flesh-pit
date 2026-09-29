@@ -1,7 +1,7 @@
 class_name FDKBarrier
 extends Node3D
 
-## Consumable route-control item (design-core 2): a deployable industrial
+## Consumable route-control item (docs/spec/06-tools.md): a deployable industrial
 ## tension barrier that automatically expands across the local tunnel
 ## cross-section and holds back moving/regenerating tissue. Surrounding
 ## biome tissue keeps moving, so stress accumulates against the barrier

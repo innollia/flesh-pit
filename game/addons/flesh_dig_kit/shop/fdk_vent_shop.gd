@@ -1,8 +1,8 @@
 class_name FDKVentShop
 extends RefCounted
 
-## Vent shop catalog (design-core 5): pure data + purchase logic, no UI.
-## The player spends teeth (money); prices are the design-core 5 price
+## Vent shop catalog (docs/spec/04-economy.md): pure data + purchase logic, no UI.
+## The player spends teeth (money); prices are the docs/spec/04-economy.md price
 ## guide scaled from "one expedition''s earnings" into absolute teeth.
 ## Stock unlocks with depth and other conditions (`unlock_depth`, checked
 ## by the caller against FDKTerrainField.depth_at).
