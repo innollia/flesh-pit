@@ -30,6 +30,8 @@ The player can keep eating past normal capacity, but the body visibly struggles:
 
 The purpose is to let the player choose to push farther at worsening efficiency rather than imposing an abrupt capacity wall.
 
+After the player exceeds a certain overfill threshold, a **vomit button** appears on screen. Vomiting is therefore available before reaching the restroom once the body is sufficiently overfilled; the exact consequence of vomiting outside the restroom is still unresolved.
+
 ## 2. Regenerating flesh is a core pressure
 
 Excavated flesh **grows back**.
@@ -62,7 +64,7 @@ Start:
 Tool progression must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
 Established tool directions:
-- **portable blender:** torn flesh can be collected and blended in batches, then consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently
+- **portable blender:** torn flesh can be collected visibly in the player's hands, then blended in batches and consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently
 - **tissue-specific tools:** some tools can improve handling of particular tissue types
 - **route / return tools:** tools can support navigation, route maintenance, or return travel
 - **regeneration-control tools:** some tools can slow local flesh regeneration
@@ -83,7 +85,9 @@ Accepted feedback channels:
 
 Major mutations should be perceptible immediately.
 
-Mutation progression includes **player choice** rather than being purely automatic. The exact choice cadence, number of options, and presentation remain unresolved.
+Mutation progression includes **player choice** rather than being purely automatic.
+
+Mutation choice is presented when the player returns to the restroom and vomits into the toilet. The mutation UI appears beside the toilet rather than as a detached menu. The exact number and content of choices remain unresolved.
 
 ## 5. Tissue-specific rules
 
@@ -122,7 +126,8 @@ On death:
 - dropped belongings remain at the death location
 - the player can return and recover them
 - failing to recover them should not create a severe long-term penalty
-- navigation only preserves the **last known location** of the drop; if living tissue shifts afterward, the marker does not magically update to the item's new exact position
+- navigation only preserves the **last known location** of the drop
+- dropped belongings can be physically displaced by moving / regenerating tissue after death, so the marker does not magically update to the item's new exact position
 
 Death should create a small recovery objective, not wipe progression.
 
@@ -138,7 +143,12 @@ Biome-finding should use a **mixed information model**:
 - at close range, the tissue itself gives stronger readable precursors such as changes in color, texture, motion, sound, elasticity, embedded structures, or other biome-specific signals
 - the final route choice should still come from reading the flesh rather than following a perfect sensor
 
-The exact canary behavior is still open, but if it contributes to biome finding it should provide ambiguous long-range foreshadowing rather than exact destination tracking.
+The canary's primary established role is **return-route danger warning**:
+- as regeneration and tissue drift make the space behind the player narrower or harder to traverse, the canary begins chirping
+- the warning is about the condition of the route back, not an exact pathfinding arrow
+- it should help the player notice that continued excavation is consuming their safe return margin
+
+Whether the canary also contributes to biome finding remains unresolved.
 
 Biome geography is not fully static. As flesh regenerates, biome boundaries drift and reshape continuously during play rather than only between expeditions.
 
