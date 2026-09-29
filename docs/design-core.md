@@ -146,6 +146,12 @@ Going deeper is the core-loop objective and does not require a conventional ques
 
 Because excavation can proceed in multiple directions from the restroom doorway, **deeper does not automatically mean downward on the world Y-axis**. The exact rule that defines progression depth is unresolved.
 
+Current promising structure — **not yet locked as canon**:
+- the restroom sits near the center of multiple nested roughly spherical layers
+- crossing outward through shells can define increasing depth regardless of excavation direction
+- a shell may contain one dominant biome, or several biomes mixed across different regions of the same shell
+- this allows omnidirectional digging while still giving the world ordered progression bands
+
 Depth must change play, not only HP/resistance values.
 
 **TODO:** use Mystery Flesh Pit and adjacent references only as brainstorming material for distinct depth/anatomy zones in the original world.
