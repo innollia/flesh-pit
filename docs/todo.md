@@ -3,7 +3,8 @@
 ## High priority design
 
 - [ ] Brainstorm depth-by-depth gameplay differences using Mystery Flesh Pit and other giant-organism references only as inspiration; keep the world original.
-- [ ] Define what counts as **deeper** in an omnidirectional excavation space: distance from the restroom, authored tissue/anatomy boundaries, another progression rule, or a combination.
+- [ ] Decide whether **deeper** is defined by nested roughly spherical layers around the restroom; current candidate is concentric shells that work in every excavation direction.
+- [ ] Decide biome topology inside each shell: one dominant biome per shell, multiple biome regions per shell, or a hybrid where each shell has a dominant biome plus local intrusions/patches.
 - [ ] Design tool progression without losing the core identity of **eating** the terrain.
 - [ ] Brainstorm progression content/events for the clean white restroom.
 - [ ] Define the canary's exact gameplay function.
