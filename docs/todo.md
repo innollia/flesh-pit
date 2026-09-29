@@ -10,13 +10,16 @@
 - [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
 - [ ] Tune how much continuous tissue / biome drift can misalign old tunnels and the restroom approach without making navigation feel arbitrary.
 - [ ] Decide whether indefinitely drifting death drops with only a stale last-known-location marker are acceptable in playtesting, or whether recovery becomes too punitive.
-- [ ] Tune physical barriers: placement rules, durability, how much biome motion they can hold, how stress accumulates, and how the final elastic "boing" release reads.
-- [ ] Tune permanent biosecurity spray: coverage, application rate, resource/carry limits if any, and how sacrificing edible flesh balances the benefit of permanently non-regenerating routes.
+- [ ] Tune physical barriers: placement rules, total durability, how much biome motion they can hold, stress accumulation, the three 33%-step damage transitions plus broken state, and how the final elastic "boing" release reads.
+- [ ] Produce / specify 4 barrier visual states/assets for the 33%-step durability presentation.
+- [ ] Tune permanent biosecurity spray: can price, application rate, per-can coverage, performance differences between surface treatment and deeper-volume dissolution, and how sacrificing edible flesh balances permanent non-regenerating routes. Carry cap is 3 cans.
 - [ ] Design tool progression across the already accepted roles: portable blender, tissue-specific tools, route/return tools, physical barriers, and permanent biosecurity spray.
 - [ ] Define portable blender handling: how much loose flesh can be visibly held in the hands before blending, how batching works, how much stomach efficiency it grants, and which tools count as one-handed versus two-handed.
-- [ ] Define progression-point sources, point gain pacing, upgrade costs, and the branch structure of the toilet-side organization-chart / family-tree-like upgrade UI.
-- [ ] Define the vomiting settlement presentation precisely: how the dark-gray existing total and green newly gained amount count upward during the sequence.
-- [ ] Tune the lethal outside-restroom vomiting sequence: trigger timing, hardening speed, visual readability, death timing, and how strongly the UI/animation hints at danger without explicitly stating the outcome.
+- [ ] Define exact mutation-point gain formula around the established depth × flesh-amount basis, including how biome-specific point progression is represented.
+- [ ] Define parent-child upgrade costs and biome branch contents for the toilet-side organization-chart / family-tree-like mutation UI.
+- [ ] Define money gain formula, prices, sinks, and how money is presented alongside mutation points during toilet settlement.
+- [ ] Define the vomiting settlement presentation precisely: how dark-gray existing totals and green newly gained amounts count upward for both mutation points and money.
+- [ ] Decide what happens to unsettled mutation-point / money value when the player vomits outside the restroom; outside vomiting itself has no special lethal penalty.
 - [ ] Brainstorm long-term restroom expansion / structural changes while preserving the clean safe-room identity; keep the prototype restroom fixed.
 - [ ] Decide after the prototype whether cancer/tumor codex completion ever grants a practical benefit; prototype behavior is collection-only.
 - [ ] Tune normal stomach capacity, overfill slowdown, visible flesh buildup, and overflow-bar growth against flesh-regeneration speed.
@@ -26,7 +29,7 @@
 - [ ] How fast should flesh regrow before the first return so the player notices it naturally?
 - [ ] How narrow can a returning tunnel become before it feels unfair?
 - [ ] How do compass and canary prevent getting lost without trivializing navigation?
-- [ ] At what overfill level does eating become visibly and mechanically inefficient enough to push the player home without hard-locking eating?
+- [ ] At what overfill level does eating become visibly and mechanically inefficient enough to push the player toward either returning or emergency vomiting without hard-locking eating?
 - [ ] How should a shifted death-drop position remain recoverable when only its old position is known?
 - [ ] How much chewing time feels tactile rather than sluggish?
 - [ ] Which tissue-elasticity signals are cheapest and clearest?
