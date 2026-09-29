@@ -125,6 +125,25 @@ def ceramic(size: int) -> np.ndarray:
     return np.clip(col, 0, 255).astype(np.uint8)
 
 
+
+def painted(size: int, level: float = 238.0) -> np.ndarray:
+    """Clean satin paint (door): flat off-white, faint vertical gradient only."""
+    y = np.linspace(0.0, 1.0, size, dtype=np.float32)[:, None]
+    v = level + 4.0 - 8.0 * y
+    col = np.repeat(np.repeat(v, size, axis=1)[..., None], 3, axis=2)
+    return np.clip(col, 0, 255).astype(np.uint8)
+
+
+def chrome(size: int) -> np.ndarray:
+    """Clean brushed chrome: light grey with smooth horizontal bands (a fake
+    reflection), no spots or noise."""
+    x = np.linspace(0.0, 1.0, size, dtype=np.float32)[None, :]
+    band = 196.0 + 34.0 * np.cos(x * np.pi * 2.0) ** 2
+    col = np.repeat(np.repeat(band, size, axis=0)[..., None], 3, axis=2)
+    col[..., 2] += 6.0
+    return np.clip(col, 0, 255).astype(np.uint8)
+
+
 def build(size: int, suffix: str) -> None:
     dith_levels = 40
 
@@ -158,6 +177,8 @@ def build(size: int, suffix: str) -> None:
     save(f"tex_fixture_{suffix}.png", ordered_dither(fixture, 48))
 
     save(f"tex_ceramic_{suffix}.png", ceramic(size))
+    save(f"tex_door_paint_{suffix}.png", painted(size))
+    save(f"tex_chrome_{suffix}.png", chrome(size))
 
     skin = procedural_skin(size, 42, (224, 183, 156))
     save(f"tex_skin_{suffix}.png", ordered_dither(skin, 40))

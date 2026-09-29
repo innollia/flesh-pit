@@ -24,14 +24,15 @@ func _ready() -> void:
 
 func build() -> void:
     var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5, 1.0, false)
-    var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_fixture_128.png", 1.5, false, 0.35, 0.35, 1.0, false)
+    var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_chrome_128.png", 1.5, false, 0.55, 0.2, 1.0, false)
     var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.25, 0.45, 1.0, false)
     _build_tiles(tile_mat, floor_mat)
     # 형님 결정: 변기·세면대는 얼룩 없는 순백 도자기(약한 광택).
     var ceramic_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, false, 0.45, 0.25, 1.0, false)
     _build_toilet(ceramic_mat)
     _build_sink(ceramic_mat)
-    _build_door(fixture_mat)
+    var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, false, 0.2, 0.5, 1.0, false)
+    _build_door(door_mat, fixture_mat)
     _build_korean(fixture_mat)
     _build_light()
     _build_collision()
@@ -339,7 +340,7 @@ func _build_sink(mat: Material) -> void:
     FDKLowPoly.add_quad(st, Vector3(x + 0.032, 1.19, -0.68), Vector3(x + 0.032, 1.19, -0.02), Vector3(x + 0.032, 1.81, -0.02), Vector3(x + 0.032, 1.81, -0.68), Vector3.RIGHT, Color(0.72, 0.8, 0.86))
     _add(st, mat, "Sink")
 
-func _build_door(mat: Material) -> void:
+func _build_door(mat: Material, handle_mat: Material) -> void:
     door_pivot = Node3D.new()
     door_pivot.name = "DoorPivot"
     door_pivot.position = Vector3(-DOOR_HALF_W, 0, HALF.z + 0.02)
@@ -351,10 +352,15 @@ func _build_door(mat: Material) -> void:
     _box(st, Vector3(0.005, 0.005, -0.02), Vector3(w, DOOR_H - 0.01, 0.02), white, Color(0.86, 0.86, 0.85))
     # two recessed panels
     for pr in [[0.25, 0.95], [1.1, 1.85]]:
-        FDKLowPoly.add_quad(st, Vector3(0.12, pr[0], -0.021), Vector3(w - 0.12, pr[0], -0.021), Vector3(w - 0.12, pr[1], -0.021), Vector3(0.12, pr[1], -0.021), Vector3.FORWARD, Color(0.9, 0.9, 0.89))
-    # handle
-    _box(st, Vector3(w - 0.14, 0.98, -0.07), Vector3(w - 0.05, 1.01, -0.02), Color(0.75, 0.77, 0.8), Color(0.6, 0.62, 0.66))
+        # panels sit 4 mm proud of the slab (was 1 mm: z-fighting streaks)
+        FDKLowPoly.add_quad(st, Vector3(0.12, pr[0], -0.024), Vector3(w - 0.12, pr[0], -0.024), Vector3(w - 0.12, pr[1], -0.024), Vector3(0.12, pr[1], -0.024), Vector3.FORWARD, Color(0.93, 0.93, 0.92))
     _add(st, mat, "Door", door_pivot)
+    # chrome handle as its own mesh so it gets the chrome material
+    var hs := SurfaceTool.new()
+    hs.begin(Mesh.PRIMITIVE_TRIANGLES)
+    _box(hs, Vector3(w - 0.14, 0.98, -0.07), Vector3(w - 0.05, 1.01, -0.02), Color(1, 1, 1), Color(0.9, 0.9, 0.92))
+    _box(hs, Vector3(w - 0.14, 0.98, 0.02), Vector3(w - 0.05, 1.01, 0.07), Color(1, 1, 1), Color(0.9, 0.9, 0.92))
+    _add(hs, handle_mat, "Handle", door_pivot)
     var body := StaticBody3D.new()
     body.name = "DoorBody"
     var cs := CollisionShape3D.new()
