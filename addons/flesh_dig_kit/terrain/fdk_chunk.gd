@@ -160,6 +160,15 @@ func is_dirty() -> bool:
 
 ## Rebuilds the render mesh and collision shape from the current density
 ## field. Returns elapsed time in milliseconds and also emits `remeshed`.
+##
+## Performance note: corner density is read into a padded local bit array
+## exactly once per remesh (corner_solid, size (s+2)^3), and every later
+## lookup (cell-solid test, face-neighbor test) is a direct PackedByteArray
+## index into it -- no get_density_at_corner() calls, no Callables, in the
+## hot per-cell/per-face loops. The first version called get_density_at_corner
+## (a bounds-checked method call) up to 48 times per solid cell and measured
+## ~18ms/remesh at chunk_size=16, over the 8ms budget; this version is the
+## fix. Re-measure with tests/measure_remesh.gd.
 func remesh() -> float:
 	var start_usec := Time.get_ticks_usec()
 	var st := SurfaceTool.new()
@@ -168,22 +177,45 @@ func remesh() -> float:
 	var s := config.chunk_size
 	var cs := config.cell_size
 	var iso := config.iso_level
+	var n := s + 1 # corners per axis
+
+	# corner_solid[x,y,z] for x,y,z in [0, n) : whether that corner's density
+	# is >= iso. Direct 1:1 copy of _density thresholded, same indexing as
+	# _corner_index so no coordinate remapping is needed here.
+	var corner_solid := PackedByteArray()
+	corner_solid.resize(n * n * n)
+	for i in range(_density.size()):
+		corner_solid[i] = 1 if _density[i] >= iso else 0
+
+	# cell_solid[x,y,z] for x,y,z in [-1, s] mapped into a padded (s+2)^3
+	# array: true if any of the cell's 8 corners is solid. Cells outside
+	# [0, s) are always false (a neighbor chunk owns its own boundary face).
+	var pad := s + 2
+	var cell_solid := PackedByteArray()
+	cell_solid.resize(pad * pad * pad)
+	for z in range(s):
+		for y in range(s):
+			for x in range(s):
+				var c000 := corner_solid[x + y * n + z * n * n]
+				var c100 := corner_solid[(x + 1) + y * n + z * n * n]
+				var c010 := corner_solid[x + (y + 1) * n + z * n * n]
+				var c001 := corner_solid[x + y * n + (z + 1) * n * n]
+				var c110 := corner_solid[(x + 1) + (y + 1) * n + z * n * n]
+				var c101 := corner_solid[(x + 1) + y * n + (z + 1) * n * n]
+				var c011 := corner_solid[x + (y + 1) * n + (z + 1) * n * n]
+				var c111 := corner_solid[(x + 1) + (y + 1) * n + (z + 1) * n * n]
+				var is_solid := (c000 | c100 | c010 | c001 | c110 | c101 | c011 | c111) != 0
+				var pidx := (x + 1) + (y + 1) * pad + (z + 1) * pad * pad
+				cell_solid[pidx] = 1 if is_solid else 0
 
 	for z in range(s):
 		for y in range(s):
 			for x in range(s):
-				var center_solid: bool = get_density_at_corner(x, y, z) >= iso \
-						or get_density_at_corner(x + 1, y, z) >= iso \
-						or get_density_at_corner(x, y + 1, z) >= iso \
-						or get_density_at_corner(x, y, z + 1) >= iso \
-						or get_density_at_corner(x + 1, y + 1, z) >= iso \
-						or get_density_at_corner(x + 1, y, z + 1) >= iso \
-						or get_density_at_corner(x, y + 1, z + 1) >= iso \
-						or get_density_at_corner(x + 1, y + 1, z + 1) >= iso
-				if not center_solid:
+				var pidx := (x + 1) + (y + 1) * pad + (z + 1) * pad * pad
+				if cell_solid[pidx] == 0:
 					continue
 				var color: Color = TISSUE_COLORS[get_tissue_at_cell(x, y, z) % TISSUE_COLORS.size()]
-				_emit_cell_faces(st, x, y, z, cs, iso, color)
+				_emit_cell_faces_fast(st, x, y, z, cs, color, cell_solid, pad)
 
 	st.generate_normals()
 	var mesh := st.commit()
@@ -204,50 +236,40 @@ func remesh() -> float:
 ## neighbor cell (a "surface nets"-style boundary face). Each face gets its
 ## own 4 vertices (no sharing) so generate_normals() produces hard, faceted
 ## low-poly shading rather than smooth interpolation.
-func _emit_cell_faces(st: SurfaceTool, x: int, y: int, z: int, cs: float, iso: float, color: Color) -> void:
+func _emit_cell_faces_fast(st: SurfaceTool, x: int, y: int, z: int, cs: float, color: Color, cell_solid: PackedByteArray, pad: int) -> void:
 	var base := Vector3(x, y, z) * cs
 
 	var neighbors := [
-		[Vector3i(1, 0, 0), Vector3(cs, 0, 0), [Vector3(cs, 0, 0), Vector3(cs, cs, 0), Vector3(cs, cs, cs), Vector3(cs, 0, cs)]],
-		[Vector3i(-1, 0, 0), Vector3(0, 0, 0), [Vector3(0, 0, cs), Vector3(0, cs, cs), Vector3(0, cs, 0), Vector3(0, 0, 0)]],
-		[Vector3i(0, 1, 0), Vector3(0, cs, 0), [Vector3(0, cs, 0), Vector3(0, cs, cs), Vector3(cs, cs, cs), Vector3(cs, cs, 0)]],
-		[Vector3i(0, -1, 0), Vector3(0, 0, 0), [Vector3(cs, 0, 0), Vector3(cs, 0, cs), Vector3(0, 0, cs), Vector3(0, 0, 0)]],
-		[Vector3i(0, 0, 1), Vector3(0, 0, cs), [Vector3(cs, 0, cs), Vector3(cs, cs, cs), Vector3(0, cs, cs), Vector3(0, 0, cs)]],
-		[Vector3i(0, 0, -1), Vector3(0, 0, 0), [Vector3(0, 0, 0), Vector3(0, cs, 0), Vector3(cs, cs, 0), Vector3(cs, 0, 0)]],
+		[Vector3i(1, 0, 0), [Vector3(cs, 0, 0), Vector3(cs, cs, 0), Vector3(cs, cs, cs), Vector3(cs, 0, cs)]],
+		[Vector3i(-1, 0, 0), [Vector3(0, 0, cs), Vector3(0, cs, cs), Vector3(0, cs, 0), Vector3(0, 0, 0)]],
+		[Vector3i(0, 1, 0), [Vector3(0, cs, 0), Vector3(0, cs, cs), Vector3(cs, cs, cs), Vector3(cs, cs, 0)]],
+		[Vector3i(0, -1, 0), [Vector3(cs, 0, 0), Vector3(cs, 0, cs), Vector3(0, 0, cs), Vector3(0, 0, 0)]],
+		[Vector3i(0, 0, 1), [Vector3(cs, 0, cs), Vector3(cs, cs, cs), Vector3(0, cs, cs), Vector3(0, 0, cs)]],
+		[Vector3i(0, 0, -1), [Vector3(0, 0, 0), Vector3(0, cs, 0), Vector3(cs, cs, 0), Vector3(cs, 0, 0)]],
 	]
 
 	for entry in neighbors:
 		var offset: Vector3i = entry[0]
-		var quad: Array = entry[2]
+		var quad: Array = entry[1]
 		var nx := x + offset.x
 		var ny := y + offset.y
 		var nz := z + offset.z
-		if _cell_solid_at(nx, ny, nz, iso):
+		var pidx := (nx + 1) + (ny + 1) * pad + (nz + 1) * pad * pad
+		if pidx < 0 or pidx >= cell_solid.size():
+			continue # out-of-range neighbor (shouldn't happen with the +1 pad, kept as a safety net)
+		if cell_solid[pidx] != 0:
 			continue
 		st.set_color(color)
-		var v0 := base + quad[0]
-		var v1 := base + quad[1]
-		var v2 := base + quad[2]
-		var v3 := base + quad[3]
+		var v0: Vector3 = base + (quad[0] as Vector3)
+		var v1: Vector3 = base + (quad[1] as Vector3)
+		var v2: Vector3 = base + (quad[2] as Vector3)
+		var v3: Vector3 = base + (quad[3] as Vector3)
 		st.add_vertex(v0)
 		st.add_vertex(v1)
 		st.add_vertex(v2)
 		st.add_vertex(v0)
 		st.add_vertex(v2)
 		st.add_vertex(v3)
-
-func _cell_solid_at(x: int, y: int, z: int, iso: float) -> bool:
-	var s := config.chunk_size
-	if x < 0 or y < 0 or z < 0 or x >= s or y >= s or z >= s:
-		return false # treat outside-chunk as empty; neighbor chunk owns its own boundary face
-	return get_density_at_corner(x, y, z) >= iso \
-			or get_density_at_corner(x + 1, y, z) >= iso \
-			or get_density_at_corner(x, y + 1, z) >= iso \
-			or get_density_at_corner(x, y, z + 1) >= iso \
-			or get_density_at_corner(x + 1, y + 1, z) >= iso \
-			or get_density_at_corner(x + 1, y, z + 1) >= iso \
-			or get_density_at_corner(x, y + 1, z + 1) >= iso \
-			or get_density_at_corner(x + 1, y + 1, z + 1) >= iso
 
 ## For save/load: exports the raw density and tissue arrays.
 func serialize() -> Dictionary:
