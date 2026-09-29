@@ -55,7 +55,7 @@ The first version should make the phenomenon obvious but recoverable rather than
 Route control uses two distinct tools:
 
 - **physical barriers:** consumable route-control items that temporarily hold back moving / regenerating tissue. The player can carry up to **3 barriers** at once. When placed, a barrier automatically expands to block the local **tunnel cross-section** rather than requiring manual width placement. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier eventually breaks and is lost; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
-- **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent. Spray is purchased by the can, and the player can carry up to **3 cans** at once. Depending on spray performance, treatment can range from a thinner surface-level application to dissolving a deeper volume of tissue.
+- **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent. Spray is purchased by the can, and the player can carry up to **3 cans** at once. Spray performance is sold as distinct price tiers: a **cheaper can** mainly treats / dissolves the surface layer, while a **more expensive can** reaches deeper and clears a thicker volume of tissue.
 
 Permanent spray is intended to be the default route-maintenance tool. Its built-in cost is that sprayed tissue is removed as edible material instead of being consumed. Barriers are the temporary alternative when the player wants to hold a route without permanently dissolving it.
 
@@ -125,9 +125,17 @@ Tumors have a deliberate split use:
 - **eat the tumor:** it contributes mutation progression / mutation points like biological material
 - **collect the tumor as an item instead of eating it:** it can be brought back and put into the toilet for a **large money payout**
 
-An intact collected tumor initially has to be **carried in one hand**, occupying that hand during the return trip. A **bag sold through the shop** later provides a way to carry collected tumors without permanently dedicating a hand to each one.
+An intact collected tumor initially has to be **carried in one hand**, occupying that hand during the return trip.
 
-This makes the tumor a choice between bodily progression and high-value cash, with an additional early-game carrying cost for choosing cash.
+A **wearable tumor bag sold through the shop** later removes that hand penalty:
+- the first bag carries **1 intact tumor**
+- bag capacity can be **upgraded later**
+- because the bag is worn rather than held, both hands remain free while using it
+- intact tumors are still treated as physical collected objects rather than abstract currency
+
+To cash in a collected tumor, the player takes it out and **physically throws it into the toilet** rather than converting it through a menu.
+
+This makes the tumor a choice between bodily progression and high-value cash, with an early-game carrying cost that later becomes a progression target.
 
 During the toilet sequence:
 - the toilet fills most of the screen
@@ -249,6 +257,11 @@ The restroom already serves as the game's emotional contrast space.
 While the player is vomiting into the toilet, the **shop appears on the right side** of the toilet-focused UI.
 
 Shop inventory uses **mixed unlock conditions**: depth progression unlocks some goods, while other goods can require additional non-depth conditions.
+
+The same toilet shop / cistern delivery system handles the established purchasable route and carrying tools, including:
+- biosecurity spray cans
+- physical barriers
+- the wearable tumor bag and its later capacity upgrades
 
 When the player buys items:
 - the purchase presentation shows a **coin being thrown into the toilet**
