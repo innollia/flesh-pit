@@ -19,3 +19,9 @@
 - main.gd 신호 opening_flush(): 게임 시작 직후 검은 화면(약 1.6초) 동안 변기 물 내리는 소리. _begin_opening()에서 한 번. 오프닝 전체 길이 FPOpening.TOTAL(3.9초).
 - 카나리아 새소리 발원 위치: FPRestroom.CANARY_HOLE (세면대 아래 구석, 바닥 근처, 반치마 뒤).
 - 문 열린 정도: restroom.door_open_amount() (0~1). 형광등 웅웅 소리가 통로로 새어 나가는 데 쓸 수 있음.
+
+## 세션 E (카나리아·엔딩)
+- 카나리아 꺼내기: `main.is_pulling_canary()`가 true인 1.6초 동안 엎드림·팔 넣기 소리, 중간에 `has_canary`가 true가 되는 순간 짧은 새 퍼덕임.
+- 구멍 새소리: `has_canary`가 false일 때만 `FPRestroom.CANARY_HOLE`에서 크게.
+- 압사 진행: `main.crush_progress()`(0~1) 에 맞춰 살 조이는 소리를 키워도 됨. 경고는 카나리아 `canary_chirp(urgency)`.
+- 엔딩: `ending.voice_layers`(1, 도감 완성 시 2) 겹 허밍. 살 속 선율 크기 `main.melody_level()`(화장실 0, 바깥일수록 1).

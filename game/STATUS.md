@@ -334,3 +334,10 @@ depth_at 기반 biome 헬퍼 등) 대응 대기.
 - W13 손 피: FPHandBlood 오버레이(손끝부터 번짐, hand_blood 0~1). 세면대에서 씻으면 0.
 - W14 문 빛: 문이 열린 만큼 DoorSpill(스포트)·DoorSpillFill 이 통로로 빛을 던짐. 돌아올 때 눈부심은 기존 _flash.
 - 캡처: tools/restroom_capture.gd (창 모드 --write-movie, shots.txt에 샷별 프레임). 결과 captures/restroom_a/*.png.
+## 세션 E (위험·카나리아·엔딩·조작, 2026-09-29)
+- W41 엔딩: 사람 없는 밝은 낮 거리, 매끈한 생고기 경단 공 반지름 42 m(빌딩 약 26 m보다 큼), 출발 z -62 m로 당김. 착지 뒤 카메라가 거리 뒤로 물러남. 캡처 captures/ingame/ending.png
+- W03 카나리아: 구멍을 보고 상호작용 -> 1.6초 엎드려 두 손을 넣고 꺼내 주머니(has_canary). begin_canary_pull(). 캡처 canary_pull.png
+- W32 조작: fp_input_modes.gd (패드 스틱·트리거·A/B/X/Y, 마우스 전용: 가운데 버튼 걷기, 옆버튼 상호작용/들기, 휠 도구). 글자 없는 상호작용 링 fp_interact_ring.gd
+- W27: 체력은 손의 멍(fp_danger_show.gd), 압사는 시야가 조이고 떨림. 화면 가장자리 효과 없음. 캡처 crushed.png
+- W29/W40/W42: 기존 구현 확인 + 테스트(좁아지는 통로, 바깥 경계 직전 엔딩 없음, 껍질별 선율 크기)
+- D03: 코드 주석 design-core 참조 -> docs/spec 경로
