@@ -36,5 +36,7 @@ func _init() -> void:
 		total_ms += chunk.remesh()
 	print("average over %d more digs: %.3f ms" % [trials, total_ms / trials])
 	print("budget: 8.000 ms")
+	field.free()
+	FDKChunk._shared_material = null
 
 	quit(0)

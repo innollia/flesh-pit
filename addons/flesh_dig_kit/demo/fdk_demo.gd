@@ -43,8 +43,10 @@ func _ready() -> void:
 	add_child(chewer)
 
 	hands_rig = player.hands_rig
-	chewer.chew_progress.connect(hands_rig.animate_chew)
-	chewer.cell_torn.connect(func(_p): hands_rig.notify_tear())
+	chewer.grab_started.connect(hands_rig.on_grab_started)
+	chewer.chew_progress.connect(hands_rig.on_chew_progress)
+	chewer.cell_torn.connect(hands_rig.on_cell_torn)
+	chewer.released.connect(hands_rig.on_released)
 
 func _process(delta: float) -> void:
 	if player == null or chewer == null:
@@ -57,16 +59,13 @@ func _process(delta: float) -> void:
 		var space_state := get_world_3d().direct_space_state
 		var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * 2.5)
 		var hit := space_state.intersect_ray(query)
-		if hit:
-			chewer.try_start(hit.position - direction * 0.05)
+		if hit and hit.collider.has_meta("fdk_terrain_chunk"):
+			# aim half a cell INTO the wall so the targeted cell is solid tissue
+			chewer.try_start(hit.position + direction * terrain.config.cell_size * 0.5)
 			chewer.process_chew(delta)
 		else:
 			chewer.stop()
-			if hands_rig != null:
-				hands_rig.reset_chew()
 	else:
 		chewer.stop()
-		if hands_rig != null:
-			hands_rig.reset_chew()
 
 	terrain.regenerate_all(delta, player.global_position, 2.0)

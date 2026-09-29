@@ -30,6 +30,8 @@ func _ready() -> void:
 	if mouse_look_enabled:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_apply_stand_height()
+	if hands_rig != null and hands_rig.has_method("apply_bob"):
+		footstep_bob.connect(hands_rig.apply_bob)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if mouse_look_enabled and event is InputEventMouseMotion:

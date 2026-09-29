@@ -25,3 +25,10 @@ extends Resource
 ## Density removed per second of sustained chewing on a cell (before it
 ## fully clears to density 0.0).
 @export var dig_rate: float = 1.5
+
+## How far (in cells, 0..0.5) surface vertices are nudged at random so the
+## faceted walls look organic instead of a grid.
+@export var facet_jitter: float = 0.22
+
+## Distance from the depth origin at which flesh reaches its darkest deep tint.
+@export var depth_tone_distance: float = 30.0

@@ -14,10 +14,22 @@ func _init() -> void:
 	_run_terrain_tests()
 	_run_stomach_tests()
 	_run_chewer_tests()
-	# Hand rig / hand mesh / hand animation is frontend scope (owned by
-	# another model per 형님's 2026-09-29 scope split) and is not tested here.
+	_run_surface_tests()
+	_run_hand_tests()
+	for n in _to_free:
+		if is_instance_valid(n):
+			n.free()
+	_to_free.clear()
+	FDKChunk._shared_material = null
 	print("--- %d passed, %d failed ---" % [_passed, _failures])
 	quit(1 if _failures > 0 else 0)
+
+## Nodes created by tests, freed before quitting so no RIDs leak.
+var _to_free: Array = []
+
+func _track(n: Node) -> Node:
+	_to_free.append(n)
+	return n
 
 func _assert(condition: bool, message: String) -> void:
 	if condition:
@@ -31,7 +43,7 @@ func _run_terrain_tests() -> void:
 	config.chunk_size = 4
 	config.cell_size = 0.5
 
-	var field := FDKTerrainField.new()
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
 	field.config = config
 
 	# fill_box_uniform should make a region solid; digging should remove
@@ -66,7 +78,7 @@ func _run_terrain_tests() -> void:
 
 	# Serialize/deserialize round trip.
 	var saved := field.serialize()
-	var field2 := FDKTerrainField.new()
+	var field2 := _track(FDKTerrainField.new()) as FDKTerrainField
 	field2.config = config
 	field2.deserialize(saved)
 	var chunk2 := field2.get_chunk(chunk_coord)
@@ -82,7 +94,7 @@ func _run_stomach_tests() -> void:
 	config.overfill_capacity = 50.0
 	config.overfill_chew_multiplier = 4.0
 
-	var stomach := FDKStomach.new()
+	var stomach := _track(FDKStomach.new()) as FDKStomach
 	stomach.config = config
 
 	_assert(stomach.fill == 0.0, "stomach: starts empty")
@@ -114,7 +126,7 @@ func _run_chewer_tests() -> void:
 	var terrain_config := FDKTerrainConfig.new()
 	terrain_config.chunk_size = 4
 	terrain_config.cell_size = 0.5
-	var field := FDKTerrainField.new()
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
 	field.config = terrain_config
 	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
 
@@ -122,10 +134,10 @@ func _run_chewer_tests() -> void:
 	stomach_config.base_chew_time = 0.5
 	stomach_config.flesh_per_cell = 4.0
 
-	var stomach := FDKStomach.new()
+	var stomach := _track(FDKStomach.new()) as FDKStomach
 	stomach.config = stomach_config
 
-	var chewer := FDKChewer.new()
+	var chewer := _track(FDKChewer.new()) as FDKChewer
 	chewer.terrain = field
 	chewer.stomach = stomach
 	chewer.config = stomach_config
@@ -154,6 +166,125 @@ func _run_chewer_tests() -> void:
 
 	chewer.stop() # calling stop again while already stopped must not re-emit released
 	_assert(_chewer_release_count == 1, "chewer: stop() is idempotent, no duplicate released() (got %d)" % _chewer_release_count)
+
+func _run_surface_tests() -> void:
+	var config := FDKTerrainConfig.new()
+	config.chunk_size = 4
+	config.cell_size = 0.5
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
+	field.config = config
+	field.density_sampler = func(_p: Vector3) -> float: return 1.0
+	field.tissue_sampler = func(p: Vector3) -> int: return 3 if p.x < -1.0 else 0
+	field.generate_region(AABB(Vector3(-2, -2, -2), Vector3(3.9, 3.9, 3.9)))
+	# chunk (0,0,0) spans 0..2m; a dig right at x=0 touches corners shared with chunk (-1,0,0)
+	field.dig_at(Vector3(0.1, 0.6, 0.6), 1.0)
+	var a := field.get_chunk(Vector3i(0, 0, 0))
+	var b := field.get_chunk(Vector3i(-1, 0, 0))
+	_assert(a.get_density_at_corner(0, 1, 1) < 0.5 and b.get_density_at_corner(4, 1, 1) < 0.5,
+		"surface: dig on a chunk border updates the shared corner in both chunks")
+	field.remesh_all()
+	var mesh: ArrayMesh = a.get_node("Body/Mesh").mesh
+	_assert(mesh != null and mesh.get_surface_count() == 1, "surface: dug chunk builds a mesh")
+	if mesh != null and mesh.get_surface_count() == 1:
+		var arr := mesh.surface_get_arrays(0)
+		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var nn: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		var flat := v.size() % 3 == 0 and v.size() > 0
+		for i in range(0, nn.size(), 3):
+			if not (nn[i].is_equal_approx(nn[i + 1]) and nn[i].is_equal_approx(nn[i + 2])):
+				flat = false
+		_assert(flat, "surface: every triangle has one flat normal (faceted low-poly)")
+		var not_axis := 0
+		for i in range(0, nn.size(), 3):
+			var m := maxf(absf(nn[i].x), maxf(absf(nn[i].y), absf(nn[i].z)))
+			if m < 0.99:
+				not_axis += 1
+		_assert(not_axis * 2 > nn.size() / 3, "surface: most facets are slanted, not cube faces (%d of %d)" % [not_axis, nn.size() / 3])
+	var b_mesh: ArrayMesh = b.get_node("Body/Mesh").mesh
+	_assert(b_mesh != null, "surface: neighbour chunk also meshes its side of the border hole (no seam)")
+	_assert(not field.is_edible_at(Vector3(-1.6, 0.5, 0.5)), "surface: membrane tissue is inedible")
+	_assert(field.is_edible_at(Vector3(0.5, 0.5, 0.5)), "surface: flesh tissue is edible")
+	var st_cfg := FDKStomachConfig.new()
+	var chewer := _track(FDKChewer.new()) as FDKChewer
+	chewer.terrain = field
+	chewer.config = st_cfg
+	chewer.try_start(Vector3(-1.6, 0.5, 0.5))
+	_assert(not chewer.is_chewing(), "surface: chewer refuses to grab inedible tissue")
+
+func _run_hand_tests() -> void:
+	var rig := _track(FDKHandsRig.new()) as FDKHandsRig
+	get_root().add_child(rig)
+	rig.build()
+	var worst := []
+	var check := func() -> void:
+		for side in ["right", "left"]:
+			var a: Dictionary = rig.get_joint_angles(side)
+			for j in FDKHandsRig.JOINT_NAMES:
+				var lim: Array = FDKHandsRig.LIMITS_DEG[j]
+				if a[j] < lim[0] - 0.001 or a[j] > lim[1] + 0.001:
+					worst.append("%s %s=%.1f" % [side, j, a[j]])
+	for i in range(30):
+		rig.step(1.0 / 60.0)
+		check.call()
+	var idle: Dictionary = rig.get_joint_angles("right")
+	var tips_idle: Array = rig.get_tip_positions("right")
+	rig.on_grab_started(Vector3i.ZERO)
+	rig.step(0.06)
+	var early: Dictionary = rig.get_joint_angles("right")
+	for i in range(30):
+		rig.step(1.0 / 60.0)
+		check.call()
+	var grab: Dictionary = rig.get_joint_angles("right")
+	var tips_grab: Array = rig.get_tip_positions("right")
+	_assert(grab["f1"] > idle["f1"] + 30.0 and grab["f2"] > idle["f2"] + 30.0 and grab["f3"] > idle["f3"] + 30.0,
+		"hands: grab curls all 3 finger-block joints (%.0f %.0f %.0f)" % [grab["f1"], grab["f2"], grab["f3"]])
+	_assert(grab["t1"] > idle["t1"] + 10.0 and grab["t2"] > idle["t2"] + 10.0 and grab["t3"] > idle["t3"] + 10.0 and grab["t_opp"] > idle["t_opp"] + 20.0,
+		"hands: grab curls all 3 thumb joints and swings the thumb across")
+	_assert((early["f1"] - idle["f1"]) > (early["f3"] - idle["f3"]) + 5.0,
+		"hands: joints curl in order, joint 1 leads joint 3 (%.1f vs %.1f)" % [early["f1"] - idle["f1"], early["f3"] - idle["f3"]])
+	var d_idle: float = (tips_idle[0] as Vector3).distance_to(tips_idle[1])
+	var d_grab: float = (tips_grab[0] as Vector3).distance_to(tips_grab[1])
+	_assert(d_grab < d_idle * 0.8, "hands: fingertips and thumb tip close on each other when gripping (%.3f -> %.3f m)" % [d_idle, d_grab])
+	var pos_before: Vector3 = rig.get_hand_root("right").position
+	for i in range(40):
+		rig.on_chew_progress(float(i) / 40.0, Vector3i.ZERO)
+		rig.step(1.0 / 60.0)
+		check.call()
+	var pos_chew: Vector3 = rig.get_hand_root("right").position
+	_assert(pos_chew.z > pos_before.z + 0.03, "hands: chewing pulls the hand back toward the player")
+	rig.on_cell_torn(Vector3.ZERO)
+	for i in range(12):
+		rig.step(1.0 / 60.0)
+		check.call()
+	_assert(rig.state == FDKHandsRig.HandState.TEAR, "hands: tear state plays after cell_torn")
+	for i in range(30):
+		rig.step(1.0 / 60.0)
+		check.call()
+	rig.on_released()
+	for i in range(90):
+		rig.step(1.0 / 60.0)
+		check.call()
+	var rel: Dictionary = rig.get_joint_angles("right")
+	_assert(rig.state == FDKHandsRig.HandState.IDLE and absf(rel["f2"] - idle["f2"]) < 6.0, "hands: release opens back to the idle pose")
+	rig.set_carry(1.0)
+	rig.apply_bob(Vector3(0, 0.04, 0))
+	for i in range(30):
+		rig.step(1.0 / 60.0)
+		check.call()
+	_assert(rig.is_carrying(), "hands: carry pose holds a flesh pile")
+	# random stress: signals in random order never break limits
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for i in range(400):
+		match rng.randi() % 5:
+			0: rig.on_grab_started(Vector3i.ZERO)
+			1: rig.on_chew_progress(rng.randf(), Vector3i.ZERO)
+			2: rig.on_cell_torn(Vector3.ZERO)
+			3: rig.on_released()
+			4: rig.set_carry(rng.randf() if rng.randf() < 0.5 else 0.0)
+		rig.step(rng.randf_range(0.001, 0.1))
+		check.call()
+	_assert(worst.is_empty(), "hands: every joint stays inside its angle limit (%s)" % str(worst.slice(0, 5)))
 
 var _chewer_grab_count: int = 0
 var _chewer_tear_count: int = 0

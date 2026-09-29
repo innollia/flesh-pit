@@ -35,6 +35,9 @@ var _elapsed: float = 0.0
 func try_start(world_pos: Vector3) -> void:
 	if terrain == null:
 		return
+	if terrain.has_method("is_edible_at") and not terrain.is_edible_at(world_pos):
+		stop()
+		return
 	var result := terrain.world_to_cell(world_pos)
 	var chunk_coord: Vector3i = result[0]
 	var local_cell: Vector3i = result[1]
@@ -70,8 +73,8 @@ func process_chew(delta: float) -> void:
 	chew_progress.emit(ratio, _target_local_cell)
 	if _elapsed >= required:
 		var chunk := terrain.get_or_create_chunk(_target_chunk_coord)
-		chunk.dig_cell(_target_local_cell, 1.0)
 		var world_pos: Vector3 = chunk.position + (Vector3(_target_local_cell) + Vector3(0.5, 0.5, 0.5)) * terrain.config.cell_size
+		terrain.dig_at(world_pos, 1.0) # updates shared border corners in neighbour chunks too
 		cell_torn.emit(world_pos)
 		if stomach != null:
 			stomach.add_flesh(config.flesh_per_cell)
