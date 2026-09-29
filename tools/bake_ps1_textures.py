@@ -113,6 +113,18 @@ def procedural_skin(size: int, seed: int, base: tuple) -> np.ndarray:
     return clamp01(col / 255.0) * 255.0
 
 
+
+def ceramic(size: int) -> np.ndarray:
+    """Clean white glazed ceramic: flat white base with a very soft vertical
+    shade only (no noise, no stains, no grime). PS1 dither comes from the
+    runtime post-process, not from the texture."""
+    y = np.linspace(0.0, 1.0, size, dtype=np.float32)[:, None]
+    v = 250.0 - 6.0 * y  # 250 at top -> 244 at bottom
+    col = np.repeat(np.repeat(v, size, axis=1)[..., None], 3, axis=2)
+    col[..., 2] += 2.0  # faint cool tint of glaze
+    return np.clip(col, 0, 255).astype(np.uint8)
+
+
 def build(size: int, suffix: str) -> None:
     dith_levels = 40
 
@@ -144,6 +156,8 @@ def build(size: int, suffix: str) -> None:
     fixture_src = from_source(SRC / "restroom" / "rst_08_stainless_fixture_albedo.png", size)
     fixture = fixture_src if fixture_src is not None else np.full((size, size, 3), 214, dtype=np.uint8)
     save(f"tex_fixture_{suffix}.png", ordered_dither(fixture, 48))
+
+    save(f"tex_ceramic_{suffix}.png", ceramic(size))
 
     skin = procedural_skin(size, 42, (224, 183, 156))
     save(f"tex_skin_{suffix}.png", ordered_dither(skin, 40))

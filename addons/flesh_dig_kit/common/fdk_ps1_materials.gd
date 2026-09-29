@@ -7,8 +7,8 @@ extends RefCounted
 
 static var _cache: Dictionary = {}
 
-static func get_material(tex_path: String, uv_scale: float = 1.0, use_vertex_color: bool = false, wetness: float = 0.4, roughness: float = 0.6, viewmodel_squash: float = 1.0) -> ShaderMaterial:
-    var key := "%s|%.3f|%s|%.2f|%.2f|%.2f" % [tex_path, uv_scale, use_vertex_color, wetness, roughness, viewmodel_squash]
+static func get_material(tex_path: String, uv_scale: float = 1.0, use_vertex_color: bool = false, wetness: float = 0.4, roughness: float = 0.6, viewmodel_squash: float = 1.0, fog: bool = true) -> ShaderMaterial:
+    var key := "%s|%.3f|%s|%.2f|%.2f|%.2f|%s" % [tex_path, uv_scale, use_vertex_color, wetness, roughness, viewmodel_squash, fog]
     if _cache.has(key):
         return _cache[key]
     var m := ShaderMaterial.new()
@@ -22,7 +22,9 @@ static func get_material(tex_path: String, uv_scale: float = 1.0, use_vertex_col
     m.set_shader_parameter("viewmodel_squash", viewmodel_squash)
     var settings := FDKPs1Settings.active
     m.set_shader_parameter("snap_precision", settings.vertex_snap_precision if settings.enabled else 100000.0)
-    m.set_shader_parameter("fog_distance", settings.fog_distance)
+    # fog=false: clean spaces (the restroom) must not be tinted by the dark
+    # red flesh-world fog colour
+    m.set_shader_parameter("fog_distance", settings.fog_distance if fog else 100000.0)
     m.set_shader_parameter("fog_color", Color(0.08, 0.01, 0.02))
     _cache[key] = m
     return m

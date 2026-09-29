@@ -239,7 +239,7 @@ func _setup_environment() -> void:
     var sun: DirectionalLight3D = get_node_or_null("DirectionalLight3D")
     if sun != null:
         sun.light_energy = 0.12
-        sun.light_color = Color(1.0, 0.7, 0.65)
+        sun.light_color = Color(0.96, 0.97, 1.0) # neutral: flesh colour comes from textures/lamp, ceramic must stay white
 
 func _update_atmosphere(delta: float) -> void:
     var inside := restroom.contains(player.global_position)
@@ -248,7 +248,9 @@ func _update_atmosphere(delta: float) -> void:
     environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
     environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
     environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.42, k)
-    player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.35 if inside else 2.4, k)
+    # inside the restroom the warm body lamp is off: only the cold fluorescent
+    # room light, so white ceramic reads white (tone-and-manner 3)
+    player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.0 if inside else 2.4, k)
     # deeper shells are darker and more purple
     var depth := terrain.depth_at(player.global_position)
     var tone := clampf(depth / terrain_config.depth_tone_distance, 0.0, 1.0)

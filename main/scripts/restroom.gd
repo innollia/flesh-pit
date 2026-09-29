@@ -23,12 +23,14 @@ func _ready() -> void:
     build()
 
 func build() -> void:
-    var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5)
-    var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_fixture_128.png", 1.5, false, 0.35, 0.35)
-    var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.25, 0.45)
+    var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5, 1.0, false)
+    var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_fixture_128.png", 1.5, false, 0.35, 0.35, 1.0, false)
+    var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.25, 0.45, 1.0, false)
     _build_tiles(tile_mat, floor_mat)
-    _build_toilet(fixture_mat)
-    _build_sink(fixture_mat)
+    # 형님 결정: 변기·세면대는 얼룩 없는 순백 도자기(약한 광택).
+    var ceramic_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, false, 0.45, 0.25, 1.0, false)
+    _build_toilet(ceramic_mat)
+    _build_sink(ceramic_mat)
     _build_door(fixture_mat)
     _build_korean(fixture_mat)
     _build_light()
@@ -378,7 +380,7 @@ func _build_light() -> void:
     l.omni_range = 6.0
     l.light_energy = 0.42
     l.shadow_enabled = true
-    l.light_color = Color(1.0, 0.99, 0.96)
+    l.light_color = Color(0.95, 0.98, 1.0) # cold fluorescent
     add_child(l)
 
 func _build_collision() -> void:
