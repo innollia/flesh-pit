@@ -54,7 +54,7 @@ The first version should make the phenomenon obvious but recoverable rather than
 
 Route control uses two distinct tools:
 
-- **physical barriers:** temporarily hold back moving / regenerating tissue. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier can eventually break; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
+- **physical barriers:** consumable route-control items that temporarily hold back moving / regenerating tissue. The surrounding biome continues to move, so stress accumulates against the barrier. A barrier eventually breaks and is lost; when it does, the stored deformation releases in a sudden elastic **boing** rather than simply resuming gradual movement.
 - **biosecurity spray:** sprayed flesh dissolves, cannot be eaten, and does not regenerate afterward. The effect is permanent. Spray is purchased by the can, and the player can carry up to **3 cans** at once. Depending on spray performance, treatment can range from a thinner surface-level application to dissolving a deeper volume of tissue.
 
 Permanent spray is intended to be the default route-maintenance tool. Its built-in cost is that sprayed tissue is removed as edible material instead of being consumed. Barriers are the temporary alternative when the player wants to hold a route without permanently dissolving it.
@@ -110,15 +110,20 @@ Mutation progression uses a **point-based parent → child upgrade structure** r
 Mutation upgrades can be purchased **anywhere**; they are not tied to the restroom or toilet UI.
 
 There are two mutation-point layers:
-- **common mutation points**
-- **biome-specific mutation points**, determined by which biome's flesh was eaten
+- **common mutation points**, used for the shared / foundational mutation line
+- **biome-specific mutation points**, determined by which biome's flesh was eaten and used for that biome's branch
 
-Mutation-point gain scales from the established **depth × amount of flesh eaten** basis, with biome identity determining the biome-specific portion. Exact common-vs-biome-specific split and costs remain unresolved.
+Mutation-point gain scales from the established **depth × amount of flesh eaten** basis, with biome identity determining the biome-specific portion.
 
-Money is also awarded only when flesh is vomited into the restroom toilet. Money value is based primarily on:
-- **biome / rarity**
-- **amount of flesh**
-- unusually valuable material such as **tumors**, which pays substantially more than ordinary flesh
+The mutation structure begins from a **central common trunk**, then branches into biome-specific parent → child lines. Some later biome branches can **reconverge into shared combination nodes**, so the tree is not permanently separated after the first split.
+
+Money is awarded through the toilet and is based primarily on **biome/rarity × amount** for ordinary flesh.
+
+Tumors have a deliberate split use:
+- **eat the tumor:** it contributes mutation progression / mutation points like biological material
+- **collect the tumor as an item instead of eating it:** it can be brought back and put into the toilet for a **large money payout**
+
+This makes the tumor a choice between bodily progression and high-value cash rather than granting both rewards from the same use.
 
 During the toilet sequence:
 - the toilet fills most of the screen
@@ -154,7 +159,7 @@ Cancerous growths are primarily a **collection/codex element**.
 Current canon:
 - collect/discover entries for a cancer/tumor codex
 - **prototype codex behavior:** collection only; no separate codex-completion reward is required
-- tumors themselves are economically valuable when eaten and later vomited into the restroom toilet, awarding substantially more money than ordinary flesh
+- tumors have split handling: eating them favors mutation progression, while collecting them intact and putting them into the toilet yields a large money payout
 - long-term codex-completion benefit remains undecided
 
 Do not force a separate codex reward system onto them until there is a reason.
@@ -239,11 +244,13 @@ The restroom already serves as the game's emotional contrast space.
 
 While the player is vomiting into the toilet, the **shop appears on the right side** of the toilet-focused UI.
 
-When the player buys an item:
+Shop inventory uses **mixed unlock conditions**: depth progression unlocks some goods, while other goods can require additional non-depth conditions.
+
+When the player buys items:
 - the purchase presentation shows a **coin being thrown into the toilet**
-- the bought item is not handed over through a normal inventory pop-up
-- afterward, the player opens the **toilet water tank / cistern**
-- the purchased item is found inside the tank
+- the bought items are not handed over through a normal inventory pop-up
+- multiple purchases can accumulate together inside the **toilet water tank / cistern**
+- the player must open the cistern, **look directly at an item, and right-click it to pick it up**
 
 This keeps buying and item delivery physically tied to the restroom fixture rather than a detached shop menu.
 
