@@ -1,0 +1,226 @@
+{
+  "tool_version": "1.0.0",
+  "count": 22,
+  "assets": {
+    "DEP-01": {
+      "path": "ui/hud/dep_meter_frame_9s.png",
+      "w": 256,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "9-slice 32/960/32, brass and bone",
+      "files": []
+    },
+    "DEP-02": {
+      "path": "ui/hud/dep_meter_fill_strip_64x1024.png",
+      "w": 64,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "bone-white to deep red, tileable Y",
+      "files": []
+    },
+    "DEP-03": {
+      "path": "ui/hud/dep_meter_tick_texture_64x512.png",
+      "w": 64,
+      "h": 512,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "minor ticks at 10 m, major every 50 m",
+      "files": []
+    },
+    "DEP-04": {
+      "path": "ui/hud/dep_band_divider_marker_64x32.png",
+      "w": 64,
+      "h": 32,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "bone bar with two notches, used 8x",
+      "files": []
+    },
+    "DEP-05": {
+      "path": "ui/hud/dep_band_label_b01_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-06": {
+      "path": "ui/hud/dep_band_label_b02_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-07": {
+      "path": "ui/hud/dep_band_label_b03_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-08": {
+      "path": "ui/hud/dep_band_label_b04_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-09": {
+      "path": "ui/hud/dep_band_label_b05_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-10": {
+      "path": "ui/hud/dep_band_label_b06_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-11": {
+      "path": "ui/hud/dep_band_label_b07_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-12": {
+      "path": "ui/hud/dep_band_label_b08_512x128.png",
+      "w": 512,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "BLANK enamel plate, no baked text: band name is font-rendered",
+      "files": []
+    },
+    "DEP-13": {
+      "path": "ui/hud/dep_band_change_banner_9s.png",
+      "w": 1024,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "torn flesh banner, top band reserved for text",
+      "files": []
+    },
+    "DEP-14": {
+      "path": "ui/hud/dep_band_accent_sweep_512x64.png",
+      "w": 512,
+      "h": 64,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "soft red-to-white horizontal wipe",
+      "files": []
+    },
+    "DEP-15": {
+      "path": "ui/hud/dep_milestone_frame_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "rough-cut bone frame with hooks",
+      "files": []
+    },
+    "DEP-16": {
+      "path": "ui/hud/dep_milestone_seal_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "wax-red stamp, generic depth-bar mark, no text",
+      "files": []
+    },
+    "DEP-17": {
+      "path": "ui/hud/dep_numerals_atlas_1536x256.png",
+      "w": 1536,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "atlas",
+      "frames": 24,
+      "note": "EMPTY stencil cells: 0-9, m, minus rendered by the font, never baked",
+      "files": []
+    },
+    "DEP-18": {
+      "path": "ui/hud/dep_personal_best_flag_64x64.png",
+      "w": 64,
+      "h": 64,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "small gold flag on the meter rail",
+      "files": []
+    },
+    "DEP-19": {
+      "path": "ui/hud/dep_surface_arrow_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "upward chevron, clean white, points to the restroom",
+      "files": []
+    },
+    "DEP-20": {
+      "path": "ui/hud/dep_home_bearing_chip_9s.png",
+      "w": 256,
+      "h": 128,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "ties the compass to the actual goal",
+      "files": []
+    },
+    "DEP-21": {
+      "path": "ui/hud/dep_danger_arrow_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "downward chevron, dull yellow",
+      "files": []
+    },
+    "DEP-22": {
+      "path": "ui/hud/dep_band_progress_ladder_128x512.png",
+      "w": 128,
+      "h": 512,
+      "pri": "P2",
+      "kind": "png32",
+      "frames": 1,
+      "note": "eight rungs, current highlighted, no text",
+      "files": []
+    }
+  }
+}

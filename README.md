@@ -44,6 +44,8 @@ Depth itself is the objective. The open design problem is making each anatomical
 
 See:
 - [docs/design-core.md](docs/design-core.md)
+- [docs/asset-list.md](docs/asset-list.md) — every required image asset, one by one, UI included
+- [tools/artgen](tools/artgen/README.md) — procedural generator that renders that list into `assets/`
 - [docs/todo.md](docs/todo.md)
 - [docs/reference-map.md](docs/reference-map.md)
 - [docs/world-direction.md](docs/world-direction.md)

@@ -1,0 +1,318 @@
+id,group,name,pri,class,meaning,owner,artgen_covers
+STO-01,STO,Stomach gauge frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-02,STO,Stomach gauge inner mask,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-03,STO,"Fill layer 1, 0 to 33%",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-04,STO,"Fill layer 2, 34 to 66%",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-05,STO,"Fill layer 3, 67 to 99%",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-06,STO,Overflow state,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-07,STO,Capacity tick marks,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-08,STO,Greedy pulse rim,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-09,STO,Nausea vignette,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-10,STO,Slosh distortion mask,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-11,STO,Digest progress ring,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-12,STO,Empty stomach silhouette,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-13,STO,Full block icon,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-14,STO,Toilet bowl gauge,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-15,STO,Vomit stream fill,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-16,STO,Stage distortion overlays x6,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-17,STO,Fullness numerals,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+STO-18,STO,Overfull screen tint,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+HND-01,HND,Bare hands idle pair,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-02,HND,Hands reach pose,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-03,HND,Hands bite pose,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-04,HND,Hands tear pose,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-05,HND,Hands chew hold,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-06,HND,"Stage 1 hands, torn nails",P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-07,HND,"Stage 2 hands, splitting skin",P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-08,HND,"Stage 3 hands, coated",P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-09,HND,"Stage 4 hands, keratin plating",P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-10,HND,"Stage 5 hands, elongated digits",P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-11,HND,"Stage 6 hands, polyp growths",P2,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-12,HND,Mutation reveal pose,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-13,HND,Swollen empty hands,P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-14,HND,Nerve flinch pose,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-15,HND,Tool grip sockets,P2,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-16,HND,Restroom wrap,P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-17,HND,Depth grime overlay,P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+HND-18,HND,Hand portrait set,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+HND-19,HND,Hand stage icons x6,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+HND-20,HND,Death hands,P1,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+HND-21,HND,Stomach bulge frame overlay,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-01,DEP,Depth meter frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-02,DEP,Depth meter fill strip,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-03,DEP,Depth tick texture,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-04,DEP,Band divider marker,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-05,DEP,Band label B01,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-06,DEP,Band label B02,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-07,DEP,Band label B03,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-08,DEP,Band label B04,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-09,DEP,Band label B05,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-10,DEP,Band label B06,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-11,DEP,Band label B07,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-12,DEP,Band label B08,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-13,DEP,Band change banner frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-14,DEP,Banner accent sweep,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-15,DEP,Depth milestone frame,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-16,DEP,Milestone seal,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-17,DEP,Depth numerals,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-18,DEP,Personal best marker,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-19,DEP,Surface direction arrow,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-20,DEP,Home bearing chip,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-21,DEP,Depth danger hint arrow,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DEP-22,DEP,Band progress ladder,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-01,CMP,Compass frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-02,CMP,Compass rose face,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-03,CMP,North needle,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-04,CMP,Restroom needle,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-05,CMP,Depth tick ring,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-06,CMP,Compass glass grime,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-07,CMP,Cracked glass state,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-08,CMP,Compass bracket mount,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-09,CMP,Canary cage frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-10,CMP,Canary idle portrait,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-11,CMP,Canary alert portrait,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-12,CMP,Canary distress portrait,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-13,CMP,Canary status icon,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-14,CMP,Canary world sprite,MVP,3D-RIG,needs geometry plus a skeleton plus clips,"3D artist plus animator, the single largest cost here",yes
+CMP-15,CMP,Canary tether line,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-16,CMP,Off-route warning icon,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-17,CMP,Canary report popup,TBD,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CMP-18,CMP,Canary placeholder badge,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-01,ICO,Legend panel frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-02,ICO,"Legend tab, normal",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-03,ICO,"Legend tab, hover",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-04,ICO,"Legend tab, selected",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-05,ICO,Unknown tissue icon,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-06,ICO,Muscle Fibre icon T01,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-07,ICO,Fat Lobe icon T02,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-08,ICO,Fascia Sheet icon T03,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-09,ICO,Glandular Sac icon T04,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-10,ICO,Cartilage Plate icon T05,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-11,ICO,Nerve Cluster icon T06,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-12,ICO,Tumor Growth icon T07,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-13,ICO,Mucosa Film icon T08,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-14,ICO,Shell Plate icon T09,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-15,ICO,Scar Tissue icon T10,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-16,ICO,"Legend card, muscle",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-17,ICO,"Legend card, fat",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-18,ICO,"Legend card, fascia",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-19,ICO,"Legend card, glandular",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-20,ICO,"Legend card, cartilage",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-21,ICO,"Legend card, nerve",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-22,ICO,"Legend card, tumor",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-23,ICO,"Legend card, mucosa",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-24,ICO,"Legend card, shell",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-25,ICO,"Legend card, scar",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-26,ICO,Legend tooltip bubble,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-27,ICO,Colour-blind safe icon atlas,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ICO-28,ICO,High-contrast nerve icon,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-01,CDX,Codex cover,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-02,CDX,Codex page base,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-03,CDX,Page inner panel,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-04,CDX,"Category tab icon, growths",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-05,CDX,"Category tab icon, nerves",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-06,CDX,"Category tab icon, tissues",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-07,CDX,"Category tab icon, infrastructure",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-08,CDX,"Tab state, normal",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-09,CDX,"Tab state, hover",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-10,CDX,"Tab state, selected",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-11,CDX,"Slot, unknown",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-12,CDX,"Slot, discovered",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-13,CDX,"Slot, catalogued",MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-14,CDX,Entry portrait frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-15,CDX,Entry detail card,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-16,CDX,Newly catalogued stamp,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-17,CDX,Completeness arc gauge,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-18,CDX,Codex complete stamp,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-19,CDX,List row highlight,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-20,CDX,Page turn wipe,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-21,CDX,"Specimen portrait pack, tier 1",P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-22,CDX,"Specimen portrait pack, tier 2",P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+CDX-23,CDX,Infrastructure photo pack,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-01,RST,Toilet interaction prompt,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-02,RST,Bowl fill gauge,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-03,RST,Bowl overflow puff,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-04,RST,White wall tile albedo,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-05,RST,Tile grout normal,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-06,RST,Tile roughness,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-07,RST,Floor tile albedo,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-08,RST,Stainless fixture albedo,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-09,RST,Flush lever icon,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-10,RST,Restroom sign plate,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-11,RST,Door gap bleed,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-12,RST,Safe-zone white bloom,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-13,RST,Clean vignette,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-14,RST,Ceiling light fixture,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-15,RST,Mirror plate,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-16,RST,Paper towel and dryer signage,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-17,RST,Progress wall board,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+RST-18,RST,Progress wall pin set,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+RST-19,RST,Restroom clean transition overlay,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+BAND-01,BAND,Band card frame,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-02,BAND,B01 Surface Epithelium art,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-03,BAND,B02 Dermal Stratum art,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-04,BAND,B03 Fascia Sheet art,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-05,BAND,B04 Muscle Sheath art,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-06,BAND,B05 Glandular Cluster art,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-07,BAND,B06 Nerve Braid art,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-08,BAND,B07 Cavity Vault art,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-09,BAND,B08 Peristaltic Corridor art,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BAND-10,BAND,Band divider flourish,P2,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+MNU-01,MNU,Main menu background,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-02,MNU,Menu logo plate,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-03,MNU,Menu panel frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-04,MNU,Menu button states,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-05,MNU,Settings panel frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-06,MNU,Settings category tabs,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-07,MNU,Checkbox states,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-08,MNU,Toggle switch states,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-09,MNU,Slider track and fill,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-10,MNU,Slider knob states,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-11,MNU,Dropdown arrow states,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-12,MNU,Pause overlay,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-13,MNU,Controls rebind panel,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-14,MNU,Input glyph set,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-15,MNU,Save slot indicator,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-16,MNU,Confirm dialog frame,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-17,MNU,Credits background,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-18,MNU,UI font bitmap set,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-19,MNU,Title screen backdrop,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+MNU-20,MNU,First-run card,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-01,DTH,Death vignette,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-02,DTH,Death screen card,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-03,DTH,Drop beacon world icon,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-04,DTH,Beacon HUD chip,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-05,DTH,Recover objective card,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-06,DTH,Items recovered flash,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-07,DTH,Respawn white fade,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-08,DTH,Belongings cache marker,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+DTH-09,DTH,Death heartbeat overlay,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-01,TUT,First contact prompt,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-02,TUT,Chew hold ring,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-03,TUT,Swallow prompt,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-04,TUT,First full stomach prompt,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-05,TUT,Return home hand-off,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-06,TUT,First vomit prompt,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-07,TUT,First mutation reveal card,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-08,TUT,First nerve contact prompt,MVP,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-09,TUT,First codex pickup prompt,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-10,TUT,First death prompt,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-11,TUT,Highlight overlay,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-12,TUT,Tooltip bubble,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-13,TUT,Objective toast frame,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+TUT-14,TUT,Help overlay background,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+LDG-01,LDG,Loading frame,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+LDG-02,LDG,"Band tip art, B01 to B08",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+LDG-03,LDG,"Loading spinner, clean",MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+LDG-04,LDG,"Loading spinner, flesh",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+LDG-05,LDG,Loading tip card,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+LDG-06,LDG,Loading progress track,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+LDG-07,LDG,Legal and rating plate,P2,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+TEX-B01-A / N / R,TEX,"B01 Surface Epithelium: pink wet skin, follicle pits, subsurface reddening",MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B02-A / N / R,TEX,"B02 Dermal Stratum: yellow fat lobes, glossy caps, deep pits",MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B03-A / N / R,TEX,"B03 Fascia Sheet: white fibrous membrane, crosshatch grain, tight weave",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B04-A / N / R,TEX,"B04 Muscle Sheath: dark striated red-brown, coarse fibre, low reflectance",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B05-A / N / R,TEX,"B05 Glandular Cluster: nodular translucent sacs, fluid highlights",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B06-A / N / R,TEX,"B06 Nerve Braid: yellow strand mass, high-frequency fibre, glow in the crevices",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B07-A / N / R,TEX,"B07 Cavity Vault: near-black membrane with a faint sheen, large smooth areas",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-B08-A / N / R,TEX,"B08 Peristaltic Corridor: ridged tube interior, rhythmic ribs, damp folds",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-101,TEX,Muscle fibre detail,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-102,TEX,Fat lobe detail,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-103,TEX,Fascia sheet detail,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-104,TEX,Glandular sac detail,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-105,TEX,Cartilage plate detail,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-106,TEX,Nerve cluster detail,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+TEX-107,TEX,Nerve emissive mask,P1,3D-SHADER,"custom shader work, the file is only a mask",graphics programmer,yes
+TEX-108,TEX,Nerve flow map,P1,3D-SHADER,"custom shader work, the file is only a mask",graphics programmer,yes
+TEX-109,TEX,Tumor surface A,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-110,TEX,Tumor surface B,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-111,TEX,Tumor surface C,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-112,TEX,Mucosa film,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-113,TEX,Shell plate detail,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-114,TEX,Scar tissue lining,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+TEX-115,TEX,Regrowth edge alpha,MVP,3D-SHADER,"custom shader work, the file is only a mask",graphics programmer,yes
+TEX-116,TEX,"Vascular detail, cosmetic only",P2,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",yes
+TEX-117,TEX,Mucus film overlay,P1,3D-SHADER,"custom shader work, the file is only a mask",graphics programmer,yes
+TEX-201,TEX,Embedded enamel sign,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-202,TEX,Rusted ladder,P1,3D-MODEL,"needs geometry, a picture cannot stand in for it","3D artist, each item is its own day or more",no
+TEX-203,TEX,Steel hatch,P1,3D-MODEL,"needs geometry, a picture cannot stand in for it","3D artist, each item is its own day or more",no
+TEX-204,TEX,Conduit run,P1,3D-MODEL,"needs geometry, a picture cannot stand in for it","3D artist, each item is its own day or more",no
+TEX-205,TEX,Old service lift panel,P1,3D-MODEL,"needs geometry, a picture cannot stand in for it","3D artist, each item is its own day or more",no
+TEX-206,TEX,Garbled tile wall,P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-207,TEX,Caution stripe,P2,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-208,TEX,Deep tissue shell,P1,3D-MODEL,"needs geometry, a picture cannot stand in for it","3D artist, each item is its own day or more",no
+TEX-301,TEX,"Noise base, organic",MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-302,TEX,"Flow map, flesh",P1,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-303,TEX,Grunge mask,MVP,2D-TEX,seamless texture that feeds a 3D material instance,"one person, a few days",no
+TEX-304,TEX,Flesh chunk particle,MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+TEX-305,TEX,Saliva droplet,MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+TEX-306,TEX,Mucus strand,P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+TEX-307,TEX,Spark particle,P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+TEX-308,TEX,Ambient mote,P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+TEX-309,TEX,Tooth mark decal,MVP,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+TEX-310,TEX,Claw scratch decal,P1,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+TEX-311,TEX,Handprint decal,P1,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+TEX-312,TEX,Scuff decal,P2,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+TEX-313,TEX,"Blood decal, cosmetic only",P2,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+TEX-314,TEX,Wipe gradient,MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+TEX-315,TEX,Glow radial,MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-01,VFX,"Flesh tear burst, 8f",MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-02,VFX,"Chew burst, 6f",MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-03,VFX,"Tearing strand, 10f",MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-04,VFX,"Saliva arc, 8f",P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-05,VFX,"Mucosal splatter, 12f",P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-06,VFX,"Nerve contraction shockwave, 10f",MVP,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-07,VFX,"Nerve recoil spark, 6f",MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-08,VFX,"Tumor reveal shimmer, 12f",P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-09,VFX,"Vomit stream, 24f",MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-10,VFX,"Toilet flush swirl, 16f",MVP,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-11,VFX,"Regrowth shimmer, 14f",MVP,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-12,VFX,"Tunnel close vignette, 10f",P1,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-13,VFX,"Room transition bloom, 8f",MVP,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-14,VFX,"Heartbeat pulse, 6f",P1,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-15,VFX,"Cosmetic vein pulse, 10f",P2,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-16,VFX,"Digest bubbles, 12f",P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-17,VFX,"Mutation surge, 12f",MVP,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-18,VFX,"Band entry shockwave, 10f",P1,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-19,VFX,"Ambient drip, 6f",P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-20,VFX,"Flesh heal flash, 8f",P1,2D-FX,sprite or flipbook for a billboard particle,"one person, a few days",yes
+VFX-21,VFX,"Screen wipe red, 12f",P2,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+VFX-22,VFX,"Screen wipe white, 12f",P2,3D-FX,"in engine effect, the file is a helper not the asset",graphics programmer plus 3D artist,yes
+BRD-01,BRD,Logo lockup,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-02,BRD,Wordmark only,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-03,BRD,App icon,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-04,BRD,"Key art, main",MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-05,BRD,"Key art, close-up",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-06,BRD,"Key art, contrast",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-07,BRD,"Capsule, main 1232x706",MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-08,BRD,"Capsule, small 462x174",MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-09,BRD,"Capsule, vertical 600x900",MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-10,BRD,Header 460x215,MVP,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-11,BRD,Library hero 3840x1240,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-12,BRD,Page background 1438x810,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-13,BRD,Screenshot frame clean,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-14,BRD,Screenshot frame caption bar,P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-15,BRD,"Achievement, first bite",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-16,BRD,"Achievement, first return",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-17,BRD,"Achievement, first mutation",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-18,BRD,"Achievement, 1000 m",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-19,BRD,"Achievement, codex complete",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-20,BRD,"Achievement, nerve first touch",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-21,BRD,"Achievement, belongings recovered",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-22,BRD,"Achievement, deepest band",P1,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-23,BRD,Trailer end card,P2,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-24,BRD,Press kit logo on transparent,P2,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-25,BRD,Favicon,P2,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+BRD-26,BRD,Stream overlay frame,P2,2D-ART,"2D illustration, needs an artist, not a generator",illustrator,yes
+ACC-01,ACC,Colour-blind safe icon atlas,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-02,ACC,High contrast nerve icon set,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-03,ACC,Reduced-motion shake replacement,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-04,ACC,Reduced-motion flash removal,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-05,ACC,Low-amplitude heartbeat,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-06,ACC,UI scale 125% exports,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-07,ACC,UI scale 150% exports,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-08,ACC,Localisation-safe text plates,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-09,ACC,Subtitle plate,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-10,ACC,Focus and selection ring,P1,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-11,ACC,High-contrast UI frame set,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes
+ACC-12,ACC,Low-resolution fallback set,P2,2D-UI,"2D image, drop straight into the UI layer","one person, days",yes

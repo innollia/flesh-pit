@@ -6,6 +6,9 @@ The project uses an original setting. Mystery Flesh Pit National Park and other 
 
 ## Cross-game research
 
+- [Asset list](asset-list.md) — every image asset the game needs, itemised, including full UI coverage
+- [2D / 3D split](asset-scope-2d-3d.md) — which assets are 2D image work and which are actually 3D work
+- [tools/artgen](../tools/artgen/README.md) — procedural generator that renders that list into `assets/`
 - [Digging-game success cases](research/digging-success-cases.md) — commercial signals, loop structure, progression failures, and flesh-pit design rules
 - [Digging success patterns](digging-success-patterns.md) — cross-case synthesis
 

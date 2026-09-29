@@ -1,0 +1,94 @@
+{
+  "tool_version": "1.0.0",
+  "count": 8,
+  "assets": {
+    "VFX-01": {
+      "path": "vfx/tear_burst_8f_256x256.png",
+      "w": 2048,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 8,
+      "note": "radial spray of red and fat streaks: the single most important game-feel effect",
+      "files": [],
+      "fps": 24.0
+    },
+    "VFX-02": {
+      "path": "vfx/chew_burst_6f_256x256.png",
+      "w": 1536,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 6,
+      "note": "compression puff with chunks flying: chewing made visible",
+      "files": [],
+      "fps": 18.0
+    },
+    "VFX-03": {
+      "path": "vfx/tearing_strand_10f_256x256.png",
+      "w": 2560,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 10,
+      "note": "elastic filament stretching then snapping: tissue elasticity, canon",
+      "files": [],
+      "fps": 30.0
+    },
+    "VFX-06": {
+      "path": "vfx/nerve_shockwave_10f_512x512.png",
+      "w": 5120,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 10,
+      "note": "radial compression ripple with yellow dust; reads as caused by the player",
+      "files": [],
+      "fps": 24.0
+    },
+    "VFX-09": {
+      "path": "vfx/vomit_stream_24f_256x512.png",
+      "w": 6144,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 24,
+      "note": "coarse stream into the bowl: the loop reset, played every single trip",
+      "files": [],
+      "fps": 24.0
+    },
+    "VFX-10": {
+      "path": "vfx/flush_swirl_16f_256x256.png",
+      "w": 4096,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 16,
+      "note": "whirlpool in pale water, clean not slimy: trip-end punctuation",
+      "files": [],
+      "fps": 24.0
+    },
+    "VFX-13": {
+      "path": "vfx/room_transition_bloom_8f_1024x1024.png",
+      "w": 8192,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 8,
+      "note": "white bloom expanding outward: the colour contrast event",
+      "files": [],
+      "fps": 12.0
+    },
+    "VFX-17": {
+      "path": "vfx/mutation_surge_12f_1024x1024.png",
+      "w": 12288,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 12,
+      "note": "body-wide red surge with a white core: the transformation moment",
+      "files": [],
+      "fps": 24.0
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "tool_version": "1.0.0",
+  "count": 9,
+  "assets": {
+    "CMP-01": {
+      "path": "ui/hud/cmp_compass_frame_9s.png",
+      "w": 512,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "brass rim, bone inlay, cracked glass, 9-slice 48/416/48",
+      "files": []
+    },
+    "CMP-02": {
+      "path": "ui/hud/cmp_compass_rose_face_512x512.png",
+      "w": 512,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "12 major degree marks, no baked letters",
+      "files": []
+    },
+    "CMP-03": {
+      "path": "ui/hud/cmp_compass_north_needle_128x256.png",
+      "w": 128,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "standard heading",
+      "files": []
+    },
+    "CMP-04": {
+      "path": "ui/hud/cmp_compass_restroom_needle_128x256.png",
+      "w": 128,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "clean white, visually distinct from north: the goal is the toilet",
+      "files": []
+    },
+    "CMP-09": {
+      "path": "ui/hud/cmp_canary_cage_frame_9s.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "domed brass cage, 9-slice 32/192/32",
+      "files": []
+    },
+    "CMP-10": {
+      "path": "ui/hud/cmp_canary_idle_portrait_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "calm yellow bird on a perch",
+      "files": []
+    },
+    "CMP-11": {
+      "path": "ui/hud/cmp_canary_alert_portrait_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "wings half-raised, head turned, eye wide",
+      "files": []
+    },
+    "CMP-12": {
+      "path": "ui/hud/cmp_canary_distress_portrait_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "motion-blurred, dishevelled, feathers puffed",
+      "files": []
+    },
+    "CMP-14": {
+      "path": "ui/hud/cmp_canary_world_sprite_6f_256x256.png",
+      "w": 1536,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "flipbook",
+      "frames": 6,
+      "note": "seen from behind and above, 6-frame wing cycle",
+      "files": [],
+      "fps": 12.0
+    }
+  }
+}

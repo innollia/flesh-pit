@@ -1,0 +1,56 @@
+{
+  "tool_version": "1.0.0",
+  "count": 5,
+  "assets": {
+    "HND-01": {
+      "path": "art/hands/hands_idle_pair_2048x1024.png",
+      "w": 2048,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "clean human hands, forearms cut at frame edge, soft top light",
+      "files": []
+    },
+    "HND-03": {
+      "path": "art/hands/hands_bite_pair_2048x1024.png",
+      "w": 2048,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "one hand raised to mouth holding a torn chunk",
+      "files": []
+    },
+    "HND-04": {
+      "path": "art/hands/hands_tear_pair_2048x1024.png",
+      "w": 2048,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "both hands gripping, pulling away from the wall",
+      "files": []
+    },
+    "HND-05": {
+      "path": "art/hands/hands_chew_pair_2048x1024.png",
+      "w": 2048,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "held pose for the chew duration",
+      "files": []
+    },
+    "HND-12": {
+      "path": "art/hands/hands_mutation_reveal_2048x1024.png",
+      "w": 2048,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "arms raised, torso edge creeping in, veins lighting up",
+      "files": []
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "tool_version": "1.0.0",
+  "count": 8,
+  "assets": {
+    "RST-01": {
+      "path": "ui/panels/rst_toilet_prompt_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "clean white outline, no text, arrow above",
+      "files": []
+    },
+    "RST-02": {
+      "path": "ui/panels/rst_bowl_fill_gauge_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "cross-section filling with pale chewed flesh",
+      "files": []
+    },
+    "RST-04": {
+      "path": "textures/restroom/wall_tile_albedo_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "clean glazed white tile, faint grout variation, a few chips",
+      "files": []
+    },
+    "RST-05": {
+      "path": "textures/restroom/tile_grout_normal_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "recessed grout, slightly uneven; OpenGL +Y up",
+      "files": []
+    },
+    "RST-06": {
+      "path": "textures/restroom/tile_roughness_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "near-uniform gloss, faint dulling near the floor; LINEAR",
+      "files": []
+    },
+    "RST-07": {
+      "path": "textures/restroom/floor_tile_albedo_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "smaller pale grey matte tile",
+      "files": []
+    },
+    "RST-08": {
+      "path": "textures/restroom/stainless_fixture_albedo_1k.png",
+      "w": 1024,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "brushed steel, faint water marks",
+      "files": []
+    },
+    "RST-19": {
+      "path": "ui/panels/rst_clean_transition_1024x1024.png",
+      "w": 1024,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "white wash on entering the base: the strongest colour event",
+      "files": []
+    }
+  }
+}

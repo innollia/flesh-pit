@@ -1,0 +1,426 @@
+{
+  "tool_version": "1.0.0",
+  "count": 42,
+  "assets": {
+    "ACC-01": {
+      "path": "ui/icons/tissue_colourblind_atlas_1280x256.png",
+      "w": 1280,
+      "h": 128,
+      "pri": "P1",
+      "kind": "atlas",
+      "frames": 1,
+      "note": "accessibility duplicate of ICO-27",
+      "files": []
+    },
+    "ACC-02-32": {
+      "path": "ui/icons/nerve_highcontrast_32.png",
+      "w": 32,
+      "h": 32,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "white halo, hard keyline",
+      "files": []
+    },
+    "ACC-02-64": {
+      "path": "ui/icons/nerve_highcontrast_64.png",
+      "w": 64,
+      "h": 64,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "white halo, hard keyline",
+      "files": []
+    },
+    "ICO-01": {
+      "path": "ui/icons/legend_panel_9s.png",
+      "w": 1024,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "9-slice border 64",
+      "files": []
+    },
+    "ICO-02": {
+      "path": "ui/icons/legend_tab_normal_256x64.png",
+      "w": 256,
+      "h": 64,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "",
+      "files": []
+    },
+    "ICO-03": {
+      "path": "ui/icons/legend_tab_hover_256x64.png",
+      "w": 256,
+      "h": 64,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "",
+      "files": []
+    },
+    "ICO-04": {
+      "path": "ui/icons/legend_tab_selected_256x64.png",
+      "w": 256,
+      "h": 64,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "",
+      "files": []
+    },
+    "ICO-05": {
+      "path": "ui/icons/tissue_unknown_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "unknown, deliberately low contrast",
+      "files": []
+    },
+    "ICO-06": {
+      "path": "ui/icons/tissue_t01_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T01: red striated wedge, layered bands",
+      "files": []
+    },
+    "ICO-07": {
+      "path": "ui/icons/tissue_t02_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T02: soft yellow lobes, glossy",
+      "files": []
+    },
+    "ICO-08": {
+      "path": "ui/icons/tissue_t03_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T03: white torn strip, fibrous ends",
+      "files": []
+    },
+    "ICO-09": {
+      "path": "ui/icons/tissue_t04_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T04: translucent sac with fluid highlight",
+      "files": []
+    },
+    "ICO-10": {
+      "path": "ui/icons/tissue_t05_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T05: grey-white smooth plate with a rim",
+      "files": []
+    },
+    "ICO-11": {
+      "path": "ui/icons/tissue_t06_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T06: bright yellow, thick keyline, three strands, wriggle ticks: the highest-contrast element in the set",
+      "files": []
+    },
+    "ICO-12": {
+      "path": "ui/icons/tissue_t07_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T07: pale nodular mass with clustered bulbs",
+      "files": []
+    },
+    "ICO-13": {
+      "path": "ui/icons/tissue_t08_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T08: translucent rippled sheet with a wet highlight",
+      "files": []
+    },
+    "ICO-14": {
+      "path": "ui/icons/tissue_t09_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T09: dense bone-white barrier plate, heavy shadow",
+      "files": []
+    },
+    "ICO-15": {
+      "path": "ui/icons/tissue_t10_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T10: fresh pink seam lines, healing grain",
+      "files": []
+    },
+    "ICO-16": {
+      "path": "ui/icons/legend_card_t01_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-17": {
+      "path": "ui/icons/legend_card_t02_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-18": {
+      "path": "ui/icons/legend_card_t03_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-19": {
+      "path": "ui/icons/legend_card_t04_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-20": {
+      "path": "ui/icons/legend_card_t05_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-21": {
+      "path": "ui/icons/legend_card_t06_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-22": {
+      "path": "ui/icons/legend_card_t07_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-23": {
+      "path": "ui/icons/legend_card_t08_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-24": {
+      "path": "ui/icons/legend_card_t09_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-25": {
+      "path": "ui/icons/legend_card_t10_9s.png",
+      "w": 512,
+      "h": 256,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "icon + swatch + blank ruled lines",
+      "files": []
+    },
+    "ICO-26": {
+      "path": "ui/prompts/tooltip_bubble_9s.png",
+      "w": 512,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "",
+      "files": []
+    },
+    "ICO-27": {
+      "path": "ui/icons/tissue_colourblind_atlas_1280x256.png",
+      "w": 1280,
+      "h": 128,
+      "pri": "P1",
+      "kind": "atlas",
+      "frames": 1,
+      "note": "shape+pattern, not colour",
+      "files": []
+    },
+    "ICO-28": {
+      "path": "ui/icons/nerve_highcontrast_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "P1",
+      "kind": "png32",
+      "frames": 1,
+      "note": "white halo, hard keyline",
+      "files": []
+    },
+    "ICO-T01": {
+      "path": "ui/icons/tissue_t01_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T01",
+      "files": []
+    },
+    "ICO-T02": {
+      "path": "ui/icons/tissue_t02_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T02",
+      "files": []
+    },
+    "ICO-T03": {
+      "path": "ui/icons/tissue_t03_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T03",
+      "files": []
+    },
+    "ICO-T04": {
+      "path": "ui/icons/tissue_t04_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T04",
+      "files": []
+    },
+    "ICO-T05": {
+      "path": "ui/icons/tissue_t05_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T05",
+      "files": []
+    },
+    "ICO-T06": {
+      "path": "ui/icons/tissue_t06_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T06",
+      "files": []
+    },
+    "ICO-T07": {
+      "path": "ui/icons/tissue_t07_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T07",
+      "files": []
+    },
+    "ICO-T08": {
+      "path": "ui/icons/tissue_t08_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T08",
+      "files": []
+    },
+    "ICO-T09": {
+      "path": "ui/icons/tissue_t09_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T09",
+      "files": []
+    },
+    "ICO-T10": {
+      "path": "ui/icons/tissue_t10_128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "tissue T10",
+      "files": []
+    },
+    "TUT-12": {
+      "path": "ui/prompts/tooltip_bubble_9s.png",
+      "w": 512,
+      "h": 128,
+      "pri": "P1",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "",
+      "files": []
+    }
+  }
+}

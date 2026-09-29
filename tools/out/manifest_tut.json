@@ -1,0 +1,86 @@
+{
+  "tool_version": "1.0.0",
+  "count": 8,
+  "assets": {
+    "TUT-01": {
+      "path": "ui/prompts/first_contact_prompt_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "hand-outline ring over target tissue, icon only",
+      "files": []
+    },
+    "TUT-02": {
+      "path": "ui/prompts/chew_hold_ring_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "circular progress ring around the held bite",
+      "files": []
+    },
+    "TUT-03": {
+      "path": "ui/prompts/swallow_prompt_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "simple throat-down chevron",
+      "files": []
+    },
+    "TUT-04": {
+      "path": "ui/prompts/first_full_stomach_prompt_512x256.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "gauge outline with a hand pointing at the fill",
+      "files": []
+    },
+    "TUT-05": {
+      "path": "ui/prompts/return_home_handoff_512x256.png",
+      "w": 512,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "compass outline with an arrow leaving it toward the surface",
+      "files": []
+    },
+    "TUT-06": {
+      "path": "ui/prompts/first_vomit_prompt_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "toilet outline with an arrow into the bowl",
+      "files": []
+    },
+    "TUT-07": {
+      "path": "ui/prompts/first_mutation_card_9s.png",
+      "w": 1024,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "wide card with a hand silhouette, 9-sliced",
+      "files": []
+    },
+    "TUT-08": {
+      "path": "ui/prompts/first_nerve_contact_prompt_256x256.png",
+      "w": 256,
+      "h": 256,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "nerve icon plus a shock line: deliberately the loudest prompt in the set",
+      "files": []
+    }
+  }
+}

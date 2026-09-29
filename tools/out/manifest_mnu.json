@@ -1,0 +1,76 @@
+{
+  "tool_version": "1.0.0",
+  "count": 7,
+  "assets": {
+    "MNU-01": {
+      "path": "ui/menu/main_menu_background_1920x1080.png",
+      "w": 1920,
+      "h": 1080,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "red flesh right, clean restroom light left, centre empty for the menu list",
+      "files": []
+    },
+    "MNU-02": {
+      "path": "brand/menu_logo_plate_2048x512.png",
+      "w": 2048,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "logo lockup backing plate with the bite motif; no baked lettering",
+      "files": []
+    },
+    "MNU-03": {
+      "path": "ui/menu/panel_frame_9s.png",
+      "w": 1024,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "frosted clean panel, thin dark border",
+      "files": []
+    },
+    "MNU-04": {
+      "path": "ui/menu/button_states_512x128x4.png",
+      "w": 512,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "atlas",
+      "frames": 4,
+      "note": "normal, hover, pressed, disabled; no baked label",
+      "files": []
+    },
+    "MNU-07": {
+      "path": "ui/menu/checkbox_states_64x64x3.png",
+      "w": 192,
+      "h": 64,
+      "pri": "MVP",
+      "kind": "atlas",
+      "frames": 3,
+      "note": "empty, hovered, ticked with a hand-drawn tick stroke",
+      "files": []
+    },
+    "MNU-09": {
+      "path": "ui/menu/slider_track_9s.png",
+      "w": 64,
+      "h": 16,
+      "pri": "MVP",
+      "kind": "9slice",
+      "frames": 1,
+      "note": "thin track plus a bright fill, no thumb",
+      "files": []
+    },
+    "MNU-18": {
+      "path": "ui/menu/font_bitmap_atlas_512x512.png",
+      "w": 512,
+      "h": 512,
+      "pri": "MVP",
+      "kind": "atlas",
+      "frames": 64,
+      "note": "EMPTY stencil cells, deliberately: no baked glyphs, font-rendered at runtime",
+      "files": []
+    }
+  }
+}

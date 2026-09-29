@@ -1,0 +1,106 @@
+{
+  "tool_version": "1.0.0",
+  "count": 10,
+  "assets": {
+    "TEX-106": {
+      "path": "textures/tissue/nerve_cluster_detail_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "yellow strands, the canon nerve language, must survive close inspection",
+      "files": []
+    },
+    "TEX-301": {
+      "path": "textures/utility/noise_organic_1k.png",
+      "w": 1024,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "tileable organic noise, greyscale base for breakup",
+      "files": []
+    },
+    "TEX-303": {
+      "path": "textures/utility/grunge_mask_1k.png",
+      "w": 1024,
+      "h": 1024,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "dirt and stain overlay, alpha only; LINEAR",
+      "files": []
+    },
+    "TEX-304": {
+      "path": "vfx/flesh_chunk_particle_rot0_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "torn chunk, rotation 0",
+      "files": []
+    },
+    "TEX-304-2": {
+      "path": "vfx/flesh_chunk_particle_rot1_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "torn chunk, rotation 1",
+      "files": []
+    },
+    "TEX-304-3": {
+      "path": "vfx/flesh_chunk_particle_rot2_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "torn chunk, rotation 2",
+      "files": []
+    },
+    "TEX-304-4": {
+      "path": "vfx/flesh_chunk_particle_rot3_128x128.png",
+      "w": 128,
+      "h": 128,
+      "pri": "MVP",
+      "kind": "png32",
+      "frames": 1,
+      "note": "torn chunk, rotation 3",
+      "files": []
+    },
+    "TEX-B01-A": {
+      "path": "textures/flesh/b01_surface_albedo_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "wet pink skin, follicle pits, subsurface reddening",
+      "files": []
+    },
+    "TEX-B01-N": {
+      "path": "textures/flesh/b01_surface_normal_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "OpenGL +Y up, follicle pit depth",
+      "files": []
+    },
+    "TEX-B01-R": {
+      "path": "textures/flesh/b01_surface_roughness_2k.png",
+      "w": 2048,
+      "h": 2048,
+      "pri": "MVP",
+      "kind": "png",
+      "frames": 1,
+      "note": "wet skin is glossy in the raised areas, dull in the pits; LINEAR",
+      "files": []
+    }
+  }
+}

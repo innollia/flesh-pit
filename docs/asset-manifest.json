@@ -1,0 +1,4780 @@
+[
+ {
+  "id": "STO-01",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_frame",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_01_stomach_gauge_frame",
+    "2d/ui/hud/sto_01_stomach_gauge_frame.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-02",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_mask",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_02_stomach_gauge_inner_mask",
+    "2d/ui/hud/sto_02_stomach_gauge_inner_mask.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-03",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_fill",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_03_fill_layer_1_0_to",
+    "2d/ui/hud/sto_03_fill_layer_1_0_to.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-04",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_fill",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_04_fill_layer_2_34_to",
+    "2d/ui/hud/sto_04_fill_layer_2_34_to.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-05",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_fill",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_05_fill_layer_3_67_to",
+    "2d/ui/hud/sto_05_fill_layer_3_67_to.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-06",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "gauge_frame",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_06_overflow_state",
+    "2d/ui/hud/sto_06_overflow_state.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-07",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_07_capacity_tick_marks",
+    "2d/ui/hud/sto_07_capacity_tick_marks.png",
+    128,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "STO-08",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "gauge_frame",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_08_greedy_pulse_rim",
+    "2d/ui/hud/sto_08_greedy_pulse_rim.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-09",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "vignette",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_09_nausea_vignette",
+    "2d/ui/hud/sto_09_nausea_vignette.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "STO-10",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "gauge_mask",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_10_slosh_distortion_mask_01",
+    "2d/ui/hud/sto_10_slosh_distortion_mask_01.png",
+    256,
+    256
+   ],
+   [
+    "sto_10_slosh_distortion_mask_02",
+    "2d/ui/hud/sto_10_slosh_distortion_mask_02.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-11",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "ring",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_11_digest_progress_ring",
+    "2d/ui/hud/sto_11_digest_progress_ring.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-12",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_12_empty_stomach_silhouette",
+    "2d/ui/hud/sto_12_empty_stomach_silhouette.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-13",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_13_full_block_icon",
+    "2d/ui/hud/sto_13_full_block_icon.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "STO-14",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_frame",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_14_toilet_bowl_gauge",
+    "2d/ui/hud/sto_14_toilet_bowl_gauge.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-15",
+  "group": "STO",
+  "pri": "MVP",
+  "recipe": "gauge_fill",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_15_vomit_stream_fill",
+    "2d/ui/hud/sto_15_vomit_stream_fill.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-16",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "gauge_mask",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_16_stage_distortion_overlays_x6_01",
+    "2d/ui/hud/sto_16_stage_distortion_overlays_x6_01.png",
+    256,
+    256
+   ],
+   [
+    "sto_16_stage_distortion_overlays_x6_02",
+    "2d/ui/hud/sto_16_stage_distortion_overlays_x6_02.png",
+    256,
+    256
+   ],
+   [
+    "sto_16_stage_distortion_overlays_x6_03",
+    "2d/ui/hud/sto_16_stage_distortion_overlays_x6_03.png",
+    256,
+    256
+   ],
+   [
+    "sto_16_stage_distortion_overlays_x6_04",
+    "2d/ui/hud/sto_16_stage_distortion_overlays_x6_04.png",
+    256,
+    256
+   ],
+   [
+    "sto_16_stage_distortion_overlays_x6_05",
+    "2d/ui/hud/sto_16_stage_distortion_overlays_x6_05.png",
+    256,
+    256
+   ],
+   [
+    "sto_16_stage_distortion_overlays_x6_06",
+    "2d/ui/hud/sto_16_stage_distortion_overlays_x6_06.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "STO-17",
+  "group": "STO",
+  "pri": "P1",
+  "recipe": "digits",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_17_fullness_numerals",
+    "2d/ui/hud/sto_17_fullness_numerals.png",
+    256,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "STO-18",
+  "group": "STO",
+  "pri": "P2",
+  "recipe": "vignette",
+  "section": "2. Stomach and fullness UI (STO)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "sto_18_overfull_screen_tint",
+    "2d/ui/hud/sto_18_overfull_screen_tint.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "HND-17",
+  "group": "HND",
+  "pri": "P1",
+  "recipe": "hand",
+  "section": "3. First-person hands HUD (HND)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "hnd_17_depth_grime_overlay",
+    "2d/fx/hnd_17_depth_grime_overlay.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "HND-18",
+  "group": "HND",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "3. First-person hands HUD (HND)",
+  "path": "2d/ui/hud/hands",
+  "files": [
+   [
+    "hnd_18_hand_portrait_set",
+    "2d/ui/hud/hands/hnd_18_hand_portrait_set.png",
+    768,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "HND-19",
+  "group": "HND",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "3. First-person hands HUD (HND)",
+  "path": "2d/ui/hud/hands",
+  "files": [
+   [
+    "hnd_19_hand_stage_icons_x6",
+    "2d/ui/hud/hands/hnd_19_hand_stage_icons_x6.png",
+    384,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "HND-21",
+  "group": "HND",
+  "pri": "P1",
+  "recipe": "hand",
+  "section": "3. First-person hands HUD (HND)",
+  "path": "2d/ui/hud/hands",
+  "files": [
+   [
+    "hnd_21_stomach_bulge_frame_overlay",
+    "2d/ui/hud/hands/hnd_21_stomach_bulge_frame_overlay.png",
+    1024,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "DEP-01",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_01_depth_meter_frame",
+    "2d/ui/hud/dep_01_depth_meter_frame.png",
+    256,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "DEP-02",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_02_depth_meter_fill_strip",
+    "2d/ui/hud/dep_02_depth_meter_fill_strip.png",
+    64,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "DEP-03",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_03_depth_tick_texture",
+    "2d/ui/hud/dep_03_depth_tick_texture.png",
+    64,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "DEP-04",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_04_band_divider_marker",
+    "2d/ui/hud/dep_04_band_divider_marker.png",
+    64,
+    32
+   ]
+  ]
+ },
+ {
+  "id": "DEP-05",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_05_band_label_b01",
+    "2d/ui/hud/dep_05_band_label_b01.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-06",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_06_band_label_b02",
+    "2d/ui/hud/dep_06_band_label_b02.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-07",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_07_band_label_b03",
+    "2d/ui/hud/dep_07_band_label_b03.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-08",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_08_band_label_b04",
+    "2d/ui/hud/dep_08_band_label_b04.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-09",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_09_band_label_b05",
+    "2d/ui/hud/dep_09_band_label_b05.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-10",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_10_band_label_b06",
+    "2d/ui/hud/dep_10_band_label_b06.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-11",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_11_band_label_b07",
+    "2d/ui/hud/dep_11_band_label_b07.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-12",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_12_band_label_b08",
+    "2d/ui/hud/dep_12_band_label_b08.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-13",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "card",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_13_band_change_banner_frame",
+    "2d/ui/hud/dep_13_band_change_banner_frame.png",
+    1024,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "DEP-14",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_14_banner_accent_sweep",
+    "2d/ui/hud/dep_14_banner_accent_sweep.png",
+    512,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "DEP-15",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "card",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_15_depth_milestone_frame",
+    "2d/ui/hud/dep_15_depth_milestone_frame.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "DEP-16",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_16_milestone_seal",
+    "2d/ui/hud/dep_16_milestone_seal.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "DEP-17",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "digits",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_17_depth_numerals",
+    "2d/ui/hud/dep_17_depth_numerals.png",
+    256,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-18",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_18_personal_best_marker",
+    "2d/ui/hud/dep_18_personal_best_marker.png",
+    64,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "DEP-19",
+  "group": "DEP",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_19_surface_direction_arrow",
+    "2d/ui/hud/dep_19_surface_direction_arrow.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-20",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_20_home_bearing_chip",
+    "2d/ui/hud/dep_20_home_bearing_chip.png",
+    256,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-21",
+  "group": "DEP",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_21_depth_danger_hint_arrow",
+    "2d/ui/hud/dep_21_depth_danger_hint_arrow.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DEP-22",
+  "group": "DEP",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "4. Depth and anatomical position UI (DEP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "dep_22_band_progress_ladder",
+    "2d/ui/hud/dep_22_band_progress_ladder.png",
+    128,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CMP-01",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_01_compass_frame",
+    "2d/ui/hud/cmp_01_compass_frame.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CMP-02",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_02_compass_rose_face",
+    "2d/ui/hud/cmp_02_compass_rose_face.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CMP-03",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_03_north_needle",
+    "2d/ui/hud/cmp_03_north_needle.png",
+    128,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-04",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_04_restroom_needle",
+    "2d/ui/hud/cmp_04_restroom_needle.png",
+    128,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-05",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "ring",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_05_depth_tick_ring",
+    "2d/ui/hud/cmp_05_depth_tick_ring.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CMP-06",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_06_compass_glass_grime",
+    "2d/ui/hud/cmp_06_compass_glass_grime.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CMP-07",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_07_cracked_glass_state",
+    "2d/ui/hud/cmp_07_cracked_glass_state.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CMP-08",
+  "group": "CMP",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_08_compass_bracket_mount",
+    "2d/ui/hud/cmp_08_compass_bracket_mount.png",
+    256,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CMP-09",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_09_canary_cage_frame",
+    "2d/ui/hud/cmp_09_canary_cage_frame.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-10",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_10_canary_idle_portrait",
+    "2d/ui/hud/cmp_10_canary_idle_portrait.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-11",
+  "group": "CMP",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_11_canary_alert_portrait",
+    "2d/ui/hud/cmp_11_canary_alert_portrait.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-12",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_12_canary_distress_portrait",
+    "2d/ui/hud/cmp_12_canary_distress_portrait.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-13",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_13_canary_status_icon",
+    "2d/ui/hud/cmp_13_canary_status_icon.png",
+    128,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "CMP-15",
+  "group": "CMP",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_15_canary_tether_line",
+    "2d/ui/hud/cmp_15_canary_tether_line.png",
+    64,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-16",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_16_off_route_warning_icon",
+    "2d/ui/hud/cmp_16_off_route_warning_icon.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CMP-17",
+  "group": "CMP",
+  "pri": "TBD",
+  "recipe": "nineslice",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_17_canary_report_popup",
+    "2d/ui/hud/cmp_17_canary_report_popup.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CMP-18",
+  "group": "CMP",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "5. Compass and canary navigation (CMP)",
+  "path": "2d/ui/hud",
+  "files": [
+   [
+    "cmp_18_canary_placeholder_badge",
+    "2d/ui/hud/cmp_18_canary_placeholder_badge.png",
+    64,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "ICO-01",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_01_legend_panel_frame",
+    "2d/ui/icons/ico_01_legend_panel_frame.png",
+    1024,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "ICO-02",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_02_legend_tab_normal",
+    "2d/ui/icons/ico_02_legend_tab_normal.png",
+    256,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "ICO-03",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_03_legend_tab_hover",
+    "2d/ui/icons/ico_03_legend_tab_hover.png",
+    256,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "ICO-04",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_04_legend_tab_selected",
+    "2d/ui/icons/ico_04_legend_tab_selected.png",
+    256,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "ICO-05",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_05_unknown_tissue_icon",
+    "2d/ui/icons/ico_05_unknown_tissue_icon.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-06",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_06_muscle_fibre_icon_t01",
+    "2d/ui/icons/ico_06_muscle_fibre_icon_t01.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-07",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_07_fat_lobe_icon_t02",
+    "2d/ui/icons/ico_07_fat_lobe_icon_t02.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-08",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_08_fascia_sheet_icon_t03",
+    "2d/ui/icons/ico_08_fascia_sheet_icon_t03.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-09",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_09_glandular_sac_icon_t04",
+    "2d/ui/icons/ico_09_glandular_sac_icon_t04.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-10",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_10_cartilage_plate_icon_t05",
+    "2d/ui/icons/ico_10_cartilage_plate_icon_t05.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-11",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_11_nerve_cluster_icon_t06",
+    "2d/ui/icons/ico_11_nerve_cluster_icon_t06.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-12",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_12_tumor_growth_icon_t07",
+    "2d/ui/icons/ico_12_tumor_growth_icon_t07.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-13",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_13_mucosa_film_icon_t08",
+    "2d/ui/icons/ico_13_mucosa_film_icon_t08.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-14",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_14_shell_plate_icon_t09",
+    "2d/ui/icons/ico_14_shell_plate_icon_t09.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-15",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_15_scar_tissue_icon_t10",
+    "2d/ui/icons/ico_15_scar_tissue_icon_t10.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-16",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_16_legend_card_muscle",
+    "2d/ui/icons/ico_16_legend_card_muscle.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-17",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_17_legend_card_fat",
+    "2d/ui/icons/ico_17_legend_card_fat.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-18",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_18_legend_card_fascia",
+    "2d/ui/icons/ico_18_legend_card_fascia.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-19",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_19_legend_card_glandular",
+    "2d/ui/icons/ico_19_legend_card_glandular.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-20",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_20_legend_card_cartilage",
+    "2d/ui/icons/ico_20_legend_card_cartilage.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-21",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_21_legend_card_nerve",
+    "2d/ui/icons/ico_21_legend_card_nerve.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-22",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_22_legend_card_tumor",
+    "2d/ui/icons/ico_22_legend_card_tumor.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-23",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_23_legend_card_mucosa",
+    "2d/ui/icons/ico_23_legend_card_mucosa.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-24",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_24_legend_card_shell",
+    "2d/ui/icons/ico_24_legend_card_shell.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-25",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "legend",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_25_legend_card_scar",
+    "2d/ui/icons/ico_25_legend_card_scar.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-26",
+  "group": "ICO",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_26_legend_tooltip_bubble",
+    "2d/ui/icons/ico_26_legend_tooltip_bubble.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ICO-27",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_27_colour_blind_safe_icon_atlas",
+    "2d/ui/icons/ico_27_colour_blind_safe_icon_atlas.png",
+    1280,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ICO-28",
+  "group": "ICO",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "6. Tissue icons and legend (ICO)",
+  "path": "2d/ui/icons",
+  "files": [
+   [
+    "ico_28_high_contrast_nerve_icon",
+    "2d/ui/icons/ico_28_high_contrast_nerve_icon.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-01",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_01_codex_cover",
+    "2d/ui/codex/cdx_01_codex_cover.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "CDX-02",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_02_codex_page_base",
+    "2d/ui/codex/cdx_02_codex_page_base.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "CDX-03",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_03_page_inner_panel",
+    "2d/ui/codex/cdx_03_page_inner_panel.png",
+    896,
+    960
+   ]
+  ]
+ },
+ {
+  "id": "CDX-04",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_04_category_tab_icon_growths",
+    "2d/ui/codex/cdx_04_category_tab_icon_growths.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-05",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_05_category_tab_icon_nerves",
+    "2d/ui/codex/cdx_05_category_tab_icon_nerves.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-06",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_06_category_tab_icon_tissues",
+    "2d/ui/codex/cdx_06_category_tab_icon_tissues.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-07",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_07_category_tab_icon_infrastructure",
+    "2d/ui/codex/cdx_07_category_tab_icon_infrastructure.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-08",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_08_tab_state_normal",
+    "2d/ui/codex/cdx_08_tab_state_normal.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-09",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_09_tab_state_hover",
+    "2d/ui/codex/cdx_09_tab_state_hover.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-10",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_10_tab_state_selected",
+    "2d/ui/codex/cdx_10_tab_state_selected.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "CDX-11",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_11_slot_unknown",
+    "2d/ui/codex/cdx_11_slot_unknown.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CDX-12",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_12_slot_discovered",
+    "2d/ui/codex/cdx_12_slot_discovered.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CDX-13",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_13_slot_catalogued",
+    "2d/ui/codex/cdx_13_slot_catalogued.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CDX-14",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_14_entry_portrait_frame",
+    "2d/ui/codex/cdx_14_entry_portrait_frame.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CDX-15",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_15_entry_detail_card",
+    "2d/ui/codex/cdx_15_entry_detail_card.png",
+    1024,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CDX-16",
+  "group": "CDX",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_16_newly_catalogued_stamp",
+    "2d/ui/codex/cdx_16_newly_catalogued_stamp.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CDX-17",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "ring",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_17_completeness_arc_gauge",
+    "2d/ui/codex/cdx_17_completeness_arc_gauge.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "CDX-18",
+  "group": "CDX",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_18_codex_complete_stamp",
+    "2d/ui/codex/cdx_18_codex_complete_stamp.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CDX-19",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_19_list_row_highlight",
+    "2d/ui/codex/cdx_19_list_row_highlight.png",
+    1024,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "CDX-20",
+  "group": "CDX",
+  "pri": "P2",
+  "recipe": "flipbook",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/ui/codex",
+  "files": [
+   [
+    "cdx_20_page_turn_wipe_01",
+    "2d/ui/codex/cdx_20_page_turn_wipe_01.png",
+    2048,
+    1024
+   ],
+   [
+    "cdx_20_page_turn_wipe_02",
+    "2d/ui/codex/cdx_20_page_turn_wipe_02.png",
+    2048,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "CDX-21",
+  "group": "CDX",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/art/codex",
+  "files": [
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_01",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_01.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_02",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_02.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_03",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_03.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_04",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_04.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_05",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_05.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_06",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_06.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_07",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_07.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_08",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_08.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_09",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_09.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_10",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_10.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_11",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_11.png",
+    512,
+    512
+   ],
+   [
+    "cdx_21_specimen_portrait_pack_tier_1_12",
+    "2d/art/codex/cdx_21_specimen_portrait_pack_tier_1_12.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CDX-22",
+  "group": "CDX",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/art/codex",
+  "files": [
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_01",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_01.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_02",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_02.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_03",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_03.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_04",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_04.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_05",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_05.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_06",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_06.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_07",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_07.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_08",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_08.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_09",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_09.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_10",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_10.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_11",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_11.png",
+    512,
+    512
+   ],
+   [
+    "cdx_22_specimen_portrait_pack_tier_2_12",
+    "2d/art/codex/cdx_22_specimen_portrait_pack_tier_2_12.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "CDX-23",
+  "group": "CDX",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "7. Codex UI (CDX)",
+  "path": "2d/art/codex",
+  "files": [
+   [
+    "cdx_23_infrastructure_photo_pack_01",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_01.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_02",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_02.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_03",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_03.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_04",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_04.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_05",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_05.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_06",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_06.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_07",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_07.png",
+    512,
+    512
+   ],
+   [
+    "cdx_23_infrastructure_photo_pack_08",
+    "2d/art/codex/cdx_23_infrastructure_photo_pack_08.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "RST-01",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_01_toilet_interaction_prompt",
+    "2d/ui/panels/rst_01_toilet_interaction_prompt.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "RST-02",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_02_bowl_fill_gauge",
+    "2d/ui/panels/rst_02_bowl_fill_gauge.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "RST-03",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_03_bowl_overflow_puff",
+    "2d/ui/panels/rst_03_bowl_overflow_puff.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "RST-04",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_04_white_wall_tile_albedo",
+    "3d/textures/restroom/rst_04_white_wall_tile_albedo.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "RST-05",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_05_tile_grout_normal",
+    "3d/textures/restroom/rst_05_tile_grout_normal.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "RST-06",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_06_tile_roughness",
+    "3d/textures/restroom/rst_06_tile_roughness.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "RST-07",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_07_floor_tile_albedo",
+    "3d/textures/restroom/rst_07_floor_tile_albedo.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "RST-08",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_08_stainless_fixture_albedo",
+    "3d/textures/restroom/rst_08_stainless_fixture_albedo.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "RST-09",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_09_flush_lever_icon",
+    "2d/ui/panels/rst_09_flush_lever_icon.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "RST-10",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_10_restroom_sign_plate",
+    "2d/ui/panels/rst_10_restroom_sign_plate.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "RST-11",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "generic",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_11_door_gap_bleed",
+    "2d/ui/panels/rst_11_door_gap_bleed.png",
+    256,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "RST-12",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "vignette",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_12_safe_zone_white_bloom",
+    "2d/ui/panels/rst_12_safe_zone_white_bloom.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "RST-13",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_13_clean_vignette",
+    "2d/ui/panels/rst_13_clean_vignette.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "RST-14",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_14_ceiling_light_fixture",
+    "3d/textures/restroom/rst_14_ceiling_light_fixture.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "RST-15",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_15_mirror_plate",
+    "3d/textures/restroom/rst_15_mirror_plate.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "RST-16",
+  "group": "RST",
+  "pri": "P2",
+  "recipe": "icon",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_16_paper_towel_dryer_signage_01",
+    "2d/ui/panels/rst_16_paper_towel_dryer_signage_01.png",
+    256,
+    256
+   ],
+   [
+    "rst_16_paper_towel_dryer_signage_02",
+    "2d/ui/panels/rst_16_paper_towel_dryer_signage_02.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "RST-17",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "3d/textures/restroom",
+  "files": [
+   [
+    "rst_17_progress_wall_board",
+    "3d/textures/restroom/rst_17_progress_wall_board.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "RST-18",
+  "group": "RST",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_18_progress_wall_pin_set_01",
+    "2d/ui/panels/rst_18_progress_wall_pin_set_01.png",
+    256,
+    256
+   ],
+   [
+    "rst_18_progress_wall_pin_set_02",
+    "2d/ui/panels/rst_18_progress_wall_pin_set_02.png",
+    256,
+    256
+   ],
+   [
+    "rst_18_progress_wall_pin_set_03",
+    "2d/ui/panels/rst_18_progress_wall_pin_set_03.png",
+    256,
+    256
+   ],
+   [
+    "rst_18_progress_wall_pin_set_04",
+    "2d/ui/panels/rst_18_progress_wall_pin_set_04.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "RST-19",
+  "group": "RST",
+  "pri": "MVP",
+  "recipe": "vignette",
+  "section": "8. Restroom UI and clean-white art (RST)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "rst_19_restroom_clean_transition_overlay",
+    "2d/ui/panels/rst_19_restroom_clean_transition_overlay.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "BAND-01",
+  "group": "BAND",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_01_band_card_frame",
+    "2d/art/depth/band_01_band_card_frame.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-02",
+  "group": "BAND",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_02_b01_surface_epithelium_art",
+    "2d/art/depth/band_02_b01_surface_epithelium_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-03",
+  "group": "BAND",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_03_b02_dermal_stratum_art",
+    "2d/art/depth/band_03_b02_dermal_stratum_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-04",
+  "group": "BAND",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_04_b03_fascia_sheet_art",
+    "2d/art/depth/band_04_b03_fascia_sheet_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-05",
+  "group": "BAND",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_05_b04_muscle_sheath_art",
+    "2d/art/depth/band_05_b04_muscle_sheath_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-06",
+  "group": "BAND",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_06_b05_glandular_cluster_art",
+    "2d/art/depth/band_06_b05_glandular_cluster_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-07",
+  "group": "BAND",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_07_b06_nerve_braid_art",
+    "2d/art/depth/band_07_b06_nerve_braid_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-08",
+  "group": "BAND",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_08_b07_cavity_vault_art",
+    "2d/art/depth/band_08_b07_cavity_vault_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-09",
+  "group": "BAND",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_09_b08_peristaltic_corridor_art",
+    "2d/art/depth/band_09_b08_peristaltic_corridor_art.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BAND-10",
+  "group": "BAND",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "9. Depth band cards and splash art (BAND)",
+  "path": "2d/art/depth",
+  "files": [
+   [
+    "band_10_band_divider_flourish",
+    "2d/art/depth/band_10_band_divider_flourish.png",
+    1024,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "MNU-01",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_01_main_menu_background",
+    "2d/ui/menu/mnu_01_main_menu_background.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "MNU-02",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "logo",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_02_menu_logo_plate",
+    "2d/ui/menu/mnu_02_menu_logo_plate.png",
+    2048,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "MNU-03",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_03_menu_panel_frame",
+    "2d/ui/menu/mnu_03_menu_panel_frame.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "MNU-04",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_04_menu_button_states",
+    "2d/ui/menu/mnu_04_menu_button_states.png",
+    1024,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "MNU-05",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_05_settings_panel_frame",
+    "2d/ui/menu/mnu_05_settings_panel_frame.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "MNU-06",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_06_settings_category_tabs",
+    "2d/ui/menu/mnu_06_settings_category_tabs.png",
+    1024,
+    192
+   ]
+  ]
+ },
+ {
+  "id": "MNU-07",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_07_checkbox_states",
+    "2d/ui/menu/mnu_07_checkbox_states.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "MNU-08",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_08_toggle_switch_states",
+    "2d/ui/menu/mnu_08_toggle_switch_states.png",
+    288,
+    96
+   ]
+  ]
+ },
+ {
+  "id": "MNU-09",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_09_slider_track_fill",
+    "2d/ui/menu/mnu_09_slider_track_fill.png",
+    64,
+    16
+   ]
+  ]
+ },
+ {
+  "id": "MNU-10",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_10_slider_knob_states",
+    "2d/ui/menu/mnu_10_slider_knob_states.png",
+    96,
+    96
+   ]
+  ]
+ },
+ {
+  "id": "MNU-11",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_11_dropdown_arrow_states",
+    "2d/ui/menu/mnu_11_dropdown_arrow_states.png",
+    96,
+    96
+   ]
+  ]
+ },
+ {
+  "id": "MNU-12",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "vignette",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_12_pause_overlay",
+    "2d/ui/menu/mnu_12_pause_overlay.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "MNU-13",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_13_controls_rebind_panel",
+    "2d/ui/menu/mnu_13_controls_rebind_panel.png",
+    1024,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "MNU-14",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_14_input_glyph_set",
+    "2d/ui/menu/mnu_14_input_glyph_set.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "MNU-15",
+  "group": "MNU",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_15_save_slot_indicator_01",
+    "2d/ui/menu/mnu_15_save_slot_indicator_01.png",
+    128,
+    64
+   ],
+   [
+    "mnu_15_save_slot_indicator_02",
+    "2d/ui/menu/mnu_15_save_slot_indicator_02.png",
+    128,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "MNU-16",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_16_confirm_dialog_frame",
+    "2d/ui/menu/mnu_16_confirm_dialog_frame.png",
+    768,
+    384
+   ]
+  ]
+ },
+ {
+  "id": "MNU-17",
+  "group": "MNU",
+  "pri": "P2",
+  "recipe": "keyart",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_17_credits_background",
+    "2d/ui/menu/mnu_17_credits_background.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "MNU-18",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "atlas",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_18_ui_font_bitmap_set",
+    "2d/ui/menu/mnu_18_ui_font_bitmap_set.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "MNU-19",
+  "group": "MNU",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_19_title_screen_backdrop",
+    "2d/ui/menu/mnu_19_title_screen_backdrop.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "MNU-20",
+  "group": "MNU",
+  "pri": "P2",
+  "recipe": "nineslice",
+  "section": "10. Menu, settings, and flow UI (MNU)",
+  "path": "2d/ui/menu",
+  "files": [
+   [
+    "mnu_20_first_run_card",
+    "2d/ui/menu/mnu_20_first_run_card.png",
+    1024,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "DTH-01",
+  "group": "DTH",
+  "pri": "MVP",
+  "recipe": "vignette",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_01_death_vignette",
+    "2d/ui/panels/dth_01_death_vignette.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "DTH-02",
+  "group": "DTH",
+  "pri": "MVP",
+  "recipe": "card",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_02_death_screen_card",
+    "2d/ui/panels/dth_02_death_screen_card.png",
+    1024,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "DTH-03",
+  "group": "DTH",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_03_drop_beacon_world_icon",
+    "2d/ui/panels/dth_03_drop_beacon_world_icon.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "DTH-04",
+  "group": "DTH",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_04_beacon_hud_chip",
+    "2d/ui/panels/dth_04_beacon_hud_chip.png",
+    128,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "DTH-05",
+  "group": "DTH",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_05_recover_objective_card",
+    "2d/ui/panels/dth_05_recover_objective_card.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DTH-06",
+  "group": "DTH",
+  "pri": "MVP",
+  "recipe": "glow",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_06_items_recovered_flash",
+    "2d/ui/panels/dth_06_items_recovered_flash.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "DTH-07",
+  "group": "DTH",
+  "pri": "MVP",
+  "recipe": "vignette",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_07_respawn_white_fade",
+    "2d/ui/panels/dth_07_respawn_white_fade.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "DTH-08",
+  "group": "DTH",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_08_belongings_cache_marker",
+    "2d/ui/panels/dth_08_belongings_cache_marker.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "DTH-09",
+  "group": "DTH",
+  "pri": "P2",
+  "recipe": "vignette",
+  "section": "11. Death and recovery (DTH)",
+  "path": "2d/ui/panels",
+  "files": [
+   [
+    "dth_09_death_heartbeat_overlay",
+    "2d/ui/panels/dth_09_death_heartbeat_overlay.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TUT-01",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_01_first_contact_prompt",
+    "2d/ui/prompts/tut_01_first_contact_prompt.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-02",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "ring",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_02_chew_hold_ring",
+    "2d/ui/prompts/tut_02_chew_hold_ring.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-03",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_03_swallow_prompt",
+    "2d/ui/prompts/tut_03_swallow_prompt.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "TUT-04",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_04_first_full_stomach_prompt",
+    "2d/ui/prompts/tut_04_first_full_stomach_prompt.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-05",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_05_return_home_hand_off",
+    "2d/ui/prompts/tut_05_return_home_hand_off.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-06",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_06_first_vomit_prompt",
+    "2d/ui/prompts/tut_06_first_vomit_prompt.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-07",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "nineslice",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_07_first_mutation_reveal_card",
+    "2d/ui/prompts/tut_07_first_mutation_reveal_card.png",
+    1024,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "TUT-08",
+  "group": "TUT",
+  "pri": "MVP",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_08_first_nerve_contact_prompt",
+    "2d/ui/prompts/tut_08_first_nerve_contact_prompt.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-09",
+  "group": "TUT",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_09_first_codex_pickup_prompt",
+    "2d/ui/prompts/tut_09_first_codex_pickup_prompt.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-10",
+  "group": "TUT",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_10_first_death_prompt",
+    "2d/ui/prompts/tut_10_first_death_prompt.png",
+    512,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TUT-11",
+  "group": "TUT",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_11_highlight_overlay",
+    "2d/ui/prompts/tut_11_highlight_overlay.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "TUT-12",
+  "group": "TUT",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_12_tooltip_bubble",
+    "2d/ui/prompts/tut_12_tooltip_bubble.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "TUT-13",
+  "group": "TUT",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_13_objective_toast_frame",
+    "2d/ui/prompts/tut_13_objective_toast_frame.png",
+    768,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "TUT-14",
+  "group": "TUT",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "12. Tutorial and onboarding (TUT)",
+  "path": "2d/ui/prompts",
+  "files": [
+   [
+    "tut_14_help_overlay_background",
+    "2d/ui/prompts/tut_14_help_overlay_background.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "LDG-01",
+  "group": "LDG",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_01_loading_frame",
+    "2d/art/loading/ldg_01_loading_frame.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "LDG-02",
+  "group": "LDG",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_02_band_tip_art_b01_to_01",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_01.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_02",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_02.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_03",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_03.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_04",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_04.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_05",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_05.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_06",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_06.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_07",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_07.png",
+    1920,
+    1080
+   ],
+   [
+    "ldg_02_band_tip_art_b01_to_08",
+    "2d/art/loading/ldg_02_band_tip_art_b01_to_08.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "LDG-03",
+  "group": "LDG",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_03_loading_spinner_clean",
+    "2d/art/loading/ldg_03_loading_spinner_clean.png",
+    768,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "LDG-04",
+  "group": "LDG",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_04_loading_spinner_flesh",
+    "2d/art/loading/ldg_04_loading_spinner_flesh.png",
+    768,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "LDG-05",
+  "group": "LDG",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_05_loading_tip_card",
+    "2d/art/loading/ldg_05_loading_tip_card.png",
+    768,
+    192
+   ]
+  ]
+ },
+ {
+  "id": "LDG-06",
+  "group": "LDG",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_06_loading_progress_track",
+    "2d/art/loading/ldg_06_loading_progress_track.png",
+    64,
+    16
+   ]
+  ]
+ },
+ {
+  "id": "LDG-07",
+  "group": "LDG",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "13. Loading screens (LDG)",
+  "path": "2d/art/loading",
+  "files": [
+   [
+    "ldg_07_legal_rating_plate",
+    "2d/art/loading/ldg_07_legal_rating_plate.png",
+    512,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B01-A / N / R",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B01_b01_surface_epithelium_pink_wet",
+    "3d/textures/shells/tex_B01_b01_surface_epithelium_pink_wet.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B02-A / N / R",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B02_b02_dermal_stratum_yellow_fat",
+    "3d/textures/shells/tex_B02_b02_dermal_stratum_yellow_fat.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B03-A / N / R",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B03_b03_fascia_sheet_white_fibrous",
+    "3d/textures/shells/tex_B03_b03_fascia_sheet_white_fibrous.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B04-A / N / R",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B04_b04_muscle_sheath_dark_striated",
+    "3d/textures/shells/tex_B04_b04_muscle_sheath_dark_striated.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B05-A / N / R",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B05_b05_glandular_cluster_nodular_translucent",
+    "3d/textures/shells/tex_B05_b05_glandular_cluster_nodular_translucent.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B06-A / N / R",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B06_b06_nerve_braid_yellow_strand",
+    "3d/textures/shells/tex_B06_b06_nerve_braid_yellow_strand.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B07-A / N / R",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B07_b07_cavity_vault_near_black",
+    "3d/textures/shells/tex_B07_b07_cavity_vault_near_black.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-B08-A / N / R",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/shells",
+  "files": [
+   [
+    "tex_B08_b08_peristaltic_corridor_ridged_tube",
+    "3d/textures/shells/tex_B08_b08_peristaltic_corridor_ridged_tube.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-101",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_101_muscle_fibre_detail",
+    "3d/textures/tissue/tex_101_muscle_fibre_detail.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-102",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_102_fat_lobe_detail",
+    "3d/textures/tissue/tex_102_fat_lobe_detail.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-103",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_103_fascia_sheet_detail",
+    "3d/textures/tissue/tex_103_fascia_sheet_detail.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-104",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_104_glandular_sac_detail",
+    "3d/textures/tissue/tex_104_glandular_sac_detail.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-105",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_105_cartilage_plate_detail",
+    "3d/textures/tissue/tex_105_cartilage_plate_detail.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-106",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_106_nerve_cluster_detail",
+    "3d/textures/tissue/tex_106_nerve_cluster_detail.png",
+    2048,
+    2048
+   ]
+  ]
+ },
+ {
+  "id": "TEX-109",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_109_tumor_surface",
+    "3d/textures/tissue/tex_109_tumor_surface.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-110",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_110_tumor_surface_b",
+    "3d/textures/tissue/tex_110_tumor_surface_b.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-111",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_111_tumor_surface_c",
+    "3d/textures/tissue/tex_111_tumor_surface_c.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-112",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_112_mucosa_film",
+    "3d/textures/tissue/tex_112_mucosa_film.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-113",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_113_shell_plate_detail",
+    "3d/textures/tissue/tex_113_shell_plate_detail.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-114",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_114_scar_tissue_lining",
+    "3d/textures/tissue/tex_114_scar_tissue_lining.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-116",
+  "group": "TEX",
+  "pri": "P2",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/tissue",
+  "files": [
+   [
+    "tex_116_vascular_detail_cosmetic_only",
+    "3d/textures/tissue/tex_116_vascular_detail_cosmetic_only.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-201",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/infra",
+  "files": [
+   [
+    "tex_201_embedded_enamel_sign",
+    "3d/textures/infra/tex_201_embedded_enamel_sign.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-206",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/infra",
+  "files": [
+   [
+    "tex_206_garbled_tile_wall",
+    "3d/textures/infra/tex_206_garbled_tile_wall.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-207",
+  "group": "TEX",
+  "pri": "P2",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/infra",
+  "files": [
+   [
+    "tex_207_caution_stripe",
+    "3d/textures/infra/tex_207_caution_stripe.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "TEX-301",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/utility",
+  "files": [
+   [
+    "tex_301_noise_base_organic",
+    "3d/textures/utility/tex_301_noise_base_organic.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-302",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/utility",
+  "files": [
+   [
+    "tex_302_flow_map_flesh",
+    "3d/textures/utility/tex_302_flow_map_flesh.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-303",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "3d/textures/utility",
+  "files": [
+   [
+    "tex_303_grunge_mask",
+    "3d/textures/utility/tex_303_grunge_mask.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "TEX-304",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "particle",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_304_flesh_chunk_particle_01",
+    "2d/fx/tex_304_flesh_chunk_particle_01.png",
+    128,
+    128
+   ],
+   [
+    "tex_304_flesh_chunk_particle_02",
+    "2d/fx/tex_304_flesh_chunk_particle_02.png",
+    128,
+    128
+   ],
+   [
+    "tex_304_flesh_chunk_particle_03",
+    "2d/fx/tex_304_flesh_chunk_particle_03.png",
+    128,
+    128
+   ],
+   [
+    "tex_304_flesh_chunk_particle_04",
+    "2d/fx/tex_304_flesh_chunk_particle_04.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "TEX-305",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "particle",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_305_saliva_droplet",
+    "2d/fx/tex_305_saliva_droplet.png",
+    64,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "TEX-306",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "particle",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_306_mucus_strand",
+    "2d/fx/tex_306_mucus_strand.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "TEX-307",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "particle",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_307_spark_particle",
+    "2d/fx/tex_307_spark_particle.png",
+    64,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "TEX-308",
+  "group": "TEX",
+  "pri": "P1",
+  "recipe": "particle",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_308_ambient_mote",
+    "2d/fx/tex_308_ambient_mote.png",
+    32,
+    32
+   ]
+  ]
+ },
+ {
+  "id": "TEX-314",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_314_wipe_gradient",
+    "2d/fx/tex_314_wipe_gradient.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "TEX-315",
+  "group": "TEX",
+  "pri": "MVP",
+  "recipe": "texture",
+  "section": "14. World textures (TEX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "tex_315_glow_radial",
+    "2d/fx/tex_315_glow_radial.png",
+    256,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "VFX-01",
+  "group": "VFX",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_01_flesh_tear_burst_8f",
+    "2d/fx/vfx_01_flesh_tear_burst_8f.png",
+    2048,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "VFX-02",
+  "group": "VFX",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_02_chew_burst_6f",
+    "2d/fx/vfx_02_chew_burst_6f.png",
+    1536,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "VFX-03",
+  "group": "VFX",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_03_tearing_strand_10f",
+    "2d/fx/vfx_03_tearing_strand_10f.png",
+    2560,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "VFX-04",
+  "group": "VFX",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_04_saliva_arc_8f",
+    "2d/fx/vfx_04_saliva_arc_8f.png",
+    1024,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "VFX-05",
+  "group": "VFX",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_05_mucosal_splatter_12f",
+    "2d/fx/vfx_05_mucosal_splatter_12f.png",
+    3072,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "VFX-07",
+  "group": "VFX",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_07_nerve_recoil_spark_6f",
+    "2d/fx/vfx_07_nerve_recoil_spark_6f.png",
+    768,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "VFX-08",
+  "group": "VFX",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_08_tumor_reveal_shimmer_12f",
+    "2d/fx/vfx_08_tumor_reveal_shimmer_12f.png",
+    6144,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "VFX-09",
+  "group": "VFX",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_09_vomit_stream_24f",
+    "2d/fx/vfx_09_vomit_stream_24f.png",
+    4608,
+    384
+   ]
+  ]
+ },
+ {
+  "id": "VFX-10",
+  "group": "VFX",
+  "pri": "MVP",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_10_toilet_flush_swirl_16f",
+    "2d/fx/vfx_10_toilet_flush_swirl_16f.png",
+    2048,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "VFX-16",
+  "group": "VFX",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_16_digest_bubbles_12f",
+    "2d/fx/vfx_16_digest_bubbles_12f.png",
+    1536,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "VFX-19",
+  "group": "VFX",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_19_ambient_drip_6f",
+    "2d/fx/vfx_19_ambient_drip_6f.png",
+    384,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "VFX-20",
+  "group": "VFX",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "15. VFX image assets (VFX)",
+  "path": "2d/fx",
+  "files": [
+   [
+    "vfx_20_flesh_heal_flash_8f",
+    "2d/fx/vfx_20_flesh_heal_flash_8f.png",
+    2048,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "BRD-01",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "logo",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_01_logo_lockup",
+    "2d/brand/brd_01_logo_lockup.png",
+    2048,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "BRD-02",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "logo",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_02_wordmark_only",
+    "2d/brand/brd_02_wordmark_only.png",
+    2048,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "BRD-03",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_03_app_icon",
+    "2d/brand/brd_03_app_icon.png",
+    512,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "BRD-04",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "keyart",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_04_key_art_main",
+    "2d/brand/brd_04_key_art_main.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BRD-05",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_05_key_art_close_up",
+    "2d/brand/brd_05_key_art_close_up.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BRD-06",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "keyart",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_06_key_art_contrast",
+    "2d/brand/brd_06_key_art_contrast.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BRD-07",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "capsule",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_07_capsule_main_1232x706",
+    "2d/brand/brd_07_capsule_main_1232x706.png",
+    1232,
+    706
+   ]
+  ]
+ },
+ {
+  "id": "BRD-08",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "capsule",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_08_capsule_small_462x174",
+    "2d/brand/brd_08_capsule_small_462x174.png",
+    462,
+    174
+   ]
+  ]
+ },
+ {
+  "id": "BRD-09",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "capsule",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_09_capsule_vertical_600x900",
+    "2d/brand/brd_09_capsule_vertical_600x900.png",
+    600,
+    900
+   ]
+  ]
+ },
+ {
+  "id": "BRD-10",
+  "group": "BRD",
+  "pri": "MVP",
+  "recipe": "capsule",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_10_header_460x215",
+    "2d/brand/brd_10_header_460x215.png",
+    460,
+    215
+   ]
+  ]
+ },
+ {
+  "id": "BRD-11",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "capsule",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_11_library_hero_3840x1240",
+    "2d/brand/brd_11_library_hero_3840x1240.png",
+    1920,
+    620
+   ]
+  ]
+ },
+ {
+  "id": "BRD-12",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "capsule",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_12_page_background_1438x810",
+    "2d/brand/brd_12_page_background_1438x810.png",
+    1438,
+    810
+   ]
+  ]
+ },
+ {
+  "id": "BRD-13",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_13_screenshot_frame_clean",
+    "2d/brand/brd_13_screenshot_frame_clean.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "BRD-14",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "nineslice",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_14_screenshot_frame_caption_bar",
+    "2d/brand/brd_14_screenshot_frame_caption_bar.png",
+    1920,
+    120
+   ]
+  ]
+ },
+ {
+  "id": "BRD-15",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_15_achievement_first_bite",
+    "2d/brand/brd_15_achievement_first_bite.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-16",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_16_achievement_first_return",
+    "2d/brand/brd_16_achievement_first_return.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-17",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_17_achievement_first_mutation",
+    "2d/brand/brd_17_achievement_first_mutation.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-18",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_18_achievement_1000_m",
+    "2d/brand/brd_18_achievement_1000_m.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-19",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_19_achievement_codex_complete",
+    "2d/brand/brd_19_achievement_codex_complete.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-20",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_20_achievement_nerve_first_touch",
+    "2d/brand/brd_20_achievement_nerve_first_touch.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-21",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_21_achievement_belongings_recovered",
+    "2d/brand/brd_21_achievement_belongings_recovered.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-22",
+  "group": "BRD",
+  "pri": "P1",
+  "recipe": "achievement",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_22_achievement_deepest_band",
+    "2d/brand/brd_22_achievement_deepest_band.png",
+    128,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "BRD-23",
+  "group": "BRD",
+  "pri": "P2",
+  "recipe": "keyart",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_23_trailer_end_card",
+    "2d/brand/brd_23_trailer_end_card.png",
+    960,
+    540
+   ]
+  ]
+ },
+ {
+  "id": "BRD-24",
+  "group": "BRD",
+  "pri": "P2",
+  "recipe": "logo",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_24_press_kit_logo_on_transparent_01",
+    "2d/brand/brd_24_press_kit_logo_on_transparent_01.png",
+    2048,
+    512
+   ],
+   [
+    "brd_24_press_kit_logo_on_transparent_02",
+    "2d/brand/brd_24_press_kit_logo_on_transparent_02.png",
+    2048,
+    512
+   ]
+  ]
+ },
+ {
+  "id": "BRD-25",
+  "group": "BRD",
+  "pri": "P2",
+  "recipe": "logo",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_25_favicon",
+    "2d/brand/brd_25_favicon.png",
+    64,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "BRD-26",
+  "group": "BRD",
+  "pri": "P2",
+  "recipe": "nineslice",
+  "section": "16. Brand, store, and marketing (BRD)",
+  "path": "2d/brand",
+  "files": [
+   [
+    "brd_26_stream_overlay_frame",
+    "2d/brand/brd_26_stream_overlay_frame.png",
+    1920,
+    1080
+   ]
+  ]
+ },
+ {
+  "id": "ACC-01",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_01_colour_blind_safe_icon_atlas",
+    "2d/ui/acc/acc_01_colour_blind_safe_icon_atlas.png",
+    1280,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ACC-02",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "atlas",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_02_high_contrast_nerve_icon_set_128",
+    "2d/ui/acc/acc_02_high_contrast_nerve_icon_set_128.png",
+    128,
+    128
+   ],
+   [
+    "acc_02_high_contrast_nerve_icon_set_64",
+    "2d/ui/acc/acc_02_high_contrast_nerve_icon_set_64.png",
+    64,
+    64
+   ],
+   [
+    "acc_02_high_contrast_nerve_icon_set_32",
+    "2d/ui/acc/acc_02_high_contrast_nerve_icon_set_32.png",
+    32,
+    32
+   ]
+  ]
+ },
+ {
+  "id": "ACC-03",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_03_reduced_motion_shake_replacement",
+    "2d/ui/acc/acc_03_reduced_motion_shake_replacement.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "ACC-04",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "vignette",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_04_reduced_motion_flash_removal_01",
+    "2d/ui/acc/acc_04_reduced_motion_flash_removal_01.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_04_reduced_motion_flash_removal_02",
+    "2d/ui/acc/acc_04_reduced_motion_flash_removal_02.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_04_reduced_motion_flash_removal_03",
+    "2d/ui/acc/acc_04_reduced_motion_flash_removal_03.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_04_reduced_motion_flash_removal_04",
+    "2d/ui/acc/acc_04_reduced_motion_flash_removal_04.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "ACC-05",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "flipbook",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_05_low_amplitude_heartbeat",
+    "2d/ui/acc/acc_05_low_amplitude_heartbeat.png",
+    6144,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "ACC-06",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_06_ui_scale_125_exports",
+    "2d/ui/acc/acc_06_ui_scale_125_exports.png",
+    1280,
+    1280
+   ]
+  ]
+ },
+ {
+  "id": "ACC-07",
+  "group": "ACC",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_07_ui_scale_150_exports",
+    "2d/ui/acc/acc_07_ui_scale_150_exports.png",
+    1536,
+    1536
+   ]
+  ]
+ },
+ {
+  "id": "ACC-08",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "generic",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_08_localisation_safe_text_plates",
+    "2d/ui/acc/acc_08_localisation_safe_text_plates.png",
+    1024,
+    256
+   ]
+  ]
+ },
+ {
+  "id": "ACC-09",
+  "group": "ACC",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_09_subtitle_plate",
+    "2d/ui/acc/acc_09_subtitle_plate.png",
+    1024,
+    128
+   ]
+  ]
+ },
+ {
+  "id": "ACC-10",
+  "group": "ACC",
+  "pri": "P1",
+  "recipe": "icon",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_10_focus_selection_ring",
+    "2d/ui/acc/acc_10_focus_selection_ring.png",
+    64,
+    64
+   ]
+  ]
+ },
+ {
+  "id": "ACC-11",
+  "group": "ACC",
+  "pri": "P2",
+  "recipe": "nineslice",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_11_high_contrast_ui_frame_set_01",
+    "2d/ui/acc/acc_11_high_contrast_ui_frame_set_01.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_11_high_contrast_ui_frame_set_02",
+    "2d/ui/acc/acc_11_high_contrast_ui_frame_set_02.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_11_high_contrast_ui_frame_set_03",
+    "2d/ui/acc/acc_11_high_contrast_ui_frame_set_03.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_11_high_contrast_ui_frame_set_04",
+    "2d/ui/acc/acc_11_high_contrast_ui_frame_set_04.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_11_high_contrast_ui_frame_set_05",
+    "2d/ui/acc/acc_11_high_contrast_ui_frame_set_05.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_11_high_contrast_ui_frame_set_06",
+    "2d/ui/acc/acc_11_high_contrast_ui_frame_set_06.png",
+    1024,
+    1024
+   ]
+  ]
+ },
+ {
+  "id": "ACC-12",
+  "group": "ACC",
+  "pri": "P2",
+  "recipe": "generic",
+  "section": "17. Accessibility and robustness variants (ACC)",
+  "path": "2d/ui/acc",
+  "files": [
+   [
+    "acc_12_low_resolution_fallback_set_1024",
+    "2d/ui/acc/acc_12_low_resolution_fallback_set_1024.png",
+    1024,
+    1024
+   ],
+   [
+    "acc_12_low_resolution_fallback_set_512",
+    "2d/ui/acc/acc_12_low_resolution_fallback_set_512.png",
+    512,
+    512
+   ]
+  ]
+ }
+]
