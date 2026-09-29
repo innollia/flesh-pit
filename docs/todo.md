@@ -8,19 +8,22 @@
 - [ ] Define the canary's exact long-range hint language without turning it into exact destination tracking.
 - [ ] Define close-range biome precursor language in the tissue itself: visual, audio, motion, elasticity, or embedded-structure cues.
 - [ ] Tune how much continuous tissue / biome drift can misalign old tunnels and the restroom approach without making navigation feel arbitrary.
-- [ ] Define protection rules for death-drop recovery and other return objectives when surrounding geography has shifted.
-- [ ] Define the regeneration-suppression tool: coverage, duration, placement limits, and how strongly it can stabilize a route without deleting regeneration pressure.
-- [ ] Design tool progression without losing the core identity of **eating** the terrain.
+- [ ] Define how death-drop recovery works when the marker preserves only the last known location but the tissue can move afterward.
+- [ ] Tune the regeneration-slowing tool: coverage, duration, placement limits, and slowdown strength.
+- [ ] Design tool progression across the already accepted roles: portable blender, tissue-specific tools, route/return tools, and regeneration-control tools.
+- [ ] Define portable blender handling: how much loose flesh can be held before blending, how batching works, and how much stomach efficiency it grants.
+- [ ] Define mutation-choice cadence and presentation without expanding into a large skill-tree system.
 - [ ] Brainstorm progression content/events for the clean white restroom.
 - [ ] Decide whether cancer/tumor codex completion grants any practical benefit or stays purely collectible.
-- [ ] Tune stomach capacity against flesh-regeneration speed using successful digging-game return cadences as baseline.
+- [ ] Tune normal stomach capacity, overfill slowdown, visible flesh buildup, and overflow-bar growth against flesh-regeneration speed.
 
 ## Prototype questions
 
 - [ ] How fast should flesh regrow before the first return so the player notices it naturally?
 - [ ] How narrow can a returning tunnel become before it feels unfair?
 - [ ] How do compass and canary prevent getting lost without trivializing navigation?
-- [ ] How should death drops work when the old route is regenerating?
+- [ ] At what overfill level does eating become visibly and mechanically inefficient enough to push the player home without hard-locking eating?
+- [ ] How should a shifted death-drop position remain recoverable when only its old position is known?
 - [ ] How much chewing time feels tactile rather than sluggish?
 - [ ] Which tissue-elasticity signals are cheapest and clearest?
 
