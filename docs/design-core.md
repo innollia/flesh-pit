@@ -37,6 +37,7 @@ Vomiting outside the restroom is lethal:
 - the hardened vomit remains connected back to the player's mouth
 - the flesh still inside the stomach becomes continuous with the wall through that hardened mass
 - the player is effectively incorporated into the surrounding tissue and dies
+- the vomit button does **not** explicitly explain this outcome; danger is communicated indirectly through presentation such as button behavior, sound, animation, or other warning cues
 
 This makes the on-screen vomit button a desperate but deadly option outside the safe restroom, while preserving the restroom as the only safe place to empty the stomach.
 
@@ -57,6 +58,8 @@ A later tool role is established: the player can **slow local regeneration** to 
 
 Regeneration-slowing devices are limited by **how many can be installed at once**. This forces the player to choose which routes or areas are worth stabilizing instead of suppressing regeneration everywhere.
 
+To change which areas are stabilized, the player must physically return to an installed device, recover it, and relocate it. New placements do not automatically deactivate old devices.
+
 ## 3. Eating feel
 
 Eating is not abstract block deletion.
@@ -74,7 +77,7 @@ Start:
 Tool progression must preserve the identity of **eating through the organism**, not turn the player into an ordinary miner.
 
 Established tool directions:
-- **portable blender:** torn flesh can be collected visibly in the player's hands, then blended in batches and consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently. While carrying a pile of flesh, the player can still use one hand for other actions.
+- **portable blender:** torn flesh can be collected visibly in the player's hands, then blended in batches and consumed more efficiently; mechanically this produces an effect similar to increased stomach capacity by packing the same harvested flesh more efficiently. While carrying a pile of flesh, the player can still use one-handed tools and actions, but two-handed tools are unavailable until the carried flesh is put down, consumed, or otherwise cleared.
 - **tissue-specific tools:** some tools can improve handling of particular tissue types
 - **route / return tools:** tools can support navigation, route maintenance, or return travel
 - **regeneration-control tools:** some tools can slow local flesh regeneration
@@ -99,7 +102,9 @@ Mutation progression includes **player choice** rather than being purely automat
 
 Mutation choice is presented when the player returns to the restroom and vomits into the toilet. The mutation UI appears beside the toilet rather than as a detached menu.
 
-The offered mutation choices are determined by the **types of tissue the player has eaten** during the excursion. Exact weighting and option count remain unresolved.
+The offered mutation choices are determined by the **types of tissue the player has eaten** during the excursion.
+
+A tissue type must be eaten past a defined threshold before it becomes eligible to contribute mutation choices. Eligible tissue types then populate the available mutation options. Exact threshold values and option count remain unresolved.
 
 ## 5. Tissue-specific rules
 
@@ -139,7 +144,8 @@ On death:
 - the player can return and recover them
 - failing to recover them should not create a severe long-term penalty
 - navigation only preserves the **last known location** of the drop
-- dropped belongings can be physically displaced continuously by moving / regenerating tissue after death, with no fixed displacement cap, so the marker does not magically update to the item's new exact position
+- dropped belongings can be physically displaced continuously by moving / regenerating tissue after death, with no fixed displacement cap
+- there is no additional tracking aid, trail, or corrective marker after the initial last-known-location marker; if the item drifts, the player must search from that stale location
 
 Death should create a small recovery objective, not wipe progression.
 
