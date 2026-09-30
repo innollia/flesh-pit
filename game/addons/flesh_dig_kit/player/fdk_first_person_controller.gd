@@ -18,6 +18,9 @@ var _yaw: float = 0.0
 var _pitch: float = 0.0
 var _is_crouching: bool = false
 var _bob_time: float = 0.0
+var _bob_weight: float = 0.0 ## 0 standing still .. 1 walking; eases so the view settles softly
+var _pivot_base_y: float = 0.9
+var last_bob_offset: Vector3 = Vector3.ZERO
 var _climb_input: float = 0.0 ## -1 (down) .. 1 (up), from crouch+jump combo or dedicated climb keys
 
 @onready var camera_pivot: Node3D = $CameraPivot
@@ -77,12 +80,14 @@ func _process_crouch() -> void:
 func _apply_stand_height() -> void:
 	if collision_shape.shape is CapsuleShape3D:
 		(collision_shape.shape as CapsuleShape3D).height = config.stand_height
-	camera_pivot.position.y = eye_pivot_y(false)
+	_pivot_base_y = eye_pivot_y(false)
+	camera_pivot.position.y = _pivot_base_y
 
 func _apply_crouch_height() -> void:
 	if collision_shape.shape is CapsuleShape3D:
 		(collision_shape.shape as CapsuleShape3D).height = config.crouch_height
-	camera_pivot.position.y = eye_pivot_y(true)
+	_pivot_base_y = eye_pivot_y(true)
+	camera_pivot.position.y = _pivot_base_y
 
 ## Camera pivot height over the capsule centre: eye_height above the feet,
 ## scaled down with the capsule when crouching.
@@ -123,10 +128,27 @@ func _process_move_and_climb(delta: float) -> void:
 
 func _process_footstep_bob(delta: float) -> void:
 	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
-	if horizontal_speed > 0.05 and is_on_floor():
+	var moving := horizontal_speed > 0.05 and is_on_floor()
+	if moving:
 		_bob_time += delta * config.bob_frequency * (horizontal_speed / max(config.walk_speed, 0.01))
-	var bob_offset := Vector3(0.0, sin(_bob_time) * config.bob_amplitude, 0.0)
+	_bob_weight = move_toward(_bob_weight, 1.0 if moving else 0.0, delta * config.bob_ease_speed)
+	var bob_offset := bob_offset_at(_bob_time, _bob_weight)
+	last_bob_offset = bob_offset
+	_apply_head_bob(bob_offset)
 	footstep_bob.emit(bob_offset)
+
+## Head bob for a bob phase and walk weight. y dips once per step (its
+## trough is where fdk_audio_director plays the footstep); x sways to one
+## side per step, so a full left-right cycle spans two steps.
+func bob_offset_at(phase: float, weight: float) -> Vector3:
+	return Vector3(sin(phase * 0.5) * config.bob_sway * weight, sin(phase) * config.bob_amplitude * weight, 0.0)
+
+## Moves the camera pivot (not the camera, which hand motions own).
+func _apply_head_bob(offset: Vector3) -> void:
+	if not config.head_bob_enabled:
+		offset = Vector3.ZERO
+	camera_pivot.position = Vector3(offset.x, _pivot_base_y + offset.y, 0.0)
+	camera_pivot.rotation.z = -offset.x * config.bob_roll
 
 ## Returns a world-space ray (origin, direction) along the camera's look
 ## direction, for the game/kit's eat interaction to raycast with.

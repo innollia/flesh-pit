@@ -34,6 +34,7 @@ func _process(_d: float) -> bool:
         return false
     _run()
     _run_systems()
+    _run_bob_and_room(_m)
     _m.queue_free()
     print("--- %d passed, %d failed ---" % [_passed, _failures])
     quit(1 if _failures > 0 else 0)
@@ -414,3 +415,50 @@ func _run_session_e(m) -> void:
     _assert(lv[0] < lv[1] and lv[1] < lv[2] and lv[2] < lv[3], "W42 the melody is louder in each outer shell %s" % str(lv))
     m.player.global_position = m.START_POS
     _assert(m.melody_level() == 0.0, "W42 no melody in the restroom")
+
+## Head bob (형님 2026-09-30: walking felt like floating) and the green seam
+## at the mirror wall's corner (rest-container lamps shining through the wall).
+func _run_bob_and_room(m) -> void:
+    var p = m.player
+    var cfg = p.config
+    var top: Vector3 = p.bob_offset_at(PI * 0.5, 1.0)
+    _assert(absf(top.y - cfg.bob_amplitude) < 0.0001, "bob: full height at the top of a step")
+    _assert(absf(p.bob_offset_at(PI, 1.0).x) > cfg.bob_sway * 0.9, "bob: head sways to the side between steps")
+    _assert(p.bob_offset_at(1.3, 0.0).length() < 0.00001, "bob: no bob while standing still")
+    var base_y: float = p.camera_pivot.position.y
+    p.velocity = Vector3.ZERO
+    p.set("_bob_time", PI * 0.5)
+    p.set("_bob_weight", 1.0)
+    p._process_footstep_bob(1.0 / 60.0)
+    _assert(p.camera_pivot.position.y > base_y + cfg.bob_amplitude * 0.8, "bob: the camera itself rises with the step")
+    _assert(p.hands_rig.get("_bob") == p.last_bob_offset, "bob: the hands rig follows the same offset")
+    var prev_y: float = p.camera_pivot.position.y
+    var smooth := true
+    for i in range(60):
+        p._process_footstep_bob(1.0 / 60.0)
+        var y: float = p.camera_pivot.position.y
+        if absf(y - prev_y) > cfg.bob_amplitude * 0.2:
+            smooth = false
+        prev_y = y
+    _assert(smooth, "bob: stopping eases back without a jump")
+    _assert(absf(p.camera_pivot.position.y - base_y) < 0.0001 and absf(p.camera_pivot.position.x) < 0.0001 and absf(p.camera_pivot.rotation.z) < 0.0001, "bob: standing still the view is back at rest")
+    cfg.head_bob_enabled = false
+    p.set("_bob_weight", 1.0)
+    p._process_footstep_bob(1.0 / 60.0)
+    _assert(absf(p.camera_pivot.position.y - base_y) < 0.0001, "bob: switched off in config, the camera stays still")
+    cfg.head_bob_enabled = true
+    p.set("_bob_weight", 0.0)
+    p._process_footstep_bob(1.0 / 60.0)
+    var all_room := true
+    for n in m.restroom.find_children("*", "VisualInstance3D", true, false):
+        if not (n is Light3D) and (n as VisualInstance3D).layers != FPRestroom.ROOM_VISUAL_LAYER:
+            all_room = false
+    _assert(all_room, "room: every restroom mesh sits on the room render layer")
+    var lamps := 0
+    var leak := false
+    for l in m.find_children("*", "OmniLight3D", true, false):
+        if l.light_color.is_equal_approx(Color(0.85, 1.0, 0.9)):
+            lamps += 1
+            if (l as Light3D).light_cull_mask & FPRestroom.ROOM_VISUAL_LAYER:
+                leak = true
+    _assert(lamps > 0 and not leak, "room: rest-container lamps cannot light the restroom through its walls (%d)" % lamps)

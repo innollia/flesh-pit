@@ -1,4 +1,4 @@
-﻿class_name FPRestroom
+class_name FPRestroom
 extends Node3D
 
 ## The clean white restroom (docs/spec/03-restroom.md): low-poly tiled walls/floor,
@@ -25,6 +25,11 @@ const CANARY_HOLE := Vector3(-2.25, 0.09, -0.56)
 const CANARY_HOLE_HALF := Vector2(0.065, 0.07) # half width (z), half height
 ## Bottom edge of the ceramic apron under the basin.
 const APRON_BOTTOM := 0.34
+## Render layer of every restroom mesh (layer 11 only, not the default 1).
+## Lights that must stay out of the room (the rest containers' green lamps,
+## which sit in the flesh just past the thin -X / +X walls and have no
+## shadows) leave this bit out of their light_cull_mask.
+const ROOM_VISUAL_LAYER := 1 << 10
 
 var door_pivot: Node3D
 var toilet: Node3D
@@ -45,6 +50,12 @@ const DOOR_FILL_ENERGY := 1.1
 
 func _ready() -> void:
     build()
+    # meshes that parts build later (their own _ready, tank items) join too
+    get_tree().node_added.connect(_on_node_added)
+
+func _on_node_added(n: Node) -> void:
+    if n is VisualInstance3D and not (n is Light3D) and is_ancestor_of(n):
+        (n as VisualInstance3D).layers = ROOM_VISUAL_LAYER
 
 func build() -> void:
     var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5, 1.0, false)
@@ -63,6 +74,13 @@ func build() -> void:
     _build_drawer(ceramic_mat, fixture_mat)
     _build_light()
     _build_collision()
+    _set_room_layer(self)
+
+func _set_room_layer(n: Node) -> void:
+    if n is VisualInstance3D and not (n is Light3D):
+        (n as VisualInstance3D).layers = ROOM_VISUAL_LAYER
+    for c in n.get_children():
+        _set_room_layer(c)
 
 # --- tiles ------------------------------------------------------------------
 

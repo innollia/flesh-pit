@@ -70,6 +70,12 @@ func _setup() -> void:
 			m.restroom.set_door_open(false, true)
 			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
 			m.open_mirror()
+		"mirror_corner":
+			m.restroom.set_door_open(false, true)
+			_look(Vector3(-1.2, 0.0, 0.3), Vector3(-FPRestroom.HALF.x, 1.3, FPRestroom.HALF.z))
+		"mirror_corner_back":
+			m.restroom.set_door_open(false, true)
+			_look(Vector3(-1.2, 0.0, 0.3), Vector3(-FPRestroom.HALF.x, 1.3, -FPRestroom.HALF.z))
 		"blender":
 			m.restroom.set_door_open(true, true)
 			_dig_tunnel()

@@ -278,7 +278,7 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["pos"] = Vector3(0.15 * side, -0.14, -0.44).lerp(idle["pos"], e)
             p["wrist_pitch"] = lerpf(45.0, idle["wrist_pitch"], e)
     var bob: Vector3 = _bob * bob_follow
-    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside
+    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side - bob.x * 0.6, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside
     return p
 
 func _clamp_joint(joint: String, value: float) -> float:

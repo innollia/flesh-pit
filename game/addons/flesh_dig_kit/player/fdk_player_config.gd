@@ -16,4 +16,8 @@ extends Resource
 @export var climb_speed: float = 2.5 ## vertical speed while digging up/down against a wall
 @export var bob_frequency: float = 6.0
 @export var bob_amplitude: float = 0.045
+@export var head_bob_enabled: bool = true ## camera follows the bob (the signal fires either way)
+@export var bob_sway: float = 0.022 ## side-to-side head sway, metres
+@export var bob_roll: float = 0.35 ## camera roll per metre of sway
+@export var bob_ease_speed: float = 4.0 ## how fast the bob fades in/out on start/stop
 @export var pitch_limit_deg: float = 89.0

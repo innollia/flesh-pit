@@ -79,6 +79,9 @@ func _ready() -> void:
     _lamp.omni_range = 3.0
     _lamp.light_color = Color(0.85, 1.0, 0.9)
     _lamp.light_energy = 0.9
+    # no shadows, so without this it shone through the restroom's thin wall
+    # (green seam at the mirror wall's corner, 형님 2026-09-30)
+    _lamp.light_cull_mask = 0xFFFFF & ~FPRestroom.ROOM_VISUAL_LAYER
     add_child(_lamp)
 
 ## One corrugated wall: centred at `c`, running along `dir` (half length
