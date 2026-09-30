@@ -344,10 +344,35 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
         var m: float = _regen_mult[i]
         if m <= 0.0:
             continue
+        # P4: compressive tissue grows faster where the void is crowded by
+        # solid neighbours, so narrow tunnels pinch shut before broad rooms.
+        if _tissue[mini(x, s - 1) + mini(y, s - 1) * s + mini(z, s - 1) * s * s] == 0:
+            m *= crowd_growth_factor(_solid_neighbours(x, y, z, n))
         _density[i] = minf(orig, cur + rate * m * delta)
         changed = true
     if changed:
         _dirty = true
+
+## P4 neighbourhood growth term for compressive tissue. Extra regen gain for
+## an empty corner with this many solid face neighbours (0..6): a wide room
+## (0-1 solid) keeps the base rate, a one-corner tunnel (4+) grows ~2.5x.
+const CROWD_GAIN := 1.5
+static func crowd_growth_factor(solid_neighbours: int) -> float:
+    return 1.0 + CROWD_GAIN * clampf(float(solid_neighbours - 1) / 3.0, 0.0, 1.0)
+
+func _solid_neighbours(x: int, y: int, z: int, n: int) -> int:
+    var iso := config.iso_level
+    var c := 0
+    if x > 0 and _density[i_of(x - 1, y, z, n)] >= iso: c += 1
+    if x < n - 1 and _density[i_of(x + 1, y, z, n)] >= iso: c += 1
+    if y > 0 and _density[i_of(x, y - 1, z, n)] >= iso: c += 1
+    if y < n - 1 and _density[i_of(x, y + 1, z, n)] >= iso: c += 1
+    if z > 0 and _density[i_of(x, y, z - 1, n)] >= iso: c += 1
+    if z < n - 1 and _density[i_of(x, y, z + 1, n)] >= iso: c += 1
+    return c
+
+static func i_of(x: int, y: int, z: int, n: int) -> int:
+    return x + y * n + z * n * n
 
 ## True if any of the (up to 8) cells sharing corner (x,y,z) is sealed. A
 ## sealed corner never regenerates, so sprayed tissue stays open permanently.

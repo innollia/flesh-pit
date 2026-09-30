@@ -1405,14 +1405,14 @@ func _step_canary(delta: float) -> void:
         return
     canary_feed_left = maxf(0.0, canary_feed_left - delta)
     # a fed canary warns earlier: looser flesh already counts as blocking
-    canary.block_density = 0.6 if canary_feed_left > 0.0 else 0.85
+    canary.block_density = 0.35 if canary_feed_left > 0.0 else 0.5
     _canary_t += delta
     if _canary_t < CANARY_TICK:
         return
     _canary_t = 0.0
     if restroom.contains(player.global_position):
         return
-    canary.update(player.global_position, _safe_point())
+    canary.update(player.global_position, _safe_point(), CANARY_TICK)
 
 # --- tools, carry, blender -------------------------------------------------------
 
@@ -1629,6 +1629,7 @@ func die(cause: String) -> void:
     chewer.stomach = stomach
     chewer.stop()
     has_canary = false
+    canary.reset_trail()
     blender_charge = 0.0
     death_drop.drop(at, payload)
     death_drop.visible = true

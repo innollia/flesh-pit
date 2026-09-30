@@ -299,7 +299,7 @@ func _run_death(m, prog: FPProgression) -> void:
     prog.canary_feed = 1
     _assert(m.feed_canary() and m.canary_feed_left > 0.0, "feeding makes the canary warn earlier")
     m._step_canary(0.3)
-    _assert(m.canary.block_density < 0.85, "a fed canary counts looser flesh as blocking")
+    _assert(m.canary.block_density < 0.5, "a fed canary counts looser flesh as blocking")
     # --- rest points: settle there, nothing else
     var rp: Vector3 = m.rest_points[m.rest_points.size() - 1]
     _assert(m.rest_points.size() == 12 and m.terrain.density_at(rp) < 0.5, "12 identical rest points (2/4/6), hollow inside the flesh")

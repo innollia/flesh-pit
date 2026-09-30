@@ -465,29 +465,136 @@ func _run_nerve_disturb_tests() -> void:
 	_assert(density_after < density_before, "nerve: disturb() locally contracts tissue at its base (got %f -> %f)" % [density_before, density_after])
 
 func _run_canary_tests() -> void:
+	# N1: a straight tunnel whose neck gets narrower each sample. The hidden
+	# return margin must fall and the danger rise before the route is lost.
+	var widths := [1.6, 1.3, 1.0, 0.8, 0.6, 0.3]
+	var dangers: Array = []
+	var clears: Array = []
+	var reach: Array = []
+	for w in widths:
+		var field := _canary_field()
+		_canary_tunnel(field, 1.6, float(w))
+		var canary := _track(FDKCanary.new()) as FDKCanary
+		canary.terrain = field
+		_canary_walk(canary)
+		var r := canary.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5))
+		dangers.append(canary.danger_from_route(r))
+		clears.append(float(r.min_clearance))
+		reach.append(bool(r.reachable))
+	print("  canary N1 clearances %s dangers %s reach %s" % [clears, dangers, reach])
+	_assert(bool(reach[0]), "canary N1: wide tunnel is reachable")
+	_assert(float(dangers[0]) < 0.5, "canary N1: wide tunnel is calm (got %f)" % dangers[0])
+	var mono := true
+	for i in range(1, widths.size()):
+		if float(clears[i]) > float(clears[i - 1]) + 0.001 or float(dangers[i]) + 0.001 < float(dangers[i - 1]):
+			mono = false
+	_assert(mono, "canary N1: margin falls and danger rises monotonically as the neck closes")
+	var warned_before_lost := false
+	for i in range(widths.size()):
+		if bool(reach[i]) and float(dangers[i]) > 0.5:
+			warned_before_lost = true
+	_assert(warned_before_lost, "canary N1: danger passes 0.5 while the route is still passable")
+	_assert(not bool(reach[reach.size() - 1]) and float(dangers[dangers.size() - 1]) >= 1.0, "canary N1: closed neck = unreachable, danger 1")
+
+	# the debug record names a bottleneck near the neck (tests/logs only)
+	var f2 := _canary_field()
+	_canary_tunnel(f2, 1.6, 0.8)
+	var c2 := _track(FDKCanary.new()) as FDKCanary
+	c2.terrain = f2
+	_canary_walk(c2)
+	var r2 := c2.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5))
+	_assert(absf(Vector3(r2.bottleneck).x - 5.0) <= 1.5, "canary: bottleneck is at the neck (got %s)" % [r2.bottleneck])
+	_assert(float(r2.path_length) >= 8.0, "canary: path length follows the tunnel (got %f)" % r2.path_length)
+
+	# signal path: update() emits a 0..1 danger only, on its own cadence
+	var warnings: Array = []
+	c2.route_warning.connect(func(u): warnings.append(u))
+	c2.update(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5), 0.25)
+	_assert(warnings.size() == 1 and float(warnings[0]) > 0.0 and float(warnings[0]) <= 1.0, "canary: update emits one 0..1 danger")
+	c2.update(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5), 0.25)
+	_assert(warnings.size() == 1, "canary: route is not recomputed every tick")
+
+	# N3: a barrier at the neck holds the margin while regeneration runs,
+	# and the margin collapses once the barrier is gone.
+	var f3 := _canary_field()
+	_canary_tunnel(f3, 1.6, 1.3, false)
+	var c3 := _track(FDKCanary.new()) as FDKCanary
+	c3.terrain = f3
+	_canary_walk(c3)
+	var start := float(c3.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5)).min_clearance)
+	f3.regen_blockers = [Vector4(5.0, 0.5, 0.5, 2.2)]
+	for i in range(80):
+		f3.regenerate_all(0.5, Vector3(100, 100, 100), 0.0)
+	var held := c3.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5))
+	f3.regen_blockers = []
+	for i in range(80):
+		f3.regenerate_all(0.5, Vector3(100, 100, 100), 0.0)
+	var failed := c3.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5))
+	print("  canary N3 start %f held %s failed %s" % [start, held, failed])
+	_assert(float(held.min_clearance) >= start - 0.3, "canary N3: barrier holds the return margin")
+	_assert(float(failed.min_clearance) < float(held.min_clearance) and c3.danger_from_route(failed) > c3.danger_from_route(held), "canary N3: margin collapses after the barrier fails")
+
+	# P4: compressive tissue shuts a narrow tunnel before a broad room
+	var f4 := _canary_field()
+	_canary_hollow(f4, Vector3(2.5, 0.5, 0.5), 2.0, false)
+	for x in range(6, 11):
+		_canary_hollow(f4, Vector3(float(x), 0.5, 0.5), 0.5, false)
+	for i in range(20):
+		f4.regenerate_all(0.5, Vector3(100, 100, 100), 0.0)
+	var room := f4.density_at(Vector3(2.5, 0.5, 0.5))
+	var tube := f4.density_at(Vector3(8.0, 0.5, 0.5))
+	var room_edge := f4.density_at(Vector3(2.5, 0.5 + 1.6, 0.5))
+	_assert(tube > room, "P4: narrow tunnel regrows faster than a broad room (tube %f room %f)" % [tube, room])
+	_assert(FDKChunk.crowd_growth_factor(0) == 1.0 and FDKChunk.crowd_growth_factor(4) > 2.0, "P4: crowd factor is 1 in open space and >2 in a tube")
+	_assert(room_edge >= room, "P4: room walls bulge before the room centre fills")
+
+func _canary_field() -> FDKTerrainField:
 	var config := FDKTerrainConfig.new()
-	config.chunk_size = 4
+	config.chunk_size = 8
 	config.cell_size = 0.5
 	var field := _track(FDKTerrainField.new()) as FDKTerrainField
 	field.config = config
-	field.fill_box_uniform(AABB(Vector3(-4, -4, -4), Vector3(8, 8, 8)), 1.0, 0)
+	field.fill_box_uniform(AABB(Vector3(-4, -4, -4), Vector3(18, 9, 9)), 1.0, 0)
+	return field
 
-	var canary := _track(FDKCanary.new()) as FDKCanary
-	canary.terrain = field
-	canary.route_samples = 4
+## Tunnel from x=0 to x=10 along (y,z)=(0.5,0.5), radius `r`, with a neck of
+## radius `neck` in the slab x=4.5..5.5. permanent=false keeps the neck as
+## live flesh that regenerates; the rest of the tunnel is always permanent.
+func _canary_tunnel(field: FDKTerrainField, r: float, neck: float, permanent: bool = true) -> void:
+	var x := 0.0
+	while x <= 10.0:
+		_canary_hollow(field, Vector3(x, 0.5, 0.5), r, true)
+		x += 0.25
+	# refill a 1 m slab at x=5 as live flesh, then open only the neck in it
+	field.fill_box_uniform(AABB(Vector3(4.5, -4, -4), Vector3(1.0, 9, 9)), 1.0, 0)
+	x = 4.5
+	while x <= 5.5:
+		_canary_hollow(field, Vector3(x, 0.5, 0.5), neck, permanent)
+		x += 0.25
 
-	var warnings: Array = []
-	canary.route_warning.connect(func(u): warnings.append(u))
-	canary.update(Vector3(0, 0, 0), Vector3(1.5, 0, 0)) # entirely solid tissue between: fully blocked
-	_assert(warnings.size() > 0, "canary: emits route_warning when urgency changes")
-	_assert(canary.last_route_urgency > 0.5, "canary: reports high urgency through solid tissue (got %f)" % canary.last_route_urgency)
+func _canary_hollow(field: FDKTerrainField, c: Vector3, r: float, permanent: bool) -> void:
+	if r <= 0.0:
+		return
+	if permanent:
+		field.carve_sphere(c, r)
+		return
+	for chunk in field.get_chunks():
+		var ch := chunk as FDKChunk
+		var n := field.config.chunk_size + 1
+		var origin: Vector3 = Vector3(ch.chunk_coord) * field.config.chunk_size * field.config.cell_size
+		for z in range(n):
+			for y in range(n):
+				for x in range(n):
+					if (origin + Vector3(x, y, z) * field.config.cell_size).distance_to(c) <= r:
+						ch._density[x + y * n + z * n * n] = 0.0
+		ch._dirty = true
 
-	field.dig_at(Vector3(0.75, 0, 0), 1.0)
-	field.dig_at(Vector3(0.4, 0, 0), 1.0)
-	field.dig_at(Vector3(1.1, 0, 0), 1.0)
-	canary.update(Vector3(0, 0, 0), Vector3(1.5, 0, 0))
-	_assert(canary.last_route_urgency < 1.0, "canary: dug-out route lowers urgency (got %f)" % canary.last_route_urgency)
-
+func _canary_walk(canary: FDKCanary) -> void:
+	canary.record_trail(Vector3(0.5, 0.5, 0.5))
+	var x := 0.5
+	while x <= 9.5:
+		canary.record_trail(Vector3(x, 0.5, 0.5))
+		x += 0.5
 func _run_death_drop_tests() -> void:
 	var drop := _track(FDKDeathDrop.new()) as FDKDeathDrop
 	drop.drop(Vector3(1, 0, 1), {"gold": 3})
