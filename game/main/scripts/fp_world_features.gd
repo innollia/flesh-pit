@@ -18,7 +18,11 @@ const REST_DEPTH := [4.5, 13.5, 22.5]
 const REST_MIN_ANGLE_DEG := 90.0
 ## Restroom box half size + the membrane band around it (main.gd); a rest
 ## container must stay clear of it.
-const ROOM_CLEAR_HALF := Vector3(1.5 + 1.55, 1.3 + 1.55, 1.5 + 1.55)
+## 형님 2026-09-30: hardcoded to the old 1.5 room half-width; the room grew
+## to FPRestroom.HALF.x=2.25 without this following, so containers could be
+## rolled closer to the (now bigger) room than intended. Margin (1.55) kept,
+## base now reads the room's real half-extent.
+const ROOM_CLEAR_HALF := Vector3(FPRestroom.HALF.x + 1.55, FPRestroom.HALF.y + 1.55, FPRestroom.HALF.z + 1.55)
 ## Shell boundary membrane band (02-world-tissue.md 2) and the blend zone
 ## before it where the next shell's tissue starts to mix in.
 const BOUNDARY_BAND := 0.9

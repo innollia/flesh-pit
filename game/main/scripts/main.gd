@@ -29,8 +29,11 @@ const SAVE_VERSION := 3
 
 const RESTROOM_CENTER := Vector3(0, 1, 0)
 ## Empty space around the room box: surface-nets vertices can sit most of a
-## cell inside the solid side, so this must exceed one cell.
-const ROOM_MARGIN := 0.65
+## cell inside the solid side, so this must exceed one cell (cell_size 0.5).
+## 형님 2026-09-30: was 0.65 -- comfortably over the 1-cell floor but wide
+## enough that the flesh's inner face sat visibly off every wall except the
+## door, leaving a gap. Trimmed to just clear one cell.
+const ROOM_MARGIN := 0.55
 ## Right in front of the door the margin is pulled down to under 5 cm.
 const DOOR_GAP := 0.04
 const MEMBRANE_THICKNESS := 0.9

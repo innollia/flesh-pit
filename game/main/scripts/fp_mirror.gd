@@ -56,7 +56,8 @@ const HOVER_PX := 40.0 ## at 720 p; scaled with the window height
 const DIM := 0.7
 ## Doll layer: drawn by the eye camera AND by the overlay camera above the dim.
 const HOLO_LAYER := 1 << 14
-const DOLL_SCALE := 0.1
+## 형님 2026-09-30: too small at 0.1, doll read as a tiny figurine on the arm.
+const DOLL_SCALE := 0.16
 ## belly7: under the dim room light the doll read dark red-brown (a doll-only
 ## omni fill did not reach it in the compatibility renderer), so its matte
 ## skin materials are swapped for this self-lit copy: same vertex paint and

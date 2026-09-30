@@ -55,8 +55,10 @@ func _ready() -> void:
     var ci := Color(0.78, 0.8, 0.82)
     K.lathe(st, K.T(Vector3(0, 0.62, 0.12), Vector3.ZERO, Vector3(1.0, 1.0, 0.75)), [Vector2(0.03, 0.0), Vector2(0.12, 0.08), Vector2(0.21, 0.2), Vector2(0.23, 0.24), Vector2(0.21, 0.25)], 12, [cw, cw, cw, ci])
     K.lathe(st, K.T(Vector3(0, 0.62, 0.12), Vector3(180, 0, 0), Vector3(1.0, 1.0, 0.75)), [Vector2(0.0, -0.25), Vector2(0.2, -0.25), Vector2(0.11, -0.12), Vector2(0.03, -0.05), Vector2(0.0, -0.05)], 12, [ci, ci, Color(0.55, 0.57, 0.6)])
-    # pedestal
-    K.lathe(st, K.T(Vector3(0, 0, 0.1)), [Vector2(0.13, 0.0), Vector2(0.1, 0.03), Vector2(0.07, 0.3), Vector2(0.06, 0.55), Vector2(0.09, 0.64), Vector2(0.0, 0.64)], 10, [cw])
+    # basin sits wall-mounted (modern vanity look, 형님 2026-09-30): no floor
+    # pedestal column -- one was here as a lathe with an unclosed bottom cap
+    # (K.lathe never closes radius>0 ends), which read as a hollow cylinder
+    # under the basin.
     K.add_mesh(self, "Basin", K.finish(st, 5.0), ceramic)
 
 func set_focus(on: bool) -> void:

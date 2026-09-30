@@ -36,6 +36,13 @@ var cancelled: bool = false
 var _cancel_w: float = 1.0
 var _cam_pos := Vector3.ZERO
 var _cam_rot := Vector3.ZERO
+## 형님 2026-09-30: vomit_floor used to add its bow pitch on top of
+## whatever pitch the player happened to be looking at when it started, so
+## looking down made the camera clip through the body and looking up left
+## it staring at nothing. The floor heave now always bows from this fixed
+## base pitch instead -- yaw/roll still follow the player, only pitch is
+## pinned.
+const VOMIT_FLOOR_BASE_PITCH := -0.35
 var _cam_saved := false
 var _settle_base := Transform3D.IDENTITY
 var _settle_saved := false
@@ -308,7 +315,10 @@ func _apply_cams(u: float, reset: bool = false) -> void:
             var bow := seg(u, 0.0, 0.25) * (1.0 - seg(u, 0.8, 1.0) * 0.85)
             var shake := sin(t * 37.0) * 0.004 * h
             off = Vector3(0.0, -0.42 * bow - 0.05 * h, -0.12 * bow - 0.04 * h) * w
-            pitch = (-0.62 * bow - 0.12 * h + shake) * w
+            # pitch is measured from a fixed base, not the player's pitch at
+            # the moment vomiting started -- looking down or up beforehand
+            # no longer changes where the camera ends up pointing.
+            pitch = (VOMIT_FLOOR_BASE_PITCH - _cam_rot.x) + (-0.62 * bow - 0.12 * h + shake) * w
             roll = sin(t * 29.0) * 0.006 * h * w
         elif not reset and kind == "wash":
             var w2 := weight()
@@ -517,7 +527,12 @@ func _spill(toilet: bool, n: int) -> void:
     if toilet:
         var sc: Camera3D = m.settle_camera
         var fwd := -_settle_base.basis.z
-        from = _settle_base.origin + fwd * 0.12 + Vector3.UP * 0.01
+        # 형님 2026-09-30: was spawning right at the camera lens (reads as
+        # "falling from the top of the screen"). Start lower and closer --
+        # roughly where the mouth/chin would be, below and just in front of
+        # the camera -- so it falls from the bottom of the screen into the
+        # bowl instead.
+        from = _settle_base.origin - Vector3.UP * 0.16 + fwd * 0.05
         to = _settle_base.origin + fwd * 0.42
     else:
         var cam: Camera3D = m.player.camera
