@@ -63,7 +63,9 @@ var terrain: FDKTerrainField
 var stomach: FDKStomach
 var chewer: FDKChewer
 var player: FDKFirstPersonController
-var hands_rig: FDKHandsRig
+var hands_rig: FDKHandsRig:
+    get: return player.hands_rig as FDKHandsRig
+    set(v): player.hands_rig = v
 var restroom: FPRestroom
 var stomach_view: FPStomachView
 var vomit_button: FPVomitButton
@@ -208,7 +210,8 @@ func _ready() -> void:
     chewer.cell_torn.connect(_on_cell_torn)
     add_child(chewer)
 
-    hands_rig = player.hands_rig
+    ## hands_rig is now a computed property mirroring player.hands_rig (see
+    ## its declaration above); no assignment needed here.
     chewer.grab_started.connect(hands_rig.on_grab_started)
     chewer.chew_progress.connect(hands_rig.on_chew_progress)
     chewer.cell_torn.connect(hands_rig.on_cell_torn)
