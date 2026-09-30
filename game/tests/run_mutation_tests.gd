@@ -13,6 +13,13 @@ var _passed := 0
 var _m: Node3D
 var _frame := 0
 
+## Camera-space point inside a 16:9 view of cam (vertical fov).
+func _in_view(cam: Camera3D, p: Vector3) -> bool:
+	if p.z > -cam.near:
+		return false
+	var ty := tan(deg_to_rad(cam.fov) * 0.5)
+	return absf(p.y) / -p.z < ty and absf(p.x) / -p.z < ty * 16.0 / 9.0
+
 func _assert(c: bool, msg: String) -> void:
 	if c:
 		_passed += 1
@@ -151,7 +158,12 @@ func _run_mirror() -> void:
 	var hair: Node3D = m.art_hookup.arm_hair
 	_assert(hair != null and hair.is_visible_in_tree(), "arm hairs stay visible in the watch look")
 	var lroot: Node3D = m.hands_rig.call("get_hand_root", "left")
-	_assert((lroot.basis * Vector3.UP).z > 0.95 and (lroot.basis * Vector3.FORWARD).x > 0.95, "watch look: the forearm lies across the view, hairy top to the camera")
+	_assert((lroot.basis * Vector3.UP).z > 0.6 and (lroot.basis * Vector3.FORWARD).x > 0.6 and (lroot.basis * Vector3.FORWARD).z < -0.4, "watch look: the forearm runs in from the lower left toward the middle, hairy top to the camera")
+	# mirror 4: the elbow (arm-hair origin) sits past the frame edge, so the
+	# forearm comes in from off-screen instead of floating as a stub
+	var cam: Camera3D = m.player.camera
+	var e_pos := lpp + (lroot.basis * Vector3.BACK) * 0.34
+	_assert(not _in_view(cam, e_pos) and _in_view(cam, lpp), "watch look: wrist on screen, elbow past the frame edge")
 	_assert(mir.glass.anchor_left >= 0.5 and mir.glass.anchor_right <= 1.0, "the glass is a panel on the right, the first-person view stays")
 	_assert(mir.body.shimmer_on("face") and mir.body.shimmer_on("right_hand"), "mutable parts shimmer without hovering")
 	mir.focus_part("face")

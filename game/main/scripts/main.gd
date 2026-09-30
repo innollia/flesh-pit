@@ -70,6 +70,9 @@ var vomit_button: FPVomitButton
 var settle_camera: Camera3D
 var environment: Environment
 var player_lamp: OmniLight3D
+var body_fill: OmniLight3D
+const BODY_LAYER := 1 << 11 ## the first-person waist (belt, shirt, trousers)
+const BODY_FILL := 0.35 ## body fill energy per unit of player lamp energy
 var nerves: Array[FDKNerveStalk] = []
 
 var progression: FPProgression = FPProgression.new()
@@ -222,6 +225,18 @@ func _ready() -> void:
     player_lamp.omni_attenuation = 0.6
     player_lamp.position = Vector3(0.1, 0.15, 0.1)
     player.camera.add_child(player_lamp)
+    # the lamp sits a hand's width from the eye, so looking down it blew the
+    # shirt and belt out to white in the flesh; the body (belt, torso,
+    # trousers) is on BODY_LAYER, which the lamp skips, and gets a soft fill
+    player_lamp.light_cull_mask = 0xFFFFF & ~BODY_LAYER
+    body_fill = OmniLight3D.new()
+    body_fill.name = "BodyFill"
+    body_fill.light_color = player_lamp.light_color
+    body_fill.light_cull_mask = BODY_LAYER
+    body_fill.omni_range = 3.0
+    body_fill.position = Vector3(0.1, 0.3, 0.2)
+    body_fill.light_energy = 0.0
+    player.camera.add_child(body_fill)
 
     barrier_field = FDKBarrierField.new()
     barrier_field.name = "Barriers"
@@ -480,6 +495,7 @@ func _update_atmosphere(delta: float) -> void:
     environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
     environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.42, k)
     player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.0 if inside else 2.4, k)
+    body_fill.light_energy = player_lamp.light_energy * BODY_FILL
     if not inside:
         environment.fog_light_color = Color(0.22, 0.03, 0.05).lerp(Color(0.1, 0.01, 0.07), depth_tone)
 

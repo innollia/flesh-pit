@@ -94,6 +94,13 @@ func _run() -> void:
 	var bs: FPBeltSwap = m.belt_swap
 	var prog: FPProgression = m.progression
 	var belt: Node3D = m.art_hookup.belt
+	# body 4: shirt / leather belt keep their own vertex-coloured material and
+	# sit on BODY_LAYER, which the eye lamp skips (it blew them out to white)
+	for nm in ["Torso", "Belt", "Trousers"]:
+		var bm := belt.get_node(nm) as MeshInstance3D
+		_assert(bm.material_override is ShaderMaterial and bool((bm.material_override as ShaderMaterial).get_shader_parameter("use_vertex_color")), "%s wears the vertex-coloured PS1 material" % nm)
+		_assert(bm.layers == m.BODY_LAYER, "%s is on the body layer" % nm)
+	_assert((m.player_lamp.light_cull_mask & m.BODY_LAYER) == 0 and (m.body_fill.light_cull_mask & m.BODY_LAYER) != 0, "the eye lamp skips the body, the soft fill lights it")
 	m.belt_swapped.connect(func(a, b): _swaps.append([a, b]))
 	m.belt_refused.connect(func(): _refused += 1)
 	# stand in the open flesh, away from the toilet / mirror / door

@@ -73,6 +73,7 @@ func setup(main: Node3D) -> void:
 	belt.name = "Belt"
 	belt.position = Vector3(0, 0.05, 0.02)
 	m.player.add_child(belt)
+	_tag_body(belt)
 	bag = BagScene.instantiate()
 	bag.name = "TumorBag"
 	bag.position = Vector3(-0.2, -0.02, 0.06)
@@ -99,7 +100,7 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(blender, rig, hold + Vector3(0.028, 0.01, -0.05) - grip)
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
-	_put(arm_hair, lroot, Vector3(0, 0.0, 0.3))
+	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
 	var fa := lroot.get_node_or_null("Forearm") as Node3D
 	if fa != null:
 		fa.visible = false
@@ -108,6 +109,14 @@ func _attach_to_rig(rig: Node3D) -> void:
 		if old_fa != null:
 			old_fa.visible = true
 	_rig = rig
+
+## Waist meshes go on main.BODY_LAYER (lit by the soft body fill, not the
+## eye lamp). Tools hung later keep the default layer.
+func _tag_body(n: Node) -> void:
+	if n is VisualInstance3D and not (n is Light3D):
+		(n as VisualInstance3D).layers = 1 << 11
+	for c in n.get_children():
+		_tag_body(c)
 
 func _put(n: Node3D, parent: Node3D, at: Vector3) -> void:
 	if n.get_parent() != null:

@@ -632,6 +632,10 @@ func _build_light() -> void:
     door_spill.light_color = Color(0.9, 0.96, 1.0)
     door_spill.light_energy = 0.0
     door_spill.shadow_enabled = true
+    # the cone skips the player's own waist (main.BODY_LAYER = 1 << 11):
+    # standing in the doorway it blew the shirt and belt out to white; the
+    # soft fill below still lights them
+    door_spill.light_cull_mask = 0xFFFFF & ~(1 << 11)
     add_child(door_spill)
     door_spill_fill = OmniLight3D.new()
     door_spill_fill.name = "DoorSpillFill"

@@ -189,10 +189,13 @@ func _finish() -> void:
 ## its hairy top facing the camera, tipped a little up so the strands lie
 ## visible instead of pointing into the lens (형님 지시, mirror 3).
 ## Root basis only; the rig itself never writes it, so it is reset here.
-const WATCH_ARM_SLANT := 0.29 ## rad, wrist higher than the elbow
-const WATCH_ARM_TIP := 0.24 ## rad, hairy top tipped from the camera toward up
+const WATCH_ARM_TIP := 0.35 ## rad, hairy top tipped from the camera toward up
+## Wrist direction (camera space): right, a little up and AWAY from the eye,
+## so the elbow 0.34 m back comes close and low-left, past the frame edge,
+## and the forearm reads as running in from off-screen (mirror 4).
+const WATCH_ARM_DIR := Vector3(0.745, 0.186, -0.641)
 static func _watch_basis() -> Basis:
-    var d := Vector3(cos(WATCH_ARM_SLANT), sin(WATCH_ARM_SLANT), 0.0) # wrist direction
+    var d := WATCH_ARM_DIR.normalized() # wrist direction
     var up := Vector3(0.0, sin(WATCH_ARM_TIP), cos(WATCH_ARM_TIP))
     up = (up - d * up.dot(d)).normalized()
     var z := -d
@@ -445,11 +448,13 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
                 q["pos"] = WATCH_RIGHT_POS
                 return q
             var sway := Vector3(sin(t * 1.3) * 0.003, sin(t * 1.9) * 0.002, 0.0)
-            _fingers(q, 0.32)
+            # hand relaxed and loosely curled, back of the hand up (like
+            # reading a wristwatch)
+            _fingers(q, 0.45)
             # the root is turned (watch_arm_basis): the forearm lies across
             # the lower-left view, hairy top to the camera; the wrist sits
             # just left of the middle so the mirror panel (right) stays clear
-            q["wrist_pitch"] = 8.0
+            q["wrist_pitch"] = 4.0
             q["wrist_yaw"] = 0.0
             q["wrist_roll"] = 0.0
             q["pos"] = WATCH_WRIST_POS + sway

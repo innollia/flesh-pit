@@ -3,7 +3,8 @@ extends SceneTree
 ## Belt swap captures, one shot per run (windowed + movie writer):
 ##   Godot_console --path game --windowed --resolution 1280x720
 ##     --write-movie <dir>/f.png --fixed-fps 10 --quit-after 30
-##     --script res://tools/belt_capture.gd -- <look|aim|after>
+##     --script res://tools/belt_capture.gd -- <look|out|aim|after>
+## out   = like look but standing outside the restroom (room layer off)
 ## look  = head bowed ~62 deg, belt with knife + blender, empty saw ring
 ## aim   = aim dot on the blender hook, interact ring lit
 ## after = the swap done: knife in hand, its ring empty, blender + saw hung
@@ -42,6 +43,16 @@ func _setup() -> void:
 	m.finish_opening()
 	m.player.set_physics_process(false)
 	m.player.global_position = m.START_POS
+	if _shot == "out":
+		# outside the restroom (door open, a few steps into the tunnel)
+		m.restroom.set_door_open(true, true)
+		var t = m.terrain
+		for zi in range(9):
+			for xi in range(-1, 2):
+				for yi in range(0, 4):
+					t.dig_at(Vector3(xi * 0.5 + 0.25, yi * 0.5 + 0.25, 1.9 + zi * 0.5), 1.0)
+		t.remesh_all()
+		m.player.global_position = Vector3(0.0, 0.95, 3.2)
 	_yaw = m.player.rotation.y + 2.4
 	var prog: FPProgression = m.progression
 	prog.has_belt = _shot != "nobelt"
@@ -136,18 +147,23 @@ func _screen_box(cam: Camera3D, n: Node3D) -> Rect2:
 	return r.intersection(Rect2(0, 0, 1280, 720))
 ## Mask pass (frames 14-17, before the saved look frames): torso drawn flat
 ## magenta, belt band flat cyan, so the screen share of each is counted.
+## The real materials live in material_override (K.add_mesh), so they are
+## kept aside and put back after the mask: restoring null left the saved
+## look frames on Godot's default grey material (grey torso, no leather).
+var _saved_mats := {}
 func _mask(on: bool) -> void:
 	var belt: Node3D = _m.art_hookup.belt
 	var mats := {"Torso": Color(1, 0, 1), "Belt": Color(0, 1, 1)}
 	for nm in mats:
 		var mi := belt.get_node(nm) as MeshInstance3D
 		if on:
+			_saved_mats[nm] = mi.material_override
 			var mt := StandardMaterial3D.new()
 			mt.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			mt.albedo_color = mats[nm]
 			mi.material_override = mt
 		else:
-			mi.material_override = null
+			mi.material_override = _saved_mats.get(nm)
 
 func _read_mask() -> void:
 	var img := get_root().get_texture().get_image()
