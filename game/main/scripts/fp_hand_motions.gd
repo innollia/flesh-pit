@@ -185,10 +185,23 @@ func _finish() -> void:
     _apply_watch_arm()
 
 ## Left-arm roll for the watch look: the hand root turns so the forearm lies
-## across the lower view (elbow off to the left, wrist toward the middle) with
-## its hairy top facing the camera, so the arm-hair count reads (형님 지시).
+## slanted across the lower third (elbow low-left, wrist in the middle) with
+## its hairy top facing the camera, tipped a little up so the strands lie
+## visible instead of pointing into the lens (형님 지시, mirror 3).
 ## Root basis only; the rig itself never writes it, so it is reset here.
-const WATCH_ARM_BASIS := Basis(Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0))
+const WATCH_ARM_SLANT := 0.29 ## rad, wrist higher than the elbow
+const WATCH_ARM_TIP := 0.24 ## rad, hairy top tipped from the camera toward up
+static func _watch_basis() -> Basis:
+    var d := Vector3(cos(WATCH_ARM_SLANT), sin(WATCH_ARM_SLANT), 0.0) # wrist direction
+    var up := Vector3(0.0, sin(WATCH_ARM_TIP), cos(WATCH_ARM_TIP))
+    up = (up - d * up.dot(d)).normalized()
+    var z := -d
+    return Basis(up.cross(z).normalized(), up, z).orthonormalized()
+static var WATCH_ARM_BASIS := _watch_basis()
+## Wrist spot (camera space) while looking: 0.35-0.45 m out, lower third.
+const WATCH_WRIST_POS := Vector3(0.0, -0.13, -0.4)
+## Right hand drops out of view under the frame while looking.
+const WATCH_RIGHT_POS := Vector3(0.2, -0.62, -0.25)
 func watch_arm_basis() -> Basis:
     var w := weight() if kind == "watch" else 0.0
     return Basis.IDENTITY.slerp(WATCH_ARM_BASIS, w) if w > 0.0 else Basis.IDENTITY
@@ -428,7 +441,9 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["pos"] = idle + Vector3(-0.03, -0.05, 0.06) * down + Vector3(0.0, 0.01, 0.0) * sin(u * 30.0) * open
         "watch":
             if right:
-                return {}
+                _fingers(q, 0.4)
+                q["pos"] = WATCH_RIGHT_POS
+                return q
             var sway := Vector3(sin(t * 1.3) * 0.003, sin(t * 1.9) * 0.002, 0.0)
             _fingers(q, 0.32)
             # the root is turned (watch_arm_basis): the forearm lies across
@@ -437,7 +452,7 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["wrist_pitch"] = 8.0
             q["wrist_yaw"] = 0.0
             q["wrist_roll"] = 0.0
-            q["pos"] = Vector3(0.02, -0.1, -0.22) + sway
+            q["pos"] = WATCH_WRIST_POS + sway
         "cycle":
             if not right:
                 return {}

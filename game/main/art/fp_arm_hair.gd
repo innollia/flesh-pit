@@ -1,4 +1,4 @@
-﻿extends Node3D
+extends Node3D
 
 ## Forearm with arm hairs (mutation points). Origin = elbow; the forearm
 ## runs toward -Z to the wrist (the same direction the first-person hands
@@ -76,7 +76,7 @@ func _rebuild() -> void:
             var lean := Vector3(0, 0, 1)
             var p1 := base + nrm * length * 0.45 + lean * length * 0.35
             var p2 := base + nrm * length * 0.6 + lean * length * 0.9 + Vector3(0.004 * (float(s[2]) - 0.5), 0, 0)
-            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0026 if shaggy else 0.0022, 0.0018, 0.0006], 3, [COLORS[kind]], false)
+            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0032 if shaggy else 0.0028, 0.0022, 0.0009], 3, [COLORS[kind]], false)
             slot += 1
             any = true
     _hair_mi.mesh = K.finish(st, 40.0) if any else ArrayMesh.new()

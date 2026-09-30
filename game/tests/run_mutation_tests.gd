@@ -144,7 +144,12 @@ func _run_mirror() -> void:
 	m.hand_motions.tick(0.5)
 	_assert(m.hand_motions.watch_raised() > 0.99 and m.hand_motions.busy(), "the arm stays up while looking")
 	var lp: Dictionary = m.hand_motions.shape_pose(m.hands_rig, -1.0, {"pos": Vector3(-0.16, -0.175, -0.31), "wrist_pitch": 48.0, "wrist_yaw": -14.0, "wrist_roll": 12.0, "f1": 12.0, "f2": 16.0, "f3": 12.0, "t1": -6.0, "t2": 6.0, "t3": 10.0, "t_opp": 0.0})
-	_assert((lp["pos"] as Vector3).y > -0.12, "the left hand is lifted toward the face")
+	var lpp: Vector3 = lp["pos"]
+	_assert(lpp.z <= -0.35 and lpp.z >= -0.45 and lpp.y < -0.05, "the left wrist sits 0.35-0.45 m out in the lower third")
+	var rp: Dictionary = m.hand_motions.shape_pose(m.hands_rig, 1.0, {"pos": Vector3(0.16, -0.175, -0.31), "wrist_pitch": 48.0, "wrist_yaw": 14.0, "wrist_roll": -12.0, "f1": 12.0, "f2": 16.0, "f3": 12.0, "t1": -6.0, "t2": 6.0, "t3": 10.0, "t_opp": 0.0})
+	_assert((rp["pos"] as Vector3).y < -0.5, "the right hand drops out of view while looking")
+	var hair: Node3D = m.art_hookup.arm_hair
+	_assert(hair != null and hair.is_visible_in_tree(), "arm hairs stay visible in the watch look")
 	var lroot: Node3D = m.hands_rig.call("get_hand_root", "left")
 	_assert((lroot.basis * Vector3.UP).z > 0.95 and (lroot.basis * Vector3.FORWARD).x > 0.95, "watch look: the forearm lies across the view, hairy top to the camera")
 	_assert(mir.glass.anchor_left >= 0.5 and mir.glass.anchor_right <= 1.0, "the glass is a panel on the right, the first-person view stays")

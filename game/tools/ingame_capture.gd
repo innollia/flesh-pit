@@ -85,6 +85,9 @@ func _setup() -> void:
 			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
 		"mirror_look", "mirror_after":
 			m.restroom.set_door_open(false, true)
+			# some hairs of every kind so the watch-look arm shows its count
+			for pool in [FPProgression.COMMON, "core", "mantle", "surface"]:
+				prog.mutation_tree.add_points(pool, 6)
 			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
 			m.open_mirror()
 		"mirror_corner":
