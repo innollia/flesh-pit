@@ -57,12 +57,30 @@ const DIM := 0.7
 ## Doll layer: drawn by the eye camera AND by the overlay camera above the dim.
 const HOLO_LAYER := 1 << 14
 const DOLL_SCALE := 0.1
+## belly7: under the dim room light the doll read dark red-brown (a doll-only
+## omni fill did not reach it in the compatibility renderer), so its matte
+## skin materials are swapped for this self-lit copy: same vertex paint and
+## texture, a soft fixed light from the viewer, so it reads the hand's skin.
+const DOLL_SHADER := """shader_type spatial;
+render_mode unshaded, cull_back;
+uniform sampler2D tex : source_color, filter_nearest, repeat_enable;
+uniform bool use_tex = false;
+uniform vec2 uv_scale = vec2(1.0);
+uniform vec4 tint : source_color = vec4(1.0);
+void fragment() {
+	vec3 c = COLOR.rgb * tint.rgb;
+	if (use_tex) { c *= texture(tex, UV * uv_scale).rgb; }
+	float l = 0.62 + 0.38 * max(dot(normalize(NORMAL), normalize(vec3(0.25, 0.45, 1.0))), 0.0);
+	ALBEDO = c * l;
+}
+"""
 ## Doll feet on the forearm, in the left hand root's space (the forearm runs
 ## toward +Z = the elbow, the hairy top faces +Y).
 const DOLL_ON_ARM := Vector3(0.0, 0.035, 0.13)
 
 var prog: FPProgression
 var body: FPMirrorBody ## the doll
+var _doll_mats := {} ## matte material -> its self-lit doll copy
 var eye: Camera3D
 var hand_root: Node3D ## left hand root of the rig (doll stands on its forearm)
 var holo_nodes: Array[Node] = [] ## nodes drawn above the dim while open
@@ -159,6 +177,30 @@ func _build_doll() -> void:
 	body.scale = Vector3.ONE * DOLL_SCALE
 	body.visible = false
 	tag_layer(body, HOLO_LAYER)
+	_light_doll()
+
+## Swap the doll's shaded matte skin for the self-lit copy (see DOLL_SHADER).
+func _light_doll() -> void:
+	for mi in body.find_children("*", "MeshInstance3D", true, false):
+		var m := (mi as MeshInstance3D).material_override
+		if m is StandardMaterial3D and (m as StandardMaterial3D).shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+			(mi as MeshInstance3D).material_override = doll_material(m)
+
+## The self-lit doll copy of a matte material (cached).
+func doll_material(m: StandardMaterial3D) -> ShaderMaterial:
+	if _doll_mats.has(m):
+		return _doll_mats[m]
+	var sh := Shader.new()
+	sh.code = DOLL_SHADER
+	var d := ShaderMaterial.new()
+	d.shader = sh
+	d.set_shader_parameter("tint", m.albedo_color)
+	d.set_shader_parameter("use_tex", m.albedo_texture != null)
+	if m.albedo_texture != null:
+		d.set_shader_parameter("tex", m.albedo_texture)
+	d.set_shader_parameter("uv_scale", Vector2(m.uv1_scale.x, m.uv1_scale.y))
+	_doll_mats[m] = d
+	return d
 
 ## Main wires the camera and the arm the doll stands on.
 func setup(eye_cam: Camera3D, left_hand_root: Node3D, holo: Array[Node]) -> void:
@@ -212,6 +254,7 @@ func refresh() -> void:
 	if body._belt != null:
 		body._belt.call("set_worn", prog.has_belt)
 	tag_layer(body, HOLO_LAYER)
+	_light_doll()
 	_order.clear()
 	for part in FPProgression.PARTS:
 		if not prog.mutations_for_part(part).is_empty():

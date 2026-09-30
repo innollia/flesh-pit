@@ -164,6 +164,10 @@ func _run() -> void:
 			_assert(float(tr[ri][2]) < float(tr[ri - 1][2]), "the belly falls back going up (ring %d)" % ri)
 	var eye_over_belt: float = m.player.camera.global_position.y - belt.global_position.y
 	_assert(float(tr[-1][0]) < eye_over_belt - 0.3, "the shirt top closes well under the eye (%.2f vs eye %.2f)" % [tr[-1][0], eye_over_belt])
+	# belly7: the belly starts AT the waist (no white brief disc inside the
+	# band) and rounds off into a small dome, not a wide flat skin fan
+	_assert(absf(float(tr[0][1]) - belt.RX) < 0.001 and absf(float(tr[0][2]) - belt.RZF) < 0.001 and absf(float(tr[0][3]) - belt.RZ) < 0.001, "the bare belly starts at the waist itself")
+	_assert(float(tr[-1][1]) < 0.06 and tr.size() >= 8, "the top of the belly rounds off into a small dome (%.2f wide, %d rings)" % [tr[-1][1], tr.size()])
 	# the mirror body wears the same belt fitted to its slimmer waist
 	var mb := FPMirrorBody.new()
 	get_root().add_child(mb)

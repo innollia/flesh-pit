@@ -17,11 +17,14 @@ const K := preload("res://main/art/fp_art_kit.gd")
 const RX := 0.21   ## waist half width
 const RZ := 0.13   ## waist half depth at the back / hips
 const RZF := 0.19  ## waist half depth at the front (belly side)
-## Torso rings [y, half width, front depth, back depth] from the belt up. The
+## Torso rings [y, half width, front depth, back depth] from the belt up
+## (belly7: the bottom ring IS the waist, so no brief disc shows inside the
+## band, and the top rounds off into a small dome instead of a flat skin fan).
+## The
 ## eye is only ~0.65 m over the belt (eye height 1.6 m), so the belly is
 ## fullest AT the belt and falls back fast above it: looking down, the shirt
 ## is a thin crescent low in the view and the belt band stands proud of it.
-const TORSO_RINGS := [[0.0, 0.2, 0.165, 0.125], [0.06, 0.2, 0.14, 0.13], [0.13, 0.195, 0.09, 0.13], [0.21, 0.19, 0.02, 0.13], [0.28, 0.17, -0.04, 0.12]]
+const TORSO_RINGS := [[0.0, 0.21, 0.19, 0.13], [0.035, 0.212, 0.186, 0.132], [0.075, 0.208, 0.172, 0.132], [0.115, 0.2, 0.148, 0.13], [0.155, 0.19, 0.115, 0.128], [0.195, 0.176, 0.075, 0.124], [0.235, 0.155, 0.03, 0.116], [0.27, 0.125, -0.015, 0.1], [0.3, 0.085, -0.05, 0.075], [0.322, 0.04, -0.07, 0.045]]
 ## Waist the belt band, buckle, hooks, cans and canary are fitted round.
 ## Defaults = the first-person body; the mirror body sets its own slimmer
 ## waist before add_child (_ready builds from these).
@@ -68,10 +71,17 @@ func _ready() -> void:
         torso.append(_waist_ring(r[0], r[1], r[2], r[3]))
     # rings top-first (the kit loft convention); the shoulders close below
     torso.reverse()
-    _loft_lit(st, torso, [shirt_d, shirt, shirt, shirt])
-    # navel instead of shirt buttons
-    var nz: float = -_front_at(0.07) - 0.002
-    K.rbox(st, K.T(Vector3(0, 0.07, nz)), Vector3(0.007, 0.009, 0.002), 0.002, Color(0.55, 0.36, 0.3))
+    # soft shading: the chest dome faces the body fill head-on and burnt out
+    # to a flat plate, so its colour eases down toward the top; the belly
+    # front keeps the hand skin (no single flat colour anywhere)
+    var bands: Array = []
+    for i in range(torso.size() - 1):
+        var t := float(i) / float(torso.size() - 2) # 0 = top of the dome
+        bands.append(shirt_d.darkened(0.1).lerp(shirt, smoothstep(0.0, 0.75, t)).lerp(shirt_d, maxf(0.0, t - 0.85) * 4.0))
+    _loft_lit(st, torso, bands)
+    # small navel
+    var nz: float = -_front_at(0.06) - 0.002
+    K.rbox(st, K.T(Vector3(0, 0.06, nz)), Vector3(0.005, 0.006, 0.002), 0.0015, Color(0.62, 0.42, 0.36))
     var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), K.mat("tex_skin_128.png", 0.3, true))
     # the body must not shade itself dark under the ceiling tube
     torso_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -97,7 +107,14 @@ func _ready() -> void:
         var can := K.pivot(holder, "Spray")
         _cans.append(can)
     _build_hooks()
-    _canary = K.pivot(self, "Canary", Vector3(-0.15 * wx / RX, -0.05, -wzf * 0.8 - 0.02))
+    # belly7: the canary is tucked into the front waistband of the briefs,
+    # below the navel to one side: body squeezed under the elastic, head
+    # poking out just past the belt so it shows when looking down
+    _canary = K.pivot(self, "Canary", Vector3(-0.09 * wx / RX, -0.05, -(wzf + BAND_OUT) * 0.97 - 0.012))
+    # the elastic strap pinning the bird's body against the belly
+    var st2 := K.begin()
+    K.rbox(st2, K.T(Vector3(0, -0.012, -0.004)), Vector3(0.03, 0.006, 0.004), 0.002, Color(0.9, 0.91, 0.92))
+    K.add_mesh(_canary, "Waistband", K.finish(st2), K.mat("tex_door_paint_64.png", 0.1, true))
     _build_canary()
     set_spray_count(2, 1)
     set_canary(true)

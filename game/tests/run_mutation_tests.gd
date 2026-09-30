@@ -172,6 +172,13 @@ func _run_mirror() -> void:
 	_assert(mv.cam.projection == Camera3D.PROJECTION_FRUSTUM, "the reflection camera is clipped at the glass")
 	# forearm hologram: doll on the arm, 70% dim, arm + doll drawn above it
 	_assert(absf(mir._dim.color.a - 0.7) < 0.01 and mir.ocam.cull_mask == FPMirror.HOLO_LAYER, "the background dims ~70%, a second camera draws the arm and doll above it")
+	# belly7: the doll's skin is self-lit (it read dark red-brown under the room light)
+	var shaded := 0
+	for dmi in mir.body.find_children("*", "MeshInstance3D", true, false):
+		var dm: Material = (dmi as MeshInstance3D).material_override
+		if dm is StandardMaterial3D and (dm as StandardMaterial3D).shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+			shaded += 1
+	_assert(shaded == 0, "no doll part keeps the dark room-lit matte (%d left)" % shaded)
 	var lh: Node3D = m.hands_rig.call("get_hand_root", "left")
 	var hand_mesh_ok := true
 	for mi in m.hands_rig.find_children("*", "MeshInstance3D", true, false):

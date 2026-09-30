@@ -106,6 +106,7 @@ func _setup() -> void:
 			# mut6: bare belly in briefs, belt on (first-person look-down)
 			m.restroom.set_door_open(false, true)
 			prog.has_belt = true
+			m.has_canary = true # belly7: the canary tucked in the briefs' waistband
 			_pose(Vector3(0.0, 0.95, 0.4), 0.0, deg_to_rad(-80.0))
 		"mirror_corner":
 			m.restroom.set_door_open(false, true)
