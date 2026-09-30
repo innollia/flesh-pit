@@ -631,6 +631,7 @@ func _process(delta: float) -> void:
         _process_seated()
         return
     if _mirror_open:
+        _process_mirror_look()
         return
     if Input.is_action_just_pressed("ui_cancel") and handle_esc() != "":
         return
@@ -1284,10 +1285,22 @@ func open_mirror() -> void:
     _mirror_open = true
     vent.notice("mirror")
     mirror.open(progression)
+    hand_motions.play_watch()
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+## While looking in the mirror the first-person view stays; interacting again
+## or moving lowers the arm and ends it (Esc is handled by the mirror).
+const MIRROR_END_ACTIONS := ["fp_interact", "fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right", "fdk_jump"]
+
+func _process_mirror_look() -> void:
+    for a in MIRROR_END_ACTIONS:
+        if InputMap.has_action(a) and Input.is_action_just_pressed(a):
+            mirror.close()
+            return
 
 func _on_mirror_closed() -> void:
     _mirror_open = false
+    hand_motions.release_watch()
     _esc_guard_frame = Engine.get_process_frames()
     if player.mouse_look_enabled:
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

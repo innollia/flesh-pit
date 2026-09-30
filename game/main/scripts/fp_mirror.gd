@@ -2,8 +2,9 @@ class_name FPMirror
 extends CanvasLayer
 
 ## Mirror mutation screen (docs/spec/03-restroom.md 8, 05-mutations.md).
-## Interacting with the mirror switches to a view of your own body in the
-## glass. Parts that can still mutate shimmer (an enchant-like glint) without
+## Interacting with the mirror keeps the first-person view: the left arm comes
+## up like reading a wristwatch and the glass panel on the right shows your
+## whole body. Parts that can still mutate shimmer (an enchant-like glint) without
 ## hovering. Hovering a part lays a translucent ghost of that part's next
 ## mutation over the body; small chips under the glass switch between the
 ## part's mutations. Clicking a part (or a chip) buys it: the hairs fall off
@@ -22,12 +23,15 @@ const POOL_COLOR := {
 	"mantle": Color(0.5, 0.3, 0.62),
 	"surface": Color(0.95, 0.85, 0.3),
 }
-const HOVER_PX := 80.0
+const HOVER_PX := 60.0
+## Glass panel in screen fractions (right side, full body visible).
+const GLASS_RECT := Rect2(0.62, 0.05, 0.34, 0.78)
 
 var prog: FPProgression
 var body: FPMirrorBody
 var cam: Camera3D
 var _root: Control
+var glass: Control
 var _vpc: SubViewportContainer
 var _vp: SubViewport
 var _chips: HBoxContainer
@@ -41,43 +45,45 @@ func _ready() -> void:
 	layer = 6
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_root.mouse_filter = Control.MOUSE_FILTER_PASS
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	# The first-person view stays on screen; the glass is a panel on the right
+	# (the left arm is raised like reading a wristwatch, fp_hand_motions watch).
+	glass = Control.new()
+	glass.name = "Glass"
+	glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glass.anchor_left = GLASS_RECT.position.x
+	glass.anchor_top = GLASS_RECT.position.y
+	glass.anchor_right = GLASS_RECT.end.x
+	glass.anchor_bottom = GLASS_RECT.end.y
+	_root.add_child(glass)
 	var bg := ColorRect.new()
-	bg.color = Color(0.86, 0.88, 0.89)
+	bg.color = Color(0.72, 0.74, 0.77)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(bg)
+	glass.add_child(bg)
 	_vpc = SubViewportContainer.new()
 	_vpc.stretch = true
 	_vpc.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_vpc.offset_left = 40
-	_vpc.offset_right = -40
-	_vpc.offset_top = 30
-	_vpc.offset_bottom = -90
+	_vpc.offset_left = 8
+	_vpc.offset_right = -8
+	_vpc.offset_top = 8
+	_vpc.offset_bottom = -8
 	_vpc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_vpc)
+	glass.add_child(_vpc)
 	_vp = SubViewport.new()
 	_vp.own_world_3d = true
 	_vp.msaa_3d = Viewport.MSAA_2X
 	_vpc.add_child(_vp)
 	_build_room()
-	# chrome frame around the glass
-	for i in range(4):
-		var r := ColorRect.new()
-		r.color = Color(0.72, 0.74, 0.77)
-		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		match i:
-			0: r.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); r.offset_top = 22; r.offset_bottom = 32; r.offset_left = 32; r.offset_right = -32
-			1: r.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); r.offset_top = -92; r.offset_bottom = -82; r.offset_left = 32; r.offset_right = -32
-			2: r.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE); r.offset_left = 32; r.offset_right = 42; r.offset_top = 22; r.offset_bottom = -82
-			3: r.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE); r.offset_left = -42; r.offset_right = -32; r.offset_top = 22; r.offset_bottom = -82
-		_root.add_child(r)
 	_chips = HBoxContainer.new()
 	_chips.alignment = BoxContainer.ALIGNMENT_CENTER
-	_chips.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_chips.offset_top = -72
-	_chips.offset_bottom = -20
+	_chips.anchor_left = GLASS_RECT.position.x
+	_chips.anchor_right = GLASS_RECT.end.x
+	_chips.anchor_top = GLASS_RECT.end.y
+	_chips.anchor_bottom = GLASS_RECT.end.y
+	_chips.offset_top = 10
+	_chips.offset_bottom = 58
 	_chips.add_theme_constant_override("separation", 14)
 	_root.add_child(_chips)
 	visible = false
@@ -108,8 +114,8 @@ func _build_room() -> void:
 	body.name = "Body"
 	_vp.add_child(body)
 	cam = Camera3D.new()
-	cam.fov = 37.0
-	cam.position = Vector3(0, 0.98, 2.55)
+	cam.fov = 44.0
+	cam.position = Vector3(0, 0.95, 2.75)
 	_vp.add_child(cam)
 	cam.look_at(Vector3(0, 0.93, 0), Vector3.UP)
 	cam.current = true

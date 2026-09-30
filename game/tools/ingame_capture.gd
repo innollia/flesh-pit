@@ -5,7 +5,7 @@ extends SceneTree
 ##   Godot_console --path game --windowed --resolution 1280x720
 ##     --write-movie captures/ingame/<shot>/f.png --fixed-fps 10
 ##     --quit-after <N> --script res://tools/ingame_capture.gd -- <shot>
-## Shots: restroom, vent, mirror, blender, rest_point, ending.
+## Shots: restroom, vent, mirror, mirror_look, mirror_after, blender, rest_point, ending.
 
 var _main: Node3D
 var _shot := "restroom"
@@ -66,6 +66,10 @@ func _setup() -> void:
 		"mirror":
 			m.restroom.set_door_open(false, true)
 			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
+		"mirror_look", "mirror_after":
+			m.restroom.set_door_open(false, true)
+			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
+			m.open_mirror()
 		"blender":
 			m.restroom.set_door_open(true, true)
 			_dig_tunnel()
@@ -96,6 +100,8 @@ func _process(_delta: float) -> bool:
 	_frame += 1
 	if _frame == 2:
 		_setup()
+	if _frame == 12 and _shot == "mirror_after":
+		_main.mirror.close()
 	if _frame > 2 and _shot == "rest_point":
 		var r: Vector3 = _main.rest_points[0]
 		_pose(r + Vector3(0, -0.2, 1.6), 0.0, deg_to_rad(-8.0))

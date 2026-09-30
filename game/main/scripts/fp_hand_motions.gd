@@ -16,9 +16,12 @@ extends RefCounted
 const DUR := {
     "scoop": 0.55, "pour": 0.85, "take": 0.65, "take2": 0.75,
     "vomit_toilet": 2.4, "vomit_floor": 2.4, "wash": 2.6,
-    "belt": 0.75, "cycle": 0.35,
+    "belt": 0.75, "cycle": 0.35, "watch": 1.0e9,
 }
 const CANCEL_TIME := 0.25
+## Mirror look (watch): the left arm comes up like checking a wristwatch and
+## stays up until release_watch() (the mirror closes on interact / move / Esc).
+const WATCH_RAISE := 0.3
 const CANCEL_ACTIONS := ["fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right",
     "fdk_jump", "fp_interact", "fp_pick", "fdk_eat", "fp_tool_next", "fp_vomit", "ui_cancel"]
 ## Offer kinds held with both hands.
@@ -119,6 +122,17 @@ func play_belt(hook: int) -> void:
     dur = FPBeltSwap.SWAP_TIME
     belt_hook = hook
 
+## Raise the left arm as if reading a wristwatch; held until release_watch().
+func play_watch() -> void:
+    _start("watch")
+
+func release_watch() -> void:
+    if kind == "watch":
+        cancel()
+
+func watch_raised() -> float:
+    return weight() if kind == "watch" else 0.0
+
 func play_cycle() -> void:
     _start("cycle")
 
@@ -184,6 +198,11 @@ func weight() -> float:
     if not busy():
         return 0.0
     var u := progress()
+    if kind == "watch":
+        var ww := seg(t, 0.0, WATCH_RAISE)
+        if cancelled:
+            ww *= clampf(_cancel_w, 0.0, 1.0)
+        return ww
     var w := seg(u, 0.0, 0.14) * (1.0 - seg(u, 0.86, 1.0))
     if kind in ["vomit_toilet", "vomit_floor", "wash"]:
         w = seg(u, 0.0, 0.08) * (1.0 - seg(u, 0.92, 1.0))
@@ -381,6 +400,15 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["wrist_yaw"] = 12.0 * down
             q["wrist_roll"] = -20.0 * down + 10.0 * open
             q["pos"] = idle + Vector3(-0.03, -0.05, 0.06) * down + Vector3(0.0, 0.01, 0.0) * sin(u * 30.0) * open
+        "watch":
+            if right:
+                return {}
+            var sway := Vector3(sin(t * 1.3) * 0.003, sin(t * 1.9) * 0.002, 0.0)
+            _fingers(q, 0.32)
+            q["wrist_pitch"] = 18.0
+            q["wrist_yaw"] = 62.0
+            q["wrist_roll"] = 20.0
+            q["pos"] = Vector3(-0.07, -0.1, -0.3) + sway
         "cycle":
             if not right:
                 return {}

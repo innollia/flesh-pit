@@ -77,12 +77,18 @@ func _process_crouch() -> void:
 func _apply_stand_height() -> void:
 	if collision_shape.shape is CapsuleShape3D:
 		(collision_shape.shape as CapsuleShape3D).height = config.stand_height
-	camera_pivot.position.y = config.stand_height * 0.5
+	camera_pivot.position.y = eye_pivot_y(false)
 
 func _apply_crouch_height() -> void:
 	if collision_shape.shape is CapsuleShape3D:
 		(collision_shape.shape as CapsuleShape3D).height = config.crouch_height
-	camera_pivot.position.y = config.crouch_height * 0.5
+	camera_pivot.position.y = eye_pivot_y(true)
+
+## Camera pivot height over the capsule centre: eye_height above the feet,
+## scaled down with the capsule when crouching.
+func eye_pivot_y(crouched: bool) -> float:
+	var h := config.crouch_height if crouched else config.stand_height
+	return h * 0.5 - (config.stand_height - config.eye_height) * h / config.stand_height
 
 func _process_move_and_climb(delta: float) -> void:
 	var input_dir := Vector2.ZERO

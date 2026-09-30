@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 
 ## Session A (restroom look) captures: W01 W02 W07 W09 W13 W14. One windowed
 ## run walks through every shot, HOLD frames each, and writes the frame range
@@ -47,7 +47,7 @@ func _look(pos: Vector3, target: Vector3) -> void:
 
 func _crouch(on: bool) -> void:
 	var p = _main.player
-	p.camera_pivot.position.y = (p.config.crouch_height if on else p.config.stand_height) * 0.5
+	p.camera_pivot.position.y = p.eye_pivot_y(on)
 
 func _dig_tunnel() -> void:
 	var t = _main.terrain

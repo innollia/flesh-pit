@@ -140,6 +140,12 @@ func _run_mirror() -> void:
 	m.open_mirror()
 	var mir: FPMirror = m.mirror
 	_assert(mir.visible and mir.body != null, "interacting with the mirror shows the reflected body")
+	_assert(m.hand_motions.kind == "watch", "the mirror raises the left arm like reading a wristwatch")
+	m.hand_motions.tick(0.5)
+	_assert(m.hand_motions.watch_raised() > 0.99 and m.hand_motions.busy(), "the arm stays up while looking")
+	var lp: Dictionary = m.hand_motions.shape_pose(m.hands_rig, -1.0, {"pos": Vector3(-0.16, -0.175, -0.31), "wrist_pitch": 48.0, "wrist_yaw": -14.0, "wrist_roll": 12.0, "f1": 12.0, "f2": 16.0, "f3": 12.0, "t1": -6.0, "t2": 6.0, "t3": 10.0, "t_opp": 0.0})
+	_assert((lp["pos"] as Vector3).y > -0.12, "the left hand is lifted toward the face")
+	_assert(mir.glass.anchor_left >= 0.5 and mir.glass.anchor_right <= 1.0, "the glass is a panel on the right, the first-person view stays")
 	_assert(mir.body.shimmer_on("face") and mir.body.shimmer_on("right_hand"), "mutable parts shimmer without hovering")
 	mir.focus_part("face")
 	_assert(mir.ghost_id() != "" and mir._ghost != null, "focusing a part overlays its next mutation")
@@ -163,6 +169,17 @@ func _run_mirror() -> void:
 	_assert("M10" in mir.body.applied, "the mirror body changes at once")
 	_key(m, "ui_cancel")
 	_assert(not mir.visible and not m._mirror_open, "Esc leaves the mirror")
+	_assert(m.hand_motions.cancelled or not m.hand_motions.busy(), "leaving the mirror lowers the arm")
+	for i in range(20):
+		m.hand_motions.tick(0.05)
+	_assert(not m.hand_motions.busy(), "the arm is back down")
+	m.open_mirror()
+	m.mirror.close()
+	_assert(not m._mirror_open, "interact / move also end the mirror look")
+	for i in range(20):
+		m.hand_motions.tick(0.05)
+	var eye: float = m.player.camera.global_position.y - (m.player.global_position.y - m.player.config.stand_height * 0.5)
+	_assert(absf(eye - 1.6) < 0.05, "eye height is about 1.6 m over the feet (real proportions)")
 
 func _run_long_knuckle() -> void:
 	var m = _m

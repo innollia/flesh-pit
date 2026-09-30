@@ -7,6 +7,9 @@ extends Resource
 @export var crouch_speed: float = 1.5
 @export var crouch_height: float = 0.9
 @export var stand_height: float = 1.8
+## Eye height above the feet when standing (real adult ~1.6 m; the capsule
+## top is the crown of the head). Crouching keeps the same proportion.
+@export var eye_height: float = 1.6
 @export var mouse_sensitivity: float = 0.0025
 @export var invert_y: bool = false ## flip vertical look (mouse, keys, stick)
 @export var keyboard_look_speed: float = 2.0 ## radians/sec, for keyboard-only look (arrow keys)
