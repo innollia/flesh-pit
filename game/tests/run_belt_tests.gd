@@ -168,6 +168,15 @@ func _run() -> void:
 	# band) and rounds off into a small dome, not a wide flat skin fan
 	_assert(absf(float(tr[0][1]) - belt.RX) < 0.001 and absf(float(tr[0][2]) - belt.RZF) < 0.001 and absf(float(tr[0][3]) - belt.RZ) < 0.001, "the bare belly starts at the waist itself")
 	_assert(float(tr[-1][1]) < 0.06 and tr.size() >= 8, "the top of the belly rounds off into a small dome (%.2f wide, %d rings)" % [tr[-1][1], tr.size()])
+	# belly8: a low gentle curve, never folded (front depth > 0 on every ring),
+	# double-sided self-lit skin, canary out in front of the band
+	_assert(float(tr[-1][0]) < 0.2, "the belly is a low curve, not a ball (%.2f tall)" % tr[-1][0])
+	for ri in range(tr.size()):
+		_assert(float(tr[ri][2]) > 0.0, "belly ring %d does not fold over itself" % ri)
+	var tmat := (belt.get_node("Torso") as MeshInstance3D).material_override as ShaderMaterial
+	_assert(tmat.shader.code.contains("cull_disabled") and tmat.shader.code.contains("unshaded"), "the belly skin is self-lit and double-sided")
+	var cz: float = (belt.get_node("Canary") as Node3D).position.z
+	_assert(cz < -(belt.RZF + belt.BAND_OUT), "the canary sits in front of the belt band (%.3f)" % cz)
 	# the mirror body wears the same belt fitted to its slimmer waist
 	var mb := FPMirrorBody.new()
 	get_root().add_child(mb)

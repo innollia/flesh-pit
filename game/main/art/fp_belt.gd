@@ -24,7 +24,10 @@ const RZF := 0.19  ## waist half depth at the front (belly side)
 ## eye is only ~0.65 m over the belt (eye height 1.6 m), so the belly is
 ## fullest AT the belt and falls back fast above it: looking down, the shirt
 ## is a thin crescent low in the view and the belt band stands proud of it.
-const TORSO_RINGS := [[0.0, 0.21, 0.19, 0.13], [0.035, 0.212, 0.186, 0.132], [0.075, 0.208, 0.172, 0.132], [0.115, 0.2, 0.148, 0.13], [0.155, 0.19, 0.115, 0.128], [0.195, 0.176, 0.075, 0.124], [0.235, 0.155, 0.03, 0.116], [0.27, 0.125, -0.015, 0.1], [0.3, 0.085, -0.05, 0.075], [0.322, 0.04, -0.07, 0.045]]
+## belly8: a low, gentle curve (15 cm tall, not a 32 cm ball filling the
+## belt), and every front depth stays positive: the old top rings went
+## negative, folding the ring over itself into inverted faces (white holes).
+const TORSO_RINGS := [[0.0, 0.21, 0.19, 0.13], [0.025, 0.208, 0.176, 0.13], [0.05, 0.2, 0.152, 0.128], [0.072, 0.186, 0.122, 0.124], [0.092, 0.165, 0.09, 0.118], [0.11, 0.138, 0.06, 0.108], [0.125, 0.105, 0.036, 0.092], [0.137, 0.07, 0.018, 0.07], [0.146, 0.04, 0.006, 0.045]]
 ## Waist the belt band, buckle, hooks, cans and canary are fitted round.
 ## Defaults = the first-person body; the mirror body sets its own slimmer
 ## waist before add_child (_ready builds from these).
@@ -50,7 +53,9 @@ func _ready() -> void:
     # stubs down to the knees
     var hip: Array = []
     for k in range(3):
-        hip.append(_waist_ring(-k * 0.07, RX * (1.0 + k * 0.03), RZF * (1.0 - k * 0.04), RZ * (1.0 + k * 0.05)))
+        # belly8: the brief front swells out a little under the belt so a
+        # strip of white shows past the band from above
+        hip.append(_waist_ring(-k * 0.07, RX * (1.0 + k * 0.03), RZF * (1.0 + k * 0.17), RZ * (1.0 + k * 0.05)))
     _loft_lit(st, hip, [cloth, cloth, cloth_d])
     for sx in [-1, 1]:
         # short brief legs round the top of the thighs (no trouser legs)
@@ -82,7 +87,7 @@ func _ready() -> void:
     # small navel
     var nz: float = -_front_at(0.06) - 0.002
     K.rbox(st, K.T(Vector3(0, 0.06, nz)), Vector3(0.005, 0.006, 0.002), 0.0015, Color(0.62, 0.42, 0.36))
-    var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), K.mat("tex_skin_128.png", 0.3, true))
+    var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), _skin_mat())
     # the body must not shade itself dark under the ceiling tube
     torso_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     # belt band: a thick leather loop right round the waist
@@ -110,7 +115,10 @@ func _ready() -> void:
     # belly7: the canary is tucked into the front waistband of the briefs,
     # below the navel to one side: body squeezed under the elastic, head
     # poking out just past the belt so it shows when looking down
-    _canary = K.pivot(self, "Canary", Vector3(-0.09 * wx / RX, -0.05, -(wzf + BAND_OUT) * 0.97 - 0.012))
+    # belly8: out in front of the band (not behind it) and bigger, so the
+    # yellow head and beak read clearly from above
+    _canary = K.pivot(self, "Canary", Vector3(-0.07 * wx / RX, -0.03, -(wzf + BAND_OUT) - 0.026))
+    _canary.scale = Vector3.ONE * 1.4
     # the elastic strap pinning the bird's body against the belly
     var st2 := K.begin()
     K.rbox(st2, K.T(Vector3(0, -0.012, -0.004)), Vector3(0.03, 0.006, 0.004), 0.002, Color(0.9, 0.91, 0.92))
@@ -139,6 +147,32 @@ func _build_canary() -> void:
     for sx in [-1, 1]:
         K.blob(st, Transform3D.IDENTITY, Vector3(sx * 0.011, 0.004, -0.009), Vector3(0.0035, 0.0035, 0.0035), 0.0, 1, Color(0.02, 0.02, 0.02), Color(0.02, 0.02, 0.02))
     K.add_mesh(_canary_head, "HeadMesh", K.finish(st), K.mat("tex_skin_64.png", 0.2, true))
+
+## belly8: looking down, the room light never reaches the top of the belly
+## (it read dark red-brown), so the bare skin is self-lit like the Tab doll:
+## vertex paint x skin texture under a soft fixed light from above/front.
+## Double-sided so no seam or flipped face can show through as a hole.
+const SKIN_SHADER := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform sampler2D tex : source_color, filter_nearest, repeat_enable;
+uniform bool use_vertex_color = true;
+void fragment() {
+	vec3 c = COLOR.rgb * mix(vec3(1.0), texture(tex, UV).rgb, 0.5);
+	vec3 n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	float l = 0.8 + 0.25 * max(dot(n, normalize(vec3(0.0, 1.0, -0.4))), 0.0);
+	ALBEDO = c * l;
+}
+"""
+static var _skin: ShaderMaterial
+static func _skin_mat() -> ShaderMaterial:
+    if _skin == null:
+        var sh := Shader.new()
+        sh.code = SKIN_SHADER
+        _skin = ShaderMaterial.new()
+        _skin.shader = sh
+        _skin.set_shader_parameter("tex", load(K.TEX + "tex_skin_128.png"))
+        _skin.set_shader_parameter("use_vertex_color", true)
+    return _skin
 
 ## Like FDKLowPoly.loft but each band's normal follows the real surface
 ## slope (the kit loft points every face straight out sideways, so a belly
