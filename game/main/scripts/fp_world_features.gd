@@ -29,6 +29,46 @@ const TUMOR_DEPTH := [6.8, 15.5, 24.0]
 static func shell_of_depth(depth: float) -> int:
 	return clampi(int(depth / SHELL_THICKNESS), 0, SHELL_COUNT - 1)
 
+## Distance from p to the outside of the restroom box (main.gd's ROOM_MARGIN /
+## door-gap rules use this to know how close a point is to the room walls).
+static func room_dist(p: Vector3, room_half: Vector3) -> float:
+	var q := Vector3(absf(p.x) - room_half.x, maxf(-p.y, p.y - 2.0 * room_half.y), absf(p.z) - room_half.z)
+	return Vector3(maxf(q.x, 0.0), maxf(q.y, 0.0), maxf(q.z, 0.0)).length()
+
+## True inside the restroom box + membrane margin (or the wider door gap
+## when p is in front of the door), false once past the outer shells or
+## inside a rest-point container -- i.e. "carve this to zero density".
+static func world_density(p: Vector3, room_half: Vector3, door_half_w: float, door_h: float,
+		room_margin: float, door_gap: float, center: Vector3, outer_radius: float,
+		rests: Array[Vector3]) -> float:
+	var margin := room_margin
+	if p.z > room_half.z and absf(p.x) < door_half_w and p.y > -0.1 and p.y < door_h:
+		margin = door_gap
+	if absf(p.x) <= room_half.x + margin and p.y >= -margin and p.y <= 2.0 * room_half.y + margin and absf(p.z) <= room_half.z + margin:
+		return 0.0
+	if p.distance_to(center) >= outer_radius:
+		return 0.0
+	if in_container(p, rests):
+		return 0.0
+	return 1.0
+
+## True in the corridor in front of (and a bit behind) the door -- the
+## column that must stay carved out for the player to walk through.
+static func in_door_column(p: Vector3, door_half_w: float, door_h: float) -> bool:
+	return p.z > 0.0 and absf(p.x) < door_half_w + 0.9 and p.y < door_h + 0.9
+
+## Tissue ids: 0 flesh, 1 nerve bundle, 2 fat band (shell boundary),
+## 3 membrane (restroom shell), 4 contractile fibers (mantle, needs a blade).
+## `room_membrane` is true when p is within membrane_thickness + room_margin
+## of the restroom box and not in the door column (main.gd computes this).
+static func world_tissue_at(p: Vector3, center: Vector3, noise: float, room_membrane: bool) -> int:
+	return world_tissue(p, center, noise, room_membrane)
+
+## Depth-danger regen multiplier at p (FDKDepthDanger, keyed by distance
+## from the restroom center against the shell thickness).
+static func regen_scale(p: Vector3, center: Vector3, shell_thickness: float) -> float:
+	return FDKDepthDanger.danger_multiplier(p.distance_to(center), shell_thickness)
+
 ## Deterministic, well-spread directions (golden spiral), skipping the
 ## straight-up and straight-down poles and the door's +Z opening cone.
 static func _dirs(count: int, offset: float) -> Array[Vector3]:

@@ -392,26 +392,18 @@ func rebind_key(action: String, key_name: String) -> bool:
 
 # --- world generation ---------------------------------------------------------
 
+## World-shape rules delegate to FPWorldFeatures (static, unit-testable
+## without a main instance); this stays as the call site the rest of
+## main.gd and every test already use.
 func _room_dist(p: Vector3) -> float:
-    var h := FPRestroom.HALF
-    var q := Vector3(absf(p.x) - h.x, maxf(-p.y, p.y - 2.0 * h.y), absf(p.z) - h.z)
-    return Vector3(maxf(q.x, 0.0), maxf(q.y, 0.0), maxf(q.z, 0.0)).length()
+    return FPWorldFeatures.room_dist(p, FPRestroom.HALF)
 
 func _world_density(p: Vector3) -> float:
-    var h := FPRestroom.HALF
-    var margin := ROOM_MARGIN
-    if p.z > h.z and absf(p.x) < FPRestroom.DOOR_HALF_W and p.y > -0.1 and p.y < FPRestroom.DOOR_H:
-        margin = DOOR_GAP
-    if absf(p.x) <= h.x + margin and p.y >= -margin and p.y <= 2.0 * h.y + margin and absf(p.z) <= h.z + margin:
-        return 0.0
-    if p.distance_to(RESTROOM_CENTER) >= OUTER_RADIUS:
-        return 0.0
-    if FPWorldFeatures.in_container(p, rest_points):
-        return 0.0
-    return 1.0
+    return FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
+            ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points)
 
 func _in_door_column(p: Vector3) -> bool:
-    return p.z > 0.0 and absf(p.x) < FPRestroom.DOOR_HALF_W + 0.9 and p.y < FPRestroom.DOOR_H + 0.9
+    return FPWorldFeatures.in_door_column(p, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H)
 
 func shell_at(p: Vector3) -> int:
     return FPWorldFeatures.shell_of_depth(p.distance_to(RESTROOM_CENTER))
@@ -420,10 +412,10 @@ func shell_at(p: Vector3) -> int:
 ## 3 membrane (restroom shell), 4 contractile fibers (mantle, needs a blade).
 func _world_tissue(p: Vector3) -> int:
     var room := _room_dist(p) < MEMBRANE_THICKNESS + ROOM_MARGIN and not _in_door_column(p)
-    return FPWorldFeatures.world_tissue(p, RESTROOM_CENTER, _noise.get_noise_3dv(p), room)
+    return FPWorldFeatures.world_tissue_at(p, RESTROOM_CENTER, _noise.get_noise_3dv(p), room)
 
 func _regen_scale(p: Vector3) -> float:
-    return FDKDepthDanger.danger_multiplier(p.distance_to(RESTROOM_CENTER), SHELL_THICKNESS)
+    return FPWorldFeatures.regen_scale(p, RESTROOM_CENTER, SHELL_THICKNESS)
 
 func _stream_world() -> void:
     var cc := terrain.world_to_chunk_coord(player.global_position)
