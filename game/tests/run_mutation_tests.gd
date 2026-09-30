@@ -164,7 +164,42 @@ func _run_mirror() -> void:
 	var cam: Camera3D = m.player.camera
 	var e_pos := lpp + (lroot.basis * Vector3.BACK) * 0.34
 	_assert(not _in_view(cam, e_pos) and _in_view(cam, lpp), "watch look: wrist on screen, elbow past the frame edge")
-	_assert(mir.glass.anchor_left >= 0.5 and mir.glass.anchor_right <= 1.0, "the glass is a panel on the right, the first-person view stays")
+	# mirror 5: no screen panel; the glass reflects the player's own body
+	var keep_pos: Vector3 = m.player.global_position
+	var keep_yaw: float = m.player.rotation.y
+	m.player.global_position = Vector3(-0.6, 0.95, -0.35)
+	m.player.rotation.y = PI * 0.5
+	m.player.set("_yaw", PI * 0.5)
+	m.player.camera_pivot.rotation.x = 0.0
+	var keep_size: Vector2i = m.get_viewport().size
+	m.get_viewport().size = Vector2i(1280, 720)
+	mir.sync(true)
+	_assert(mir.body.get_parent() == m.player, "the mirror body is the player's own body in the world")
+	_assert((cam.cull_mask & FPMirror.MIRROR_BODY_LAYER) == 0 and (mir.cam.cull_mask & FPMirror.MIRROR_BODY_LAYER) != 0, "only the reflection camera sees the body")
+	_assert((mir.cam.cull_mask & m.BODY_LAYER) == 0 and (mir.cam.cull_mask & FPMirror.HANDS_ROOM_LAYER) == 0, "the reflection leaves out the first-person waist and hands")
+	_assert(mir.cam.projection == Camera3D.PROJECTION_FRUSTUM and mir.cam.near > 0.1, "the reflection camera is clipped at the glass")
+	var n_img: Vector3 = m.restroom.mirror_art.global_transform.basis.z
+	_assert(n_img.dot(mir.cam.global_position - m.restroom.mirror_art.global_position) < 0.0, "the reflection camera sits behind the glass (mirrored eye)")
+	var ctl := 0
+	for c in mir.get_children():
+		if c is Control:
+			ctl += 1
+	_assert(ctl == 0, "no UI panel or chip row on screen")
+	mir.focus_part("face")
+	_assert(mir.buds().size() == mir._open_ids("face").size() and mir.buds().size() > 0, "the face's open mutations sprout as buds on the reflected skin")
+	_assert(mir.body.shimmer_on("face"), "the aimed part glows")
+	var face_px: Vector2 = mir.part_screen("face")
+	mir.focus_part("belly")
+	mir.aim(face_px)
+	_assert(mir.current_part() == "face", "aiming at the face in the glass selects it")
+	if mir.buds().size() > 1:
+		mir.aim(mir.bud_screen(1))
+		_assert(mir.candidate() == mir._open_ids("face")[1] and mir.ghost_id() == mir.candidate(), "aiming at a bud grows its mutation as a ghost")
+	mir.select_candidate(0)
+	m.player.global_position = keep_pos
+	m.player.rotation.y = keep_yaw
+	m.player.set("_yaw", keep_yaw)
+	m.get_viewport().size = keep_size
 	_assert(mir.body.shimmer_on("face") and mir.body.shimmer_on("right_hand"), "mutable parts shimmer without hovering")
 	mir.focus_part("face")
 	_assert(mir.ghost_id() != "" and mir._ghost != null, "focusing a part overlays its next mutation")

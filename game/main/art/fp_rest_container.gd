@@ -81,7 +81,7 @@ func _ready() -> void:
     _lamp.light_energy = 0.9
     # no shadows, so without this it shone through the restroom's thin wall
     # (green seam at the mirror wall's corner, 형님 2026-09-30)
-    _lamp.light_cull_mask = 0xFFFFF & ~FPRestroom.ROOM_VISUAL_LAYER
+    _lamp.light_cull_mask = 0xFFFFF & ~FPRestroom.ROOM_VISUAL_LAYER & ~FPMirror.HANDS_ROOM_LAYER & ~FPMirror.MIRROR_BODY_LAYER
     add_child(_lamp)
 
 ## One corrugated wall: centred at `c`, running along `dir` (half length

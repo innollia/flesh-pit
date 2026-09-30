@@ -228,7 +228,7 @@ func _ready() -> void:
     # the lamp sits a hand's width from the eye, so looking down it blew the
     # shirt and belt out to white in the flesh; the body (belt, torso,
     # trousers) is on BODY_LAYER, which the lamp skips, and gets a soft fill
-    player_lamp.light_cull_mask = 0xFFFFF & ~BODY_LAYER
+    player_lamp.light_cull_mask = 0xFFFFF & ~BODY_LAYER & ~FPMirror.MIRROR_BODY_LAYER
     body_fill = OmniLight3D.new()
     body_fill.name = "BodyFill"
     body_fill.light_color = player_lamp.light_color
@@ -532,6 +532,9 @@ func _build_ui() -> void:
     mirror.name = "Mirror"
     add_child(mirror)
     mirror.closed.connect(_on_mirror_closed)
+    # the real mirror: the player's own body stands in the world (seen only
+    # by the mirror's reflection camera), the glass shows it
+    mirror.attach(restroom.mirror_art, player, player.camera, progression)
     keybind_menu = FPKeybindMenu.new()
     keybind_menu.name = "KeybindMenu"
     add_child(keybind_menu)
@@ -546,6 +549,7 @@ func _build_settle_camera() -> void:
     settle_camera.name = "SettleCamera"
     settle_camera.fov = 66.0
     settle_camera.near = 0.02
+    settle_camera.cull_mask &= ~FPMirror.MIRROR_BODY_LAYER
     add_child(settle_camera)
     var bowl := restroom.bowl_center
     settle_camera.global_position = bowl + Vector3(-0.06, 0.34, 0.2)
@@ -588,9 +592,18 @@ func _update_hands_room_layer() -> void:
         return
     _hands_in_room = inside
     if inside:
-        FPRestroom.tag_room_layer(hands_rig)
+        _tag_hands_layer(hands_rig, FPMirror.HANDS_ROOM_LAYER)
     else:
         FPRestroom.tag_default_layer(hands_rig)
+
+## Hands in the room: their own bit (FPMirror.HANDS_ROOM_LAYER) instead of
+## the room layer, so the mirror's reflection camera can leave the
+## first-person hands out while the eye camera and room lights still see them.
+func _tag_hands_layer(n: Node, bits: int) -> void:
+    if n is VisualInstance3D and not (n is Light3D):
+        (n as VisualInstance3D).layers = bits
+    for c in n.get_children():
+        _tag_hands_layer(c, bits)
 
 ## The player finishes on the toilet, stands up, opens the stall door.
 func _begin_opening() -> void:
@@ -643,6 +656,7 @@ func _process(delta: float) -> void:
     _update_atmosphere(delta)
     _update_restroom_front()
     _update_hands_room_layer()
+    mirror.sync(restroom.contains(player.global_position) and not _seated and not _settling)
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
     hands_rig.set_mutation(progression.mutation_amount())
