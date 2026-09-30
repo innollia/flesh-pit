@@ -65,11 +65,8 @@ func _ready() -> void:
     # belt band: a thick leather loop right round the waist
     st = K.begin()
     var leather := Color(0.44, 0.26, 0.13)
-    var loop: Array = []
-    var ring0 := _waist_ring(0.0, RX + 0.012, RZF + 0.012, RZ + 0.012)
-    for j in range(ring0.size() + 1):
-        loop.append(ring0[j % ring0.size()])
-    K.tube(st, Transform3D.IDENTITY, loop, [0.034], 4, [leather], false, 0.3)    # buckle
+    _band(st, leather, Color(0.34, 0.2, 0.1))
+    # buckle
     K.rbox(st, K.T(Vector3(0, 0, -RZF - 0.03)), Vector3(0.04, 0.032, 0.007), 0.005, Color(0.7, 0.66, 0.5))
     K.rbox(st, K.T(Vector3(0, 0, -RZF - 0.037)), Vector3(0.026, 0.018, 0.003), 0.002, Color(0.2, 0.15, 0.1))
     K.add_mesh(self, "Belt", K.finish(st, 6.0), K.mat("tex_door_paint_64.png", 0.25, true))
@@ -137,10 +134,40 @@ func _loft_lit(st: SurfaceTool, rings: Array, cols: Array) -> void:
     c /= top.size()
     for j in range(n):
         FDKLowPoly.add_tri(st, c, top[j], top[(j + 1) % n], Vector3.UP, cols[0])
-func _waist_ring(y: float, rx: float, zf: float, zb: float) -> PackedVector3Array:
+## The belt band: a round leather strap that follows the waist curve all the
+## way round (BAND_SEGS segments), with a bevelled profile so it reads as a
+## thick band, not a flat or square ribbon. Profile runs inner top -> outer
+## -> inner bottom; each pair is lofted round the waist.
+const BAND_SEGS := 48
+const BAND_H := 0.03   ## half height of the strap
+func _band(st: SurfaceTool, col: Color, col_edge: Color) -> void:
+    # [y, offset out from the waist]
+    var prof := [[BAND_H, 0.004], [BAND_H, 0.016], [BAND_H * 0.7, 0.022], [-BAND_H * 0.7, 0.022], [-BAND_H, 0.016], [-BAND_H, 0.004]]
+    var rings: Array = []
+    for p in prof:
+        rings.append(_waist_ring(p[0], RX + p[1], RZF + p[1], RZ + p[1], BAND_SEGS))
+    var n := BAND_SEGS
+    for i in range(rings.size() - 1):
+        var r0: PackedVector3Array = rings[i]
+        var r1: PackedVector3Array = rings[i + 1]
+        var c: Color = col if i == 2 else col_edge
+        for j in range(n):
+            var k := (j + 1) % n
+            var nrm := (r0[k] - r0[j]).cross(r1[j] - r0[j]).normalized()
+            var side := (r0[j] + r0[k] + r1[j] + r1[k]) * 0.25
+            var want := Vector3(side.x, 0.0, side.z).normalized()
+            if i == 0:
+                want = (want + Vector3.UP * 2.0).normalized()
+            elif i == rings.size() - 2:
+                want = (want + Vector3.DOWN * 2.0).normalized()
+            if nrm.dot(want) < 0.0:
+                nrm = -nrm
+            FDKLowPoly.add_quad(st, r0[j], r0[k], r1[k], r1[j], nrm, c)
+
+func _waist_ring(y: float, rx: float, zf: float, zb: float, segs: int = 16) -> PackedVector3Array:
     var ring := PackedVector3Array()
-    for j in range(16):
-        var a := TAU * j / 16.0
+    for j in range(segs):
+        var a := TAU * j / float(segs)
         var s := sin(a)
         ring.append(Vector3(cos(a) * rx, y, s * (zb if s > 0.0 else zf)))
     return ring
@@ -168,6 +195,18 @@ func _build_hooks() -> void:
         K.tube(st, Transform3D.IDENTITY, ring, [0.008], 5, [Color(0.86, 0.87, 0.9)], false)
         K.add_mesh(hook, "Ring", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.3, true))
         _hooks.append(hook)
+## Worn = the belt band, tool rail and hooks show. Before the first vent
+## trade there is no belt yet (cans and canary stay: they ride the trousers).
+var worn := true
+func set_worn(on: bool) -> void:
+    worn = on
+    for nm in ["Belt", "ToolRail"]:
+        var n := get_node_or_null(nm) as Node3D
+        if n != null:
+            n.visible = on
+    for h in _hooks:
+        (h as Node3D).visible = on
+
 ## Which tool hangs on each hook ("" = the ring is empty).
 func set_hung(ids: Array) -> void:
     for i in range(_hooks.size()):

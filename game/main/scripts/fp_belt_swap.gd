@@ -28,8 +28,12 @@ var _hip_yaw := 0.0
 func _init(main: Node3D) -> void:
 	m = main
 
+## No belt before the first vent trade: no hooks, no look-down swap.
+func worn() -> bool:
+	return m.progression != null and bool(m.progression.has_belt)
+
 func looking_down() -> bool:
-	return m.player.camera_pivot.rotation.x < -deg_to_rad(LOOK_DOWN_DEG)
+	return worn() and m.player.camera_pivot.rotation.x < -deg_to_rad(LOOK_DOWN_DEG)
 
 func busy() -> bool:
 	return swap_t >= 0.0
@@ -103,11 +107,13 @@ func swap_now(id: String) -> bool:
 func tick(delta: float) -> void:
 	if m.art_hookup != null and m.art_hookup.belt != null:
 		var belt: Node3D = m.art_hookup.belt
+		if bool(belt.get("worn")) != worn():
+			belt.call("set_worn", worn())
 		belt.call("set_hung", hung_ids())
 		_twist_hips(belt, delta)
 		belt.call("set_focus", aimed_hook() if not busy() and can_act() else -1)
 	# bowed past LOOK_DOWN_DEG: both hands swing out so the belt is clear
-	var ak := clampf((-m.player.camera_pivot.rotation.x - deg_to_rad(LOOK_DOWN_DEG - 10.0)) / deg_to_rad(10.0), 0.0, 1.0)
+	var ak := 0.0 if not worn() else clampf((-m.player.camera_pivot.rotation.x - deg_to_rad(LOOK_DOWN_DEG - 10.0)) / deg_to_rad(10.0), 0.0, 1.0)
 	for r in _rigs():
 		var rig = r.call("rig") if r.has_method("rig") else r
 		if rig != null and "aside" in rig:

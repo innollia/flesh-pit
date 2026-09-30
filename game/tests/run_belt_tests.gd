@@ -99,6 +99,40 @@ func _run() -> void:
 	# stand in the open flesh, away from the toilet / mirror / door
 	m.player.global_position = Vector3(0, 1, 6.0)
 	m.player.force_update_transform()
+	# a new game has no belt: no band, no hooks, nothing to swap when bowed
+	bs.tick(0.0)
+	_assert(not prog.has_belt and not bs.worn(), "a new game starts without the belt")
+	_assert(not (belt.get_node("Belt") as Node3D).visible and not (belt.get_node("Hook0") as Node3D).visible and not (belt.get_node("ToolRail") as Node3D).visible, "no band, rail or hooks before the first trade")
+	m.player.camera_pivot.rotation.x = -1.3
+	m.player.force_update_transform()
+	bs.tick(0.0)
+	_assert(not bs.looking_down() and bs.aimed_hook() == -1 and m.interact_target() != "belt" and m.hands_rig.aside < 0.01, "bowing without a belt shows no hooks and no swap")
+	m.player.camera_pivot.rotation.x = 0.0
+	# the first vent trade hands over the belt
+	var v: FPVent = m.vent
+	v.open(prog.teeth)
+	v.place_teeth(4, prog)
+	v.close()
+	bs.tick(0.0)
+	_assert(prog.has_belt and bs.worn() and (belt.get_node("Belt") as Node3D).visible and (belt.get_node("Hook0") as Node3D).visible, "the first vent trade gives the belt")
+	# kept through save / load, and a fresh start stays beltless
+	var d2 := prog.serialize()
+	var p2 := FPProgression.new()
+	_assert(not p2.has_belt, "fresh progression: no belt")
+	p2.deserialize(d2)
+	_assert(p2.has_belt, "the belt survives save / load")
+	var d3 := FPProgression.new().serialize()
+	var p3 := FPProgression.new()
+	p3.deserialize(d3)
+	_assert(not p3.has_belt, "a beltless save loads beltless")
+	# round band: many segments following the waist curve
+	var bm := (belt.get_node("Belt") as MeshInstance3D).mesh
+	var bv: PackedVector3Array = bm.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var angs := {}
+	for p in bv:
+		if absf(p.y) < 0.021 and Vector2(p.x, p.z).length() > 0.15:
+			angs[int(round(rad_to_deg(atan2(p.z, p.x)) * 2.0))] = true
+	_assert(angs.size() >= 40, "the belt band goes round the waist in many segments (%d)" % angs.size())
 	prog.grant_item("knife")
 	prog.grant_item("blender")
 	m.equip_tool("")

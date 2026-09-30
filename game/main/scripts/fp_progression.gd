@@ -105,6 +105,8 @@ var teeth_in_hand: int = 0 ## scooped handful(s), not yet placed at the vent
 var barriers: int = 0 ## carried, unplaced
 var canary_feed: int = 0
 var has_bag: bool = false
+## The work belt (tool hooks) comes with the first vent trade.
+var has_belt: bool = false
 var tumor_mutations: Array[String] = []
 var deepest_shell: int = 0
 var tumors_eaten: int = 0
@@ -709,6 +711,7 @@ func serialize() -> Dictionary:
 		"barriers": barriers,
 		"canary_feed": canary_feed,
 		"has_bag": has_bag,
+		"has_belt": has_belt,
 		"deepest_shell": deepest_shell,
 		"pending_hairs": pending_hairs.duplicate(true),
 		"hair_carry": hair_carry.duplicate(true),
@@ -760,3 +763,5 @@ func deserialize(d: Dictionary) -> void:
 	tumors.bag_capacity = 2 if has_bag else 1
 	if d.has("sprays"):
 		sprays.deserialize(d["sprays"])
+	# older saves: anyone who already owns a tool has traded, so has the belt
+	has_belt = bool(d.get("has_belt", owns("knife") or owns("blender") or owns("big_saw")))

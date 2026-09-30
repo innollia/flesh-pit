@@ -73,6 +73,7 @@ func _process(_d: float) -> bool:
             "wash":
                 m.wash_hands()
             "belt":
+                m.progression.has_belt = true
                 var found := false
                 for yi in range(-12, 13):
                     for pi in range(0, 12):

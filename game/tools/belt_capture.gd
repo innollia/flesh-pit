@@ -39,6 +39,7 @@ func _setup() -> void:
 	m.player.global_position = m.START_POS
 	_yaw = m.player.rotation.y + 2.4
 	var prog: FPProgression = m.progression
+	prog.has_belt = _shot != "nobelt"
 	prog.grant_item("knife")
 	prog.grant_item("blender")
 	m.equip_tool("")

@@ -366,6 +366,8 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
     _since_paid = 0.0
     var first_pay := not _paid_ever
     _paid_ever = true
+    # the first trade hands over the work belt (tool hooks from now on)
+    prog.has_belt = true
     if final_trade:
         _say(_ev("마지막_이빨", "final.given"))
         var all: Array[String] = []
