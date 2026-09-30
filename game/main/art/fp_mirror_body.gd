@@ -23,11 +23,12 @@ uniform float strength = 0.7;
 varying vec3 lp;
 void vertex() { lp = VERTEX; }
 void fragment() {
-	float s = sin(dot(lp, vec3(21.0, 34.0, 13.0)) - TIME * 3.2) * 0.5 + 0.5;
-	float s2 = sin(dot(lp, vec3(-17.0, 29.0, 23.0)) - TIME * 2.1) * 0.5 + 0.5;
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 1.5);
-	float glint = smoothstep(0.55, 1.0, s) * 0.6;
-	ALBEDO = col.rgb * strength * (0.1 + glint) * (0.2 + rim * 1.6);
+	// soft glow on the silhouette only, with one slow broad sweep; no
+	// dense diagonal bands across the skin (read as pink stripes)
+	float s = sin(dot(lp, vec3(2.5, 4.0, 1.5)) - TIME * 1.2) * 0.5 + 0.5;
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
+	float glint = smoothstep(0.6, 1.0, s) * 0.35;
+	ALBEDO = col.rgb * strength * (0.25 + glint) * rim * 1.1;
 }"
 const GHOST_SHADER := "shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_back;

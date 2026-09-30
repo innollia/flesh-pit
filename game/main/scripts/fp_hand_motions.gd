@@ -166,6 +166,7 @@ func tick(delta: float) -> void:
     _events(u)
     _apply_cams(u)
     _update_stream(u)
+    _apply_watch_arm()
     if _held_mesh != null:
         _held_mesh.visible = u >= 0.45 and weight() > 0.3
     if (cancelled and _cancel_w <= 0.0) or (not cancelled and t >= dur):
@@ -181,6 +182,31 @@ func _finish() -> void:
         _stream.visible = false
     _clear_held()
     cancelled = false
+    _apply_watch_arm()
+
+## Left-arm roll for the watch look: the hand root turns so the forearm lies
+## across the lower view (elbow off to the left, wrist toward the middle) with
+## its hairy top facing the camera, so the arm-hair count reads (형님 지시).
+## Root basis only; the rig itself never writes it, so it is reset here.
+const WATCH_ARM_BASIS := Basis(Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0))
+func watch_arm_basis() -> Basis:
+    var w := weight() if kind == "watch" else 0.0
+    return Basis.IDENTITY.slerp(WATCH_ARM_BASIS, w) if w > 0.0 else Basis.IDENTITY
+
+func _apply_watch_arm() -> void:
+    var b := watch_arm_basis()
+    var rigs: Array = [m.hands_rig]
+    var hook = m.get("art_hookup")
+    if hook != null and hook.get("mut_hands") != null:
+        var r2 = (hook.mut_hands as Node).call("rig") if (hook.mut_hands as Node).has_method("rig") else null
+        if r2 != null:
+            rigs.append(r2)
+    for rig in rigs:
+        if rig == null or not (rig as Node).has_method("get_hand_root"):
+            continue
+        var lr: Node3D = rig.call("get_hand_root", "left")
+        if lr != null:
+            lr.basis = b
 
 func _clear_held() -> void:
     if _held_mesh != null:
@@ -405,10 +431,13 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
                 return {}
             var sway := Vector3(sin(t * 1.3) * 0.003, sin(t * 1.9) * 0.002, 0.0)
             _fingers(q, 0.32)
-            q["wrist_pitch"] = 18.0
-            q["wrist_yaw"] = 62.0
-            q["wrist_roll"] = 20.0
-            q["pos"] = Vector3(-0.07, -0.1, -0.3) + sway
+            # the root is turned (watch_arm_basis): the forearm lies across
+            # the lower-left view, hairy top to the camera; the wrist sits
+            # just left of the middle so the mirror panel (right) stays clear
+            q["wrist_pitch"] = 8.0
+            q["wrist_yaw"] = 0.0
+            q["wrist_roll"] = 0.0
+            q["pos"] = Vector3(0.02, -0.1, -0.22) + sway
         "cycle":
             if not right:
                 return {}

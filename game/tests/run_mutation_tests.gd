@@ -145,6 +145,8 @@ func _run_mirror() -> void:
 	_assert(m.hand_motions.watch_raised() > 0.99 and m.hand_motions.busy(), "the arm stays up while looking")
 	var lp: Dictionary = m.hand_motions.shape_pose(m.hands_rig, -1.0, {"pos": Vector3(-0.16, -0.175, -0.31), "wrist_pitch": 48.0, "wrist_yaw": -14.0, "wrist_roll": 12.0, "f1": 12.0, "f2": 16.0, "f3": 12.0, "t1": -6.0, "t2": 6.0, "t3": 10.0, "t_opp": 0.0})
 	_assert((lp["pos"] as Vector3).y > -0.12, "the left hand is lifted toward the face")
+	var lroot: Node3D = m.hands_rig.call("get_hand_root", "left")
+	_assert((lroot.basis * Vector3.UP).z > 0.95 and (lroot.basis * Vector3.FORWARD).x > 0.95, "watch look: the forearm lies across the view, hairy top to the camera")
 	_assert(mir.glass.anchor_left >= 0.5 and mir.glass.anchor_right <= 1.0, "the glass is a panel on the right, the first-person view stays")
 	_assert(mir.body.shimmer_on("face") and mir.body.shimmer_on("right_hand"), "mutable parts shimmer without hovering")
 	mir.focus_part("face")
@@ -173,6 +175,7 @@ func _run_mirror() -> void:
 	for i in range(20):
 		m.hand_motions.tick(0.05)
 	_assert(not m.hand_motions.busy(), "the arm is back down")
+	_assert((m.hands_rig.call("get_hand_root", "left") as Node3D).basis.is_equal_approx(Basis.IDENTITY), "the forearm roll is undone when the arm drops")
 	m.open_mirror()
 	m.mirror.close()
 	_assert(not m._mirror_open, "interact / move also end the mirror look")
