@@ -6,7 +6,7 @@ extends SceneTree
 ##     --script res://tools/belt_capture.gd -- <look|aim|after>
 ## look  = head bowed ~62 deg, belt with knife + blender, empty saw ring
 ## aim   = aim dot on the blender hook, interact ring lit
-## after = the swap done: knife in hand, its ring empty, blender still hung
+## after = the swap done: knife in hand, its ring empty, blender + saw hung
 
 var _m: Node3D
 var _shot := "look"
@@ -29,12 +29,7 @@ func _process(_d: float) -> bool:
 	if _frame >= 2:
 		_hold()
 	if _frame == 25:
-		var cam: Camera3D = _m.player.camera
-		var belt: Node3D = _m.art_hookup.belt
-		for i in range(3):
-			var hp: Vector3 = belt.call("hook_point", i)
-			print("HOOK %d %s behind=%s" % [i, cam.unproject_position(hp), cam.is_position_behind(hp)])
-		print("BUCKLE %s pitch %.1f ring %s hung %s eq %s" % [cam.unproject_position(belt.global_transform * Vector3(0, 0, -0.14)), rad_to_deg(_pitch), _m.interact_target(), belt.call("hung"), _m.progression.equipped()])
+		_measure()
 	return false
 
 func _setup() -> void:
@@ -51,6 +46,7 @@ func _setup() -> void:
 		"aim":
 			_aim = 1
 		"after":
+			prog.grant_item("big_saw")
 			m.belt_swap.swap_now("knife")
 			_aim = 0
 
@@ -90,3 +86,45 @@ func _err(i: int, yaw: float, pitch: float) -> float:
 	var r: Array = pl.get_look_ray()
 	var hp: Vector3 = _m.art_hookup.belt.call("hook_point", i)
 	return (r[1] as Vector3).angle_to(hp - r[0])
+## Screen-space report (1280x720): each hook's ring+tool box, spacing between
+## hook centres, and where the hands' boxes sit.
+func _measure() -> void:
+	var cam: Camera3D = _m.player.camera
+	var belt: Node3D = _m.art_hookup.belt
+	var xs: Array = []
+	for i in range(3):
+		var hook: Node3D = belt.get_node("Hook%d" % i)
+		var tool := hook.get_node_or_null("Tool") as Node3D
+		var r := _screen_box(cam, tool if tool != null else hook)
+		var c := cam.unproject_position(hook.global_position)
+		xs.append(c.x)
+		print("HOOK %d centre %s tool=%s box %s size %dx%d" % [i, c.round(), tool != null, r.position.round(), int(r.size.x), int(r.size.y)])
+	print("SPACING %d %d" % [int(xs[1] - xs[0]), int(xs[2] - xs[1])])
+	var bb := _screen_box(cam, belt.get_node("Belt"))
+	print("BELT box %s size %dx%d" % [bb.position.round(), int(bb.size.x), int(bb.size.y)])
+	var tb := _screen_box(cam, belt.get_node("Torso"))
+	print("TORSO box %s size %dx%d" % [tb.position.round(), int(tb.size.x), int(tb.size.y)])
+	var rig: Node3D = _m.hands_rig if _m.hands_rig.visible else _m.art_hookup.mut_hands.call("rig")
+	for side in ["HandLeft", "HandRight"]:
+		var h := _screen_box(cam, rig.get_node(side))
+		print("%s box %s size %dx%d aside %.2f" % [side, h.position.round(), int(h.size.x), int(h.size.y), float(rig.get("aside"))])
+	print("PITCH %.1f ring %s hung %s eq %s" % [rad_to_deg(_pitch), _m.interact_target(), belt.call("hung"), _m.progression.equipped()])
+
+func _screen_box(cam: Camera3D, n: Node3D) -> Rect2:
+	var pts: Array = []
+	var nodes: Array = [n]
+	nodes.append_array(n.find_children("*", "MeshInstance3D", true, false))
+	for mi in nodes:
+		if not (mi is MeshInstance3D) or (mi as MeshInstance3D).mesh == null or not (mi as MeshInstance3D).is_visible_in_tree():
+			continue
+		var b: AABB = (mi as MeshInstance3D).mesh.get_aabb()
+		for k in range(8):
+			var p: Vector3 = (mi as MeshInstance3D).global_transform * (b.position + b.size * Vector3(k & 1, (k >> 1) & 1, (k >> 2) & 1))
+			if not cam.is_position_behind(p):
+				pts.append(cam.unproject_position(p))
+	if pts.is_empty():
+		return Rect2()
+	var r := Rect2(pts[0], Vector2.ZERO)
+	for p in pts:
+		r = r.expand(p)
+	return r.intersection(Rect2(0, 0, 1280, 720))

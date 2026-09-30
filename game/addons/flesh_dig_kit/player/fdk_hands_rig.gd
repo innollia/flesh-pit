@@ -53,6 +53,9 @@ var carry_amount: float = 0.0
 ## low on the left of the screen, instead of following idle/carry/chew.
 var hold_left: bool = false
 static var HOLD_LEFT_POS := Vector3(-0.27, -0.15, -0.35)
+## 0..1: both hands swing out to the lower sides (looking down at the belt).
+var aside: float = 0.0
+const ASIDE_OFFSET := Vector3(0.2, -0.16, 0.14)
 ## Base/max scale of the carried-pile mesh (built at radius ~0.09/0.05/0.045m
 ## in _build_pile). 0.42 keeps the base pile within a hand's width and under
 ## ~20% of screen height at the default FOV/reach_distance; 0.62 is the cap
@@ -216,7 +219,7 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             "wrist_pitch": 4.0 + breathe * 0.5, "wrist_yaw": -8.0, "wrist_roll": 60.0,
             "f1": 62.0, "f2": 78.0, "f3": 56.0,
             "t1": 20.0, "t2": 30.0, "t3": 30.0, "t_opp": 36.0,
-            "pos": HOLD_LEFT_POS + Vector3(0.0, _bob.y * bob_follow * 1.1, 0.0),
+            "pos": HOLD_LEFT_POS + Vector3(0.0, _bob.y * bob_follow * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside,
         }
     match state:
         HandState.GRAB:
@@ -275,7 +278,7 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["pos"] = Vector3(0.15 * side, -0.14, -0.44).lerp(idle["pos"], e)
             p["wrist_pitch"] = lerpf(45.0, idle["wrist_pitch"], e)
     var bob: Vector3 = _bob * bob_follow
-    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side, bob.y * 1.1, 0.0)
+    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside
     return p
 
 func _clamp_joint(joint: String, value: float) -> float:

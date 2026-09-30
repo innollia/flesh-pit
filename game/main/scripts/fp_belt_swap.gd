@@ -106,6 +106,12 @@ func tick(delta: float) -> void:
 		belt.call("set_hung", hung_ids())
 		_twist_hips(belt, delta)
 		belt.call("set_focus", aimed_hook() if not busy() and can_act() else -1)
+	# bowed past LOOK_DOWN_DEG: both hands swing out so the belt is clear
+	var ak := clampf((-m.player.camera_pivot.rotation.x - deg_to_rad(LOOK_DOWN_DEG - 10.0)) / deg_to_rad(10.0), 0.0, 1.0)
+	for r in _rigs():
+		var rig = r.call("rig") if r.has_method("rig") else r
+		if rig != null and "aside" in rig:
+			rig.aside = move_toward(float(rig.aside), ak, delta * 5.0) if delta > 0.0 else ak
 	if not busy():
 		return
 	swap_t += delta

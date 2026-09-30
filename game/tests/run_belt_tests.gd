@@ -44,6 +44,9 @@ func _look(i: int) -> void:
 	var pl = m.player
 	var by: float = pl.rotation.y
 	var bp: float = -1.3
+	# hips stay where they are while the head searches (as when bowed)
+	_err(i, by, bp)
+	_hip = m.belt_swap._hip_yaw
 	var span := 1.0
 	for round in range(6):
 		var best := INF
@@ -60,6 +63,7 @@ func _look(i: int) -> void:
 					bp = p
 		span *= 0.3
 	_err(i, by, bp)
+	_hip = NAN
 
 func _err(i: int, yaw: float, pitch: float) -> float:
 	var pl = _m.player
@@ -68,11 +72,14 @@ func _err(i: int, yaw: float, pitch: float) -> float:
 	pl.set("_pitch", pitch)
 	pl.camera_pivot.rotation.x = pitch
 	pl.force_update_transform()
+	if not is_nan(_hip):
+		_m.belt_swap._hip_yaw = _hip
 	_m.belt_swap.tick(0.0)
 	var r: Array = pl.get_look_ray()
 	var hp: Vector3 = _m.art_hookup.belt.call("hook_point", i)
 	return (r[1] as Vector3).angle_to(hp - r[0])
 var _aim_i := 0
+var _hip := NAN
 
 func _aim(i: int) -> void:
 	_aim_i = i
@@ -112,7 +119,24 @@ func _run() -> void:
 	var sp := cam.unproject_position(belt.call("hook_point", 1))
 	var vs := cam.get_viewport().get_visible_rect().size
 	_assert(not cam.is_position_behind(belt.call("hook_point", 1)) and Rect2(Vector2.ZERO, vs).has_point(sp), "the neighbouring hook is on screen too")
-	# bare hands: take the knife through fp_interact (the same path every device uses)
+	_assert(m.hands_rig.aside > 0.99, "bowed past 55 degrees the hands swing aside (%.2f)" % m.hands_rig.aside)
+	var k720: float = 720.0 / cam.get_viewport().get_visible_rect().size.y
+	var hx: Array = []
+	for hi in range(3):
+		hx.append(cam.unproject_position((belt.get_node("Hook%d" % hi) as Node3D).global_position).x * k720)
+	_assert(hx[1] - hx[0] >= 120.0 and hx[2] - hx[1] >= 120.0, "hooks at least 120 px apart at 720p (%s)" % [hx])
+	var tl := (belt.get_node("Hook1/Tool") as Node3D)
+	var mn := Vector2(INF, INF)
+	var mx := -mn
+	for mi in tl.find_children("*", "MeshInstance3D", true, false):
+		if not (mi as MeshInstance3D).visible:
+			continue
+		var bx: AABB = (mi as MeshInstance3D).mesh.get_aabb()
+		for c in range(8):
+			var sp2 := cam.unproject_position((mi as MeshInstance3D).global_transform * (bx.position + bx.size * Vector3(c & 1, (c >> 1) & 1, (c >> 2) & 1))) * k720
+			mn = mn.min(sp2)
+			mx = mx.max(sp2)
+	_assert(maxf(mx.x - mn.x, mx.y - mn.y) >= 80.0, "a hung tool is at least 80 px at 720p (%s)" % [mx - mn])	# bare hands: take the knife through fp_interact (the same path every device uses)
 	var y0: float = m.hands_rig.position.y
 	m._interact()
 	_assert(bs.busy(), "interacting starts the reach")
