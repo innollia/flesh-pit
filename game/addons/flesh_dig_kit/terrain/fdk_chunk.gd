@@ -92,6 +92,8 @@ static func set_press_all(center: Vector3, toward: Vector3, amount: float) -> vo
         var m := terrain_material(i)
         m.set_shader_parameter("press_center", center)
         m.set_shader_parameter("press_amount", amount)
+        if toward.length_squared() > 0.000001:
+            m.set_shader_parameter("press_toward", toward.normalized())
 
 func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
     chunk_coord = p_chunk_coord

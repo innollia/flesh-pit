@@ -26,12 +26,29 @@ uniform float wetness : hint_range(0.0, 1.0) = 0.4;
 uniform vec3 press_center = vec3(0.0, -9999.0, 0.0);
 uniform float press_amount = 0.0;
 uniform float press_radius = 0.75;
+// Direction from the wall toward the player. The press moves every vertex
+// along this one shared direction (never its own NORMAL): flat-shaded faces
+// don't share normals, so per-normal offsets tore the mesh open at every
+// edge while pressing (2026-09-30). Same position -> same offset, no gaps.
+uniform vec3 press_toward = vec3(0.0, 0.0, 1.0);
 // View-model squash (hands, stomach mass): pull vertices toward the eye along
 // their view ray so they keep screen position but never clip into nearby
 // walls. 1.0 = off (world geometry).
 uniform float viewmodel_squash = 1.0;
 
+// Flat tile mode (restroom walls/floor): the wall is a few big planes and the
+// tile grid -- grout lines, bevelled raised tiles, per-tile tint -- comes from
+// a procedurally baked normal+grout texture sampled in world space
+// (tile_tex: RG = tangent normal xy, B = grout/edge shade, A unused).
+uniform bool tile_mode = false;
+uniform sampler2D tile_tex : filter_linear, repeat_enable;
+uniform float tile_size = 0.3;
+uniform vec3 tile_offset = vec3(0.0);
+uniform vec3 grout_color : source_color = vec3(0.52, 0.55, 0.58);
+
 varying float vfog;
+varying vec3 vwpos;
+varying vec3 vwnrm;
 
 void vertex() {
     vec3 wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -41,9 +58,10 @@ void vertex() {
     float dent = sin(clamp(pa / 0.55, 0.0, 1.0) * 1.5708) * (1.0 - smoothstep(0.55, 0.9, pa));
     float pull = smoothstep(0.45, 1.0, pa);
     vec3 side = wpos - press_center;
-    vec3 off = -NORMAL * pf * (0.16 * dent - 0.26 * pull * pf);
+    vec3 pn = normalize(press_toward + vec3(0.0, 1e-5, 0.0));
+    vec3 off = -pn * pf * (0.16 * dent - 0.26 * pull * pf);
     off -= side * pf * 0.18 * pull;
-    off += NORMAL * pf * pull * 0.02 * sin(TIME * 47.0 + pd * 20.0);
+    off += pn * pf * pull * 0.02 * sin(TIME * 47.0 + pd * 20.0);
     vec3 pushed = VERTEX + (inverse(mat3(MODEL_MATRIX)) * off);
     // Classic PS1 vertex jitter: transform to clip space, snap XY to a
     // coarse integer grid in NDC, transform back. Done here (not as a
@@ -58,6 +76,8 @@ void vertex() {
         clip.xy = ndc * clip.w;
     }
     POSITION = clip;
+    vwpos = wpos;
+    vwnrm = normalize(mat3(MODEL_MATRIX) * NORMAL);
     vfog = clamp(-(MODELVIEW_MATRIX * vec4(pushed, 1.0)).z / max(fog_distance, 0.1), 0.0, 1.0);
 }
 
@@ -65,9 +85,30 @@ void fragment() {
     vec2 uv = UV * uv_scale;
     vec3 tex = texture(albedo_tex, uv).rgb;
     vec3 col = use_vertex_color ? tex * COLOR.rgb : tex;
+    if (tile_mode) {
+        vec3 an = abs(vwnrm);
+        vec3 wp = vwpos + tile_offset;
+        // dominant axis, then a right-handed (ta, tb, n) frame so the bevel
+        // lights the same way on every wall
+        vec3 nax = an.y > an.x && an.y > an.z ? vec3(0.0, sign(vwnrm.y), 0.0)
+            : (an.x > an.z ? vec3(sign(vwnrm.x), 0.0, 0.0) : vec3(0.0, 0.0, sign(vwnrm.z)));
+        vec3 tb = abs(nax.y) > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+        vec3 ta = cross(tb, nax);
+        vec2 tuv = vec2(dot(wp, ta), dot(wp, tb));
+        vec2 g = tuv / tile_size;
+        vec2 cell = floor(g);
+        vec4 t = texture(tile_tex, g);
+        vec2 nxy = t.rg * 2.0 - 1.0;
+        vec3 wn = normalize(ta * nxy.x + tb * nxy.y + vwnrm * sqrt(max(0.0, 1.0 - dot(nxy, nxy))));
+        NORMAL = normalize((VIEW_MATRIX * vec4(wn, 0.0)).xyz);
+        float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+        col = mix(tex * (1.0 - h * 0.04), grout_color, t.b);
+    }
     ALBEDO = mix(col * tint.rgb, fog_color, vfog);
     ROUGHNESS = mix(roughness_value, 0.15, wetness);
-    SPECULAR = mix(0.25, 0.7, wetness);
+    // matte materials (roughness ~1, e.g. restroom tiles) get almost no toon
+    // highlight, so the white room stops glaring off every wall
+    SPECULAR = mix(0.25, 0.7, wetness) * (1.0 - 0.85 * smoothstep(0.8, 1.0, roughness_value));
     float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
     EMISSION = tex * rim * 0.12 * wetness;
 }

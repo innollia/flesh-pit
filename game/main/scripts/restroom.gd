@@ -58,9 +58,9 @@ func _on_node_added(n: Node) -> void:
         (n as VisualInstance3D).layers = ROOM_VISUAL_LAYER
 
 func build() -> void:
-    var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.2, 0.5, 1.0, false)
+    var tile_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_wall_128.png", 2.5, false, 0.0, 0.95, 1.0, false)
     var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_chrome_128.png", 1.5, false, 0.55, 0.2, 1.0, false)
-    var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.25, 0.45, 1.0, false)
+    var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.0, 0.9, 1.0, false)
     _build_tiles(tile_mat, floor_mat)
     # 형님 결정: 변기·세면대는 얼룩 없는 순백 도자기(약한 광택).
     var ceramic_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, false, 0.45, 0.25, 1.0, false)
@@ -68,7 +68,7 @@ func build() -> void:
     _build_sink(ceramic_mat)
     _build_sink_apron(ceramic_mat)
     _build_canary_hole()
-    var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, false, 0.2, 0.5, 1.0, false)
+    var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, false, 0.0, 0.9, 1.0, false)
     _build_door(door_mat, fixture_mat)
     _build_korean(fixture_mat)
     _build_drawer(ceramic_mat, fixture_mat)
@@ -119,44 +119,8 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
     _plane(st, Vector3(DOOR_HALF_W, 0, h.z), Vector3(h.x - DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.FORWARD, grout)
     _plane(st, Vector3(-DOOR_HALF_W, DOOR_H, h.z), Vector3(2 * DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y - DOOR_H, 0), Vector3.FORWARD, grout)
 
-    var gap := 0.012
-    var inset := 0.004
-    var nx := int(round(2 * h.x / TILE))
-    var nz := int(round(2 * h.z / TILE))
-    var ny := int(round(2 * h.y / TILE)) + 1
-    for i in range(nx):
-        for k in range(nz):
-            var c := _tile_color(i, 0, k, true)
-            var o := Vector3(-h.x + i * TILE + gap, inset, -h.z + k * TILE + gap)
-            _tile(st, o, Vector3(TILE - 2 * gap, 0, 0), Vector3(0, 0, TILE - 2 * gap), Vector3.UP, c)
-            var tx := -h.x + i * TILE + gap
-            var tz := -h.z + k * TILE + gap
-            for r in _minus_hole([tx, tz, tx + TILE - 2 * gap, tz + TILE - 2 * gap]):
-                _tile(st, Vector3(r[0], 2 * h.y - inset, r[1]), Vector3(r[2] - r[0], 0, 0), Vector3(0, 0, r[3] - r[1]), Vector3.DOWN, Color(0.97, 0.97, 0.96))
-    for i in range(nx):
-        for j in range(ny):
-            var y0 := j * TILE
-            var y1 := minf(2 * h.y, y0 + TILE)
-            if y1 - y0 < 0.05:
-                continue
-            var size_y := y1 - y0 - 2 * gap
-            var x0 := -h.x + i * TILE
-            # back wall
-            _tile(st, Vector3(x0 + gap, y0 + gap, -h.z + inset), Vector3(TILE - 2 * gap, 0, 0), Vector3(0, size_y, 0), Vector3.BACK, _tile_color(i, j, 1, false))
-            # front wall with doorway
-            var in_door := x0 + TILE > -DOOR_HALF_W + 0.001 and x0 < DOOR_HALF_W - 0.001 and y0 < DOOR_H - 0.001
-            if not in_door:
-                _tile(st, Vector3(x0 + gap, y0 + gap, h.z - inset), Vector3(TILE - 2 * gap, 0, 0), Vector3(0, size_y, 0), Vector3.FORWARD, _tile_color(i, j, 2, false))
-    for k in range(nz):
-        for j in range(ny):
-            var y0 := j * TILE
-            var y1 := minf(2 * h.y, y0 + TILE)
-            if y1 - y0 < 0.05:
-                continue
-            var size_y := y1 - y0 - 2 * gap
-            var z0 := -h.z + k * TILE
-            _tile(st, Vector3(-h.x + inset, y0 + gap, z0 + gap), Vector3(0, 0, TILE - 2 * gap), Vector3(0, size_y, 0), Vector3.RIGHT, _tile_color(k, j, 3, false))
-            _tile(st, Vector3(h.x - inset, y0 + gap, z0 + gap), Vector3(0, 0, TILE - 2 * gap), Vector3(0, size_y, 0), Vector3.LEFT, _tile_color(k, j, 4, false))
+    # (tiles themselves: flat planes above + the baked tile_tex normal map,
+    # 2026-09-30 optimisation -- was ~7400 bevelled-tile triangles)
     # door frame
     var frame := Color(0.9, 0.9, 0.88)
     FDKLowPoly.add_quad(st, Vector3(-DOOR_HALF_W, 0, h.z), Vector3(-DOOR_HALF_W, DOOR_H, h.z), Vector3(-DOOR_HALF_W, DOOR_H, h.z + 0.2), Vector3(-DOOR_HALF_W, 0, h.z + 0.2), Vector3.RIGHT, frame)
@@ -167,8 +131,52 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
         _tile(st, w[0], w[1], Vector3(0, 0.08, 0), w[2], Color(0.82, 0.84, 0.86))
     var tiles := MeshInstance3D.new()
     tiles.name = "Tiles"
-    tiles.mesh = _split_floor(st.commit() as ArrayMesh, mat, floor_mat)
+    tiles.mesh = _split_floor(st.commit() as ArrayMesh, _tiled(mat), _tiled(floor_mat))
     add_child(tiles)
+
+## Copy of a shared PS1 material switched to flat tile mode: the grid, grout
+## and bevels come from the baked normal texture, not geometry.
+func _tiled(base: Material) -> Material:
+    var m := (base as ShaderMaterial).duplicate() as ShaderMaterial
+    m.set_shader_parameter("tile_mode", true)
+    m.set_shader_parameter("tile_tex", tile_texture())
+    m.set_shader_parameter("tile_size", TILE)
+    # the grid starts at the -X / -Z walls and the floor
+    m.set_shader_parameter("tile_offset", Vector3(HALF.x, 0.0, HALF.z))
+    m.set_shader_parameter("grout_color", Color(0.52, 0.55, 0.58))
+    return m
+
+static var _tile_tex: ImageTexture
+## One tile, procedurally baked (RG = tangent normal xy, B = grout mask):
+## 4% grout gap each side, then a 4% bevel up to the flat raised face --
+## the same proportions as the old geometry (gap 0.012, bevel 0.012 of 0.3).
+static func tile_texture() -> ImageTexture:
+    if _tile_tex != null:
+        return _tile_tex
+    const N := 128
+    const GAP := 0.04
+    const BEV := 0.04
+    var hgt := PackedFloat32Array()
+    hgt.resize(N * N)
+    for y in N:
+        for x in N:
+            var u := (x + 0.5) / N
+            var v := (y + 0.5) / N
+            var d := minf(minf(u, 1.0 - u), minf(v, 1.0 - v))
+            hgt[x + y * N] = clampf((d - GAP) / BEV, 0.0, 1.0)
+    var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+    var strength := 0.035 # raised height in tile units -> normal tilt
+    for y in N:
+        for x in N:
+            var hl := hgt[(x - 1 + N) % N + y * N]
+            var hr := hgt[(x + 1) % N + y * N]
+            var hd := hgt[x + ((y - 1 + N) % N) * N]
+            var hu := hgt[x + ((y + 1) % N) * N]
+            var n := Vector3(-(hr - hl) * strength * N * 0.5, -(hu - hd) * strength * N * 0.5, 1.0).normalized()
+            var grout := 1.0 if hgt[x + y * N] <= 0.0 else 0.0
+            img.set_pixel(x, y, Color(n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, grout, 1.0))
+    _tile_tex = ImageTexture.create_from_image(img)
+    return _tile_tex
 
 ## Splits rect [x0, z0, x1, z1] into the parts outside VENT_HOLE.
 func _minus_hole(r: Array) -> Array:
@@ -616,7 +624,7 @@ func _build_light() -> void:
     l.name = "RoomLight"
     l.position = Vector3(0, 2 * HALF.y - 0.3, 0)
     l.omni_range = 6.0
-    l.light_energy = 0.42
+    l.light_energy = 0.3 # 2026-09-30: 0.42 glared off the white tiles
     l.shadow_enabled = true
     l.light_color = Color(0.95, 0.98, 1.0) # cold fluorescent
     add_child(l)

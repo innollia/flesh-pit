@@ -148,6 +148,16 @@ func _run() -> void:
     # chew press
     m.terrain.set_press(Vector3(0, 1, 2.3), Vector3(0, 0, -1), 0.6)
     _assert(is_equal_approx(m.terrain.get_press_amount(), 0.6), "chew press is sent to the terrain shader")
+    var pt = FDKChunk.terrain_material(0).get_shader_parameter("press_toward")
+    _assert(pt is Vector3 and (pt as Vector3).is_equal_approx(Vector3(0, 0, -1)), "chew press moves along one shared direction (no seams between flat faces)")
+    # restroom walls/floor: a few flat planes, tile grid from a baked normal map
+    var tiles: MeshInstance3D = m.restroom.get_node("Tiles")
+    var tri := 0
+    for si in tiles.mesh.get_surface_count():
+        tri += tiles.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX].size() / 3
+        var tm := tiles.mesh.surface_get_material(si) as ShaderMaterial
+        _assert(tm != null and tm.get_shader_parameter("tile_mode") == true and tm.get_shader_parameter("tile_tex") is Texture2D, "restroom tile surface %d uses the tile normal map" % si)
+    _assert(tri < 200, "restroom tiles are flat planes, not per-tile geometry (%d tris)" % tri)
     m.terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 
 func _run_systems() -> void:
