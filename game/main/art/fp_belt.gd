@@ -17,6 +17,17 @@ const K := preload("res://main/art/fp_art_kit.gd")
 const RX := 0.21   ## waist half width
 const RZ := 0.13   ## waist half depth at the back / hips
 const RZF := 0.19  ## waist half depth at the front (belly side)
+## Torso rings [y, half width, front depth, back depth] from the belt up. The
+## eye is only ~0.65 m over the belt (eye height 1.6 m), so the belly is
+## fullest AT the belt and falls back fast above it: looking down, the shirt
+## is a thin crescent low in the view and the belt band stands proud of it.
+const TORSO_RINGS := [[0.0, 0.2, 0.165, 0.125], [0.06, 0.2, 0.14, 0.13], [0.13, 0.195, 0.09, 0.13], [0.21, 0.19, 0.02, 0.13], [0.28, 0.17, -0.04, 0.12]]
+## Waist the belt band, buckle, hooks, cans and canary are fitted round.
+## Defaults = the first-person body; the mirror body sets its own slimmer
+## waist before add_child (_ready builds from these).
+var wx := RX
+var wzf := RZF
+var wzb := RZ
 var _cans: Array = []
 var _canary: Node3D
 var _canary_head: Node3D
@@ -50,14 +61,14 @@ func _ready() -> void:
     var shirt := Color(0.52, 0.49, 0.37)
     var shirt_d := Color(0.4, 0.37, 0.28)
     var torso: Array = []
-    for r in [[0.0, 0.205, 0.18, 0.125], [0.1, 0.212, 0.172, 0.13], [0.22, 0.21, 0.15, 0.13], [0.36, 0.22, 0.12, 0.135], [0.5, 0.225, 0.05, 0.14], [0.6, 0.19, -0.01, 0.13]]:
+    for r in TORSO_RINGS:
         torso.append(_waist_ring(r[0], r[1], r[2], r[3]))
     # rings top-first (the kit loft convention); the shoulders close below
     torso.reverse()
-    _loft_lit(st, torso, [shirt_d, shirt_d, shirt, shirt, shirt])
+    _loft_lit(st, torso, [shirt_d, shirt, shirt, shirt])
     # shirt buttons down the belly line
-    for by in [0.08, 0.18, 0.28]:
-        var bz: float = -lerpf(0.172, 0.15, (by - 0.1) / 0.12) - 0.004
+    for by in [0.05, 0.12, 0.19]:
+        var bz: float = -_front_at(by) - 0.004
         K.rbox(st, K.T(Vector3(0, by, bz)), Vector3(0.008, 0.008, 0.003), 0.002, Color(0.85, 0.82, 0.7))
     var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), K.mat("tex_door_paint_128.png", 0.1, true))
     # the body must not shade itself dark under the ceiling tube
@@ -67,14 +78,14 @@ func _ready() -> void:
     var leather := Color(0.44, 0.26, 0.13)
     _band(st, leather, Color(0.34, 0.2, 0.1))
     # buckle
-    K.rbox(st, K.T(Vector3(0, 0, -RZF - BAND_OUT - 0.004)), Vector3(0.045, 0.036, 0.008), 0.005, Color(0.78, 0.72, 0.5))
-    K.rbox(st, K.T(Vector3(0, 0, -RZF - BAND_OUT - 0.012)), Vector3(0.03, 0.022, 0.003), 0.002, Color(0.2, 0.15, 0.1))
-    K.rbox(st, K.T(Vector3(0, 0, -RZF - BAND_OUT - 0.014)), Vector3(0.004, 0.022, 0.003), 0.001, Color(0.78, 0.72, 0.5))
+    K.rbox(st, K.T(Vector3(0, 0, -wzf - BAND_OUT - 0.004)), Vector3(0.045, 0.036, 0.008), 0.005, Color(0.78, 0.72, 0.5))
+    K.rbox(st, K.T(Vector3(0, 0, -wzf - BAND_OUT - 0.012)), Vector3(0.03, 0.022, 0.003), 0.002, Color(0.2, 0.15, 0.1))
+    K.rbox(st, K.T(Vector3(0, 0, -wzf - BAND_OUT - 0.014)), Vector3(0.004, 0.022, 0.003), 0.001, Color(0.78, 0.72, 0.5))
     K.add_mesh(self, "Belt", K.finish(st, 6.0), K.mat("tex_door_paint_64.png", 0.25, true))
     # 3 holster clips + cans on the right hip
     for i in range(3):
         var a := -0.55 + i * 0.42
-        var p := Vector3(cos(a) * (RX + 0.04), -0.05, sin(a) * (RZ + 0.04))
+        var p := Vector3(cos(a) * (wx + 0.04), -0.05, sin(a) * (wzb + 0.04))
         var holder := K.pivot(self, "Can%d" % i, p)
         holder.rotation.y = -a + PI * 0.5
         st = K.begin()
@@ -84,7 +95,7 @@ func _ready() -> void:
         var can := K.pivot(holder, "Spray")
         _cans.append(can)
     _build_hooks()
-    _canary = K.pivot(self, "Canary", Vector3(-0.15, -0.05, -RZF * 0.8 - 0.02))
+    _canary = K.pivot(self, "Canary", Vector3(-0.15 * wx / RX, -0.05, -wzf * 0.8 - 0.02))
     _build_canary()
     set_spray_count(2, 1)
     set_canary(true)
@@ -147,7 +158,7 @@ func _band(st: SurfaceTool, col: Color, col_edge: Color) -> void:
     var prof := [[BAND_H, -0.01], [BAND_H, BAND_OUT - 0.008], [BAND_H * 0.7, BAND_OUT], [-BAND_H * 0.7, BAND_OUT], [-BAND_H, BAND_OUT - 0.008], [-BAND_H, -0.01]]
     var rings: Array = []
     for p in prof:
-        rings.append(_waist_ring(p[0], RX + p[1], RZF + p[1], RZ + p[1], BAND_SEGS))
+        rings.append(_waist_ring(p[0], wx + p[1], wzf + p[1], wzb + p[1], BAND_SEGS))
     var n := BAND_SEGS
     for i in range(rings.size() - 1):
         var r0: PackedVector3Array = rings[i]
@@ -166,6 +177,15 @@ func _band(st: SurfaceTool, col: Color, col_edge: Color) -> void:
                 nrm = -nrm
             FDKLowPoly.add_quad(st, r0[j], r0[k], r1[k], r1[j], nrm, c)
 
+## Front depth of the shirt at height y (for the buttons).
+func _front_at(y: float) -> float:
+    for i in range(TORSO_RINGS.size() - 1):
+        var a: Array = TORSO_RINGS[i]
+        var b: Array = TORSO_RINGS[i + 1]
+        if y <= float(b[0]):
+            return lerpf(float(a[2]), float(b[2]), (y - float(a[0])) / (float(b[0]) - float(a[0])))
+    return float(TORSO_RINGS[-1][2])
+
 func _waist_ring(y: float, rx: float, zf: float, zb: float, segs: int = 16) -> PackedVector3Array:
     var ring := PackedVector3Array()
     for j in range(segs):
@@ -180,7 +200,7 @@ func _build_hooks() -> void:
     var st: SurfaceTool
     for i in range(HOOK_ANG.size()):
         var a: float = -PI * 0.5 + float(HOOK_ANG[i])
-        var bp := Vector3(cos(a) * (RX + BAND_OUT), 0.0, sin(a) * (RZF + BAND_OUT))
+        var bp := Vector3(cos(a) * (wx + BAND_OUT), 0.0, sin(a) * (wzf + BAND_OUT))
         var out := Vector3(cos(a), 0.0, sin(a)).normalized()
         var hp := bp + out * HOOK_DROP + Vector3(0, -BAND_H * 0.6, 0)
         # a short leather loop from the band out to the ring

@@ -142,6 +142,9 @@ func refresh() -> void:
 	if prog == null:
 		return
 	body.apply(prog.all_mutations(), prog.belly_bumps())
+	# the reflection wears the belt only once the player has it
+	if body._belt != null:
+		body._belt.call("set_worn", prog.has_belt)
 	_order.clear()
 	for part in FPProgression.PARTS:
 		if not prog.mutations_for_part(part).is_empty():

@@ -224,7 +224,11 @@ func build() -> void:
 	# wraps just outside the hip ring there (half width 0.165)
 	_belt.position = Vector3(0, 0.962, 0.0)
 	_belt.rotation_degrees = Vector3(0, 180, 0)
-	_belt.scale = Vector3(1.02, 0.8, 0.98)
+	# fitted to this trunk's own waist (TRUNK at 0.97) so the band hugs the
+	# skin instead of floating in front of the belly
+	_belt.set("wx", 0.172)
+	_belt.set("wzf", 0.104)
+	_belt.set("wzb", 0.118)
 	add_child(_belt)
 	var bag := BAG_SCENE.instantiate()
 	bag.name = "TumorBag"

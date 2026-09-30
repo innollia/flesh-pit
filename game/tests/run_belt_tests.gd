@@ -148,6 +148,24 @@ func _run() -> void:
 		_assert(e > 1.0 and e < 1.35 and belt.get_node_or_null("Loop%d" % hi) != null and absf(hl.y) < belt.BAND_H, "hook %d hangs on the round band itself (%.2f)" % [hi, e])
 		hz.append(hl.z)
 	_assert(hz[1] < hz[0] - 0.05 and hz[1] < hz[2] - 0.05, "the hooks follow the belly curve (%s)" % [hz])
+	# eye height 1.6 m puts the eye only ~0.65 m over the belt: the shirt must
+	# be fullest at the belt and fall back fast, never past the band's front
+	var tr: Array = belt.TORSO_RINGS
+	for ri in range(tr.size()):
+		_assert(float(tr[ri][2]) < belt.RZF + belt.BAND_OUT - 0.04, "shirt ring %d stays behind the belt band front" % ri)
+		if ri > 0:
+			_assert(float(tr[ri][2]) < float(tr[ri - 1][2]), "the belly falls back going up (ring %d)" % ri)
+	var eye_over_belt: float = m.player.camera.global_position.y - belt.global_position.y
+	_assert(float(tr[-1][0]) < eye_over_belt - 0.3, "the shirt top closes well under the eye (%.2f vs eye %.2f)" % [tr[-1][0], eye_over_belt])
+	# the mirror body wears the same belt fitted to its slimmer waist
+	var mb := FPMirrorBody.new()
+	get_root().add_child(mb)
+	mb.build()
+	var mbelt: Node3D = mb._belt
+	_assert(mbelt != null and mbelt.scene_file_path == belt.scene_file_path, "the mirror body wears the same belt scene")
+	_assert(float(mbelt.wzf) < 0.12 and float(mbelt.wx) < 0.19, "the mirror belt is fitted to the mirror waist, not floating out front (%.3f)" % mbelt.wzf)
+	_assert(mbelt.get_node_or_null("ToolRail") == null, "no straight rail in front of the mirror body")
+	mb.queue_free()
 	_assert(belt.call("hung") == ["knife", "blender", ""], "owned tools hang on their hooks, the saw hook is an empty ring (%s)" % [belt.call("hung")])
 	# looking ahead: nothing on the belt is aimable
 	m.player.camera_pivot.rotation.x = 0.0

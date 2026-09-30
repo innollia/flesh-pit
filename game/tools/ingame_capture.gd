@@ -5,7 +5,7 @@ extends SceneTree
 ##   Godot_console --path game --windowed --resolution 1280x720
 ##     --write-movie captures/ingame/<shot>/f.png --fixed-fps 10
 ##     --quit-after <N> --script res://tools/ingame_capture.gd -- <shot>
-## Shots: restroom, vent, mirror, mirror_look, mirror_after, blender, rest_point, ending.
+## Shots: restroom, vent, mirror, mirror_look, mirror_belt, mirror_after, blender, rest_point, ending.
 
 var _main: Node3D
 var _shot := "restroom"
@@ -83,6 +83,11 @@ func _setup() -> void:
 		"mirror":
 			m.restroom.set_door_open(false, true)
 			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
+		"mirror_belt":
+			m.restroom.set_door_open(false, true)
+			prog.has_belt = true
+			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
+			m.open_mirror()
 		"mirror_look", "mirror_after":
 			m.restroom.set_door_open(false, true)
 			# some hairs of every kind so the watch-look arm shows its count

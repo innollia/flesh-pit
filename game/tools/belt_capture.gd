@@ -28,6 +28,11 @@ func _process(_d: float) -> bool:
 		_setup()
 	if _frame >= 2:
 		_hold()
+	if _frame == 14:
+		_mask(true)
+	if _frame == 17:
+		_read_mask()
+		_mask(false)
 	if _frame == 25:
 		_measure()
 	return false
@@ -129,3 +134,39 @@ func _screen_box(cam: Camera3D, n: Node3D) -> Rect2:
 	for p in pts:
 		r = r.expand(p)
 	return r.intersection(Rect2(0, 0, 1280, 720))
+## Mask pass (frames 14-17, before the saved look frames): torso drawn flat
+## magenta, belt band flat cyan, so the screen share of each is counted.
+func _mask(on: bool) -> void:
+	var belt: Node3D = _m.art_hookup.belt
+	var mats := {"Torso": Color(1, 0, 1), "Belt": Color(0, 1, 1)}
+	for nm in mats:
+		var mi := belt.get_node(nm) as MeshInstance3D
+		if on:
+			var mt := StandardMaterial3D.new()
+			mt.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mt.albedo_color = mats[nm]
+			mi.material_override = mt
+		else:
+			mi.material_override = null
+
+func _read_mask() -> void:
+	var img := get_root().get_texture().get_image()
+	var w := img.get_width()
+	var h := img.get_height()
+	var mag_rows := 0
+	var mag_top := h
+	var cyan := 0
+	var cyan_top := h
+	for y in range(0, h, 2):
+		var m := 0
+		for x in range(0, w, 4):
+			var c := img.get_pixel(x, y)
+			if c.r > 0.6 and c.b > 0.6 and c.g < 0.35:
+				m += 1
+			elif c.g > 0.6 and c.b > 0.6 and c.r < 0.35:
+				cyan += 1
+				cyan_top = mini(cyan_top, y)
+		if m > w / 4 / 10:
+			mag_rows += 1
+			mag_top = mini(mag_top, y)
+	print("MASK torso_top_row %d (%.0f%% from top) torso_rows %.0f%% belt_px %d belt_top_row %d" % [mag_top, 100.0 * mag_top / h, 100.0 * mag_rows * 2 / h, cyan, cyan_top])
