@@ -59,6 +59,18 @@ func attach(mirror_art: Node3D, p: Node3D, eye_cam: Camera3D, progression: FPPro
 	if player.get("config") != null:
 		feet = -float(player.config.stand_height) * 0.5
 	body.transform = Transform3D(Basis().scaled(Vector3(1, 1, -1)), Vector3(0, feet, 0))
+	# the room light hangs overhead and the player lamp skips this layer, so
+	# the body read dark brown in the glass (mut6): a soft front fill, only
+	# for the body, where the player lamp would be
+	var fill := OmniLight3D.new()
+	fill.name = "MirrorBodyFill"
+	fill.light_cull_mask = MIRROR_BODY_LAYER
+	fill.light_color = Color(1.0, 0.9, 0.84)
+	fill.light_energy = 1.1
+	fill.omni_range = 2.5
+	fill.shadow_enabled = false
+	fill.position = Vector3(0, 1.45, 0.7) # body space: in front of the chest
+	body.add_child(fill)
 	_vp = SubViewport.new()
 	_vp.name = "ReflectionView"
 	_vp.size = VP_SIZE

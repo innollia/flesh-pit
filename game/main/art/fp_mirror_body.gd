@@ -13,8 +13,9 @@ extends Node3D
 const K := preload("res://main/art/fp_art_kit.gd")
 const BELT_SCENE := preload("res://main/art/fp_belt.tscn")
 const BAG_SCENE := preload("res://main/art/fp_tumor_bag.tscn")
-const SKIN := Color(1.0, 0.86, 0.76)
-const SKIN_D := Color(0.95, 0.8, 0.7)
+## Same skin as the first-person hands (fdk_hands_rig skin_color).
+const SKIN := Color(0.88, 0.72, 0.62)
+const SKIN_D := Color(0.8, 0.64, 0.55)
 
 const SHIMMER_SHADER := "shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_back;

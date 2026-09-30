@@ -72,6 +72,14 @@ var _vp: SubViewport
 var _over: TextureRect
 var ocam: Camera3D
 var panel: PanelContainer
+## The list panel sits on its own layer ABOVE the PS1 post (layer 20),
+## like the interact ring (21): under it the text was pixelated and
+## dithered away (mut6).
+var panel_layer: CanvasLayer
+var lead: Line2D ## thin line from the focused doll part to the text
+const PANEL_LAYER := 22
+const TEXT_COL := Color(1.0, 0.97, 0.9)
+const TEXT_SUB := Color(0.86, 0.84, 0.8)
 var _list: VBoxContainer
 var _title: Label
 var _rows: Array[Button] = []
@@ -114,12 +122,10 @@ func _ready() -> void:
 	panel = PanelContainer.new()
 	panel.name = "List"
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.05, 0.06, 0.88)
-	sb.border_color = Color(0.85, 0.8, 0.75, 0.6)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(6)
-	sb.set_content_margin_all(10)
+	# no box (형님 mut6): only the text floats beside the doll, a thin line
+	# runs from the focused part to it
+	var sb := StyleBoxEmpty.new()
+	sb.set_content_margin_all(4)
 	panel.add_theme_stylebox_override("panel", sb)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
@@ -129,7 +135,18 @@ func _ready() -> void:
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 4)
 	vb.add_child(_list)
-	_root.add_child(panel)
+	panel_layer = CanvasLayer.new()
+	panel_layer.name = "ListLayer"
+	panel_layer.layer = PANEL_LAYER
+	panel_layer.visible = false
+	add_child(panel_layer)
+	lead = Line2D.new()
+	lead.name = "Lead"
+	lead.width = 1.5
+	lead.default_color = Color(1.0, 0.97, 0.9, 0.85)
+	lead.antialiased = true
+	panel_layer.add_child(lead)
+	panel_layer.add_child(panel)
 	panel.visible = false
 	visible = false
 	_build_doll()
@@ -163,6 +180,7 @@ func _ui_scale() -> float:
 func open(p: FPProgression) -> void:
 	prog = p
 	visible = true
+	panel_layer.visible = true
 	body.visible = true
 	_cand.clear()
 	_kb = false
@@ -179,9 +197,11 @@ func open(p: FPProgression) -> void:
 
 func close() -> void:
 	visible = false
+	panel_layer.visible = false
 	body.visible = false
 	panel.visible = false
 	_clear_ghost()
+	_update_blink()
 	closed.emit()
 
 ## Rebuild the doll's shape and shimmer after a change.
@@ -247,6 +267,7 @@ func focus_part(part: String) -> void:
 	_update_glow()
 	_rebuild_list()
 	_show_ghost(candidate())
+	_update_blink()
 
 func listed_ids() -> Array[String]:
 	return prog.mutations_for_part(_part) if prog != null and _part != "tumor" else ([] as Array[String])
@@ -274,10 +295,14 @@ func _rebuild_list() -> void:
 	_rows.clear()
 	if prog == null or _part == "":
 		panel.visible = false
+		lead.visible = false
 		return
 	var s := _ui_scale()
 	_title.text = PART_NAME.get(_part, _part)
 	_title.add_theme_font_size_override("font_size", int(20 * s))
+	_title.add_theme_color_override("font_color", TEXT_COL)
+	_title.add_theme_color_override("font_outline_color", Color.BLACK)
+	_title.add_theme_constant_override("outline_size", 4)
 	var ids: Array[String] = []
 	if _part == "tumor":
 		ids.append("tumor")
@@ -291,12 +316,22 @@ func _rebuild_list() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		var nm: String = "무작위 종양 변이" if id == "tumor" else String(prog.mutation_info[id]["name"])
 		var ds: String = "혹을 눌러 무작위 큰 변이를 얻는다" if id == "tumor" else String(DESC.get(id, ""))
-		b.text = "%s\n%s\n%s" % [nm, ds, cost_text(id)]
+		# no cost line (형님 mut6): hovering an affordable row blinks the hairs
+		# it would pull on the forearm instead
+		b.text = "%s\n%s" % [nm, ds]
+		b.set_meta("label", b.text)
 		b.add_theme_font_size_override("font_size", int(16 * s))
+		for cn in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(cn, TEXT_COL)
+		b.add_theme_color_override("font_outline_color", Color.BLACK)
+		b.add_theme_constant_override("outline_size", 4)
+		b.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+		b.add_theme_constant_override("shadow_offset_x", 1)
+		b.add_theme_constant_override("shadow_offset_y", 1)
 		b.custom_minimum_size = Vector2(300 * s, 0)
 		var ok := part_available("tumor") if id == "tumor" else prog.can_buy_mutation(id)
 		b.set_meta("afford", ok)
-		b.modulate = Color(1, 1, 1, 1.0 if ok else 0.45)
+		b.modulate = Color(1, 1, 1, 1.0) if ok else Color(0.7, 0.7, 0.7, 0.5)
 		b.mouse_entered.connect(func():
 			_kb = false
 			select_candidate(i))
@@ -309,14 +344,9 @@ func _rebuild_list() -> void:
 	panel.visible = true
 	_place_panel()
 
-func _row_style(on: bool, pool_col: Color) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.14, 0.12, 0.13, 0.9) if not on else Color(0.3, 0.26, 0.26, 0.95)
-	sb.border_color = Color(1, 1, 1) if on else pool_col
-	sb.border_width_left = 8
-	sb.set_border_width_all(3 if on else 0)
-	sb.border_width_left = 8
-	sb.set_content_margin_all(8)
+func _row_style(_on: bool, _pool_col: Color) -> StyleBoxEmpty:
+	var sb := StyleBoxEmpty.new()
+	sb.set_content_margin_all(3)
 	return sb
 
 func _style_rows() -> void:
@@ -326,6 +356,13 @@ func _style_rows() -> void:
 		var id: String = b.get_meta("mut_id")
 		var pc: Color = POOL_COLOR["core"] if id == "tumor" else POOL_COLOR.get(prog.mutation_info[id]["pool"], Color.GRAY)
 		var st := _row_style(k == sel, pc)
+		# selected: a small marker in front and full brightness; others dimmer
+		var on := k == sel
+		b.text = ("▸ " if on else "   ") + String(b.get_meta("label", b.text))
+		var tc := TEXT_COL if on else TEXT_SUB.darkened(0.15)
+		for cn in ["font_color", "font_focus_color", "font_pressed_color"]:
+			b.add_theme_color_override(cn, tc)
+		b.add_theme_color_override("font_hover_color", TEXT_COL)
 		for n in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(n, st if n != "hover" else _row_style(true, pc))
 
@@ -343,6 +380,11 @@ func _place_panel() -> void:
 	if x + sz.x > vs.x - 10.0:
 		x = p.x - 40.0 * _ui_scale() - sz.x
 	panel.position = Vector2(clampf(x, 10.0, maxf(10.0, vs.x - sz.x - 10.0)), clampf(p.y - sz.y * 0.5, 10.0, maxf(10.0, vs.y - sz.y - 10.0)))
+	# lead line: part -> the near edge of the text, at the title's height
+	var ex := panel.position.x if panel.position.x > p.x else panel.position.x + sz.x
+	var end := Vector2(ex, panel.position.y + 14.0 * _ui_scale())
+	lead.points = PackedVector2Array([p, p.lerp(end, 0.35) + Vector2(0, 0), end])
+	lead.visible = true
 
 func select_candidate(i: int, _rebuild: bool = true) -> void:
 	var n := _open_ids(_part).size()
@@ -351,6 +393,20 @@ func select_candidate(i: int, _rebuild: bool = true) -> void:
 	_cand[_part] = posmod(i, n)
 	_style_rows()
 	_show_ghost(candidate())
+	_update_blink()
+
+func arm_hair() -> Node3D:
+	return hand_root.get_node_or_null("ArmHair") as Node3D if hand_root != null else null
+
+## The hairs the selected mutation would cost blink on the forearm, only
+## when it can be bought now.
+func _update_blink() -> void:
+	var h := arm_hair()
+	if h == null or not h.has_method("set_blink"):
+		return
+	var id := candidate() if visible else ""
+	var pool := prog.paying_pool(id) if prog != null and id != "" and id != "tumor" else ""
+	h.call("set_blink", pool, prog.cost_in(id, pool) if pool != "" else 0)
 
 # --- ghost / buying (unchanged behaviour) ----------------------------------
 
@@ -415,7 +471,7 @@ func _move_part(step: int) -> void:
 func _place() -> void:
 	if eye == null or hand_root == null:
 		return
-	var feet := hand_root.global_transform * DOLL_ON_ARM
+	var feet := arm_top(DOLL_ON_ARM.z)
 	# upright, facing the eye
 	var to_eye := eye.global_position - feet
 	to_eye.y = 0.0
@@ -429,6 +485,21 @@ func _place() -> void:
 	var vs := Vector2i(get_viewport().get_visible_rect().size)
 	if _vp.size != vs:
 		_vp.size = vs
+
+## World point on the TOP of the round forearm (the arm-hair mesh) at
+## `z` in the hand root's space: the ring centre there plus the ring radius
+## straight up in the world, so the doll's feet touch the skin whatever the
+## arm's roll (mut6: the doll floated above the forearm).
+func arm_top(z: float) -> Vector3:
+	var hair: Node3D = hand_root.get_node_or_null("ArmHair") as Node3D
+	if hair == null:
+		return hand_root.global_transform * DOLL_ON_ARM
+	var along := hair.position.z - z
+	var t := clampf(along / 0.33, 0.0, 1.0)
+	var r := lerpf(0.046, 0.029, t) + sin(t * PI) * 0.004
+	var c := hair.global_transform * Vector3(0, sin(t * PI) * 0.006, -along)
+	var s := hair.global_transform.basis.get_scale().x
+	return c + Vector3.UP * r * s
 
 func part_at(screen: Vector2) -> String:
 	if eye == null:

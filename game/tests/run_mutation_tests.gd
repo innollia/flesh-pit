@@ -186,7 +186,14 @@ func _run_mirror() -> void:
 	mir.focus_part("face")
 	_assert(mir.panel.visible and mir.rows().size() == mir._open_ids("face").size(), "a part lists its mutations in a panel")
 	var r0: Button = mir.rows()[0]
-	_assert(r0.text.contains("비용") and r0.text.split("\n").size() == 3, "each row: name, one line, cost")
+	_assert(not r0.text.contains("비용") and r0.text.split("\n").size() == 2, "each row: name and one line, no cost line")
+	# panel above the PS1 post, like the interact ring
+	_assert(mir.panel.get_parent() == mir.panel_layer and mir.panel_layer.layer > 20, "the list panel draws above the PS1 post")
+	var ah: Node3D = mir.arm_hair()
+	_assert(ah != null and int(ah.call("blink_count")) == 0, "an unaffordable row blinks no hairs")
+	# doll feet on the forearm top
+	var top := mir.arm_top(FPMirror.DOLL_ON_ARM.z)
+	_assert(mir.body.global_position.distance_to(top) < 0.002, "the doll's feet stand on the forearm top")
 	_assert(not bool(r0.get_meta("afford")) and r0.modulate.a < 0.6, "unaffordable rows are faded")
 	var m28row := mir.cost_text("M28")
 	_assert(m28row.contains("또는"), "a combination shows both hair kinds")
@@ -218,6 +225,8 @@ func _run_mirror() -> void:
 		_key(m, "ui_down")
 		guard += 1
 	_assert(mir.candidate() == "M10" and mir.ghost_id() == "M10", "up/down switch the mutation and its ghost")
+	var ah2: Node3D = mir.arm_hair()
+	_assert(String(ah2.call("blink_kind")) == "core" and int(ah2.call("blink_count")) == prog.cost_in("M10", "core"), "an affordable row blinks exactly the hairs it costs")
 	_key(m, "ui_accept")
 	_assert(prog.has_mutation("M10") and prog.hairs("core") == 0, "Enter buys with the keyboard alone, hairs fall off")
 	_assert("M10" in mir.body.applied, "the mirror body changes at once")

@@ -15,6 +15,11 @@ const UPPER_DROP := 0.1
 const SIDES := 12
 const MAX_SLOTS := 90
 const SHAGGY_AT := 40
+## Strands drawn per hair point (mut6: fewer thick rods read as bugs).
+const STRANDS := 3
+## Hair colour; the kind colour only tints it a little.
+const HAIR := Color(0.1, 0.065, 0.045)
+const TINT := 0.3
 const COLORS := {
     "common": Color(0.05, 0.035, 0.03),
     "core": Color(0.93, 0.33, 0.55),     # compressive tissue: deep pink (spec 02)
@@ -23,6 +28,11 @@ const COLORS := {
 }
 
 var _hair_mi: MeshInstance3D
+## Hairs a hovered mutation would cost blink (mut6): kind + count.
+var _blink_mi: MeshInstance3D
+var _blink_kind := ""
+var _blink_n := 0
+var _blink_t := 0.0
 var _slots: Array = []
 var _counts := {"common": 0, "core": 0, "mantle": 0, "surface": 0}
 
@@ -45,7 +55,7 @@ func _ready() -> void:
     # no wrist knob here: the rig's own palm starts at the wrist, and a
     # fixed blob there stuck out as a dark lump whenever the wrist bent
     K.add_mesh(self, "Forearm", K.finish(st, 6.0), K.mat("tex_skin_128.png", 0.3, false))
-    for i in range(MAX_SLOTS):
+    for i in range(MAX_SLOTS * STRANDS):
         # hairs on the wrist two thirds (the part that is on screen)
         var along := LEN * 0.3 + K.h(i, 11) * (LEN * 0.66)
         var ang := lerpf(-1.1, 1.3, K.h(i, 12))  # around the top / outer side
@@ -54,7 +64,17 @@ func _ready() -> void:
         var base := Vector3(sin(ang) * r, cos(ang) * r + sin(t * PI) * 0.006, -along)
         var normal := Vector3(sin(ang), cos(ang), 0).normalized()
         _slots.append([base, normal, K.h(i, 13)])
-    _hair_mi = K.add_mesh(self, "Hairs", ArrayMesh.new(), K.mat("tex_nerve_64.png", 0.2, false))
+    var hm := StandardMaterial3D.new()
+    hm.vertex_color_use_as_albedo = true
+    hm.roughness = 1.0
+    hm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+    hm.cull_mode = BaseMaterial3D.CULL_DISABLED
+    _hair_mi = K.add_mesh(self, "Hairs", ArrayMesh.new(), hm)
+    var bm := StandardMaterial3D.new()
+    bm.vertex_color_use_as_albedo = true
+    bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+    _blink_mi = K.add_mesh(self, "BlinkHairs", ArrayMesh.new(), bm)
     set_hair(6, {"core": 3, "mantle": 2, "surface": 2})
 
 ## Tube through rings [centre, radius, colour]; every vertex gets its own
@@ -109,6 +129,8 @@ func hair_total() -> int:
 
 func _rebuild() -> void:
     var st := K.begin()
+    var bst := K.begin()
+    var bany := false
     var slot := 0
     var any := false
     # spec 04 §2: past 40 strands the arm reads as a shaggy tuft
@@ -117,7 +139,43 @@ func _rebuild() -> void:
         for n in range(int(_counts[kind])):
             if slot >= MAX_SLOTS:
                 break
-            var s: Array = _slots[slot]
+            # the last `_blink_n` of the blinking kind are the ones a buy pulls
+            var blink: bool = kind == _blink_kind and n >= int(_counts[kind]) - _blink_n
+            for k in range(STRANDS):
+              _strand(bst if blink else st, _slots[slot * STRANDS + k], kind, shaggy, blink)
+            slot += 1
+            if blink:
+                bany = true
+            else:
+                any = true
+    _hair_mi.mesh = K.finish(st, 40.0) if any else ArrayMesh.new()
+    _blink_mi.mesh = K.finish(bst, 40.0) if bany else ArrayMesh.new()
+
+## Blink the `n` hairs of `kind` a purchase would pull out ("" / 0 = none).
+func set_blink(kind: String, n: int) -> void:
+    if kind == _blink_kind and n == _blink_n:
+        return
+    _blink_kind = kind if n > 0 else ""
+    _blink_n = maxi(n, 0) if kind != "" else 0
+    _rebuild()
+
+func blink_count() -> int:
+    if _blink_kind == "":
+        return 0
+    return _blink_n
+
+func blink_kind() -> String:
+    return _blink_kind
+
+func _process(delta: float) -> void:
+    _blink_t += delta
+    if _blink_mi != null:
+        _blink_mi.visible = fmod(_blink_t, 0.5) < 0.3
+
+func strand_count() -> int:
+    return hair_total() * STRANDS
+
+func _strand(st: SurfaceTool, s: Array, kind: String, shaggy: bool, blink: bool = false) -> void:
             var base: Vector3 = s[0]
             var nrm: Vector3 = s[1]
             var length := (0.02 + float(s[2]) * 0.014) * (1.7 if shaggy else 1.0)
@@ -125,10 +183,10 @@ func _rebuild() -> void:
             var lean := Vector3(0, 0, 1)
             var p1 := base + nrm * length * 0.45 + lean * length * 0.35
             var p2 := base + nrm * length * 0.6 + lean * length * 0.9 + Vector3(0.004 * (float(s[2]) - 0.5), 0, 0)
-            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0032 if shaggy else 0.0028, 0.0022, 0.0009], 3, [COLORS[kind]], false)
-            slot += 1
-            any = true
-    _hair_mi.mesh = K.finish(st, 40.0) if any else ArrayMesh.new()
+            var col := HAIR.lerp(COLORS[kind], TINT)
+            if blink:
+                col = COLORS[kind].lightened(0.35)
+            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0011 if shaggy else 0.001, 0.00075, 0.0003], 3, [col], false)
 
 func drop_hairs(n: int) -> void:
     for k in ["surface", "mantle", "core", "common"]:

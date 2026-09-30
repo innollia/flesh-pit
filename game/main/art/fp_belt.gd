@@ -40,37 +40,39 @@ var _hung: Array = ["", "", ""]
 
 func _ready() -> void:
     var st := K.begin()
-    var cloth := Color(0.28, 0.3, 0.36)    # worn work trousers
-    var cloth_d := Color(0.2, 0.21, 0.26)
+    # briefs, the same white-grey as the mirror body's (fp_mirror_body.gd)
+    var cloth := Color(0.82, 0.84, 0.86)
+    var cloth_d := Color(0.66, 0.68, 0.72)
     # trousers: a lofted hip (open on top, the torso sits on it) + two leg
     # stubs down to the knees
     var hip: Array = []
-    for k in range(4):
+    for k in range(3):
         hip.append(_waist_ring(-k * 0.07, RX * (1.0 + k * 0.03), RZF * (1.0 - k * 0.04), RZ * (1.0 + k * 0.05)))
     _loft_lit(st, hip, [cloth, cloth, cloth_d])
     for sx in [-1, 1]:
-        K.tube(st, Transform3D.IDENTITY, [Vector3(sx * 0.1, -0.2, -0.03), Vector3(sx * 0.11, -0.38, -0.08), Vector3(sx * 0.11, -0.55, -0.12)], [0.095, 0.082, 0.072], 8, [cloth, cloth_d])
-    # left front pocket opening (dark slit)
-    K.quad(st, Transform3D.IDENTITY, Vector3(-0.17, -0.045, -RZF * 0.62), Vector3(-0.09, -0.04, -RZF * 0.93), Vector3(-0.1, -0.12, -RZF * 0.93), Vector3(-0.18, -0.12, -RZF * 0.6), Vector3(0, 0, -1), Color(0.07, 0.07, 0.09))
+        # short brief legs round the top of the thighs (no trouser legs)
+        K.tube(st, Transform3D.IDENTITY, [Vector3(sx * 0.1, -0.12, -0.02), Vector3(sx * 0.105, -0.2, -0.035)], [0.1, 0.092], 8, [cloth_d, cloth_d])
     var trousers_mi := K.add_mesh(self, "Trousers", K.finish(st, 5.0), K.mat("tex_door_paint_128.png", 0.1, true))
     trousers_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    # mut6: bare body in briefs; 7123bd7 had put work trousers and a
+    # khaki shirt on it by itself. The node keeps its name for the wiring.
     # torso: work shirt from the waist up. The belly swells forward a little
     # but never past the belt, the chest draws back under the eye, and the top
     # closes behind the camera, so looking down shows belly -> belt -> legs.
     st = K.begin()
-    var shirt := Color(0.52, 0.49, 0.37)
-    var shirt_d := Color(0.4, 0.37, 0.28)
+    # bare belly, the same skin as the hands (fdk_hands_rig skin_color)
+    var shirt := Color(0.88, 0.72, 0.62)
+    var shirt_d := Color(0.8, 0.64, 0.55)
     var torso: Array = []
     for r in TORSO_RINGS:
         torso.append(_waist_ring(r[0], r[1], r[2], r[3]))
     # rings top-first (the kit loft convention); the shoulders close below
     torso.reverse()
     _loft_lit(st, torso, [shirt_d, shirt, shirt, shirt])
-    # shirt buttons down the belly line
-    for by in [0.05, 0.12, 0.19]:
-        var bz: float = -_front_at(by) - 0.004
-        K.rbox(st, K.T(Vector3(0, by, bz)), Vector3(0.008, 0.008, 0.003), 0.002, Color(0.85, 0.82, 0.7))
-    var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), K.mat("tex_door_paint_128.png", 0.1, true))
+    # navel instead of shirt buttons
+    var nz: float = -_front_at(0.07) - 0.002
+    K.rbox(st, K.T(Vector3(0, 0.07, nz)), Vector3(0.007, 0.009, 0.002), 0.002, Color(0.55, 0.36, 0.3))
+    var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), K.mat("tex_skin_128.png", 0.3, true))
     # the body must not shade itself dark under the ceiling tube
     torso_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     # belt band: a thick leather loop right round the waist

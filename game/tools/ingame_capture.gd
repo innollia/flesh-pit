@@ -102,6 +102,11 @@ func _setup() -> void:
 			_look(Vector3(-0.62, 0.95, -0.35), m.mirror_point() + Vector3(0, -0.12, 0))
 			if _shot == "mutate_hover":
 				m.open_mirror()
+		"look_down":
+			# mut6: bare belly in briefs, belt on (first-person look-down)
+			m.restroom.set_door_open(false, true)
+			prog.has_belt = true
+			_pose(Vector3(0.0, 0.95, 0.4), 0.0, deg_to_rad(-80.0))
 		"mirror_corner":
 			m.restroom.set_door_open(false, true)
 			_look(Vector3(-1.2, 0.0, 0.3), Vector3(-FPRestroom.HALF.x, 1.3, FPRestroom.HALF.z))
