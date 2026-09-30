@@ -557,6 +557,25 @@ func _setup_restroom_front() -> void:
 func _update_restroom_front() -> void:
     FPHandBlood.set_amount(hand_blood_mat, maxf(hand_blood, hand_motions.blood_visual() if hand_motions != null else 0.0))
 
+## Hands (and anything they carry) live outside FPRestroom's tree (parented
+## to the player camera), so restroom.gd's room-only render layer never
+## reaches them: rest-container lamps outside excluded that layer from their
+## light_cull_mask, but the hands stayed on the default layer and still
+## picked up the green lamp light while inside the room. Toggle the hands'
+## layer to match whichever side of the wall the player is actually on, only
+## on the edge crossing so this stays a cheap once-per-frame bool check.
+var _hands_in_room: bool = false
+
+func _update_hands_room_layer() -> void:
+    var inside := restroom.contains(player.global_position)
+    if inside == _hands_in_room:
+        return
+    _hands_in_room = inside
+    if inside:
+        FPRestroom.tag_room_layer(hands_rig)
+    else:
+        FPRestroom.tag_default_layer(hands_rig)
+
 ## The player finishes on the toilet, stands up, opens the stall door.
 func _begin_opening() -> void:
     _opening_t = 0.0
@@ -607,6 +626,7 @@ func _process(delta: float) -> void:
         return
     _update_atmosphere(delta)
     _update_restroom_front()
+    _update_hands_room_layer()
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
     hands_rig.set_mutation(progression.mutation_amount())

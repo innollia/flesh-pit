@@ -16,6 +16,7 @@ const SHOTS := [
 	"hair_0", "hair_5", "hair_20",
 	"blood_before", "blood_after",
 	"door_spill", "glare", "room_wide",
+	"corner_pp", "corner_pn", "corner_np", "corner_nn",
 ]
 
 var _main: Node3D
@@ -134,6 +135,21 @@ func _setup(shot: String) -> void:
 		"room_wide":
 			r.set_door_open(false, true)
 			_look(Vector3(-1.6, 0.95, 1.2), Vector3(1.2, 0.9, -0.4))
+		# The 4 vertical wall-to-wall corners of the restroom (green-lamp-leak
+		# regression check, 형님 2026-09-30): stand near centre, look at each
+		# corner where two walls meet, floor to ceiling in frame.
+		"corner_pp":
+			r.set_door_open(false, true)
+			_look(Vector3(0.0, 1.1, 0.0), Vector3(FPRestroom.HALF.x, 1.1, FPRestroom.HALF.z))
+		"corner_pn":
+			r.set_door_open(false, true)
+			_look(Vector3(0.0, 1.1, 0.0), Vector3(FPRestroom.HALF.x, 1.1, -FPRestroom.HALF.z))
+		"corner_np":
+			r.set_door_open(false, true)
+			_look(Vector3(0.0, 1.1, 0.0), Vector3(-FPRestroom.HALF.x, 1.1, FPRestroom.HALF.z))
+		"corner_nn":
+			r.set_door_open(false, true)
+			_look(Vector3(0.0, 1.1, 0.0), Vector3(-FPRestroom.HALF.x, 1.1, -FPRestroom.HALF.z))
 		"glare":
 			m.set("_was_inside", false)
 			_pose(Vector3(0.0, 0.95, 0.9), PI, 0.0)

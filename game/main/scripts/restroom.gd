@@ -77,10 +77,28 @@ func build() -> void:
     _set_room_layer(self)
 
 func _set_room_layer(n: Node) -> void:
+    tag_room_layer(n)
+
+## Static: recursively push every mesh under `n` onto ROOM_VISUAL_LAYER so it
+## catches only in-room lights, not lamps outside (e.g. rest-container green
+## lamps) whose light_cull_mask excludes this layer. Exposed static so nodes
+## that are not children of FPRestroom (e.g. FPVent, parented to main) can
+## still opt their own art into the room-only render layer.
+static func tag_room_layer(n: Node) -> void:
     if n is VisualInstance3D and not (n is Light3D):
         (n as VisualInstance3D).layers = ROOM_VISUAL_LAYER
     for c in n.get_children():
-        _set_room_layer(c)
+        tag_room_layer(c)
+
+## Static: recursively restore every mesh under `n` to the default render
+## layer (1), undoing tag_room_layer. Used for nodes that move in and out of
+## the restroom at runtime (the player's hands) rather than living inside it
+## permanently.
+static func tag_default_layer(n: Node) -> void:
+    if n is VisualInstance3D and not (n is Light3D):
+        (n as VisualInstance3D).layers = 1
+    for c in n.get_children():
+        tag_default_layer(c)
 
 # --- tiles ------------------------------------------------------------------
 
