@@ -8,6 +8,7 @@ extends Resource
 @export var crouch_height: float = 0.9
 @export var stand_height: float = 1.8
 @export var mouse_sensitivity: float = 0.0025
+@export var invert_y: bool = false ## flip vertical look (mouse, keys, stick)
 @export var keyboard_look_speed: float = 2.0 ## radians/sec, for keyboard-only look (arrow keys)
 @export var climb_speed: float = 2.5 ## vertical speed while digging up/down against a wall
 @export var bob_frequency: float = 6.0

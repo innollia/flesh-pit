@@ -116,6 +116,15 @@ var _mirror_open: bool = false
 var _seated: bool = false
 ## Esc menu: key settings screen (fp_keybind_menu.gd).
 var keybind_menu: FPKeybindMenu
+## Title screen, Esc pause and settings (fp_title_screen.gd, fp_pause_menu.gd,
+## fp_settings_menu.gd). Settings live in user://settings.json (FPSettings).
+var title_screen: FPTitleScreen
+var pause_menu: FPPauseMenu
+var settings_menu: FPSettingsMenu
+var settings: Dictionary = {}
+## Where the run is saved on disk (title "이어하기", pause "저장하고 시작 화면으로").
+var save_path: String = "user://save.bin"
+var _esc_guard_frame: int = -10
 var _crush_t: float = 0.0
 var _hazards: Array = []
 var _nerve_cool: Dictionary = {}
@@ -263,7 +272,7 @@ func _ready() -> void:
     _build_settle_camera()
     _spawn_door_nerves()
     _setup_restroom_front()
-    _begin_opening()
+    _setup_front_menus()
     # every on-screen button clicks (vomit button, key settings, mirror ...)
     get_tree().node_added.connect(_on_node_added_for_click)
     for b in find_children("*", "BaseButton", true, false):
@@ -272,6 +281,14 @@ func _ready() -> void:
     var audio_hookup: Node = preload("res://audio/fp_audio_hookup.gd").new()
     audio_hookup.name = "AudioHookup"
     add_child(audio_hookup)
+    # volume buses: beds to Music, everything else to SFX (FPSettings)
+    get_tree().node_added.connect(_on_node_added_for_bus)
+    for a in find_children("*", "AudioStreamPlayer", true, false) + find_children("*", "AudioStreamPlayer3D", true, false):
+        FPSettings.route_player.call_deferred(a)
+
+func _on_node_added_for_bus(n: Node) -> void:
+    if n is AudioStreamPlayer or n is AudioStreamPlayer3D:
+        FPSettings.route_player.call_deferred(n)
 
 func _on_node_added_for_click(n: Node) -> void:
     if n is BaseButton and is_ancestor_of(n) and not n.pressed.is_connected(ui_clicked.emit):
@@ -605,8 +622,7 @@ func _process(delta: float) -> void:
         return
     if _mirror_open:
         return
-    if Input.is_action_just_pressed("ui_cancel") and keybind_menu != null and not keybind_menu.just_closed():
-        open_keybind_menu()
+    if Input.is_action_just_pressed("ui_cancel") and handle_esc() != "":
         return
     _handle_actions()
     if Input.is_action_pressed("fdk_eat"):
@@ -868,6 +884,187 @@ func seated_action(action: String) -> void:
         "fp_interact", "ui_cancel", "fdk_eat":
             stand_up()
 
+# --- title screen, pause, settings ----------------------------------------------
+
+## Tests and capture scripts load main.tscn with --script: no title there.
+## A normal launch shows it; --skip-title (after --) goes straight in.
+func title_wanted() -> bool:
+    if "--skip-title" in OS.get_cmdline_user_args() or "--skip-title" in OS.get_cmdline_args():
+        return false
+    if "--script" in OS.get_cmdline_args() or "-s" in OS.get_cmdline_args():
+        return false
+    return get_tree().current_scene == self
+
+func _setup_front_menus() -> void:
+    settings = FPSettings.load_from()
+    FPSettings.apply_audio(settings)
+    FPSettings.apply_look(settings, player)
+    keybind_menu.process_mode = Node.PROCESS_MODE_ALWAYS
+    settings_menu = FPSettingsMenu.new()
+    settings_menu.name = "SettingsMenu"
+    add_child(settings_menu)
+    settings_menu.setup(settings, player, keybind_menu)
+    settings_menu.changed.connect(func(s): settings = s)
+    settings_menu.closed.connect(_on_settings_closed)
+    pause_menu = FPPauseMenu.new()
+    pause_menu.name = "PauseMenu"
+    add_child(pause_menu)
+    pause_menu.settings_menu = settings_menu
+    pause_menu.resumed.connect(_on_pause_resumed)
+    pause_menu.settings_requested.connect(open_settings)
+    pause_menu.title_requested.connect(go_to_title)
+    pause_menu.quit_requested.connect(quit_game)
+    title_screen = FPTitleScreen.new()
+    title_screen.name = "TitleScreen"
+    add_child(title_screen)
+    title_screen.settings_menu = settings_menu
+    title_screen.setup(self, has_save_file())
+    title_screen.continue_requested.connect(continue_game)
+    title_screen.new_game_requested.connect(new_game)
+    title_screen.settings_requested.connect(open_settings)
+    title_screen.quit_requested.connect(func(): get_tree().quit())
+    if title_wanted():
+        if FileAccess.file_exists(FPSettings.PATH) and not "--resolution" in OS.get_cmdline_args():
+            FPSettings.apply_window(settings)
+        show_title()
+    else:
+        title_screen.close()
+        _begin_opening()
+
+func show_title() -> void:
+    title_screen.has_save = has_save_file()
+    title_screen.open()
+    hands_rig.visible = false
+    get_tree().paused = true
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func _leave_title() -> void:
+    title_screen.close()
+    hands_rig.visible = true
+    get_tree().paused = false
+    _esc_guard_frame = Engine.get_process_frames()
+    if player.mouse_look_enabled:
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## Title "새로 시작": the save (if any) is dropped, the opening plays.
+func new_game() -> void:
+    if has_save_file():
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+    _leave_title()
+    _begin_opening()
+
+## Title "이어하기".
+func continue_game() -> bool:
+    _leave_title()
+    _begin_opening()
+    return load_from_disk()
+
+## Any menu that holds the game (title, pause, settings, keys).
+func is_menu_up() -> bool:
+    return (title_screen != null and title_screen.is_open()) \
+        or (pause_menu != null and pause_menu.is_open()) \
+        or (settings_menu != null and settings_menu.is_open()) \
+        or (keybind_menu != null and keybind_menu.is_open())
+
+## What Esc does right now, highest first: the key screen, settings, pause;
+## then the toilet view, the seat and the mirror close themselves; only
+## plain play opens pause.
+func esc_target() -> String:
+    if keybind_menu != null and keybind_menu.is_open():
+        return "keys"
+    if settings_menu != null and settings_menu.is_open():
+        return "settings"
+    if pause_menu != null and pause_menu.is_open():
+        return "resume"
+    if (title_screen != null and title_screen.is_open()) or ended or is_opening():
+        return ""
+    if _settling:
+        return "settle"
+    if _seated:
+        return "seat"
+    if _mirror_open:
+        return "mirror"
+    if Engine.get_process_frames() - _esc_guard_frame <= 1:
+        return ""
+    return "pause"
+
+## One Esc press. Returns what it did ("" = nothing).
+func handle_esc() -> String:
+    var t := esc_target()
+    match t:
+        "keys":
+            keybind_menu.close()
+        "settings":
+            settings_menu.close()
+        "resume":
+            pause_menu.resume()
+        "settle":
+            leave_settlement()
+        "seat":
+            stand_up()
+        "mirror":
+            mirror.close()
+        "pause":
+            open_pause_menu()
+    return t
+
+func open_pause_menu() -> void:
+    chewer.stop()
+    pause_menu.open()
+    get_tree().paused = true
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func _on_pause_resumed() -> void:
+    get_tree().paused = false
+    _esc_guard_frame = Engine.get_process_frames()
+    if player.mouse_look_enabled and not _settling and not _mirror_open and not _seated:
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func open_settings() -> void:
+    settings_menu.open()
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func _on_settings_closed() -> void:
+    _esc_guard_frame = Engine.get_process_frames()
+    if pause_menu.is_open():
+        pause_menu.refocus()
+    elif title_screen.is_open():
+        title_screen.settings_button.grab_focus()
+
+func has_save_file() -> bool:
+    return FileAccess.file_exists(save_path)
+
+func save_to_disk() -> bool:
+    var f := FileAccess.open(save_path, FileAccess.WRITE)
+    if f == null:
+        return false
+    f.store_var(serialize())
+    f.close()
+    return true
+
+func load_from_disk() -> bool:
+    if not has_save_file():
+        return false
+    var f := FileAccess.open(save_path, FileAccess.READ)
+    if f == null:
+        return false
+    var data = f.get_var()
+    f.close()
+    if not data is Dictionary:
+        return false
+    deserialize(data)
+    return true
+
+## Pause "저장하고 시작 화면으로": save, then a fresh scene with the title up.
+func go_to_title() -> void:
+    save_to_disk()
+    get_tree().paused = false
+    get_tree().reload_current_scene()
+
+## Pause "종료": the run is kept.
+func quit_game() -> void:
+    save_to_disk()
+    get_tree().quit()
 # --- Esc menu: key settings -------------------------------------------------------
 
 func open_keybind_menu() -> void:
@@ -875,6 +1072,9 @@ func open_keybind_menu() -> void:
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _on_keybind_menu_closed() -> void:
+    _esc_guard_frame = Engine.get_process_frames()
+    if is_menu_up():
+        return
     if player.mouse_look_enabled and not _settling and not _mirror_open:
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -1059,6 +1259,7 @@ func open_mirror() -> void:
 
 func _on_mirror_closed() -> void:
     _mirror_open = false
+    _esc_guard_frame = Engine.get_process_frames()
     if player.mouse_look_enabled:
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 

@@ -36,7 +36,7 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if mouse_look_enabled and event is InputEventMouseMotion:
 		_yaw -= event.relative.x * config.mouse_sensitivity
-		_pitch -= event.relative.y * config.mouse_sensitivity
+		_pitch -= event.relative.y * config.mouse_sensitivity * (-1.0 if config.invert_y else 1.0)
 		_pitch = clampf(_pitch, deg_to_rad(-config.pitch_limit_deg), deg_to_rad(config.pitch_limit_deg))
 
 func _physics_process(delta: float) -> void:
@@ -61,7 +61,7 @@ func _process_keyboard_look(delta: float) -> void:
 	if look_x != 0.0:
 		_yaw += look_x * config.keyboard_look_speed * delta
 	if look_y != 0.0:
-		_pitch += look_y * config.keyboard_look_speed * delta
+		_pitch += look_y * config.keyboard_look_speed * delta * (-1.0 if config.invert_y else 1.0)
 		_pitch = clampf(_pitch, deg_to_rad(-config.pitch_limit_deg), deg_to_rad(config.pitch_limit_deg))
 
 func _process_crouch() -> void:
