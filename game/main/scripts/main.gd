@@ -94,7 +94,9 @@ var _vent_flags: Dictionary = {}
 var _vent_hover_id: String = ""
 ## Crayon tumor drawings posted on the wall (03-restroom 10).
 var drawing_nodes: Array[Node3D] = []
-var mirror: FPMirror
+var mirror: FPMirror ## forearm hologram mutation screen (fp_mutate key)
+var mirror_view: FPMirrorReflection ## the restroom mirror: reflection only
+var _mutate_guard_frame := -1
 var ending: FPEnding
 var art_hookup: FPArtHookup
 var belt_swap: FPBeltSwap
@@ -228,7 +230,7 @@ func _ready() -> void:
     # the lamp sits a hand's width from the eye, so looking down it blew the
     # shirt and belt out to white in the flesh; the body (belt, torso,
     # trousers) is on BODY_LAYER, which the lamp skips, and gets a soft fill
-    player_lamp.light_cull_mask = 0xFFFFF & ~BODY_LAYER & ~FPMirror.MIRROR_BODY_LAYER
+    player_lamp.light_cull_mask = 0xFFFFF & ~BODY_LAYER & ~FPMirrorReflection.MIRROR_BODY_LAYER
     body_fill = OmniLight3D.new()
     body_fill.name = "BodyFill"
     body_fill.light_color = player_lamp.light_color
@@ -534,7 +536,10 @@ func _build_ui() -> void:
     mirror.closed.connect(_on_mirror_closed)
     # the real mirror: the player's own body stands in the world (seen only
     # by the mirror's reflection camera), the glass shows it
-    mirror.attach(restroom.mirror_art, player, player.camera, progression)
+    mirror_view = FPMirrorReflection.new()
+    mirror_view.name = "MirrorView"
+    add_child(mirror_view)
+    mirror_view.attach(restroom.mirror_art, player, player.camera, progression)
     keybind_menu = FPKeybindMenu.new()
     keybind_menu.name = "KeybindMenu"
     add_child(keybind_menu)
@@ -549,7 +554,7 @@ func _build_settle_camera() -> void:
     settle_camera.name = "SettleCamera"
     settle_camera.fov = 66.0
     settle_camera.near = 0.02
-    settle_camera.cull_mask &= ~FPMirror.MIRROR_BODY_LAYER
+    settle_camera.cull_mask &= ~FPMirrorReflection.MIRROR_BODY_LAYER
     add_child(settle_camera)
     var bowl := restroom.bowl_center
     settle_camera.global_position = bowl + Vector3(-0.06, 0.34, 0.2)
@@ -592,11 +597,11 @@ func _update_hands_room_layer() -> void:
         return
     _hands_in_room = inside
     if inside:
-        _tag_hands_layer(hands_rig, FPMirror.HANDS_ROOM_LAYER)
+        _tag_hands_layer(hands_rig, FPMirrorReflection.HANDS_ROOM_LAYER)
     else:
         FPRestroom.tag_default_layer(hands_rig)
 
-## Hands in the room: their own bit (FPMirror.HANDS_ROOM_LAYER) instead of
+## Hands in the room: their own bit (FPMirrorReflection.HANDS_ROOM_LAYER) instead of
 ## the room layer, so the mirror's reflection camera can leave the
 ## first-person hands out while the eye camera and room lights still see them.
 func _tag_hands_layer(n: Node, bits: int) -> void:
@@ -656,7 +661,7 @@ func _process(delta: float) -> void:
     _update_atmosphere(delta)
     _update_restroom_front()
     _update_hands_room_layer()
-    mirror.sync(restroom.contains(player.global_position) and not _seated and not _settling)
+    mirror_view.sync(restroom.contains(player.global_position) and not _seated and not _settling)
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
     hands_rig.set_mutation(progression.mutation_amount())
@@ -690,6 +695,9 @@ func _process(delta: float) -> void:
         _process_mirror_look()
         return
     if Input.is_action_just_pressed("ui_cancel") and handle_esc() != "":
+        return
+    if InputMap.has_action("fp_mutate") and Input.is_action_just_pressed("fp_mutate") and Engine.get_process_frames() != _mutate_guard_frame:
+        open_mirror()
         return
     _handle_actions()
     if Input.is_action_pressed("fdk_eat"):
@@ -790,7 +798,7 @@ func _interact() -> void:
     if belt_swap != null and belt_swap.aimed_hook() >= 0 and belt_swap.begin():
         return # reached down to the belt
     if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
-        open_mirror()
+        vent.notice("mirror") # the mirror only reflects; mutating is on the forearm (fp_mutate)
     elif not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
         begin_canary_pull()
     elif _near_toilet() and _looking_at(lever_point(), 12.0, 1.4):
@@ -1340,25 +1348,34 @@ func _vent_watch(delta: float) -> void:
 # --- mirror, sink, canary ------------------------------------------------------
 
 func open_mirror() -> void:
+    # the forearm hologram: arm up like reading a watch, doll on the forearm,
+    # the rest dimmed; the view holds still and the player stands
     _mirror_open = true
-    vent.notice("mirror")
+    var holo: Array[Node] = [hands_rig]
+    if art_hookup != null and art_hookup.get("mut_hands") != null:
+        holo.append(art_hookup.mut_hands)
+    mirror.setup(player.camera, hands_rig.call("get_hand_root", "left"), holo)
     mirror.open(progression)
     hand_motions.play_watch()
+    player.set_physics_process(false)
+    player.set_process_unhandled_input(false)
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
-## While looking in the mirror the first-person view stays; interacting again
-## or moving lowers the arm and ends it (Esc is handled by the mirror).
-const MIRROR_END_ACTIONS := ["fp_interact", "fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right", "fdk_jump"]
-
+## While the hologram is open nothing else runs (no look, no move); the same
+## key, Esc or RMB close it (handled by FPMirror).
 func _process_mirror_look() -> void:
-    for a in MIRROR_END_ACTIONS:
-        if InputMap.has_action(a) and Input.is_action_just_pressed(a):
-            mirror.close()
-            return
+    pass
 
 func _on_mirror_closed() -> void:
     _mirror_open = false
+    _mutate_guard_frame = Engine.get_process_frames()
     hand_motions.release_watch()
+    player.set_physics_process(true)
+    player.set_process_unhandled_input(true)
+    var bits := FPMirrorReflection.HANDS_ROOM_LAYER if _hands_in_room else 1
+    _tag_hands_layer(hands_rig, bits)
+    if art_hookup != null and art_hookup.get("mut_hands") != null:
+        _tag_hands_layer(art_hookup.mut_hands, bits)
     _esc_guard_frame = Engine.get_process_frames()
     if player.mouse_look_enabled:
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -1422,8 +1439,6 @@ func interact_target() -> String:
     var p := player.global_position
     if belt_swap != null and belt_swap.can_act():
         return "belt"
-    if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
-        return "mirror"
     if not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
         return "canary"
     if _near_toilet():

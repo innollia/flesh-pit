@@ -95,12 +95,13 @@ func _setup() -> void:
 				prog.mutation_tree.add_points(pool, 6)
 			_look(Vector3(-0.55, 0.95, -0.3), m.mirror_point() + Vector3(0, -0.25, 0))
 			m.open_mirror()
-		"mirror_hover":
+		"mirror_hover", "mutate_hover":
 			m.restroom.set_door_open(false, true)
 			for pool in [FPProgression.COMMON, "core", "mantle", "surface"]:
 				prog.mutation_tree.add_points(pool, 6)
 			_look(Vector3(-0.62, 0.95, -0.35), m.mirror_point() + Vector3(0, -0.12, 0))
-			m.open_mirror()
+			if _shot == "mutate_hover":
+				m.open_mirror()
 		"mirror_corner":
 			m.restroom.set_door_open(false, true)
 			_look(Vector3(-1.2, 0.0, 0.3), Vector3(-FPRestroom.HALF.x, 1.3, FPRestroom.HALF.z))
@@ -137,9 +138,8 @@ func _process(_delta: float) -> bool:
 	_frame += 1
 	if _frame == 2:
 		_setup()
-	if _frame > 4 and _shot == "mirror_hover":
-		# keyboard-style focus: right hand selected, its second bud grown
-		_main.mirror._kb_hold = true
+	if _frame > 4 and _shot == "mutate_hover":
+		# right hand hovered: its list open, the second row's ghost on the doll
 		if _main.mirror.current_part() != "right_hand":
 			_main.mirror.focus_part("right_hand")
 			_main.mirror.select_candidate(1)

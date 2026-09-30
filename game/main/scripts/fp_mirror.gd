@@ -1,20 +1,26 @@
 class_name FPMirror
 extends CanvasLayer
 
-## The real restroom mirror (docs/spec/03-restroom.md 8, 05-mutations.md).
-## No screen panel: the glass itself shows the room and the player's own body,
-## rendered by a reflection camera that mirrors the eye across the glass
-## plane (off-axis frustum clipped exactly at the glass, low-res nearest
-## filtered for the PS1 look). The body (FPMirrorBody) always stands in the
-## world under the player on MIRROR_BODY_LAYER, which the eye camera culls, so
-## only the mirror sees it; the first-person hands and waist are culled from
-## the reflection instead.
-## Picking: aim (screen centre, or the mouse while it is free) at a part of
-## the reflected body -> it glows and is selected. The part's open mutations
-## sprout as small buds around it on the reflected skin (colour = hair kind,
-## shrunk and faint when you cannot pay). Aiming at a bud grows that mutation
-## as a ghost over the whole body; clicking buys it. Keyboard: Left/Right
-## walk the parts, Up/Down walk the buds, Enter buys, Esc leaves.
+## Mutation screen on the forearm (형님 2026-09-30, replaces the mirror
+## screen; the mirror itself only reflects, FPMirrorReflection).
+## A key (fp_mutate: Tab / pad button, rebindable) opens it anywhere: the
+## left arm comes up like reading a wristwatch and a small whole-body doll
+## (FPMirrorBody) stands on the forearm. The background is dimmed about 70%;
+## the arm and the doll are drawn again above the dim by a second camera on
+## HOLO_LAYER, so only they and the arm hairs read clearly. While open the
+## cursor shows, the view does not turn and the player does not move.
+## Hovering a doll part (or Left/Right) highlights it and opens a list panel
+## beside it: each mutation's name, a one-line effect, the cost in hair kind
+## + count (both kinds for a combination). Unaffordable rows are faded.
+## Hovering a row (or Up/Down, or the wheel) grows that mutation as a ghost
+## on the doll; clicking (or Enter) buys it: the doll and the real body
+## change at once. Not enough hairs: the part blinks red (denied). The
+## candidate picked per part is remembered while open. Tumor bumps on the
+## belly are bought the same way (a random tumor mutation). Same key, Esc
+## or RMB closes.
+## Kept from the mirror screen: closed / mutated / denied signals, part
+## shimmer, ghost preview, red blink, per-part candidate memory, focus of
+## the next open part after a buy, keyboard-only use.
 
 signal closed
 signal mutated(id: String)
@@ -26,172 +32,144 @@ const POOL_COLOR := {
 	"mantle": Color(0.5, 0.3, 0.62),
 	"surface": Color(0.95, 0.85, 0.3),
 }
-const HOVER_PX := 60.0
-const BUD_PX := 26.0
-## Render layer of the world body (only the reflection camera sees it).
-const MIRROR_BODY_LAYER := 1 << 12
-## Hands inside the restroom (was ROOM_VISUAL_LAYER): eye camera only.
-const HANDS_ROOM_LAYER := 1 << 13
-## Glass in the mirror art's local space (fp_mirror.gd art: w 0.3, hh 0.38).
-const GLASS_W := 0.3
-const GLASS_HH := 0.38
-const GLASS_CY := 1.45
-const GLASS_Z := 0.016
-const VP_SIZE := Vector2i(150, 190)
-
-const REFLECT_SHADER := "shader_type spatial;
-render_mode unshaded, cull_disabled;
-uniform sampler2D tex : source_color, filter_nearest;
-varying vec3 lp;
-void vertex() { lp = VERTEX; }
-void fragment() {
-	vec3 c = texture(tex, UV).rgb * vec3(0.9, 0.95, 0.97);
-	float streak = smoothstep(0.93, 1.0, sin((lp.x * 1.6 + lp.y) * 22.0) * 0.5 + 0.5) * 0.08;
-	ALBEDO = c + vec3(streak);
-}"
-const BUD_SHADER := "shader_type spatial;
-render_mode unshaded, blend_mix, depth_draw_opaque, cull_back;
-uniform vec4 col : source_color = vec4(1.0);
-uniform float glow = 0.0;
-void fragment() {
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 1.5);
-	ALBEDO = col.rgb * (0.55 + 0.45 * dot(NORMAL, VIEW)) + vec3(rim * 0.35 + glow * (0.5 + 0.2 * sin(TIME * 6.0)));
-	ALPHA = col.a;
-}"
+const POOL_NAME := {"common": "검은 털", "core": "분홍 털", "mantle": "보라 털", "surface": "노란 털"}
+const PART_NAME := {"face": "머리", "neck": "목", "chest": "가슴·어깨", "belly": "배", "right_hand": "오른손·팔", "left_hand": "왼손·팔", "arms": "팔다리", "whole": "온몸", "tumor": "배의 혹"}
+## One-line effect per mutation (docs/spec/05-mutations.md, shortened).
+const DESC := {
+	"M01": "위장이 커진다 (용량 +20)", "M02": "넘치게 먹어도 덜 느려진다",
+	"M03": "화장실 쪽에서 귀가 윙 울린다", "M04": "씹는 시간이 15% 줄어든다",
+	"M05": "좁은 곳에서 몸이 가늘어진다", "M06": "파묻혀도 3초 더 버틴다",
+	"M07": "한 번에 한 칸 더 뜯는다", "M08": "딱딱한 살이 30% 물러진다",
+	"M09": "맨손으로 막을 잡는다 (씹기 느림)", "M10": "손이 0.4 m 더 멀리 닿는다",
+	"M12": "아주 단단한 살을 절반만큼 쉽게", "M13": "살을 1.5배 더 든다",
+	"M14": "한 칸 더 뜯지만 조금 느려진다", "M15": "살 더미를 3초에 통째로 삼킨다",
+	"M16": "위장 속 살이 60초마다 10% 줄어든다", "M17": "받는 피해가 절반, 멍이 안 보인다",
+	"M18": "질긴 살이 40% 물러진다", "M19": "눌릴수록 오히려 빨라진다",
+	"M20": "눌려도 느려지지 않는다", "M21": "믹서기가 왼손에서 저절로 충전된다",
+	"M22": "가만히 서면 왼손이 멋대로 뜯어 먹는다", "M23": "수축 1.5초 전에 팔 털이 떨린다",
+	"M24": "손전등이 1.6배 넓게 비춘다", "M25": "죽은 자리 표시가 계속 따라온다",
+	"M26": "몸이 3배 빨리 회복된다", "M27": "가까운 종양 쪽으로 코끝이 씰룩인다",
+	"M28": "살 더미를 든 채 두 손 도구를 쓴다", "M29": "압사해도 30초 뒤 화장실에서 깬다",
+	"M30": "넘치는 위장이 40 더 늘어난다",
+}
+const HOVER_PX := 40.0 ## at 720 p; scaled with the window height
+const DIM := 0.7
+## Doll layer: drawn by the eye camera AND by the overlay camera above the dim.
+const HOLO_LAYER := 1 << 14
+const DOLL_SCALE := 0.1
+## Doll feet on the forearm, in the left hand root's space (the forearm runs
+## toward +Z = the elbow, the hairy top faces +Y).
+const DOLL_ON_ARM := Vector3(0.0, 0.035, 0.13)
 
 var prog: FPProgression
-var body: FPMirrorBody
-var cam: Camera3D ## reflection camera
-var art: Node3D
-var player: Node3D
+var body: FPMirrorBody ## the doll
 var eye: Camera3D
+var hand_root: Node3D ## left hand root of the rig (doll stands on its forearm)
+var holo_nodes: Array[Node] = [] ## nodes drawn above the dim while open
+var _root: Control
+var _dim: ColorRect
 var _vp: SubViewport
-var _quad: MeshInstance3D
-var _buds: Array[MeshInstance3D] = []
+var _over: TextureRect
+var ocam: Camera3D
+var panel: PanelContainer
+var _list: VBoxContainer
+var _title: Label
+var _rows: Array[Button] = []
 var _part: String = ""
-var _cand: Dictionary = {} ## part -> index into open ids
+var _cand: Dictionary = {} ## part -> index into the part's open ids
 var _ghost: Node3D
 var _ghost_id := ""
 var _order: Array[String] = []
-var _sig := ""
-var _body_ok := true
-var _aim_mouse := false
+var _kb := false ## keyboard picked the focus: mouse hover waits for motion
 
 func _ready() -> void:
 	layer = 6
-	visible = false
-
-## Wire the mirror into the world: the glass art, the player (the body hangs
-## under it) and the eye camera. Safe to call once.
-func attach(mirror_art: Node3D, p: Node3D, eye_cam: Camera3D, progression: FPProgression = null) -> void:
-	art = mirror_art
-	player = p
-	eye = eye_cam
-	if progression != null:
-		prog = progression
-	eye.cull_mask &= ~MIRROR_BODY_LAYER
-	body = FPMirrorBody.new()
-	body.name = "MirrorBody"
-	player.add_child(body)
-	body.build()
-	# the body faces +Z with the right hand at +X; flip Z so it faces the
-	# player's forward (-Z) and the right hand stays on the player's right
-	var feet := -0.9
-	if player.get("config") != null:
-		feet = -float(player.config.stand_height) * 0.5
-	body.transform = Transform3D(Basis().scaled(Vector3(1, 1, -1)), Vector3(0, feet, 0))
+	_root = Control.new()
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_root)
+	_dim = ColorRect.new()
+	_dim.name = "Dim"
+	_dim.color = Color(0, 0, 0, DIM)
+	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_dim)
 	_vp = SubViewport.new()
-	_vp.name = "ReflectionView"
-	_vp.size = VP_SIZE
-	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_vp.msaa_3d = Viewport.MSAA_DISABLED
+	_vp.name = "HoloView"
+	_vp.transparent_bg = true
+	_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	add_child(_vp)
-	cam = Camera3D.new()
-	cam.name = "ReflectionCamera"
-	cam.projection = Camera3D.PROJECTION_FRUSTUM
-	cam.keep_aspect = Camera3D.KEEP_HEIGHT
-	cam.size = GLASS_HH * 2.0
-	cam.far = 40.0
-	cam.cull_mask = 0xFFFFF & ~(1 << 11) & ~HANDS_ROOM_LAYER
-	_vp.add_child(cam)
-	cam.current = true
-	_build_quad()
-	_retag()
-	refresh()
-	sync()
+	ocam = Camera3D.new()
+	ocam.name = "HoloCamera"
+	ocam.cull_mask = HOLO_LAYER
+	_vp.add_child(ocam)
+	ocam.current = true
+	_over = TextureRect.new()
+	_over.name = "Holo"
+	_over.texture = _vp.get_texture()
+	_over.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_over.stretch_mode = TextureRect.STRETCH_SCALE
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_over)
+	panel = PanelContainer.new()
+	panel.name = "List"
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.05, 0.06, 0.88)
+	sb.border_color = Color(0.85, 0.8, 0.75, 0.6)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(10)
+	panel.add_theme_stylebox_override("panel", sb)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+	_title = Label.new()
+	vb.add_child(_title)
+	_list = VBoxContainer.new()
+	_list.add_theme_constant_override("separation", 4)
+	vb.add_child(_list)
+	_root.add_child(panel)
+	panel.visible = false
+	visible = false
+	_build_doll()
 
-func _build_quad() -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var z := GLASS_Z - 0.001
-	var pts := [Vector3(-GLASS_W, GLASS_CY - GLASS_HH, z), Vector3(GLASS_W, GLASS_CY - GLASS_HH, z), Vector3(GLASS_W, GLASS_CY + GLASS_HH, z), Vector3(-GLASS_W, GLASS_CY + GLASS_HH, z)]
-	for i in [0, 1, 2, 0, 2, 3]:
-		var v: Vector3 = pts[i]
-		st.set_normal(Vector3.BACK)
-		# camera X runs along the glass's -X, so u is mirrored here
-		st.set_uv(Vector2(0.5 - v.x / (2.0 * GLASS_W), 0.5 - (v.y - GLASS_CY) / (2.0 * GLASS_HH)))
-		st.add_vertex(v)
-	_quad = MeshInstance3D.new()
-	_quad.name = "Reflection"
-	_quad.mesh = st.commit()
-	_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = REFLECT_SHADER
-	mat.shader = sh
-	mat.set_shader_parameter("tex", _vp.get_texture())
-	_quad.material_override = mat
-	art.add_child(_quad)
-	_quad.layers = FPRestroom.ROOM_VISUAL_LAYER
+func _build_doll() -> void:
+	body = FPMirrorBody.new()
+	body.name = "Doll"
+	add_child(body) # top-level 3D node in the main world; placed each frame
+	body.build()
+	body.scale = Vector3.ONE * DOLL_SCALE
+	body.visible = false
+	tag_layer(body, HOLO_LAYER)
 
-## Per frame (main): move the reflection camera, show the body only while
-## standing in the room, and pick up mutation changes made elsewhere.
-func sync(body_ok: bool = true) -> void:
-	if art == null or cam == null:
-		return
-	_body_ok = body_ok
-	body.visible = body_ok
-	var s := _signature()
-	if s != _sig:
-		refresh()
-	var xf := art.global_transform.orthonormalized()
-	var n := xf.basis.z
-	var up := xf.basis.y
-	var g := xf * Vector3(0, GLASS_CY, GLASS_Z)
-	var e := eye.global_position
-	var d := n.dot(e - g)
-	if d < 0.03:
-		return
-	var e2 := e - n * (2.0 * d)
-	var zc := -n
-	var xc := up.cross(zc)
-	cam.global_transform = Transform3D(Basis(xc, up, zc), e2)
-	var rel := g - e2
-	cam.near = d
-	cam.frustum_offset = Vector2(rel.dot(xc), rel.dot(up))
+## Main wires the camera and the arm the doll stands on.
+func setup(eye_cam: Camera3D, left_hand_root: Node3D, holo: Array[Node]) -> void:
+	eye = eye_cam
+	hand_root = left_hand_root
+	holo_nodes = holo
 
-func _signature() -> String:
-	if prog == null:
-		return ""
-	return "%s|%d|%s" % [str(prog.all_mutations()), prog.belly_bumps(), str(prog.has_belt)]
-
-func _retag(n: Node = null) -> void:
-	if n == null:
-		n = body
+static func tag_layer(n: Node, bits: int) -> void:
 	if n is VisualInstance3D and not (n is Light3D):
-		(n as VisualInstance3D).layers = MIRROR_BODY_LAYER
-		if n is GeometryInstance3D:
+		(n as VisualInstance3D).layers = bits
+		if n is GeometryInstance3D and bits != 1 and bits != FPRestroom.ROOM_VISUAL_LAYER:
 			(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for c in n.get_children():
-		_retag(c)
+		tag_layer(c, bits)
+
+func _ui_scale() -> float:
+	return clampf(get_viewport().get_visible_rect().size.y / 720.0, 1.0, 2.0) if get_viewport() != null else 1.0
 
 func open(p: FPProgression) -> void:
 	prog = p
 	visible = true
+	body.visible = true
 	_cand.clear()
-	_kb_hold = false
-	_aim_mouse = false
+	_kb = false
+	for n in holo_nodes:
+		tag_layer(n, HOLO_LAYER)
 	refresh()
+	_place()
 	var first := ""
 	for part in _order:
 		if part_available(part):
@@ -201,23 +179,19 @@ func open(p: FPProgression) -> void:
 
 func close() -> void:
 	visible = false
+	body.visible = false
+	panel.visible = false
 	_clear_ghost()
-	_clear_buds()
-	_part = ""
-	if body != null:
-		for part in FPProgression.PARTS:
-			body.set_shimmer(part, false)
 	closed.emit()
 
-## Rebuild body shape (and, while open, the glow) after a change.
+## Rebuild the doll's shape and shimmer after a change.
 func refresh() -> void:
-	if prog == null or body == null:
+	if prog == null:
 		return
-	_sig = _signature()
 	body.apply(prog.all_mutations(), prog.belly_bumps())
 	if body._belt != null:
 		body._belt.call("set_worn", prog.has_belt)
-	_retag()
+	tag_layer(body, HOLO_LAYER)
 	_order.clear()
 	for part in FPProgression.PARTS:
 		if not prog.mutations_for_part(part).is_empty():
@@ -226,12 +200,12 @@ func refresh() -> void:
 		_order.append("tumor")
 	_update_glow()
 
-## Mutable parts glow faintly while looking; the selected part glows stronger.
+## Parts that can still mutate shimmer faintly; the focused part strongly.
 func _update_glow() -> void:
 	for part in FPProgression.PARTS:
 		var avail := part_available(part) or (part == "belly" and part_available("tumor"))
 		var sel := part == _part or (part == "belly" and _part == "tumor")
-		body.set_shimmer(part, visible and (avail or sel), 1.3 if sel else 0.45)
+		body.set_shimmer(part, avail or sel, 1.4 if sel else 0.45)
 
 func part_available(part: String) -> bool:
 	if prog == null:
@@ -270,78 +244,115 @@ func show_part(part: String) -> void:
 
 func focus_part(part: String) -> void:
 	_part = part
-	_rebuild_buds()
 	_update_glow()
+	_rebuild_list()
 	_show_ghost(candidate())
 
 func listed_ids() -> Array[String]:
 	return prog.mutations_for_part(_part) if prog != null and _part != "tumor" else ([] as Array[String])
 
-# --- buds: the candidates sprouting on the reflected skin ------------------
+# --- list panel ---------------------------------------------------------------
 
-func buds() -> Array[MeshInstance3D]:
-	return _buds
+## Cost text: hair kind + count; a combination shows both kinds.
+func cost_text(id: String) -> String:
+	if id == "tumor":
+		return "비용: 배의 혹 1개"
+	var info: Dictionary = prog.mutation_info[id]
+	var pools: Array = info["alt"] if not (info["alt"] as Array).is_empty() else [info["pool"]]
+	var parts: Array[String] = []
+	for p in pools:
+		parts.append("%s %d개" % [POOL_NAME.get(p, p), prog.cost_in(id, p)])
+	return "비용: " + " 또는 ".join(parts)
 
-func _clear_buds() -> void:
-	for b in _buds:
-		b.queue_free()
-	_buds.clear()
+func rows() -> Array[Button]:
+	return _rows
 
-func _rebuild_buds() -> void:
-	_clear_buds()
-	if prog == null or body == null or _part == "" or _part == "tumor":
+func _rebuild_list() -> void:
+	for c in _list.get_children():
+		_list.remove_child(c)
+		c.queue_free()
+	_rows.clear()
+	if prog == null or _part == "":
+		panel.visible = false
 		return
-	var ids := _open_ids(_part)
-	var c := body.to_local(body.part_center(_part))
-	var nb := ids.size()
-	for i in range(nb):
+	var s := _ui_scale()
+	_title.text = PART_NAME.get(_part, _part)
+	_title.add_theme_font_size_override("font_size", int(20 * s))
+	var ids: Array[String] = []
+	if _part == "tumor":
+		ids.append("tumor")
+	else:
+		ids = _open_ids(_part)
+	for i in range(ids.size()):
 		var id := ids[i]
-		var mi := MeshInstance3D.new()
-		mi.name = "Bud_" + id
-		var sm := SphereMesh.new()
-		sm.radius = 0.026
-		sm.height = 0.05
-		sm.radial_segments = 6
-		sm.rings = 3
-		mi.mesh = sm
-		var info: Dictionary = prog.mutation_info[id]
-		var pools: Array = info["alt"] if not (info["alt"] as Array).is_empty() else [info["pool"]]
-		var col: Color = POOL_COLOR.get(pools[0], Color.GRAY)
-		var ok := prog.can_buy_mutation(id)
-		col.a = 1.0 if ok else 0.4
-		var mat := ShaderMaterial.new()
-		var sh := Shader.new()
-		sh.code = BUD_SHADER
-		mat.shader = sh
-		mat.set_shader_parameter("col", col)
-		mi.material_override = mat
-		mi.set_meta("mut_id", id)
-		mi.set_meta("afford", ok)
-		# a ring around the part, a hand's width out, on the front (+Z) skin
-		var a := -PI * 0.5 + TAU * (float(i) + 0.5) / float(maxi(nb, 1))
-		var r := 0.1 if _part != "face" else 0.13
-		mi.position = c + Vector3(cos(a) * r, sin(a) * r, 0.1)
-		body.add_child(mi)
-		_buds.append(mi)
-	_retag()
-	_style_buds()
+		var b := Button.new()
+		b.set_meta("mut_id", id)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		var nm: String = "무작위 종양 변이" if id == "tumor" else String(prog.mutation_info[id]["name"])
+		var ds: String = "혹을 눌러 무작위 큰 변이를 얻는다" if id == "tumor" else String(DESC.get(id, ""))
+		b.text = "%s\n%s\n%s" % [nm, ds, cost_text(id)]
+		b.add_theme_font_size_override("font_size", int(16 * s))
+		b.custom_minimum_size = Vector2(300 * s, 0)
+		var ok := part_available("tumor") if id == "tumor" else prog.can_buy_mutation(id)
+		b.set_meta("afford", ok)
+		b.modulate = Color(1, 1, 1, 1.0 if ok else 0.45)
+		b.mouse_entered.connect(func():
+			_kb = false
+			select_candidate(i))
+		b.pressed.connect(func():
+			select_candidate(i)
+			buy_current())
+		_list.add_child(b)
+		_rows.append(b)
+	_style_rows()
+	panel.visible = true
+	_place_panel()
 
-func _style_buds() -> void:
-	var sel := clampi(int(_cand.get(_part, 0)), 0, maxi(_buds.size() - 1, 0))
-	for k in range(_buds.size()):
-		var b := _buds[k]
-		var ok: bool = b.get_meta("afford")
-		var s := (1.0 if ok else 0.6) * (1.5 if k == sel else 1.0)
-		b.scale = Vector3.ONE * s
-		(b.material_override as ShaderMaterial).set_shader_parameter("glow", 1.0 if k == sel else 0.0)
+func _row_style(on: bool, pool_col: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.14, 0.12, 0.13, 0.9) if not on else Color(0.3, 0.26, 0.26, 0.95)
+	sb.border_color = Color(1, 1, 1) if on else pool_col
+	sb.border_width_left = 8
+	sb.set_border_width_all(3 if on else 0)
+	sb.border_width_left = 8
+	sb.set_content_margin_all(8)
+	return sb
+
+func _style_rows() -> void:
+	var sel := clampi(int(_cand.get(_part, 0)), 0, maxi(_rows.size() - 1, 0))
+	for k in range(_rows.size()):
+		var b := _rows[k]
+		var id: String = b.get_meta("mut_id")
+		var pc: Color = POOL_COLOR["core"] if id == "tumor" else POOL_COLOR.get(prog.mutation_info[id]["pool"], Color.GRAY)
+		var st := _row_style(k == sel, pc)
+		for n in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(n, st if n != "hover" else _row_style(true, pc))
+
+func selected_row() -> int:
+	return clampi(int(_cand.get(_part, 0)), 0, maxi(_rows.size() - 1, 0))
+
+func _place_panel() -> void:
+	if not panel.visible or eye == null or _part == "":
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var p := part_screen(_part)
+	panel.reset_size()
+	var sz := panel.get_combined_minimum_size()
+	var x := p.x + 40.0 * _ui_scale()
+	if x + sz.x > vs.x - 10.0:
+		x = p.x - 40.0 * _ui_scale() - sz.x
+	panel.position = Vector2(clampf(x, 10.0, maxf(10.0, vs.x - sz.x - 10.0)), clampf(p.y - sz.y * 0.5, 10.0, maxf(10.0, vs.y - sz.y - 10.0)))
 
 func select_candidate(i: int, _rebuild: bool = true) -> void:
 	var n := _open_ids(_part).size()
 	if n == 0:
 		return
 	_cand[_part] = posmod(i, n)
-	_style_buds()
+	_style_rows()
 	_show_ghost(candidate())
+
+# --- ghost / buying (unchanged behaviour) ----------------------------------
 
 func _clear_ghost() -> void:
 	if _ghost != null:
@@ -356,7 +367,7 @@ func _show_ghost(id: String) -> void:
 	if id == "" or id == "tumor" or body == null:
 		return
 	_ghost = body.ghost(id)
-	_retag(_ghost)
+	tag_layer(_ghost, HOLO_LAYER)
 	_ghost_id = id
 
 func ghost_id() -> String:
@@ -399,87 +410,69 @@ func _move_part(step: int) -> void:
 	var i := _order.find(_part)
 	focus_part(_order[posmod(i + step, _order.size())])
 
-# --- aiming through the glass ----------------------------------------------
+# --- placing the doll, aiming --------------------------------------------------
 
-## Where a world point appears on screen in the mirror: its mirror image
-## (reflected across the glass plane) projected by the eye camera.
-func image_screen(world: Vector3) -> Vector2:
-	var xf := art.global_transform.orthonormalized()
-	var n := xf.basis.z
-	var g := xf * Vector3(0, GLASS_CY, GLASS_Z)
-	var img := world - n * (2.0 * n.dot(world - g))
-	return eye.unproject_position(img)
-
-func _visible_image(world: Vector3) -> bool:
-	var xf := art.global_transform.orthonormalized()
-	var n := xf.basis.z
-	var g := xf * Vector3(0, GLASS_CY, GLASS_Z)
-	return not eye.is_position_behind(world - n * (2.0 * n.dot(world - g)))
+func _place() -> void:
+	if eye == null or hand_root == null:
+		return
+	var feet := hand_root.global_transform * DOLL_ON_ARM
+	# upright, facing the eye
+	var to_eye := eye.global_position - feet
+	to_eye.y = 0.0
+	var z := to_eye.normalized() if to_eye.length() > 0.001 else Vector3.BACK
+	var x := Vector3.UP.cross(z).normalized()
+	body.global_transform = Transform3D(Basis(x, Vector3.UP, z).scaled(Vector3.ONE * DOLL_SCALE), feet)
+	ocam.global_transform = eye.global_transform
+	ocam.fov = eye.fov
+	ocam.near = eye.near
+	ocam.far = eye.far
+	var vs := Vector2i(get_viewport().get_visible_rect().size)
+	if _vp.size != vs:
+		_vp.size = vs
 
 func part_at(screen: Vector2) -> String:
-	if body == null:
+	if eye == null:
 		return ""
 	var best := ""
-	var bd := HOVER_PX
+	var bd := HOVER_PX * _ui_scale()
 	for part in _order:
 		var c := body.part_center(part)
-		if not _visible_image(c):
+		if eye.is_position_behind(c):
 			continue
-		var d := image_screen(c).distance_to(screen)
+		var d := eye.unproject_position(c).distance_to(screen)
 		if d < bd:
 			bd = d
 			best = part
 	return best
 
-## Index of the bud under a screen point, -1 if none.
-func bud_at(screen: Vector2) -> int:
-	var best := -1
-	var bd := BUD_PX
-	for k in range(_buds.size()):
-		var d := image_screen(_buds[k].global_position).distance_to(screen)
-		if d < bd:
-			bd = d
-			best = k
-	return best
-
 func part_screen(part: String) -> Vector2:
-	return image_screen(body.part_center(part))
-
-func bud_screen(k: int) -> Vector2:
-	return image_screen(_buds[k].global_position)
-
-## Aim at a screen point: a bud first (grows its ghost), else a part.
-func aim(screen: Vector2) -> void:
-	var k := bud_at(screen)
-	if k >= 0:
-		if k != int(_cand.get(_part, 0)):
-			select_candidate(k)
-		return
-	var p := part_at(screen)
-	if p != "" and p != _part:
-		focus_part(p)
-
-func _aim_point() -> Vector2:
-	if _aim_mouse:
-		return get_viewport().get_mouse_position()
-	return get_viewport().get_visible_rect().size * 0.5
+	return eye.unproject_position(body.part_center(part)) if eye != null else Vector2.ZERO
 
 func _process(_delta: float) -> void:
-	if visible and art != null and not _kb_hold:
-		aim(_aim_point())
+	if not visible:
+		return
+	_place()
+	_place_panel()
 
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event is InputEventMouseMotion:
-		_aim_mouse = true
-		_kb_hold = false
+		var mp := (event as InputEventMouseMotion).position
+		_kb = false
+		if panel.visible and panel.get_global_rect().has_point(mp):
+			return
+		var p := part_at(mp)
+		if p != "" and p != _part:
+			focus_part(p)
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
-			if art != null:
-				aim(mb.position)
-			if _part != "":
+			if panel.visible and panel.get_global_rect().has_point(mb.position):
+				return # the row button buys
+			var p := part_at(mb.position)
+			if p != "":
+				focus_part(p)
 				buy_current()
 				get_viewport().set_input_as_handled()
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -488,32 +481,25 @@ func _input(event: InputEvent) -> void:
 			select_candidate(int(_cand.get(_part, 0)) + 1)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT:
 			close()
-	elif event.is_action_pressed("ui_cancel"):
+	elif event.is_action_pressed("ui_cancel") or (InputMap.has_action("fp_mutate") and event.is_action_pressed("fp_mutate")):
 		close()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("ui_right") or event.is_action_pressed("ui_focus_next"):
-		_keyboard()
+	elif event.is_action_pressed("ui_right"):
+		_kb = true
 		_move_part(1)
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("ui_left") or event.is_action_pressed("ui_focus_prev"):
-		_keyboard()
+	elif event.is_action_pressed("ui_left"):
+		_kb = true
 		_move_part(-1)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_down"):
-		_keyboard()
+		_kb = true
 		select_candidate(int(_cand.get(_part, 0)) + 1)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_up"):
-		_keyboard()
+		_kb = true
 		select_candidate(int(_cand.get(_part, 0)) - 1)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept"):
 		buy_current()
 		get_viewport().set_input_as_handled()
-
-## Keyboard takes over: stop aiming until the mouse moves again, so the
-## focus the arrows picked stays put (the aim would snap it back).
-func _keyboard() -> void:
-	_kb_hold = true
-
-var _kb_hold := false

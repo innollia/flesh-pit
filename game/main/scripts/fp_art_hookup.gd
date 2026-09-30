@@ -165,7 +165,7 @@ func _process(_delta: float) -> void:
 	_sync_barriers()
 	var mir: Node3D = m.restroom.mirror_art
 	if mir != null:
-		mir.call("set_focus", m._mirror_open or (m.player.global_position.distance_to(m.mirror_point()) < 1.1 and m._looking_at(m.mirror_point(), 35.0, 1.6)))
+		mir.call("set_focus", false and (m.player.global_position.distance_to(m.mirror_point()) < 1.1 and m._looking_at(m.mirror_point(), 35.0, 1.6)))
 
 static func _variant(kind: Variant) -> int:
 	var k := FPProgression.TUMOR_KINDS.find(str(kind))
