@@ -120,6 +120,9 @@ var opening_done: bool = false
 var ended: bool = false
 var _opening_t: float = -1.0
 var _chew_ratio: float = 0.0
+## 형님 2026-09-29: keeps the chewer aimed at one cell for the whole hold, so a
+## sub-pixel raycast drift does not reset FDKChewer's progress every frame.
+var _chew_target: Vector3 = Vector3.INF
 var _settling: bool = false
 var _settle_amount: float = 0.0
 var _mirror_open: bool = false
@@ -737,12 +740,23 @@ func _chew_step(delta: float) -> void:
     if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
         chewer.stop()
         terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
+        _chew_target = Vector3.INF
         return
     var dir: Vector3 = player.get_look_ray()[1]
+    # 형님 2026-09-29: hold-to-tear was not tearing -- a re-aimed raycast can
+    # drift into the neighbouring cell frame to frame even while the mouse
+    # is still, which reset FDKChewer's progress every time. Keep chewing
+    # the same target cell for as long as the hit point stays inside it.
     var target: Vector3 = hit.position + dir * terrain_config.cell_size * 0.5
+    if chewer.is_chewing() and _chew_target != Vector3.INF and target.distance_to(_chew_target) < terrain_config.cell_size * 0.5:
+        target = _chew_target
+    else:
+        _chew_target = target
     # hardness per tissue, membrane only with a blade (fp_tissue_tools.gd)
     if tissue_tools.chew_at(target, hit.position, dir, delta):
         terrain.set_press(hit.position, -dir, _chew_ratio)
+    else:
+        _chew_target = Vector3.INF
 
 ## Everything that moves on its own each frame (tests drive it directly).
 func step_world(delta: float) -> void:
@@ -837,6 +851,10 @@ func mirror_point() -> Vector3:
 
 func sink_point() -> Vector3:
     return Vector3(-FPRestroom.HALF.x + 0.3, 0.95, -0.35)
+
+## 형님 2026-09-29: toilet interact ring should only show facing it, close (~1.2m).
+func toilet_point() -> Vector3:
+    return restroom.toilet.global_position + Vector3(0, 0.9, 0.5)
 
 func canary_hole_point() -> Vector3:
     return FPRestroom.CANARY_HOLE + Vector3(0.03, 0.0, 0.0)
@@ -1441,11 +1459,11 @@ func interact_target() -> String:
         return "belt"
     if not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
         return "canary"
-    if _near_toilet():
+    if p.distance_to(toilet_point()) < 1.2 and _looking_at(toilet_point(), 35.0, 1.6):
         return "toilet"
-    if p.distance_to(sink_point()) < 0.9:
+    if p.distance_to(sink_point()) < 1.2 and _looking_at(sink_point(), 35.0, 1.6):
         return "sink"
-    if p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6:
+    if p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6 and _looking_at(Vector3(0, 1, FPRestroom.HALF.z), 45.0, 2.2):
         return "door"
     return ""
 

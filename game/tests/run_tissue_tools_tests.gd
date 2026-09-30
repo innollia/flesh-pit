@@ -100,6 +100,37 @@ func _unit_tests() -> void:
 		_assert(absf(torn[0] - float(spec[1])) < 0.02, "W20 tissue %d tears after %.2f s (got %.2f)" % [tid, spec[1], torn[0]])
 		ch.free()
 		f.free()
+	# 형님 2026-09-29: hold-to-tear regression -- main.gd's _chew_target cache
+	# must keep chewing the same cell while a raycast hit drifts by a sub-cell
+	# amount every frame (still mouse, float jitter), or holding fdk_eat never
+	# tears anything. Exercises the cache logic directly (same rule as main.gd
+	# _chew_step): reuse the cached target while chewing and the new hit stays
+	# within half a cell of it.
+	var jf := _field(func(_p): return R.COMPRESSIVE)
+	var jch := FDKChewer.new()
+	jch.terrain = jf
+	jch.config = FDKStomachConfig.new()
+	get_root().add_child(jch)
+	var jtorn := [0.0]
+	var jt := [0.0]
+	jch.cell_torn.connect(func(_p): if jtorn[0] == 0.0: jtorn[0] = jt[0])
+	var jbase := Vector3(1.0, 1.0, 1.0)
+	var jcell: float = jf.config.cell_size
+	var jcached := Vector3.INF
+	while jtorn[0] == 0.0 and jt[0] < 3.0:
+		jt[0] += 0.01
+		var jitter := Vector3(sin(jt[0] * 97.0), cos(jt[0] * 61.0), sin(jt[0] * 53.0)) * jcell * 0.02
+		var jraw := jbase + jitter
+		var jtarget := jraw
+		if jch.is_chewing() and jcached != Vector3.INF and jtarget.distance_to(jcached) < jcell * 0.5:
+			jtarget = jcached
+		else:
+			jcached = jtarget
+		jch.try_start(jtarget)
+		jch.process_chew(0.01 * R.chew_speed(R.COMPRESSIVE, ""))
+	_assert(jtorn[0] > 0.0 and absf(jtorn[0] - 0.6) < 0.1, "W29 hold-to-tear (main.gd cell cache) survives sub-cell raycast jitter (got %.2f)" % jtorn[0])
+	jch.free()
+	jf.free()
 	# W20 regrowth multiplier per tissue: compressive 1.5, contractile 1.0, nerve 0.8, membrane 0
 	var rates := {}
 	for tid in [R.COMPRESSIVE, R.CONTRACTILE, R.NERVE, R.MEMBRANE]:
