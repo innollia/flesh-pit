@@ -1,67 +1,56 @@
-# Tone and Manner
+# 톤앤매너
 
-Status: **current working canon**
-Last updated: 2026-09-29
+마지막 수정: 2026-09-29
 
-## 1. One-line definition
+## 1. 한 줄
 
-**Serious body horror in a PS1-era look: crude low-poly shapes wearing real, too-close photographic textures of flesh, inside a body that treats you as food it has not finished digesting yet.**
+**PS1 시절 그림으로 만든 바디 호러.** 투박한 로우폴리 위에 너무 가깝고 사실적인 살 텍스처를 입힌다. 몸은 아직 소화가 덜 된 음식으로 플레이어를 대한다.
 
-Primary visual/tone reference: *Revenge Of The Colon* (PS1-style body horror). Reference for look and mood only. Its story, characters, procedures, patients and any content are not used. Game systems come from compact digging games (see `reference-map.md`), so system and art never come from the same work.
+- 그림과 분위기의 주 참고작은 *Revenge Of The Colon*이다. 생김새와 분위기만 참고하고, 이야기·인물·설정은 쓰지 않는다.
+- 게임 시스템은 작은 굴착 게임들에서 가져온다(`reference-map.md`). 시스템과 그림을 같은 작품에서 가져오지 않는다.
 
-## 2. Emotional target
+## 2. 감정
 
-- Dread and disgust first, never jump scares. Horror comes from closeness, texture, sound and the body reacting to you.
-- The body is indifferent, not evil. It regrows, shifts and closes routes because that is what living tissue does.
-- The player is alone. No narrator, no jokes addressed to the player, no winking.
-- The restroom is relief. After the flesh, the clean white room should feel like breathing out.
+- 장르는 공포다. 웃긴 요소는 막지 않는다. 환풍구 존재, 새를 주머니에 쑤셔 넣는 주인공, 부엌 믹서기로 살을 갈아 마시는 모습처럼 상황과 인물에서 나오는 웃음은 살린다. 다만 게임 전체를 코미디로 만들지는 않는다.
+- 무서움은 가까움, 질감, 소리, 플레이어에게 반응하는 몸에서 나온다. 점프 스케어는 쓰지 않는다.
+- 몸은 악하지 않고 무심하다. 살아 있는 조직이라서 자라고, 움직이고, 길을 막을 뿐이다.
+- 화장실은 숨 돌리는 곳이다. 살을 보다가 돌아온 하얀 방에서는 숨을 내쉬는 느낌이 나야 한다.
 
-Existing odd elements stay, but are played **straight**, never as gags:
-- the canary's strange cry is unsettling, not cute
-- paying by throwing a coin into the toilet is a ritual; presented quietly, without comic timing
-- ending hypotheses remain non-canon and must not push the tone toward comedy
+### 환풍구 존재
+- 이 게임에서 유일하게 말하는 존재다. 말투가 제멋대로이고 이상하다(`content/vent-lines.md`).
 
-## 3. Visual rules (3D)
+## 3. 3D 그림
 
-Low-poly is kept, but the look is **textured PS1**, not flat-shaded vertex color.
+- 형태: 거친 기본 도형, 적은 폴리곤. 실루엣은 뭉툭하고 조금 틀려도 된다.
+- 텍스처: 64~256 px 저해상도, 최근접 필터, 밉맵 없음. 살은 사진 같은 표면(젖은 피부, 점막, 지방, 이빨, 눈)이다. 투박한 형태와 대비돼 불편할 만큼 사실적이어야 한다.
+- 렌더링: 정점 스냅(살짝 흔들림), 아핀 텍스처 왜곡, 색 단계 축소와 순서 디더, 낮은 내부 해상도를 키워 보임, 약한 그레인, 짧은 안개.
+- 조명: 광원이 적고 빛이 빨리 약해진다. 살 세계는 주로 플레이어가 가진 빛으로 보인다. 젖은 하이라이트는 작고 날카롭다.
+- 살 세계 색: 짙은 빨강, 멍 같은 보라, 담즙 같은 황록, 지방의 황토, 거의 검은 구석. 채도는 높지만 더럽다.
+- 화장실 색: 흰색과 옅은 회색 타일, 차가운 형광등, 깨끗한 크롬. PS1 처리는 똑같이 해서 같은 게임처럼 보이지만, 얼룩·살·썩음은 없다.
+- 손: 평범한 사람 손, 중립적인 피부색, PS1 텍스처. 변이로 눈에 띄게 바뀐다.
+- 화장실 밖 구조물: 녹슬고 조직에 반쯤 삼켜진 1930~1990년대 공공·산업 시설 조각.
 
-- Geometry: crude primitives and few polygons. Silhouettes can be blunt and slightly wrong.
-- Textures: low resolution (64-256 px), nearest-neighbour filtering, no mipmap blur. Flesh uses photographic or photo-like surfaces (wet skin, mucosa, fat, teeth, eyes) that feel uncomfortably real against the crude geometry.
-- Rendering: vertex snapping (slight wobble), affine texture warping, reduced colour depth with ordered dithering, low internal resolution scaled up, subtle grain / colour noise, short fog distance.
-- Lighting: few lights, strong falloff. The flesh world is lit mainly by what the player carries; wet highlights are small and sharp.
-- Palette, flesh world: deep reds, bruise purples, bile yellow-greens, fat ochre, dark near-black recesses. Saturated but dirty.
-- Palette, restroom: white and pale grey tiles, cold fluorescent light, clean chrome. Same PS1 rendering (dither, low-res textures) so it belongs to the same game, but **clean**: no stains, no flesh, no rot.
-- Hands: ordinary human hands, neutral skin, PS1 textured (not flat colour). Mutation changes them visibly over time.
-- Infrastructure outside the restroom: 1930s-1990s public/industrial parts, rusted, partly swallowed by tissue.
+## 4. 2D와 UI
 
-## 4. 2D / UI
+- 화면에 띄우는 것은 최대한 적게 한다. 몸이 HUD다(`spec/08-presentation.md`).
+- 정산 숫자, 상점 화면, 인벤토리 화면은 없다.
+- 도감 그림은 오래된 백과사전 판화 느낌으로, 인쇄되고 바랜 모습이다. 장식 문양은 쓰지 않는다.
+- UI 요소도 PS1처럼 처리한다. 저해상도, 디더, 약한 노이즈.
 
-- As little on screen as possible. No persistent HUD text; the body (hands, stomach mass, throat) is the HUD.
-- When text is needed it is short, flat and clinical, like a label or an instruction plate. No exclamation marks, no personality.
-  - good: `Stomach capacity exceeded.`  `Vomit.`
-  - bad: `Whoa, you're stuffed!`
-- UI elements share the PS1 treatment: low-res, dithered, slightly noisy. Victorian encyclopaedic engravings are used for codex / specimen plates, printed and aged, never decorative filigree.
-- Numbers in the toilet settlement keep the agreed format (dark grey total + green gain), rendered in a plain low-res font.
+## 5. 소리
 
-## 5. Sound
+`spec/08-presentation.md` 3장을 따른다.
 
-- Close, wet, physical: tearing, chewing, swallowing, gurgling, tissue stretching. Loud and near.
-- The body is always audible: low heartbeat-like pressure, distant digestion, creaks when tissue shifts or regrows.
-- Mutation changes the player's own sounds (heavier steps, different chewing) before any number changes.
-- Restroom: fluorescent hum, water, echo on tiles. Quiet enough that the player hears their own breathing.
-- No music during excavation by default; low drones only. Music, if any, belongs to depth milestones and the restroom.
+## 6. 할 것 / 하지 말 것
 
-## 6. Do / Don't
+할 것
+- 이해하기 전에 질감부터 느끼게 한다.
+- 플레이어의 행동에 몸이 반응하게 한다.
+- 화장실은 정말로 안전하고 깨끗하게 둔다.
+- 투박한 형태와 사실적인 텍스처의 대비를 중심에 둔다.
 
-Do:
-- make the player feel the texture before they understand it
-- let the body react to the player's actions
-- keep the restroom genuinely safe and clean
-- use crude geometry plus realistic texture as the core contrast
-
-Don't:
-- jump scares, screaming faces, sudden loud stingers
-- comedy, memes, fourth-wall jokes
-- glossy modern PBR realism or smooth high-poly models
-- flat-shaded vertex-colour-only low-poly (the earlier prototype look)
-- import content, characters or scenes from the reference work
+하지 말 것
+- 점프 스케어, 비명 지르는 얼굴, 갑작스러운 큰 효과음
+- 매끈한 현대 PBR 사실주의, 매끈한 하이폴리 모델
+- 텍스처 없는 정점 색 평면 셰이딩(옛 시제품 모습)
+- 참고작의 내용, 인물, 장면 가져오기

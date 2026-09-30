@@ -2,8 +2,12 @@
 
 Status: **working production list, partly superseded**
 Last updated: 2026-09-29
-Canon source: [design-core.md](design-core.md), [world-direction.md](world-direction.md), [digging-success-patterns.md](digging-success-patterns.md)
+Canon source: `docs/spec/` (옛 기준: design-core.md, world-direction.md -- 지금은 옮겨짐/삭제됨)
 
+> **2026-09-29 기획 개편 후 옛 기준이다.** 기준은 `docs/spec/`이다. 이 목록은
+> `docs/plan/work-plan.md` D01에서 다시 쓴다. 특히 다음은 이제 틀렸다: 깊이 띠 8개(B01~B08),
+> 위장 눈금 8칸, 변기 상점과 정산 숫자, 가방 칸, 새장.
+>
 > **Read this first.** This list was written against an earlier `design-core.md`.
 > The canon has since added money and a toilet shop, an overfill system, physical
 > barriers with four damage states, biosecurity spray, a portable blender, a
