@@ -549,6 +549,7 @@ func _build_ui() -> void:
     ending = FPEnding.new()
     ending.name = "Ending"
     add_child(ending)
+    ending.finished.connect(_on_ending_finished)
 
 func _build_settle_camera() -> void:
     settle_camera = Camera3D.new()
@@ -835,7 +836,7 @@ func _interact() -> void:
             else:
                 restroom.set_tank_open(opening)
                 vent.notice("lid_open" if opening else "lid_close")
-    elif p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6:
+    elif _looking_at(Vector3(0, 1, FPRestroom.HALF.z), 30.0, 1.6):
         restroom.set_door_open(not restroom.is_door_open())
     else:
         pick_up_tumor()
@@ -1162,6 +1163,14 @@ func load_from_disk() -> bool:
 
 ## Pause "저장하고 시작 화면으로": save, then a fresh scene with the title up.
 func go_to_title() -> void:
+    save_to_disk()
+    get_tree().paused = false
+    get_tree().reload_current_scene()
+
+## The ending's credits (fp_ending.gd) finished but nothing was listening,
+## so the game just sat there past the 8-second mark (형님 2026-09-30).
+## Reuse the same "save, unpause, reload" path as leaving to the title.
+func _on_ending_finished() -> void:
     save_to_disk()
     get_tree().paused = false
     get_tree().reload_current_scene()
