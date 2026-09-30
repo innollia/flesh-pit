@@ -659,7 +659,11 @@ func _process(delta: float) -> void:
     _update_atmosphere(delta)
     _update_restroom_front()
     _update_hands_room_layer()
-    mirror_view.sync(restroom.contains(player.global_position) and not _seated and not _settling)
+    # Space (fdk_jump) is a climb axis, not a gravity jump (this kit has no
+    # gravity). Only allow it while actually inside flesh, so it cannot lift
+    # the player off the open restroom floor (형님 2026-09-30).
+    player.climb_enabled = terrain.density_at(player.global_position) >= 0.5
+    mirror_view.sync(restroom.contains(player.global_position) and not _seated and not _settling, has_canary)
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
     hands_rig.set_mutation(progression.mutation_amount())
@@ -812,7 +816,7 @@ func _interact() -> void:
         begin_canary_pull()
     elif _near_toilet() and _looking_at(lever_point(), 12.0, 1.4):
         pull_lever()
-    elif _near_toilet() and _pitch() > 0.45:
+    elif _looking_at(FPRestroom.VENT_CENTER, 25.0, 2.2):
         use_vent()
     elif p.distance_to(sink_point()) < 0.9:
         wash_hands()
@@ -836,7 +840,7 @@ func _interact() -> void:
 func _pick() -> void:
     if vent.is_open and not vent.offers.is_empty():
         take_vent_offer()
-    elif vent.is_open and _near_toilet() and _pitch() > 0.45:
+    elif vent.is_open and _looking_at(FPRestroom.VENT_CENTER, 25.0, 2.2):
         reach_into_vent()
     elif _near_toilet() and restroom._lid_target != 0.0:
         scoop_teeth()
@@ -1574,7 +1578,7 @@ func use_spray(deep: bool = false) -> int:
     var tier := progression.pick_spray_tier(deep)
     if tier < 0:
         return -1
-    if vent.is_open and restroom.contains(player.global_position) and _pitch() > 0.45:
+    if vent.is_open and _looking_at(FPRestroom.VENT_CENTER, 25.0, 2.2):
         vent.notice("spray") # sprayed at the vent being
     var hit := _look_hit()
     if hit.is_empty():

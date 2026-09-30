@@ -42,6 +42,9 @@ var eye: Camera3D
 var _vp: SubViewport
 var _quad: MeshInstance3D
 var _sig := ""
+## 1인칭 소지 상태(main.has_canary). prog에는 없는 값이라 sync()가 매 프레임
+## 전달한다(형님 2026-09-30: 거울 반영이 시작부터 카나리아를 붙여 보여줬음).
+var _has_canary := false
 
 func attach(mirror_art: Node3D, p: Node3D, eye_cam: Camera3D, progression: FPProgression) -> void:
 	art = mirror_art
@@ -116,9 +119,10 @@ func _build_quad() -> void:
 
 ## Per frame (main): move the reflection camera, show the body only while
 ## standing in the room, and pick up mutation changes.
-func sync(body_ok: bool = true) -> void:
+func sync(body_ok: bool = true, has_canary: bool = false) -> void:
 	if art == null or cam == null:
 		return
+	_has_canary = has_canary
 	body.visible = body_ok
 	if _signature() != _sig:
 		refresh()
@@ -141,7 +145,7 @@ func sync(body_ok: bool = true) -> void:
 func _signature() -> String:
 	if prog == null:
 		return ""
-	return "%s|%d|%s" % [str(prog.all_mutations()), prog.belly_bumps(), str(prog.has_belt)]
+	return "%s|%d|%s|%s" % [str(prog.all_mutations()), prog.belly_bumps(), str(prog.has_belt), str(_has_canary)]
 
 func refresh() -> void:
 	if prog == null or body == null:
@@ -150,6 +154,7 @@ func refresh() -> void:
 	body.apply(prog.all_mutations(), prog.belly_bumps())
 	if body._belt != null:
 		body._belt.call("set_worn", prog.has_belt)
+		body._belt.call("set_canary", _has_canary)
 	FPMirror.tag_layer(body, MIRROR_BODY_LAYER)
 
 ## Where a world point appears on screen in the mirror (its image across

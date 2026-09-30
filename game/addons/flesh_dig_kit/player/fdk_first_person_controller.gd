@@ -22,6 +22,12 @@ var _bob_weight: float = 0.0 ## 0 standing still .. 1 walking; eases so the view
 var _pivot_base_y: float = 0.9
 var last_bob_offset: Vector3 = Vector3.ZERO
 var _climb_input: float = 0.0 ## -1 (down) .. 1 (up), from crouch+jump combo or dedicated climb keys
+## The game sets this per frame: true only while standing inside flesh
+## (terrain solid at the player), so fdk_jump only climbs there. Outside
+## flesh (open room floor) it is false, so Space does nothing -- there is
+## no gravity jump in this kit, only this climb axis (형님 2026-09-30: "점프"
+## he meant was Space lifting the player off an ordinary floor).
+var climb_enabled: bool = true
 
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var camera: Camera3D = $CameraPivot/Camera3D
@@ -115,8 +121,11 @@ func _process_move_and_climb(delta: float) -> void:
 	# Climb mode: digging straight up/down through flesh. Jump = up, crouch
 	# while already crouched-and-holding-eat = down; kept simple and exposed
 	# via a single _climb_input axis so a game can rebind it freely.
+	# climb_enabled (set by the game, per frame) gates the "up" half only:
+	# outside flesh there is no jump to allow, and gating both halves would
+	# also block climbing back down out of flesh once already inside it.
 	_climb_input = 0.0
-	if Input.is_action_pressed("fdk_jump"):
+	if Input.is_action_pressed("fdk_jump") and climb_enabled:
 		_climb_input += 1.0
 	if Input.is_action_pressed("fdk_crouch") and Input.is_action_pressed("fdk_eat"):
 		_climb_input -= 1.0

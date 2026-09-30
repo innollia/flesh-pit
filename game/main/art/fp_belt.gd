@@ -125,7 +125,11 @@ func _ready() -> void:
     K.add_mesh(_canary, "Waistband", K.finish(st2), K.mat("tex_door_paint_64.png", 0.1, true))
     _build_canary()
     set_spray_count(2, 1)
-    set_canary(true)
+    # actual possession is synced in afterward (fp_art_hookup.gd for the
+    # first-person belt, fp_mirror_reflection.gd for the mirror body) --
+    # this must not default to visible, or a fresh run shows the canary
+    # before it is ever caught (형님 2026-09-30).
+    set_canary(false)
 
 func _can_mesh(expensive: bool) -> ArrayMesh:
     var st := K.begin()
