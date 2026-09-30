@@ -13,7 +13,7 @@ const LOOK_DOWN_DEG := 55.0
 const SLOTS := ["knife", "blender", "big_saw"] ## hook i holds SLOTS[i]
 const AIM_DEG := 9.0
 const REACH := 1.2
-const SWAP_TIME := 0.4
+const SWAP_TIME := 0.75 ## reach down, hang, grab, bring up (fp_hand_motions "belt")
 const DIP := 0.22 ## how far the hands drop toward the belt (m)
 const HIP_TWIST := 0.9 ## rad the head may turn over the still hips
 
@@ -81,6 +81,8 @@ func begin() -> bool:
 	var want = target_for(aimed_hook())
 	if want == null:
 		return false
+	if m.get("hand_motions") != null:
+		m.hand_motions.play_belt(aimed_hook())
 	_want = str(want)
 	_did = false
 	swap_t = 0.0

@@ -44,6 +44,8 @@ static var IDLE_POS := Vector3(0.16, -0.175, -0.31)
 @export var bob_follow: float = 0.9
 
 var state: HandState = HandState.IDLE
+## Optional situational-motion driver: shape_pose(rig, side, pose) -> pose.
+var pose_hook: Object = null
 var mutation: float = 0.0
 ## 0 = hands free; >0 = carrying a pile of torn flesh (pile size 0..1).
 var carry_amount: float = 0.0
@@ -166,7 +168,10 @@ func step(delta: float) -> void:
     for i in range(_hands.size()):
         var h: Dictionary = _hands[i]
         var delay := 0.0 if i == _lead else SECOND_HAND_DELAY
-        _apply_pose(h, _pose_for(h, delay), k)
+        var target := _pose_for(h, delay)
+        if pose_hook != null:
+            target = pose_hook.call("shape_pose", self, float(h["side"]), target)
+        _apply_pose(h, target, k)
         var chunk: MeshInstance3D = h["chunk"]
         if chunk.visible:
             var s := clampf(1.0 - maxf(0.0, _state_time - TEAR_TIME * 0.55) / (TEAR_TIME * 0.45), 0.05, 1.0)

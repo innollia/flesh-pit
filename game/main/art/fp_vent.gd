@@ -124,9 +124,11 @@ func take_item(index: int) -> void:
     for i in range(_offers.size()):
         var slot: Node3D = _offers[i]
         if i == index:
-            slot.visible = false
+            # the hand closes on it about 0.3 s in; then it is gone from the grate
+            tw.tween_callback(func(): slot.visible = false).set_delay(0.3)
         else:
-            tw.tween_property(slot, "position:y", 0.45, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+            # the rest are snatched back in the same instant: a quick pop inward
+            tw.tween_property(slot, "position:y", 0.45, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN).set_delay(0.32)
 func _process(delta: float) -> void:
     _time += delta
     _blink_t -= delta

@@ -95,6 +95,8 @@ var mirror: FPMirror
 var ending: FPEnding
 var art_hookup: FPArtHookup
 var belt_swap: FPBeltSwap
+## Situational hand / body motions (fp_hand_motions.gd).
+var hand_motions: FPHandMotions
 var mutation_apply: FPMutationApply
 var rest_points: Array[Vector3] = []
 var tumor_nodes: Array[Node3D] = []
@@ -267,6 +269,7 @@ func _ready() -> void:
     add_child(art_hookup)
     art_hookup.setup(self)
     belt_swap = FPBeltSwap.new(self)
+    hand_motions = FPHandMotions.new(self)
     mutation_apply = FPMutationApply.new()
     mutation_apply.name = "MutationApply"
     add_child(mutation_apply)
@@ -546,7 +549,7 @@ func _setup_restroom_front() -> void:
     FPHandBlood.attach(hands_rig, hand_blood_mat)
 
 func _update_restroom_front() -> void:
-    FPHandBlood.set_amount(hand_blood_mat, hand_blood)
+    FPHandBlood.set_amount(hand_blood_mat, maxf(hand_blood, hand_motions.blood_visual() if hand_motions != null else 0.0))
 
 ## The player finishes on the toilet, stands up, opens the stall door.
 func _begin_opening() -> void:
@@ -603,6 +606,8 @@ func _process(delta: float) -> void:
     hands_rig.set_mutation(progression.mutation_amount())
     hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
     vent.tick(delta)
+    hand_motions.check_cancel()
+    hand_motions.tick(delta)
     _vent_watch(delta)
     _update_tank_teeth()
     if ended:
@@ -790,14 +795,18 @@ func request_vomit() -> void:
     if _near_toilet():
         start_settlement()
     elif _near_rest_point() >= 0:
+        hand_motions.play_vomit(false, stomach.fill_ratio())
         settle_at_rest_point()
     else:
+        hand_motions.play_vomit(false, stomach.fill_ratio())
         stomach.vomit()
         progression.discard_stomach()
 
 func start_settlement() -> void:
     if _settling:
         return
+    if stomach.fill > 0.0:
+        hand_motions.play_vomit(true, stomach.fill_ratio())
     toilet.vomit_into(stomach.vomit())
     if toilet.throw_tumors(progression) > 0:
         progression.refresh_hands(carry_mode)
@@ -1119,6 +1128,7 @@ func scoop_teeth() -> int:
     var n := progression.scoop_handful()
     if n > 0:
         vent.notice("grab")
+        hand_motions.play_scoop()
     return n
 
 func try_pick_tank_item() -> bool:
@@ -1137,8 +1147,10 @@ func use_vent() -> void:
         vent.close()
 
 func place_teeth_at_vent() -> Array[String]:
-    var ids := vent.place_teeth(progression.teeth_in_hand, progression)
+    var n := progression.teeth_in_hand
+    var ids := vent.place_teeth(n, progression)
     if not ids.is_empty():
+        hand_motions.play_pour(n)
         progression.teeth_in_hand = 0 # the being keeps the whole handful
     return ids
 
@@ -1151,6 +1163,14 @@ func take_vent_offer(id: String = "") -> bool:
             if d > best_dot:
                 best_dot = d
                 id = n.get_meta("offer_id")
+    var idx := vent.offers.find(id)
+    if idx >= 0 and idx < vent.offer_nodes().size():
+        var item: MeshInstance3D = null
+        var slots = vent.art.get("_offers") if vent.art != null else null
+        if slots is Array and idx < slots.size():
+            item = (slots[idx] as Node3D).get_node_or_null("Item") as MeshInstance3D
+        var at: Vector3 = item.global_position if item != null and item.is_inside_tree() else (vent.offer_nodes()[idx] as Node3D).global_position
+        hand_motions.play_take(at, str(FPVent.ART_KIND.get(id, "junk")), item)
     return vent.take(id, progression)
 
 ## Handful back into the tank: the being sighs.
@@ -1274,6 +1294,7 @@ func _on_mirror_closed() -> void:
 
 func wash_hands() -> void:
     vent.notice("wash")
+    hand_motions.play_wash(hand_blood)
     hand_blood = 0.0
 
 func take_canary() -> bool:
@@ -1382,6 +1403,8 @@ func cycle_tool() -> void:
     var i := order.find(progression.equipped())
     for k in range(1, order.size() + 1):
         if equip_tool(order[(i + k) % order.size()]):
+            if k < order.size():
+                hand_motions.play_cycle()
             return
 
 ## Carry mode: torn flesh piles up in the hand for the blender.

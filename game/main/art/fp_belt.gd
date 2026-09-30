@@ -176,8 +176,19 @@ func canary_look(yaw_deg: float) -> void:
 func set_canary_scared(on: bool) -> void:
     _scared = on
 
+## A tool is hung on / taken off hook i: the ring swings a little.
+func swing(i: int) -> void:
+    if i >= 0 and i < _swing.size():
+        _swing[i] = 1.0
+
+var _swing: Array = [0.0, 0.0, 0.0]
+
 func _process(delta: float) -> void:
     _time += delta
+    for i in range(mini(_swing.size(), _hooks.size())):
+        if _swing[i] > 0.0:
+            _swing[i] = maxf(0.0, float(_swing[i]) - delta * 1.4)
+            (_hooks[i] as Node3D).rotation.x = sin(_time * 14.0) * 0.32 * float(_swing[i]) * float(_swing[i])
     if _canary_head != null:
         var bob := sin(_time * (14.0 if _scared else 2.3)) * (0.006 if _scared else 0.002)
         _canary_head.position.y = 0.022 + bob
