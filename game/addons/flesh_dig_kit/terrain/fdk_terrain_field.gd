@@ -42,7 +42,18 @@ var contract_time: float = 0.0
 signal contraction_warning(world_pos: Vector3)
 var _warned: Dictionary = {}
 
-func _process(_delta: float) -> void:
+## P1 regrowth collider lag: a chunk whose collider only waits on regrowth
+## gets it rebuilt after this many seconds, at most `collision_flush_per_frame`
+## chunks per frame. Removal and growth near the player never wait.
+var collision_delay: float = 0.4
+var collision_flush_per_frame: int = 2
+## Extra metres added to the regen protect radius for the collision guard:
+## growth this close to the player rebuilds the collider at once.
+var collision_guard_margin: float = 1.2
+var _guard_pos: Vector3 = Vector3.ZERO
+var _guard_radius: float = -1.0
+
+func _process(delta: float) -> void:
     var done := 0
     var start := Time.get_ticks_usec()
     for chunk in _chunks.values():
@@ -53,11 +64,44 @@ func _process(_delta: float) -> void:
                 break
             if (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
                 break
+    step_collision(delta)
+
+## Ages parked regrowth colliders and rebuilds the due ones (oldest first,
+## budgeted). Returns how many were rebuilt.
+func step_collision(delta: float) -> int:
+    var due: Array = []
+    for chunk in _chunks.values():
+        if chunk.is_collision_pending():
+            chunk._coll_pending_age += delta
+            if chunk._coll_pending_age >= collision_delay:
+                due.append(chunk)
+    if due.is_empty():
+        return 0
+    due.sort_custom(func(a, b): return a._coll_pending_age > b._coll_pending_age)
+    var n := mini(due.size(), maxi(collision_flush_per_frame, 1))
+    for i in range(n):
+        due[i].flush_collision()
+    return n
+
+## Sets the world sphere inside which regrowth rebuilds colliders at once.
+func set_collision_guard(world_pos: Vector3, radius: float) -> void:
+    _guard_pos = world_pos
+    _guard_radius = radius
+
+## The collision guard in `chunk`'s local corner units (w < 0 = none).
+func collision_guard_local(chunk: FDKChunk) -> Vector4:
+    if _guard_radius <= 0.0:
+        return Vector4(0, 0, 0, -1.0)
+    var l := (_guard_pos - chunk.position) / config.cell_size
+    return Vector4(l.x, l.y, l.z, _guard_radius / config.cell_size)
 
 ## Advances the contractile squeeze (only chunks within `radius` of `near`,
 ## which is where the player can see or feel it). Returns chunks changed.
 func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
     contract_time += delta
+    # keep the (wider) regen guard when it is already centred on the player
+    if _guard_radius <= 0.0 or _guard_pos.distance_to(near) > 0.01:
+        set_collision_guard(near, collision_guard_margin)
     var chunk_world := float(config.chunk_size) * config.cell_size
     var changed := 0
     for cc in _chunks.keys():
@@ -81,7 +125,9 @@ func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
 func remesh_all() -> void:
     for chunk in _chunks.values():
         if chunk.is_dirty():
-            chunk.remesh()
+            chunk.remesh(true)
+        elif chunk.is_collision_pending():
+            chunk.flush_collision()
 
 func get_or_create_chunk(chunk_coord: Vector3i) -> FDKChunk:
     if _chunks.has(chunk_coord):
@@ -173,6 +219,7 @@ func _add_corner_global(g: Vector3i, delta_density: float) -> void:
                         continue
                 var idx := chunk._corner_index(l.x, l.y, l.z)
                 chunk._density[idx] = clampf(chunk._density[idx] + delta_density, 0.0, 1.0)
+                chunk._regen_scan = true
                 chunk._dirty = true
 
 func dig_at(world_pos: Vector3, amount: float) -> void:
@@ -338,6 +385,7 @@ func density_at(world_pos: Vector3) -> float:
     return m
 
 func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: float) -> void:
+    set_collision_guard(protect_world_pos, protect_radius + collision_guard_margin)
     for chunk_coord in _chunks.keys():
         var chunk: FDKChunk = _chunks[chunk_coord]
         var chunk_origin: Vector3 = Vector3(chunk_coord) * config.chunk_size * config.cell_size

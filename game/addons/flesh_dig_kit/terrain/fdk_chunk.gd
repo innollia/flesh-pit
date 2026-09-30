@@ -40,6 +40,30 @@ var _collision: CollisionShape3D
 var _static_body: StaticBody3D
 var _dirty: bool = false
 
+## P0 debug timing of the last remesh() in ms: density (padded read), mesh
+## (surface nets), arraymesh (surfaces + assign), collider, total. Debug
+## statistics only -- never shown on screen.
+var last_stats: Dictionary = {}
+
+## P1: the collider is kept apart from the visual mesh. A remesh that removes
+## tissue (any padded corner lower than what the current collider was built
+## from) rebuilds the collider at once; pure regrowth only refreshes the mesh
+## and parks the new faces here until FDKTerrainField flushes them after a
+## short delay under a per-frame budget. Growth inside the field's collision
+## guard (around the player) always rebuilds at once, so the player never
+## ends up inside or walks through flesh that is visibly closing in.
+var _coll_density: PackedFloat32Array = PackedFloat32Array()
+var _coll_pending: bool = false
+var _coll_pending_age: float = 0.0
+var _pending_faces: PackedVector3Array = PackedVector3Array()
+var _pending_density: PackedFloat32Array = PackedFloat32Array()
+
+## P2: corners still below their original density (the only ones regrowth
+## has to visit). Rebuilt by a full scan only after something lowered
+## density (dig, load, tissue edit); healed corners drop out as they finish.
+var _regen_idx: PackedInt32Array = PackedInt32Array()
+var _regen_scan: bool = true
+
 ## Tissue ids (docs/spec/02-world-tissue.md): 0 core/compressive (default flesh), 1 nerve
 ## bundle (surface shell precursor + door nerves), 2 fat band (shell-boundary
 ## signal), 3 membrane (inedible, around the restroom), 4 mantle/contractile
@@ -144,6 +168,7 @@ func set_density_at_corner(x: int, y: int, z: int, d: float) -> void:
     if x < 0 or y < 0 or z < 0 or x >= n or y >= n or z >= n:
         return
     _density[_corner_index(x, y, z)] = d
+    _regen_scan = true
     _dirty = true
 
 func get_tissue_at_cell(x: int, y: int, z: int) -> int:
@@ -173,6 +198,7 @@ func dig_cell(local_cell: Vector3i, amount: float) -> void:
             for dx in range(2):
                 var idx := _corner_index(local_cell.x + dx, local_cell.y + dy, local_cell.z + dz)
                 _density[idx] = clampf(_density[idx] - amount, 0.0, 1.0)
+    _regen_scan = true
     _dirty = true
 
 var _any_sealed: bool = false
@@ -318,10 +344,21 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
     var s := config.chunk_size
     var changed := false
     var r2 := protect_radius * protect_radius
-    for i in range(_density.size()):
+    if _regen_scan:
+        _regen_scan = false
+        _regen_idx = PackedInt32Array()
+        for i in range(_density.size()):
+            if _density[i] < _original_density[i]:
+                _regen_idx.append(i)
+    if _regen_idx.is_empty():
+        return
+    var healed := 0
+    for k in range(_regen_idx.size()):
+        var i: int = _regen_idx[k]
         var orig: float = _original_density[i]
         var cur: float = _density[i]
         if cur >= orig:
+            healed += 1
             continue
         var x := i % n
         var y := (i / n) % n
@@ -349,7 +386,16 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
         if _tissue[mini(x, s - 1) + mini(y, s - 1) * s + mini(z, s - 1) * s * s] == 0:
             m *= crowd_growth_factor(_solid_neighbours(x, y, z, n))
         _density[i] = minf(orig, cur + rate * m * delta)
+        if _density[i] >= orig:
+            healed += 1
         changed = true
+    if healed > 0:
+        var keep := PackedInt32Array()
+        for k in range(_regen_idx.size()):
+            var i: int = _regen_idx[k]
+            if _density[i] < _original_density[i]:
+                keep.append(i)
+        _regen_idx = keep
     if changed:
         _dirty = true
 
@@ -405,6 +451,7 @@ func seal_cell(x: int, y: int, z: int) -> void:
 ## Call after writing _tissue directly: drops the cached per-tissue tables.
 func tissue_changed() -> void:
     _regen_mult_dirty = true
+    _regen_scan = true
     _has_contractile_tissue = -1
     _contract_list_age = 999.0
 
@@ -434,7 +481,9 @@ func _build_padded(s: int) -> PackedFloat32Array:
                 out[(x + 1) + (y + 1) * p + (z + 1) * p * p] = v
     return out
 
-func remesh() -> float:
+## Remeshes the chunk. `force_collision` rebuilds the collider now even for
+## pure regrowth (start-up, capture tools).
+func remesh(force_collision: bool = false) -> float:
     var start_usec := Time.get_ticks_usec()
     var s := config.chunk_size
     var cs := config.cell_size
@@ -442,6 +491,7 @@ func remesh() -> float:
     var p := s + 2
     var pp := p * p
     var d := _build_padded(s)
+    var t_density := Time.get_ticks_usec()
 
     var first_solid := d[0] >= iso
     var uniform := true
@@ -543,6 +593,7 @@ func remesh() -> float:
                             Vector3i(x - 1, y - 1, z), Vector3i(x, y - 1, z), Vector3i(x, y, z), Vector3i(x - 1, y, z),
                             Vector3(0, 0, 1) * (1.0 if a0 else -1.0), x, y, z if a0 else z + 1)
 
+    var t_mesh := Time.get_ticks_usec()
     var mesh := ArrayMesh.new()
     var have_any := false
     for i in range(n_tissues):
@@ -557,19 +608,84 @@ func remesh() -> float:
         mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
         mesh.surface_set_material(mesh.get_surface_count() - 1, FDKChunk.terrain_material(i))
 
-    if have_any:
-        _mesh_instance.mesh = mesh
-        var shape := ConcavePolygonShape3D.new()
-        shape.set_faces(all_verts)
-        _collision.shape = shape
+    _mesh_instance.mesh = mesh if have_any else null
+    if not have_any:
+        all_verts = PackedVector3Array()
+    var t_arraymesh := Time.get_ticks_usec()
+
+    if force_collision or field == null or _needs_immediate_collision(d):
+        _apply_collision(all_verts, d)
     else:
-        _mesh_instance.mesh = null
-        _collision.shape = null
+        if not _coll_pending:
+            _coll_pending_age = 0.0
+        _coll_pending = true
+        _pending_faces = all_verts
+        _pending_density = d
+    var t_end := Time.get_ticks_usec()
 
     _dirty = false
-    var elapsed_ms := (Time.get_ticks_usec() - start_usec) / 1000.0
+    var elapsed_ms := (t_end - start_usec) / 1000.0
+    last_stats = {
+        "density_ms": (t_density - start_usec) / 1000.0,
+        "mesh_ms": (t_mesh - t_density) / 1000.0,
+        "arraymesh_ms": (t_arraymesh - t_mesh) / 1000.0,
+        "collider_ms": (t_end - t_arraymesh) / 1000.0,
+        "total_ms": elapsed_ms,
+    }
     remeshed.emit(elapsed_ms)
     return elapsed_ms
+
+## True when the collider must follow this remesh at once: first build, any
+## padded corner lower than the collider's (tissue removed -- the player must
+## be able to walk into a fresh hole), or growth inside the field's guard
+## sphere around the player.
+func _needs_immediate_collision(d: PackedFloat32Array) -> bool:
+    if _coll_density.size() != d.size():
+        return true
+    var p := config.chunk_size + 2
+    var pp := p * p
+    var guard := Vector4(0, 0, 0, -1.0)
+    if field != null and field.has_method("collision_guard_local"):
+        guard = field.collision_guard_local(self)
+    var g2 := guard.w * guard.w
+    for i in range(d.size()):
+        var v: float = d[i]
+        var o: float = _coll_density[i]
+        if v == o:
+            continue
+        if v < o:
+            return true
+        if guard.w > 0.0:
+            var gx := float(i % p - 1) - guard.x
+            var gy := float((i / p) % p - 1) - guard.y
+            var gz := float(i / pp - 1) - guard.z
+            if gx * gx + gy * gy + gz * gz <= g2:
+                return true
+    return false
+
+func _apply_collision(faces: PackedVector3Array, d: PackedFloat32Array) -> void:
+    if faces.is_empty():
+        _collision.shape = null
+    else:
+        var shape := ConcavePolygonShape3D.new()
+        shape.set_faces(faces)
+        _collision.shape = shape
+    _coll_density = d
+    _coll_pending = false
+    _coll_pending_age = 0.0
+    _pending_faces = PackedVector3Array()
+    _pending_density = PackedFloat32Array()
+
+## True while the collider lags behind the visual mesh (regrowth only).
+func is_collision_pending() -> bool:
+    return _coll_pending
+
+## Builds the parked regrowth collider now. Returns true if one was built.
+func flush_collision() -> bool:
+    if not _coll_pending:
+        return false
+    _apply_collision(_pending_faces, _pending_density)
+    return true
 
 ## Emits one quad (two flat triangles) into the tissue-appropriate bucket,
 ## joining 4 cell vertices around a crossing edge. `outward` points from

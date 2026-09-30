@@ -23,6 +23,7 @@ func _init() -> void:
 	_run_nerve_disturb_tests()
 	_run_canary_tests()
 	_run_death_drop_tests()
+	_run_terrain_collision_split_tests()
 	for n in _to_free:
 		if is_instance_valid(n):
 			n.free()
@@ -611,3 +612,65 @@ func _run_death_drop_tests() -> void:
 	var got := drop.try_recover(Vector3(2.5, 0, 1), 1.0)
 	_assert(got.has("gold") and got["gold"] == 3, "death_drop: recovery at the real current position returns the items")
 	_assert(not drop.active, "death_drop: recovered drop becomes inactive")
+
+## Perf pass P0-P2: remesh timing stats, collider split (removal at once,
+## regrowth delayed, growth near the player at once) and the regrowth list.
+func _run_terrain_collision_split_tests() -> void:
+	var config := FDKTerrainConfig.new()
+	config.chunk_size = 4
+	config.cell_size = 0.5
+	var field := _track(FDKTerrainField.new()) as FDKTerrainField
+	field.config = config
+	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
+	field.dig_at(Vector3(0.75, 0.75, 0.75), 1.0)
+	field.remesh_all()
+	var chunk := field.get_chunk(field.world_to_chunk_coord(Vector3(0.75, 0.75, 0.75)))
+	_assert(chunk.last_stats.has("density_ms") and chunk.last_stats.has("mesh_ms") \
+		and chunk.last_stats.has("arraymesh_ms") and chunk.last_stats.has("collider_ms"), "split: remesh records timing stats")
+	_assert(not chunk.is_collision_pending(), "split: remesh_all builds colliders at once")
+	var shape0 = chunk._collision.shape
+	_assert(shape0 != null, "split: dug chunk has a collider")
+
+	# removal: collider follows at once
+	field.dig_at(Vector3(1.25, 0.75, 0.75), 1.0)
+	chunk.remesh()
+	_assert(not chunk.is_collision_pending(), "split: digging rebuilds the collider at once")
+	_assert(chunk._collision.shape != shape0, "split: dig produced a new collider")
+
+	# regrowth far from the player: mesh now, collider later
+	var shape1 = chunk._collision.shape
+	field.regenerate_all(0.2, Vector3(50, 50, 50), 0.5)
+	_assert(chunk.is_dirty(), "split: regrowth marks the mesh dirty")
+	chunk.remesh()
+	_assert(chunk.is_collision_pending(), "split: regrowth parks the collider")
+	_assert(chunk._collision.shape == shape1, "split: parked collider is not rebuilt yet")
+	field.step_collision(0.1)
+	_assert(chunk.is_collision_pending(), "split: collider still waits before the delay")
+	field.step_collision(field.collision_delay)
+	_assert(not chunk.is_collision_pending(), "split: collider rebuilt after the delay")
+	_assert(chunk._collision.shape != shape1, "split: delayed collider is a new shape")
+
+	# a dig while regrowth is parked must not wait
+	field.regenerate_all(0.2, Vector3(50, 50, 50), 0.5)
+	chunk.remesh()
+	_assert(chunk.is_collision_pending(), "split: regrowth parked again")
+	field.dig_at(Vector3(0.25, 0.75, 0.75), 1.0)
+	chunk.remesh()
+	_assert(not chunk.is_collision_pending(), "split: a dig flushes a parked regrowth collider")
+
+	# growth right next to the player: collider at once
+	field.regenerate_all(0.2, Vector3(0.75, 0.75, 0.75), 0.01)
+	chunk.remesh()
+	_assert(not chunk.is_collision_pending(), "split: regrowth inside the player guard rebuilds at once")
+
+	# P2 regrowth list: fully healed chunk keeps an empty list until the next dig
+	field.regenerate_all(1000.0, Vector3(50, 50, 50), 0.5)
+	field.regenerate_all(0.1, Vector3(50, 50, 50), 0.5)
+	_assert(chunk._regen_idx.is_empty(), "split: healed chunk has no active regrowth corners")
+	chunk._dirty = false
+	field.regenerate_all(0.1, Vector3(50, 50, 50), 0.5)
+	_assert(not chunk.is_dirty(), "split: healed chunk is not touched by regrowth")
+	field.dig_at(Vector3(0.75, 0.75, 0.75), 1.0)
+	field.regenerate_all(0.01, Vector3(50, 50, 50), 0.5)
+	_assert(not chunk._regen_idx.is_empty(), "split: a new dig refills the regrowth list")
+	_assert(field.density_at(Vector3(0.75, 0.75, 0.75)) < 1.0, "split: regrowth after a dig is gradual, not instant")
