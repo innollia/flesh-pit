@@ -61,7 +61,7 @@ func _setup() -> void:
 				prog.mutation_tree._purchased[id] = true
 			m.open_mirror()
 		"lookdown":
-			_pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-80.0))
+			_pose(Vector3(0.0, 0.95, 0.4), 0.0, deg_to_rad(-80.0 if _extra_ids.is_empty() else float(_extra_ids[0])))
 		"hand_before", "hand_after":
 			if _shot == "hand_after":
 				prog.mutation_tree._purchased["M10"] = true
@@ -102,7 +102,7 @@ func _process(_delta: float) -> bool:
 				for part in FPProgression.PARTS:
 					m.mirror.body.set_shimmer(part, false)
 			"lookdown":
-				_pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-80.0))
+				_pose(Vector3(0.0, 0.95, 0.4), 0.0, deg_to_rad(-80.0 if _extra_ids.is_empty() else float(_extra_ids[0])))
 			"hand_before", "hand_after":
 				_pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-10.0))
 			"codex":

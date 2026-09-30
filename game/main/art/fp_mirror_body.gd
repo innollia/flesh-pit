@@ -234,9 +234,10 @@ func build() -> void:
 	# look-down; the mirror already shows the briefs, so hide those trousers
 	# and keep only the band, buckle, cans, canary and bag. _ready ran on
 	# add_child, so the Trousers mesh already exists.
-	var tr := _belt.get_node_or_null("Trousers")
-	if tr != null:
-		(tr as Node3D).visible = false
+	for own in ["Trousers", "Torso"]:  # the mirror builds its own body
+		var tr := _belt.get_node_or_null(own)
+		if tr != null:
+			(tr as Node3D).visible = false
 	# --- whole: no mesh of its own; its shimmer covers every part
 	_part("whole", Vector3.ZERO)
 	# shimmer shells

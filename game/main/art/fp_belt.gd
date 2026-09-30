@@ -38,12 +38,12 @@ func _ready() -> void:
     K.add_mesh(self, "Trousers", K.finish(st, 5.0), K.mat("tex_fixture_128.png", 0.1, true))
     # belt band (a flattened loop just outside the waist)
     st = K.begin()
-    var leather := Color(0.3, 0.17, 0.09)
+    var leather := Color(0.44, 0.26, 0.13)
     var loop: Array = []
     for j in range(17):
         var a := TAU * j / 16.0
         loop.append(Vector3(cos(a) * (RX + 0.008), 0.0, sin(a) * (RZ + 0.008)))
-    K.tube(st, Transform3D.IDENTITY, loop, [0.022], 4, [leather], false, 0.25)
+    K.tube(st, Transform3D.IDENTITY, loop, [0.032], 4, [leather], false, 0.25)
     # buckle
     K.rbox(st, K.T(Vector3(0, 0, -RZ - 0.018)), Vector3(0.032, 0.026, 0.006), 0.005, Color(0.7, 0.66, 0.5))
     K.rbox(st, K.T(Vector3(0, 0, -RZ - 0.024)), Vector3(0.02, 0.014, 0.003), 0.002, Color(0.2, 0.15, 0.1))
