@@ -123,9 +123,27 @@ static func apply_window(s: Dictionary) -> void:
         DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
         return
     DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+    var size := windowed_size(s)
+    _place_window(size)
+    # Leaving fullscreen (and the first frames after boot) can reset the size
+    # once the OS finishes the mode change, so place the window again next frame.
+    var tree := Engine.get_main_loop() as SceneTree
+    if tree != null:
+        tree.process_frame.connect(func():
+            if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED:
+                _place_window(size), CONNECT_ONE_SHOT)
+
+## Window size for windowed mode: the chosen resolution, shrunk to fit the
+## usable screen area. Fullscreen ignores the resolution (native size).
+static func windowed_size(s: Dictionary, screen: Vector2i = Vector2i(-1, -1)) -> Vector2i:
     var size := resolution_size(s)
-    var screen := DisplayServer.screen_get_usable_rect()
-    if screen.size.x > 0:
-        size = Vector2i(mini(size.x, screen.size.x), mini(size.y, screen.size.y))
+    if screen.x < 0 and DisplayServer.get_name() != "headless":
+        screen = DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size
+    if screen.x > 0:
+        size = Vector2i(mini(size.x, screen.x), mini(size.y, screen.y))
+    return size
+
+static func _place_window(size: Vector2i) -> void:
+    var screen := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
     DisplayServer.window_set_size(size)
     DisplayServer.window_set_position(screen.position + (screen.size - size) / 2)

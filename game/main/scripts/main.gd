@@ -505,7 +505,13 @@ func _build_ui() -> void:
     vomit_button.pressed.connect(ui_clicked.emit)
     interact_ring = (load("res://main/scripts/fp_interact_ring.gd") as GDScript).new()
     interact_ring.name = "InteractRing"
-    layer.add_child(interact_ring)
+    # Own layer above the PS1 post (layer 20): under it the thin ring was
+    # pixelated and dithered away.
+    var ring_layer := CanvasLayer.new()
+    ring_layer.name = "InteractRingLayer"
+    ring_layer.layer = 21
+    add_child(ring_layer)
+    ring_layer.add_child(interact_ring)
     mirror = FPMirror.new()
     mirror.name = "Mirror"
     add_child(mirror)
@@ -942,9 +948,11 @@ func _setup_front_menus() -> void:
     title_screen.new_game_requested.connect(new_game)
     title_screen.settings_requested.connect(open_settings)
     title_screen.quit_requested.connect(func(): get_tree().quit())
+    # Saved window settings apply on every real boot, title or not.
+    if FileAccess.file_exists(FPSettings.PATH) and not "--resolution" in OS.get_cmdline_args() \
+            and get_tree().current_scene == self:
+        FPSettings.apply_window(settings)
     if title_wanted():
-        if FileAccess.file_exists(FPSettings.PATH) and not "--resolution" in OS.get_cmdline_args():
-            FPSettings.apply_window(settings)
         show_title()
     else:
         title_screen.close()

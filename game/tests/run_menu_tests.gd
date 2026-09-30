@@ -38,6 +38,7 @@ func _process(_d: float) -> bool:
     _esc()
     _disk_save()
     _layout()
+    _window_and_ring()
     for p in [TEST_SETTINGS, TEST_SAVE]:
         if FileAccess.file_exists(p):
             DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
@@ -200,3 +201,18 @@ func _layout() -> void:
 
 func await_frame_free() -> void:
     pass
+func _window_and_ring() -> void:
+    var s := FPSettings.defaults()
+    s["resolution"] = "1920x1080"
+    _assert(FPSettings.windowed_size(s, Vector2i(2560, 1400)) == Vector2i(1920, 1080), "windowed size = chosen resolution")
+    _assert(FPSettings.windowed_size(s, Vector2i(1920, 1032)) == Vector2i(1920, 1032), "windowed size shrinks to the usable screen")
+    s["resolution"] = "1600x900"
+    _assert(FPSettings.windowed_size(s, Vector2i(0, 0)) == Vector2i(1600, 900), "unknown screen keeps the resolution")
+    var ring: Control = _m.interact_ring
+    var vp := ring.get_viewport_rect().size
+    _assert(ring.size.is_equal_approx(vp), "interact ring covers the whole screen (%s vs %s)" % [ring.size, vp])
+    var c: Vector2 = ring.call("ring_center")
+    _assert(c.is_equal_approx(vp * 0.5), "ring sits on the screen centre")
+    var g: Vector2 = ring.call("glyph_pos") - c
+    _assert(g.x > 0.0 and g.y > 0.0 and absf(rad_to_deg(g.angle()) - 30.0) < 0.5, "glyph at the ring's 4 o'clock")
+    _assert(g.length() < 80.0, "glyph hugs the ring, not a screen corner")

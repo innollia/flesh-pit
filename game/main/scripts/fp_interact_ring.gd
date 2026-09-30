@@ -15,7 +15,9 @@ const INK := Color(0.96, 0.93, 0.88)
 const DARK := Color(0.08, 0.07, 0.07)
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Anchors AND offsets: a bare set_anchors_preset keeps the zero-size
+	# offsets, leaving the control at (viewport - start size), i.e. 0x0.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _input(event: InputEvent) -> void:
@@ -42,12 +44,17 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _a <= 0.0:
 		return
-	var c := size * 0.5
-	var r := lerpf(22.0, 14.0, _a)
-	draw_arc(c, r, 0.0, TAU, 40, Color(INK, 0.75 * _a), 2.0, true)
-	draw_circle(c, 2.0, Color(INK, 0.9 * _a))
-	# 4 o'clock: 30 degrees below the right horizontal (screen y points down).
-	var p := c + Vector2(cos(deg_to_rad(30.0)), sin(deg_to_rad(30.0))) * (r + 13.0)
+	var c := ring_center()
+	var k := ui_scale()
+	var r := lerpf(26.0, 17.0, _a) * k
+	# Dark halo under a pale ring: readable on bright walls and dark flesh.
+	draw_arc(c, r, 0.0, TAU, 48, Color(DARK, 0.7 * _a), 6.0 * k, true)
+	draw_arc(c, r, 0.0, TAU, 48, Color(INK, 0.95 * _a), 3.0 * k, true)
+	draw_circle(c, 3.5 * k, Color(DARK, 0.7 * _a))
+	draw_circle(c, 2.2 * k, Color(INK, 0.95 * _a))
+	var p := glyph_pos()
+	draw_set_transform(p, 0.0, Vector2(k, k))
+	p = Vector2.ZERO
 	match device:
 		"pad":
 			_draw_pad(p)
@@ -55,6 +62,22 @@ func _draw() -> void:
 			_draw_mouse(p)
 		_:
 			_draw_key(p, _key_label())
+	draw_set_transform(Vector2.ZERO)
+
+## Screen centre (the crosshair), from the viewport so it never depends on
+## this control's own layout.
+func ring_center() -> Vector2:
+	return get_viewport_rect().size * 0.5
+
+## 1.0 at 720p, grows with the window height.
+func ui_scale() -> float:
+	return maxf(1.0, get_viewport_rect().size.y / 720.0)
+
+## Glyph centre at the ring's 4 o'clock: 30 degrees below the right
+## horizontal (screen y points down), just outside the settled ring.
+func glyph_pos() -> Vector2:
+	var k := ui_scale()
+	return ring_center() + Vector2(cos(deg_to_rad(30.0)), sin(deg_to_rad(30.0))) * (17.0 + 16.0) * k
 
 func _draw_key(p: Vector2, label: String) -> void:
 	var rect := Rect2(p - Vector2(9, 9), Vector2(18, 18))

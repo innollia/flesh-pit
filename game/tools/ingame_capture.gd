@@ -10,11 +10,28 @@ extends SceneTree
 var _main: Node3D
 var _shot := "restroom"
 var _frame := 0
+## Extra user args: `ring` forces the interact ring on (with its button
+## glyph); `size=WxH` sizes the window (the movie writer records it).
+var _ring := false
+## `noring` forces it off (for a with/without comparison).
+var _noring := false
+var _size := Vector2i.ZERO
 
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_shot = args[0]
+	for a in args:
+		if a == "ring":
+			_ring = true
+		elif a == "noring":
+			_noring = true
+		elif a.begins_with("size="):
+			var wh := a.substr(5).split("x")
+			_size = Vector2i(int(wh[0]), int(wh[1]))
+	if _size != Vector2i.ZERO:
+		DisplayServer.window_set_size(_size)
+		get_root().size = _size
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	get_root().add_child(_main)
 
@@ -108,6 +125,19 @@ func _process(_delta: float) -> bool:
 		_setup()
 	if _frame == 12 and _shot == "mirror_after":
 		_main.mirror.close()
+	if _frame == 1 and _size != Vector2i.ZERO:
+		DisplayServer.window_set_size(_size)
+	if _frame == 3 and (_ring or _noring):
+		# Detach the ring from main's per-frame update so it stays lit.
+		var r: Control = _main.interact_ring
+		_main.interact_ring = null
+		r.set("shown", _ring)
+	# The movie writer keeps its start size, so a sized run also saves the
+	# real viewport itself: <shot>_<W>x<H>.png beside the movie frames.
+	if _frame == 25 and _size != Vector2i.ZERO:
+		var out := "user://capture_%s%s_%dx%d.png" % [_shot, "_ring" if _ring else ("_noring" if _noring else ""), _size.x, _size.y]
+		get_root().get_texture().get_image().save_png(out)
+		print("saved ", ProjectSettings.globalize_path(out))
 	if _frame > 2 and _shot == "rest_point":
 		var r: Vector3 = _main.rest_points[0]
 		_pose(r + Vector3(0, -0.2, 1.6), 0.0, deg_to_rad(-8.0))
