@@ -10,7 +10,7 @@ extends Node3D
 ## Public: set_spray_count(cheap, expensive) (total capped at 3),
 ## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool),
 ## set_hung(ids) (tool id per hook, "" = empty ring), hook_point(i).
-## Tool hooks: 3 steel rings hanging off the front of the belt (knife,
+## Tool hooks: 3 steel rings hanging off the belt band round the belly (knife,
 ## blender, big saw), where the player looks down to swap tools.
 
 const K := preload("res://main/art/fp_art_kit.gd")
@@ -22,7 +22,7 @@ var _canary: Node3D
 var _canary_head: Node3D
 var _scared := false
 var _time := 0.0
-const HOOK_X := [-0.3, 0.0, 0.3] ## hooks side by side on the front rail
+const HOOK_ANG := [-1.0, -0.2, 1.0] ## hooks round the front of the belt (rad from the front centre)
 const ToolScenes := {"knife": "res://main/art/fp_knife.tscn", "blender": "res://main/art/fp_blender.tscn", "big_saw": "res://main/art/fp_big_saw.tscn"}
 var _hooks: Array = []
 var _hung: Array = ["", "", ""]
@@ -67,8 +67,9 @@ func _ready() -> void:
     var leather := Color(0.44, 0.26, 0.13)
     _band(st, leather, Color(0.34, 0.2, 0.1))
     # buckle
-    K.rbox(st, K.T(Vector3(0, 0, -RZF - 0.03)), Vector3(0.04, 0.032, 0.007), 0.005, Color(0.7, 0.66, 0.5))
-    K.rbox(st, K.T(Vector3(0, 0, -RZF - 0.037)), Vector3(0.026, 0.018, 0.003), 0.002, Color(0.2, 0.15, 0.1))
+    K.rbox(st, K.T(Vector3(0, 0, -RZF - BAND_OUT - 0.004)), Vector3(0.045, 0.036, 0.008), 0.005, Color(0.78, 0.72, 0.5))
+    K.rbox(st, K.T(Vector3(0, 0, -RZF - BAND_OUT - 0.012)), Vector3(0.03, 0.022, 0.003), 0.002, Color(0.2, 0.15, 0.1))
+    K.rbox(st, K.T(Vector3(0, 0, -RZF - BAND_OUT - 0.014)), Vector3(0.004, 0.022, 0.003), 0.001, Color(0.78, 0.72, 0.5))
     K.add_mesh(self, "Belt", K.finish(st, 6.0), K.mat("tex_door_paint_64.png", 0.25, true))
     # 3 holster clips + cans on the right hip
     for i in range(3):
@@ -139,10 +140,11 @@ func _loft_lit(st: SurfaceTool, rings: Array, cols: Array) -> void:
 ## thick band, not a flat or square ribbon. Profile runs inner top -> outer
 ## -> inner bottom; each pair is lofted round the waist.
 const BAND_SEGS := 48
-const BAND_H := 0.03   ## half height of the strap
+const BAND_H := 0.028  ## half height of the strap (5.6 cm leather)
+const BAND_OUT := 0.045 ## how far the strap stands out from the waist (top face reads from above)
 func _band(st: SurfaceTool, col: Color, col_edge: Color) -> void:
     # [y, offset out from the waist]
-    var prof := [[BAND_H, 0.004], [BAND_H, 0.016], [BAND_H * 0.7, 0.022], [-BAND_H * 0.7, 0.022], [-BAND_H, 0.016], [-BAND_H, 0.004]]
+    var prof := [[BAND_H, -0.01], [BAND_H, BAND_OUT - 0.008], [BAND_H * 0.7, BAND_OUT], [-BAND_H * 0.7, BAND_OUT], [-BAND_H, BAND_OUT - 0.008], [-BAND_H, -0.01]]
     var rings: Array = []
     for p in prof:
         rings.append(_waist_ring(p[0], RX + p[1], RZF + p[1], RZ + p[1], BAND_SEGS))
@@ -150,7 +152,7 @@ func _band(st: SurfaceTool, col: Color, col_edge: Color) -> void:
     for i in range(rings.size() - 1):
         var r0: PackedVector3Array = rings[i]
         var r1: PackedVector3Array = rings[i + 1]
-        var c: Color = col if i == 2 else col_edge
+        var c: Color = col if i == 2 else (col.lerp(col_edge, 0.4) if i == 1 or i == 3 else col_edge)
         for j in range(n):
             var k := (j + 1) % n
             var nrm := (r0[k] - r0[j]).cross(r1[j] - r0[j]).normalized()
@@ -173,19 +175,23 @@ func _waist_ring(y: float, rx: float, zf: float, zb: float, segs: int = 16) -> P
     return ring
 
 func _build_hooks() -> void:
-    # a straight leather tool rail buckled across the front of the belt,
-    # with three steel rings hanging from it side by side
-    var st := K.begin()
-    var z := -RZF - 0.05
-    K.rbox(st, K.T(Vector3(0, -0.03, z)), Vector3(0.38, 0.026, 0.008), 0.005, Color(0.36, 0.2, 0.1))
-    for sx in [-1, 1]: # end straps back onto the belt
-        K.rbox(st, K.T(Vector3(sx * 0.34, -0.01, z + 0.03)), Vector3(0.02, 0.03, 0.03), 0.005, Color(0.3, 0.17, 0.08))
-    K.add_mesh(self, "ToolRail", K.finish(st, 6.0), K.mat("tex_door_paint_64.png", 0.25, true))
-    for i in range(HOOK_X.size()):
-        var hook := K.pivot(self, "Hook%d" % i, Vector3(HOOK_X[i], -0.05, z - 0.012))
+    # three steel rings hung straight off the round belt band, spread round
+    # the belly curve (left, front, right), each turned to face out
+    var st: SurfaceTool
+    for i in range(HOOK_ANG.size()):
+        var a: float = -PI * 0.5 + float(HOOK_ANG[i])
+        var bp := Vector3(cos(a) * (RX + BAND_OUT), 0.0, sin(a) * (RZF + BAND_OUT))
+        var out := Vector3(cos(a), 0.0, sin(a)).normalized()
+        var hp := bp + out * HOOK_DROP + Vector3(0, -BAND_H * 0.6, 0)
+        # a short leather loop from the band out to the ring
+        st = K.begin()
+        K.tube(st, Transform3D.IDENTITY, [bp + Vector3(0, BAND_H * 0.5, 0), bp + out * HOOK_DROP * 0.6 + Vector3(0, BAND_H * 0.2, 0), hp], [0.012, 0.011, 0.01], 5, [Color(0.36, 0.21, 0.1)], false)
+        K.add_mesh(self, "Loop%d" % i, K.finish(st, 6.0), K.mat("tex_door_paint_64.png", 0.25, true))
+        var hook := K.pivot(self, "Hook%d" % i, hp)
+        hook.rotation.y = -float(HOOK_ANG[i])
         # swung forward onto the lap so ring and tool face the bowed head
         # (hanging straight down they would be seen end-on from above)
-        hook.rotation.x = deg_to_rad(60.0)
+        hook.rotation.x = HOOK_TILT
         st = K.begin()
         K.rbox(st, K.T(Vector3(0, 0.0, 0)), Vector3(0.018, 0.02, 0.005), 0.004, Color(0.6, 0.6, 0.62))
         var ring: Array = []
@@ -195,12 +201,13 @@ func _build_hooks() -> void:
         K.tube(st, Transform3D.IDENTITY, ring, [0.008], 5, [Color(0.86, 0.87, 0.9)], false)
         K.add_mesh(hook, "Ring", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.3, true))
         _hooks.append(hook)
-## Worn = the belt band, tool rail and hooks show. Before the first vent
+const HOOK_TILT := 1.0472 ## 60 deg
+const HOOK_DROP := 0.05 ## the ring loop stands this far out from the band## Worn = the belt band and its hooks show. Before the first vent
 ## trade there is no belt yet (cans and canary stay: they ride the trousers).
 var worn := true
 func set_worn(on: bool) -> void:
     worn = on
-    for nm in ["Belt", "ToolRail"]:
+    for nm in ["Belt", "Loop0", "Loop1", "Loop2"]:
         var n := get_node_or_null(nm) as Node3D
         if n != null:
             n.visible = on
@@ -301,7 +308,7 @@ func _process(delta: float) -> void:
     for i in range(mini(_swing.size(), _hooks.size())):
         if _swing[i] > 0.0:
             _swing[i] = maxf(0.0, float(_swing[i]) - delta * 1.4)
-            (_hooks[i] as Node3D).rotation.x = sin(_time * 14.0) * 0.32 * float(_swing[i]) * float(_swing[i])
+            (_hooks[i] as Node3D).rotation.x = HOOK_TILT + sin(_time * 14.0) * 0.32 * float(_swing[i]) * float(_swing[i])
     if _canary_head != null:
         var bob := sin(_time * (14.0 if _scared else 2.3)) * (0.006 if _scared else 0.002)
         _canary_head.position.y = 0.022 + bob

@@ -102,7 +102,7 @@ func _run() -> void:
 	# a new game has no belt: no band, no hooks, nothing to swap when bowed
 	bs.tick(0.0)
 	_assert(not prog.has_belt and not bs.worn(), "a new game starts without the belt")
-	_assert(not (belt.get_node("Belt") as Node3D).visible and not (belt.get_node("Hook0") as Node3D).visible and not (belt.get_node("ToolRail") as Node3D).visible, "no band, rail or hooks before the first trade")
+	_assert(not (belt.get_node("Belt") as Node3D).visible and not (belt.get_node("Hook0") as Node3D).visible and belt.get_node_or_null("ToolRail") == null, "no band or hooks before the first trade, and no straight tool rail at all")
 	m.player.camera_pivot.rotation.x = -1.3
 	m.player.force_update_transform()
 	bs.tick(0.0)
@@ -138,6 +138,16 @@ func _run() -> void:
 	m.equip_tool("")
 	bs.tick(0.0)
 	_assert(belt.call("hook_count") == 3, "the belt carries 3 tool hooks")
+	var bb := (belt.get_node("Belt") as MeshInstance3D).mesh.get_aabb()
+	_assert(bb.size.y >= 0.05 and bb.size.y <= 0.08, "the belt is a 5-6 cm leather strap, buckle a little taller (%.3f)" % bb.size.y)
+	_assert(belt.BAND_H * 2.0 >= 0.05 and belt.BAND_H * 2.0 <= 0.06, "strap width 5-6 cm")
+	var hz: Array = []
+	for hi in range(3):
+		var hl: Vector3 = (belt.get_node("Hook%d" % hi) as Node3D).position
+		var e: float = sqrt(pow(hl.x / (belt.RX + belt.BAND_OUT), 2) + pow(hl.z / (belt.RZF + belt.BAND_OUT), 2))
+		_assert(e > 1.0 and e < 1.35 and belt.get_node_or_null("Loop%d" % hi) != null and absf(hl.y) < belt.BAND_H, "hook %d hangs on the round band itself (%.2f)" % [hi, e])
+		hz.append(hl.z)
+	_assert(hz[1] < hz[0] - 0.05 and hz[1] < hz[2] - 0.05, "the hooks follow the belly curve (%s)" % [hz])
 	_assert(belt.call("hung") == ["knife", "blender", ""], "owned tools hang on their hooks, the saw hook is an empty ring (%s)" % [belt.call("hung")])
 	# looking ahead: nothing on the belt is aimable
 	m.player.camera_pivot.rotation.x = 0.0
