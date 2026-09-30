@@ -47,11 +47,11 @@ The most promising direction is therefore:
 
 > **keep one authoritative density field, but decouple density simulation, visual remesh, and collision refresh into three different cadences.**
 
-For navigation, the canary should not try to "understand the route" like a player or point home. A much cheaper and more useful model is:
+For navigation, **the game system**, not the canary, should evaluate the state of the return route. A cheap hidden model is:
 
-> **maintain a coarse free-space / clearance representation around the explored route; warn based on the minimum traversable clearance of a route back to the restroom.**
+> **maintain a coarse free-space / clearance representation around the explored route and derive a return-route danger value from the minimum traversable clearance back to the restroom.**
 
-This turns the existing canary fiction into a measurable variable without making it a GPS.
+The canary itself performs no sensing, pathfinding, or route reasoning. It only expresses that hidden danger value through chirping and frightened movement. To the player it remains just a bird reacting to worsening conditions, not a navigation device or GPS.
 
 For flesh regeneration, the current "relax every carved density sample toward its original value" is a good cheap baseline, but used alone it tends to make every tunnel heal in the same way. The best next step is not a full soft-body simulation. It is to add **surface-local growth terms** on top of the existing baseline so different tissues close space differently.
 
@@ -574,7 +574,7 @@ Permanent biosecurity spray is already a natural high-cost landmark because it c
 
 ---
 
-# 7. The canary should measure route clearance, not distance
+# 7. The game should compute route clearance; the canary only expresses the result
 
 This is the strongest navigation implementation recommendation from the research.
 
@@ -605,7 +605,7 @@ For each coarse free cell, estimate clearance:
 
 Run a low-frequency path query from player to restroom.
 
-The canary value is not the path length.
+The hidden return-route danger value should not be based on path length alone.
 
 Use:
 
@@ -618,7 +618,7 @@ or a weighted form that also accounts for:
 - rate at which those cells are shrinking,
 - whether a route disappeared since the last sample.
 
-Then map that hidden scalar to qualitative bird behavior.
+Then pass only that hidden danger scalar to the canary presentation logic. The bird does not receive the route, bottleneck position, or direction home; it merely becomes more vocal/agitated as the scalar worsens.
 
 Example **structure**, not final tuning:
 
@@ -630,10 +630,10 @@ Example **structure**, not final tuning:
 | no passable path at player body radius but nearby emergency widening exists | panic |
 
 This satisfies the canon:
-- warns about the route back,
-- does not point along it,
-- does not reveal exact geometry,
-- becomes meaningful because tissue physically narrows.
+- the **system** detects worsening return conditions,
+- the **canary** only chirps/reacts,
+- no direction, path, bottleneck position, or exact geometry is revealed to the player,
+- the bird's behavior becomes meaningful because tissue physically narrows.
 
 ---
 
@@ -688,7 +688,7 @@ If A* becomes unnecessary overhead, flood-fill reachability plus a distance tran
 
 ---
 
-# 10. Collision and canary can share the same urgency metric
+# 10. Collision scheduling and canary output can consume the same hidden route-risk metric
 
 A useful architectural consequence appears here.
 
@@ -696,7 +696,7 @@ If a chunk contains the current return route's narrowest passage:
 - prioritize its density sampling,
 - prioritize visual remesh,
 - prioritize collision refresh,
-- let the canary react strongly.
+- raise the hidden danger state so the canary presentation becomes more urgent.
 
 Thus the navigation model can also help schedule terrain work.
 
@@ -760,7 +760,7 @@ Create:
 - one short narrow route,
 - one longer wide route.
 
-The canary model should treat the longer wide route as safer if it remains traversable.
+The hidden route-risk model should classify the longer wide route as safer if it remains traversable; the canary only reflects the resulting danger level.
 
 ### N3 — barrier
 Place a barrier across the critical narrowing point.
