@@ -21,6 +21,9 @@ signal scissors_snipped
 signal saw_stroked
 signal settle_ticked(teeth_gain: int)
 signal ui_clicked
+## Look-down belt swap (fp_belt_swap.gd): a tool hung / taken, or refused.
+signal belt_swapped(from_id: String, to_id: String)
+signal belt_refused
 
 const SAVE_VERSION := 3
 
@@ -91,6 +94,7 @@ var drawing_nodes: Array[Node3D] = []
 var mirror: FPMirror
 var ending: FPEnding
 var art_hookup: FPArtHookup
+var belt_swap: FPBeltSwap
 var mutation_apply: FPMutationApply
 var rest_points: Array[Vector3] = []
 var tumor_nodes: Array[Node3D] = []
@@ -262,6 +266,7 @@ func _ready() -> void:
     art_hookup.name = "ArtHookup"
     add_child(art_hookup)
     art_hookup.setup(self)
+    belt_swap = FPBeltSwap.new(self)
     mutation_apply = FPMutationApply.new()
     mutation_apply.name = "MutationApply"
     add_child(mutation_apply)
@@ -691,6 +696,8 @@ func step_world(delta: float) -> void:
         danger_show.setup(self)
     if danger_show != null:
         danger_show.tick(delta)
+    if belt_swap != null:
+        belt_swap.tick(delta)
     if interact_ring != null:
         interact_ring.set("shown", interact_target() != "")
     _step_death_drop(delta)
@@ -718,6 +725,8 @@ func _looking_at(p: Vector3, deg: float, dist: float) -> bool:
 
 func _interact() -> void:
     var p := player.global_position
+    if belt_swap != null and belt_swap.aimed_hook() >= 0 and belt_swap.begin():
+        return # reached down to the belt
     if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
         open_mirror()
     elif not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
@@ -1319,6 +1328,8 @@ func _aim_pitch_at(p: Vector3) -> float:
 ## What fp_interact would do right now ("" = nothing but digging).
 func interact_target() -> String:
     var p := player.global_position
+    if belt_swap != null and belt_swap.can_act():
+        return "belt"
     if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
         return "mirror"
     if not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):

@@ -6,7 +6,10 @@ extends Node3D
 ## front trouser POCKET (docs/spec/07-danger-navigation.md: pocket, no cage), head peeking out.
 ## Origin = centre of the waist at belt height; the player faces -Z.
 ## Public: set_spray_count(cheap, expensive) (total capped at 3),
-## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool).
+## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool),
+## set_hung(ids) (tool id per hook, "" = empty ring), hook_point(i).
+## Tool hooks: 3 steel rings hanging off the front of the belt (knife,
+## blender, big saw), where the player looks down to swap tools.
 
 const K := preload("res://main/art/fp_art_kit.gd")
 const RX := 0.17
@@ -16,6 +19,10 @@ var _canary: Node3D
 var _canary_head: Node3D
 var _scared := false
 var _time := 0.0
+const HOOK_ANGLES := [-0.8, -1.3, -1.85]
+const ToolScenes := {"knife": "res://main/art/fp_knife.tscn", "blender": "res://main/art/fp_blender.tscn", "big_saw": "res://main/art/fp_big_saw.tscn"}
+var _hooks: Array = []
+var _hung: Array = ["", "", ""]
 
 func _ready() -> void:
     var st := K.begin()
@@ -60,6 +67,7 @@ func _ready() -> void:
         K.add_mesh(holder, "Clip", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.2, true))
         var can := K.pivot(holder, "Spray")
         _cans.append(can)
+    _build_hooks()
     _canary = K.pivot(self, "Canary", Vector3(-0.1, -0.03, -RZ - 0.02))
     _build_canary()
     set_spray_count(2, 1)
@@ -85,6 +93,69 @@ func _build_canary() -> void:
     for sx in [-1, 1]:
         K.blob(st, Transform3D.IDENTITY, Vector3(sx * 0.011, 0.004, -0.009), Vector3(0.0035, 0.0035, 0.0035), 0.0, 1, Color(0.02, 0.02, 0.02), Color(0.02, 0.02, 0.02))
     K.add_mesh(_canary_head, "HeadMesh", K.finish(st), K.mat("tex_skin_64.png", 0.2, true))
+
+func _build_hooks() -> void:
+    for i in range(HOOK_ANGLES.size()):
+        var a: float = HOOK_ANGLES[i]
+        var hook := K.pivot(self, "Hook%d" % i, Vector3(cos(a) * (RX + 0.045), -0.012, sin(a) * (RZ + 0.045)))
+        hook.rotation.y = -a - PI * 0.5
+        var st := K.begin()
+        # leather tab riveted to the belt, then a steel ring hanging below it
+        K.rbox(st, K.T(Vector3(0, -0.012, 0)), Vector3(0.02, 0.026, 0.006), 0.004, Color(0.24, 0.13, 0.07))
+        var ring: Array = []
+        for j in range(13):
+            var r := TAU * j / 12.0
+            ring.append(Vector3(sin(r) * 0.03, -0.062 + cos(r) * 0.03, -0.006))
+        K.tube(st, Transform3D.IDENTITY, ring, [0.007], 5, [Color(0.86, 0.87, 0.9)], false)
+        K.add_mesh(hook, "Ring", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.3, true))
+        _hooks.append(hook)
+
+## Which tool hangs on each hook ("" = the ring is empty).
+func set_hung(ids: Array) -> void:
+    for i in range(_hooks.size()):
+        var id: String = str(ids[i]) if i < ids.size() else ""
+        if id == _hung[i]:
+            continue
+        _hung[i] = id
+        var hook: Node3D = _hooks[i]
+        var old := hook.get_node_or_null("Tool")
+        if old != null:
+            hook.remove_child(old)
+            old.queue_free()
+        if id == "" or not ToolScenes.has(id):
+            continue
+        var tool: Node3D = (load(ToolScenes[id]) as PackedScene).instantiate()
+        tool.name = "Tool"
+        hook.add_child(tool)
+        match id:
+            "knife":   # hung by the handle, blade down
+                tool.scale = Vector3.ONE * 1.1
+                tool.rotation_degrees = Vector3(90, 0, 0)
+                tool.position = Vector3(0, -0.09, -0.02)
+            "blender": # clipped by its handle, jar hanging
+                tool.scale = Vector3.ONE * 0.5
+                tool.rotation_degrees = Vector3(0, 90, 0)
+                tool.position = Vector3(0, -0.17, -0.05)
+            "big_saw": # slung flat along the thigh
+                tool.scale = Vector3.ONE * 0.36
+                tool.rotation_degrees = Vector3(80, 0, 0)
+                tool.position = Vector3(0, -0.14, -0.04)
+
+func hung() -> Array:
+    return _hung.duplicate()
+
+func hook_count() -> int:
+    return _hooks.size()
+
+## World point the player aims at to use hook i (the ring / the tool on it).
+func hook_point(i: int) -> Vector3:
+    var hook: Node3D = _hooks[i]
+    return hook.global_transform * Vector3(0, -0.07, -0.02)
+
+## The aimed hook swells a little (wordless: "this one"); -1 = none.
+func set_focus(i: int) -> void:
+    for k in range(_hooks.size()):
+        (_hooks[k] as Node3D).scale = Vector3.ONE * (1.2 if k == i else 1.0)
 
 func set_spray_count(cheap: int, expensive: int) -> void:
     var c := clampi(cheap, 0, 3)

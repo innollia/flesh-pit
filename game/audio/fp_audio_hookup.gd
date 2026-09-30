@@ -82,6 +82,9 @@ func _wire() -> void:
 	_hook("saw_stroked", on_saw_stroke)
 	_hook("settle_ticked", func(_teeth): on_settle_tick())
 	_hook("ui_clicked", on_ui_click)
+	# look-down belt swap: the steel ring clinks (reuses the coin clink)
+	_hook("belt_swapped", func(_from, _to): play_event("coin_drop"))
+	_hook("belt_refused", func(): play_event("ui_click"))
 
 func _hook(sig: String, cb: Callable) -> void:
 	if main.has_signal(sig):
