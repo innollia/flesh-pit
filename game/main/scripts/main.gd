@@ -929,6 +929,9 @@ func lever_point() -> Vector3:
 
 func end_settlement() -> void:
     flush()
+    # 형님 2026-09-30: only "leave to title" and "quit" saved, so a crash or
+    # a forced close between visits lost everything back to the last one.
+    save_to_disk()
 
 ## Stand up from the bowl without the lever: the bowl keeps its contents.
 func leave_settlement() -> void:
@@ -1734,6 +1737,10 @@ func die(cause: String) -> void:
     player.global_position = START_POS
     player.velocity = Vector3.ZERO
     died.emit(cause)
+    # 형님 2026-09-30: same autosave gap as end_settlement -- a death is a
+    # real checkpoint (deaths count, tank/canary state reset) worth keeping
+    # even if nothing is saved again before the next crash/close.
+    save_to_disk()
 
 ## Moving flesh keeps pushing a buried drop with no cap; the marker stays.
 func _step_death_drop(delta: float) -> void:
