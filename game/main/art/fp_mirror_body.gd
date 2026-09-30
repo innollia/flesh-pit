@@ -34,7 +34,8 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_back;
 uniform vec4 col : source_color = vec4(0.55, 1.0, 1.0, 0.75);
 void fragment() {
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 1.2);
-	ALBEDO = col.rgb;
+	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	ALBEDO = col.rgb * (0.45 + 0.55 * facing);
 	ALPHA = col.a * (0.45 + 0.55 * rim) * (0.85 + 0.15 * sin(TIME * 5.0));
 }"
 
@@ -158,9 +159,9 @@ func build() -> void:
 		var ua := _subpivot(arms, "upper_" + ("r" if sx > 0 else "l"), Vector3(sx * 0.2, 0, 0))
 		st = K.begin()
 		var ar: Array = []
-		for r in [[0.02, 0.0, 0.0, 0.05, 0.05], [-0.06, 0.02, 0.012, 0.052, 0.056], [-0.15, 0.045, 0.025, 0.046, 0.05], [-0.24, 0.07, 0.06, 0.038, 0.04]]:
+		for r in [[0.02, 0.0, 0.0, 0.05, 0.05], [-0.04, 0.012, 0.008, 0.054, 0.056], [-0.1, 0.03, 0.02, 0.058, 0.062], [-0.16, 0.047, 0.03, 0.05, 0.05], [-0.21, 0.06, 0.048, 0.04, 0.042], [-0.245, 0.07, 0.06, 0.036, 0.038]]:
 			ar.append(_ring(r[0], sx * r[1], r[3], r[4], r[4], 8, r[2]))
-		FDKLowPoly.loft(st, ar, [SKIN, SKIN, SKIN_D], true, false)
+		FDKLowPoly.loft(st, ar, [SKIN, SKIN, SKIN, SKIN, SKIN_D], true, false)
 		_mesh(ua, "UpperArm", st)
 	# --- hands: forearms hang relaxed at the sides, palms to the thighs
 	for side in ["right_hand", "left_hand"]:
@@ -170,9 +171,9 @@ func build() -> void:
 		var fa := _subpivot(hp, "forearm_" + s, Vector3.ZERO)
 		st = K.begin()
 		var fr: Array = []
-		for r in [[0.04, 0.0, -0.01, 0.04, 0.042], [-0.01, -0.002, 0.004, 0.04, 0.04], [-0.07, -0.006, 0.018, 0.045, 0.042], [-0.16, -0.01, 0.035, 0.034, 0.03], [-0.235, -0.014, 0.045, 0.026, 0.022]]:
+		for r in [[0.04, 0.0, -0.01, 0.038, 0.04], [-0.005, -0.002, 0.004, 0.036, 0.036], [-0.05, -0.005, 0.014, 0.05, 0.046], [-0.11, -0.008, 0.026, 0.042, 0.036], [-0.18, -0.011, 0.038, 0.03, 0.026], [-0.235, -0.014, 0.045, 0.024, 0.02]]:
 			fr.append(_ring(r[0], sx * r[1], r[3], r[4], r[4], 8, r[2]))
-		FDKLowPoly.loft(st, fr, [SKIN_D, SKIN, SKIN, SKIN], false, true)
+		FDKLowPoly.loft(st, fr, [SKIN_D, SKIN, SKIN, SKIN, SKIN], false, true)
 		_mesh(fa, "Forearm", st)
 		var hand := _subpivot(hp, "hand_" + s, Vector3(-sx * 0.014, -0.24, 0.045))
 		hand.rotation_degrees = Vector3(-10.0, -sx * 75.0, 180.0)
@@ -206,9 +207,9 @@ func build() -> void:
 	st = K.begin()
 	for sx in [-1, 1]:
 		var lg: Array = []
-		for r in [[-0.12, 0.087, 0.0, 0.08, 0.084, 0.086], [-0.24, 0.09, 0.01, 0.068, 0.072, 0.07], [-0.4, 0.086, 0.02, 0.052, 0.055, 0.05], [-0.47, 0.085, 0.03, 0.045, 0.048, 0.042], [-0.55, 0.084, 0.0, 0.046, 0.042, 0.06], [-0.64, 0.083, -0.005, 0.044, 0.04, 0.058], [-0.8, 0.08, 0.0, 0.03, 0.03, 0.032], [-0.88, 0.078, 0.0, 0.027, 0.027, 0.03]]:
+		for r in [[-0.12, 0.087, 0.0, 0.084, 0.086, 0.09], [-0.2, 0.092, 0.012, 0.078, 0.082, 0.076], [-0.32, 0.089, 0.02, 0.062, 0.066, 0.058], [-0.42, 0.086, 0.025, 0.048, 0.05, 0.044], [-0.47, 0.085, 0.03, 0.042, 0.046, 0.038], [-0.53, 0.084, 0.005, 0.046, 0.04, 0.056], [-0.62, 0.083, -0.01, 0.05, 0.04, 0.066], [-0.72, 0.081, -0.004, 0.036, 0.034, 0.044], [-0.82, 0.079, 0.0, 0.026, 0.026, 0.028], [-0.88, 0.078, 0.0, 0.028, 0.027, 0.03]]:
 			lg.append(_ring(r[0], sx * r[1], r[3], r[4], r[5], 8, r[2]))
-		FDKLowPoly.loft(st, lg, [SKIN, SKIN, SKIN_D, SKIN, SKIN, SKIN, SKIN_D], false, false)
+		FDKLowPoly.loft(st, lg, [SKIN, SKIN, SKIN, SKIN_D, SKIN, SKIN, SKIN, SKIN, SKIN_D], false, false)
 		K.tube(st, I, [Vector3(sx * 0.078, -0.89, -0.03), Vector3(sx * 0.08, -0.915, 0.03), Vector3(sx * 0.085, -0.93, 0.12)], [0.032, 0.036, 0.026], 6, [SKIN_D, SKIN, SKIN], true, 0.65) # foot
 	_mesh(legs, "Legs", st)
 	# --- belt: the same first-person waist belt (fp_belt.gd: leather band,
@@ -218,9 +219,11 @@ func build() -> void:
 	# turned 180 and dropped to the briefs waistline.
 	_belt = BELT_SCENE.instantiate()
 	_belt.name = "Belt"
-	_belt.position = Vector3(0, 1.05, 0.0)
+	# band sits on the briefs' top edge (world 0.97); scaled so the loop
+	# wraps just outside the hip ring there (half width 0.165)
+	_belt.position = Vector3(0, 0.962, 0.0)
 	_belt.rotation_degrees = Vector3(0, 180, 0)
-	_belt.scale = Vector3(0.86, 0.62, 0.82)
+	_belt.scale = Vector3(1.02, 0.8, 0.98)
 	add_child(_belt)
 	var bag := BAG_SCENE.instantiate()
 	bag.name = "TumorBag"
@@ -371,7 +374,7 @@ static func look(id: String) -> Dictionary:
 		"M10": return {"sub": "fingers_r", "scale": Vector3(1.0, 2.3, 1.0)}
 		"M12": return {"sub": "forearm_r", "scale": Vector3(2.3, 1.0, 2.3)}
 		"M14": return {"sub": "chest", "scale": Vector3(1.25, 1.08, 1.2)}
-		"M15": return {"sub": "jaw", "scale": Vector3(1.1, 1.3, 1.15), "pos": Vector3(0, -0.3, 0.1)}
+		"M15": return {"sub": "jaw", "scale": Vector3(1.1, 1.3, 1.15), "pos": Vector3(0, -0.3, 0.06)}
 		"M18": return {"sub": "hand_r", "scale": Vector3(2.0, 0.7, 1.8), "rot": Vector3(0, 0, -70)}
 		"M20": return {"sub": "upper_r", "rot": Vector3(-55, 0, 45)}
 		"M24": return {"sub": "eyes", "scale": Vector3(2.4, 2.8, 1.6)}
@@ -424,45 +427,61 @@ func _apply_one(id: String, _root: Node3D, ghost: bool) -> Node3D:
 	return made
 
 ## Translucent preview of one mutation over the body (hover in the mirror).
+## Built from a second copy of THIS body with the mutation applied on top of
+## what is already owned, so the preview always has the current body shape
+## and the real resulting form; only the changed part (and its extra pieces)
+## is shown, slightly inflated so it reads over the skin.
 func ghost(id: String) -> Node3D:
-	var holder := Node3D.new()
-	holder.name = "Ghost_" + id
 	var mat := ShaderMaterial.new()
 	var sh := Shader.new()
 	sh.code = GHOST_SHADER
 	mat.shader = sh
+	var g: FPMirrorBody = get_script().new()
+	g.name = "Ghost_" + id
+	g.set_process(false)
+	add_child(g)
+	g.build()
+	if g._belt != null:
+		g._belt.visible = false
+	var ids: Array = applied.duplicate()
+	if not id in ids:
+		ids.append(id)
+	g.apply(ids, 0)
+	# which parts does this mutation change?
+	var show := {}
 	var lk := look(id)
 	if not lk.is_empty():
-		var n := _target(String(lk["sub"]))
-		if n != null:
-			for c in n.get_children():
-				if c is MeshInstance3D:
-					var g := MeshInstance3D.new()
-					g.mesh = (c as MeshInstance3D).mesh
-					g.material_override = mat
-					holder.add_child(g)
-			var t := n.global_transform
-			t.basis = t.basis * Basis.from_euler(lk.get("rot", Vector3.ZERO) * PI / 180.0).scaled(lk.get("scale", Vector3.ONE) * 1.02)
-			t.origin += n.get_parent().global_transform.basis * lk.get("pos", Vector3.ZERO)
-			holder.transform = global_transform.affine_inverse() * t
-	add_child(holder)
-	var e := _extra(id, true)
-	if e != null:
-		for mi in e.find_children("*", "MeshInstance3D", true, false):
-			(mi as MeshInstance3D).material_override = mat
-		var t2 := e.global_transform
-		e.get_parent().remove_child(e)
-		holder.add_child(e)
-		e.global_transform = t2
-	if holder.get_child_count() == 0:
-		# no visible change (e.g. no pain, dormancy): a faint whole-body veil
-		for mi in _all_meshes():
-			var g := MeshInstance3D.new()
-			g.mesh = (mi as MeshInstance3D).mesh
-			g.material_override = mat
-			holder.add_child(g)
-			g.global_transform = (mi as MeshInstance3D).global_transform.scaled_local(Vector3.ONE * 1.02)
-	return holder
+		var n := g._target(String(lk["sub"]))
+		var p := g._part_of(n)
+		if p != "":
+			show[p] = true
+	for e in g._extras:
+		if String(e.name) == "Mut_" + id:
+			var p2 := g._part_of(e)
+			if p2 != "":
+				show[p2] = true
+	var any := not show.is_empty()
+	for p in g._parts.keys():
+		var on := (not any) or show.has(p)
+		for mi in (g._parts[p] as Node3D).find_children("*", "MeshInstance3D", true, false):
+			var m3 := mi as MeshInstance3D
+			if m3.name == "Shimmer":
+				m3.visible = false
+				continue
+			m3.material_override = mat
+			m3.visible = on
+		if on:
+			(g._parts[p] as Node3D).scale *= 1.03
+	return g
+
+## Name of the mirror part a node sits under ("" if none).
+func _part_of(n: Node) -> String:
+	var p := n
+	while p != null and p != self:
+		if String(p.name).begins_with("Part_"):
+			return String(p.name).substr(5)
+		p = p.get_parent()
+	return ""
 
 func _bump(i: int, _ghost: bool) -> Node3D:
 	var st := K.begin()
@@ -510,8 +529,8 @@ func _extra(id: String, _ghost: bool) -> Node3D:
 			# dark open throat down to the dropped chin
 			parent = _parts["face"]
 			for sx in [-1, 1]:
-				K.tube(st, I, [Vector3(sx * 0.078, -0.03, 0.03), Vector3(sx * 0.07, -0.14, 0.1), Vector3(sx * 0.066, -0.28, 0.14), Vector3(sx * 0.075, -0.38, 0.15)], [0.02, 0.014, 0.012, 0.016], 5, [SKIN, SKIN_D, SKIN_D, SKIN])
-			K.quad(st, I, Vector3(-0.068, -0.05, 0.05), Vector3(0.068, -0.05, 0.05), Vector3(0.07, -0.38, 0.14), Vector3(-0.07, -0.38, 0.14), Vector3.BACK, Color(0.22, 0.03, 0.05))
+				K.tube(st, I, [Vector3(sx * 0.078, -0.03, 0.03), Vector3(sx * 0.07, -0.14, 0.09), Vector3(sx * 0.068, -0.28, 0.11), Vector3(sx * 0.082, -0.4, 0.1), Vector3(sx * 0.07, -0.45, 0.08)], [0.02, 0.016, 0.015, 0.02, 0.018], 5, [SKIN, SKIN_D, SKIN_D, SKIN, SKIN])
+			K.quad(st, I, Vector3(-0.068, -0.05, 0.05), Vector3(0.068, -0.05, 0.05), Vector3(0.075, -0.42, 0.11), Vector3(-0.075, -0.42, 0.11), Vector3.BACK, Color(0.22, 0.03, 0.05))
 			K.tube(st, I, [Vector3(0, -0.07, 0.06), Vector3(0.01, -0.2, 0.13), Vector3(0.0, -0.33, 0.155)], [0.022, 0.02, 0.016], 5, [Color(0.75, 0.3, 0.36)]) # slack tongue
 		"M16", "M19": # heavy rippling folds across the belly
 			parent = _parts["belly"]

@@ -15,11 +15,14 @@ const STOMACH_ORDER := [[], ["M01"], ["M02"], ["M30"], ["M01", "M02", "M30"]]
 var _main: Node3D
 var _shot := "mirror_shimmer"
 var _frame := 0
+var _extra_ids: Array = []  ## clean/ghost_*: mutations already owned (args after the shot)
 
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_shot = args[0]
+		for k in range(1, args.size()):
+			_extra_ids.append(args[k])
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	get_root().add_child(_main)
 
@@ -50,6 +53,15 @@ func _setup() -> void:
 					m.mirror.select_candidate(int(m.mirror._cand.get("right_hand", 0)) + 1)
 			elif _shot == "mirror_red":
 				m.mirror.focus_part("face")
+		"clean", "ghost_belly", "ghost_face":
+			_pose(Vector3(-0.9, 0.95, -0.35), PI * 0.5, 0.0)
+			prog.mutation_tree.add_points("core", 20)
+			prog.mutation_tree.add_points("common", 30)
+			for id in _extra_ids:
+				prog.mutation_tree._purchased[id] = true
+			m.open_mirror()
+		"lookdown":
+			_pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-80.0))
 		"hand_before", "hand_after":
 			if _shot == "hand_after":
 				prog.mutation_tree._purchased["M10"] = true
@@ -79,6 +91,18 @@ func _process(_delta: float) -> bool:
 					m.mirror.focus_part("face")
 				if _frame % 7 == 3:
 					m.mirror.buy_current()
+			"clean":
+				m.mirror._clear_ghost()
+				for part in FPProgression.PARTS:
+					m.mirror.body.set_shimmer(part, false)
+			"ghost_belly", "ghost_face":
+				var gp := "belly" if _shot == "ghost_belly" else "face"
+				if m.mirror.current_part() != gp:
+					m.mirror.focus_part(gp)
+				for part in FPProgression.PARTS:
+					m.mirror.body.set_shimmer(part, false)
+			"lookdown":
+				_pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-80.0))
 			"hand_before", "hand_after":
 				_pose(Vector3(0.0, 0.95, 0.4), PI, deg_to_rad(-10.0))
 			"codex":
