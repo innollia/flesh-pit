@@ -71,6 +71,7 @@ func setup(main: Node3D) -> void:
 	m.chewer.cell_torn.connect(_on_torn)
 	# waist: belt with sprays + canary pocket, tumor bag on the left hip
 	belt = BeltScene.instantiate()
+	belt.spray_cast_shadows = false
 	belt.name = "Belt"
 	belt.position = Vector3(0, 0.05, 0.02)
 	m.player.add_child(belt)
@@ -102,11 +103,18 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
-	# Keep the same forearm mesh on both sides; the hair scene supplies hairs.
-	var hair_arm := arm_hair.get_node_or_null("Forearm") as Node3D
+	# Keep the original watch geometry throughout raise and release, on both
+	# rig forearms so their existing mutation transforms still affect it.
+	var hair_arm := arm_hair.get_node_or_null("Forearm") as MeshInstance3D
 	if hair_arm != null:
 		hair_arm.visible = false
-		(hair_arm as MeshInstance3D).material_override = FDKSkinMaterial.make()
+		for side in ["HandLeft", "HandRight"]:
+			var forearm := rig.get_node(side + "/Forearm") as MeshInstance3D
+			forearm.mesh = hair_arm.mesh
+			forearm.position = arm_hair.position
+			if side == "HandLeft" and not forearm.has_meta("watch_skin"):
+				forearm.material_override = forearm.material_override.duplicate()
+				forearm.set_meta("watch_skin", true)
 	_rig = rig
 	if m._mirror_open:
 		m.mirror.hand_root = lroot

@@ -12,13 +12,17 @@ render_mode blend_mix, depth_draw_never, depth_test_disabled, cull_back, specula
 uniform float amount : hint_range(0.0, 1.0) = 0.0;
 instance uniform float along = 0.5; // 1 = fingertip segment .. 0 = forearm
 varying vec3 p;
+uniform float watch_shoulder_drop = 0.0;
 float h(vec3 q) { return fract(sin(dot(q, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float n3(vec3 q) {
 	vec3 i = floor(q); vec3 f = fract(q); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
 		mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z);
 }
-void vertex() { p = VERTEX; }
+void vertex() {
+    p = VERTEX;
+    VERTEX.x += watch_shoulder_drop * max(VERTEX.z, 0.0) / 0.32;
+}
 void fragment() {
 	float n = n3(p * 60.0) * 0.6 + n3(p * 170.0) * 0.4;
 	

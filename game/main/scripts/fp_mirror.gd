@@ -57,7 +57,7 @@ const DIM := 0.7
 ## Doll layer: drawn by the eye camera AND by the overlay camera above the dim.
 const HOLO_LAYER := 1 << 14
 ## 형님 2026-09-30: too small at 0.1, doll read as a tiny figurine on the arm.
-const DOLL_SCALE := 0.16
+const DOLL_SCALE := 0.20
 ## belly7: under the dim room light the doll read dark red-brown (a doll-only
 ## omni fill did not reach it in the compatibility renderer), so its matte
 ## skin materials are swapped for this self-lit copy: same vertex paint and
@@ -545,7 +545,7 @@ func arm_top(z: float) -> Vector3:
 	var r := lerpf(0.046, 0.029, t) + sin(t * PI) * 0.004
 	var c := hair.global_transform * Vector3(0, sin(t * PI) * 0.006, -along)
 	var s := hair.global_transform.basis.get_scale().x
-	return c + hair.global_basis.y.normalized() * r * s
+	return c + Vector3.UP * r * s
 
 func part_at(screen: Vector2) -> String:
 	if eye == null:
