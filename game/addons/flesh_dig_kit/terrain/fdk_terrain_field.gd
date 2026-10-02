@@ -31,7 +31,14 @@ var regen_rate_scale: Callable
 
 var _chunks: Dictionary = {}
 var _urgent_chunks: Dictionary = {}
-var _remesh_cursor := 0
+var _mesh_snapshot: Dictionary = {}
+var _mesh_missing_snapshot: Dictionary = {}
+var _reading_mesh_snapshot := false
+var _mesh_batch: Array = []
+var _mesh_batch_cursor := 0
+var _mesh_groups: Array = []
+var _mesh_group_for: Dictionary = {}
+var _mesh_group_remaining: Dictionary = {}
 
 func _ready() -> void:
     set_process(true)
@@ -61,21 +68,118 @@ var _guard_radius: float = -1.0
 func _process(delta: float) -> void:
     var done := 0
     var start := Time.get_ticks_usec()
-    var ordered: Array = []
-    for chunk in _urgent_chunks.values():
-        if is_instance_valid(chunk) and chunk.is_dirty(): ordered.append(chunk)
-    var chunks := _chunks.values()
-    for i in range(chunks.size()):
-        var chunk: FDKChunk = chunks[(_remesh_cursor + i) % chunks.size()]
-        if chunk.is_dirty() and not _urgent_chunks.has(chunk.chunk_coord): ordered.append(chunk)
-    for chunk in ordered:
-        chunk.remesh()
-        _urgent_chunks.erase(chunk.chunk_coord)
+    if _mesh_batch.is_empty():
+        _begin_mesh_batch()
+    while _mesh_batch_cursor < _mesh_batch.size():
+        var chunk: FDKChunk = _mesh_batch[_mesh_batch_cursor]
+        _reading_mesh_snapshot = true
+        chunk.remesh(false, true)
+        _reading_mesh_snapshot = false
+        var group_id: int = _mesh_group_for[chunk.chunk_coord]
+        _mesh_group_remaining[group_id] -= 1
+        if _mesh_group_remaining[group_id] == 0:
+            for ready in _mesh_groups[group_id]:
+                ready.publish_staged_mesh()
+        _mesh_batch_cursor += 1
         done += 1
-        _remesh_cursor = (chunks.find(chunk) + 1) % maxi(chunks.size(), 1)
         if done >= remesh_budget_per_frame or (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
             break
+    if not _mesh_batch.is_empty() and _mesh_batch_cursor == _mesh_batch.size():
+        _mesh_batch.clear()
+        _mesh_snapshot.clear()
+        _mesh_missing_snapshot.clear()
     step_collision(delta)
+
+## Keep the old closed surface until all meshes that share changed cells are
+## ready. Density changes arriving during this bounded batch stay dirty for
+## the next batch; continuous regeneration must never restart work in flight.
+func _begin_mesh_batch() -> void:
+    var targets := {}
+    var links := {}
+    var s := config.chunk_size
+    var n := s + 1
+    for chunk in _chunks.values():
+        if not chunk.is_dirty():
+            continue
+        targets[chunk.chunk_coord] = chunk
+        if not links.has(chunk.chunk_coord):
+            links[chunk.chunk_coord] = {}
+        var source: PackedFloat32Array = chunk.effective_density()
+        var changed_indices: PackedInt32Array = range(source.size()) if chunk._regen_scan or chunk._mesh_source.is_empty() or not chunk._contract.is_empty() else chunk._regen_idx
+        if not chunk._mesh_regen_indices.is_empty():
+            changed_indices = changed_indices.duplicate()
+            changed_indices.append_array(chunk._mesh_regen_indices)
+        for i in changed_indices:
+            if chunk._mesh_source.size() == source.size() and source[i] == chunk._mesh_source[i]:
+                continue
+            var local := Vector3i(i % n, (i / n) % n, i / (n * n))
+            if local.x > 0 and local.x < s - 1 and local.y > 0 and local.y < s - 1 and local.z > 0 and local.z < s - 1:
+                continue
+            var g: Vector3i = chunk.chunk_coord * s + local
+            # A mesh reads corners -1..s. Include padding readers even if
+            # they do not store the changed corner themselves.
+            for z in range(-1, 2):
+                for y in range(-1, 2):
+                    for x in range(-1, 2):
+                        var cc: Vector3i = chunk.chunk_coord + Vector3i(x, y, z)
+                        var p: Vector3i = g - cc * s
+                        if p.x < -1 or p.y < -1 or p.z < -1 or p.x > s or p.y > s or p.z > s:
+                            continue
+                        if _chunks.has(cc):
+                            targets[cc] = _chunks[cc]
+                            links[chunk.chunk_coord][cc] = true
+                            if not links.has(cc): links[cc] = {}
+                            links[cc][chunk.chunk_coord] = true
+    if targets.is_empty():
+        return
+    # Capture only the target meshes' density providers, not the whole world.
+    for cc in targets.keys():
+        for z in range(-1, 2):
+            for y in range(-1, 2):
+                for x in range(-1, 2):
+                    var provider: Vector3i = cc + Vector3i(x, y, z)
+                    if _chunks.has(provider) and not _mesh_snapshot.has(provider):
+                        _mesh_snapshot[provider] = _chunks[provider].effective_density()
+                    elif not _chunks.has(provider):
+                        # Freeze only the absent provider's corners actually
+                        # read by this target (-1..s), without generating it.
+                        var base: Vector3i = cc * s
+                        var lo := base + Vector3i(-1 if x < 0 else (s if x > 0 else 0), -1 if y < 0 else (s if y > 0 else 0), -1 if z < 0 else (s if z > 0 else 0))
+                        var hi := lo + Vector3i(s if x == 0 else 1, s if y == 0 else 1, s if z == 0 else 1)
+                        for gz in range(lo.z, hi.z):
+                            for gy in range(lo.y, hi.y):
+                                for gx in range(lo.x, hi.x):
+                                    var g := Vector3i(gx, gy, gz)
+                                    if not _mesh_missing_snapshot.has(g):
+                                        _mesh_missing_snapshot[g] = float(density_sampler.call(Vector3(g) * config.cell_size)) if density_sampler.is_valid() else 1.0
+    _mesh_batch = targets.values()
+    _mesh_batch.sort_custom(func(a, b): return _urgent_chunks.has(a.chunk_coord) and not _urgent_chunks.has(b.chunk_coord))
+    _mesh_batch_cursor = 0
+    _mesh_groups.clear()
+    _mesh_group_for.clear()
+    _mesh_group_remaining.clear()
+    # Separate holes can publish independently. Only the meshes connected
+    # through a changed shared cell wait for one another.
+    for chunk in _mesh_batch:
+        if _mesh_group_for.has(chunk.chunk_coord): continue
+        var id := _mesh_groups.size()
+        var group: Array = []
+        var pending: Array = [chunk.chunk_coord]
+        _mesh_group_for[chunk.chunk_coord] = id
+        while not pending.is_empty():
+            var cc: Vector3i = pending.pop_back()
+            group.append(targets[cc])
+            for neighbor in links.get(cc, {}).keys():
+                if not _mesh_group_for.has(neighbor):
+                    _mesh_group_for[neighbor] = id
+                    pending.append(neighbor)
+        _mesh_groups.append(group)
+        _mesh_group_remaining[id] = group.size()
+    for chunk in _mesh_batch:
+        chunk._dirty = false
+        chunk._mesh_source = _mesh_snapshot[chunk.chunk_coord]
+        chunk._mesh_regen_indices = chunk._regen_idx.duplicate()
+        _urgent_chunks.erase(chunk.chunk_coord)
 
 ## Ages parked regrowth colliders and rebuilds the due ones (oldest first,
 ## budgeted). Returns how many were rebuilt.
@@ -134,8 +238,13 @@ func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
 
 ## Remeshes every dirty chunk now (used at start-up and by capture tools).
 func remesh_all() -> void:
+    for chunk in _mesh_batch:
+        chunk._dirty = true
+    _mesh_batch.clear()
+    _mesh_snapshot.clear()
+    _mesh_missing_snapshot.clear()
     for chunk in _chunks.values():
-        if chunk.is_dirty():
+        if chunk.is_dirty() or not chunk._staged_density.is_empty():
             chunk.remesh(true)
         elif chunk.is_collision_pending():
             chunk.flush_collision()
@@ -200,6 +309,14 @@ func corner_density_global(g: Vector3i) -> float:
     var s := config.chunk_size
     var cc := Vector3i(_floordiv(g.x, s), _floordiv(g.y, s), _floordiv(g.z, s))
     var chunk: FDKChunk = _chunks.get(cc, null)
+    if _reading_mesh_snapshot and _mesh_snapshot.has(cc):
+        var l := g - cc * s
+        var values: PackedFloat32Array = _mesh_snapshot[cc]
+        return values[chunk._corner_index(l.x, l.y, l.z)]
+    if _reading_mesh_snapshot:
+        # Streaming + digging a neighbor during a batch must not inject its
+        # live density into only the later meshes, even for a mutable sampler.
+        return float(_mesh_missing_snapshot[g])
     if chunk != null:
         var l := g - cc * s
         var ci := chunk._corner_index(l.x, l.y, l.z)
@@ -428,6 +545,34 @@ func set_press(center: Vector3, toward: Vector3, amount: float) -> void:
 func get_press_amount() -> float:
     var v = FDKChunk.terrain_material(0).get_shader_parameter("press_amount")
     return float(v) if v != null else 0.0
+
+## Contact-driven eye clearance, leaving the body and desired hand-motion
+## transform intact. Call after camera animation, before aiming/rendering.
+## The anchor must be the collision-protected capsule center. If it is also
+## fully buried, this cannot invent an empty destination or relocate it.
+func constrain_eye(desired_eye: Vector3, body_anchor: Vector3, near: float) -> Vector3:
+    if not is_inside_tree():
+        return desired_eye
+    var offset := desired_eye - body_anchor
+    var length := offset.length()
+    if length < 0.00001:
+        return desired_eye
+    var direction := offset / length
+    var margin := 0.055 + maxf(near, 0.001) * 2.0 + 0.005
+    var side := direction.cross(Vector3.UP)
+    if side.length_squared() < 0.001:
+        side = direction.cross(Vector3.RIGHT)
+    side = side.normalized() * 0.001
+    var other := direction.cross(side)
+    var distance := length
+    for epsilon in [Vector3.ZERO, side, -side, other, -other]:
+        var query := PhysicsRayQueryParameters3D.create(body_anchor + epsilon, desired_eye + direction * margin + epsilon)
+        query.hit_back_faces = true
+        var hit := get_world_3d().direct_space_state.intersect_ray(query)
+        if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
+            continue
+        distance = minf(distance, maxf(0.0, (hit.position - body_anchor - epsilon).dot(direction) - margin))
+    return body_anchor + direction * distance
 
 ## Strong local contraction (docs/spec/02-world-tissue.md, nerve tissue): the tunnel
 ## squeezes shut around `center` -- density jumps back toward its original
