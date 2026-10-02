@@ -17,9 +17,12 @@ for (const suite of suites) {
     assert.match(suite, /^run_[a-z0-9_]+\.gd$/);
     const source = fs.readFileSync(path.join(__dirname, suite), 'utf8');
     const savePath = path.join(evidence, suite + '.save').replaceAll('\\', '/');
-    const isolation = '\n\troot.child_entered_tree.connect(func(n):\n'
-      + '\t\tif n.get_script() != null and n.get_script().resource_path == "res://main/scripts/main.gd":\n'
-      + `\t\t\tn.save_path = ${JSON.stringify(savePath)}\n\t)\n`;
+    const init = source.match(/func _init\([^\n]*:\r?\n([ \t]+)\S/);
+    assert.ok(init, 'suite initialization indentation found');
+    const indent = init[1];
+    const isolation = `\n${indent}root.child_entered_tree.connect(func(n):\n`
+      + `${indent}${indent}if n.get_script() != null and n.get_script().resource_path == "res://main/scripts/main.gd":\n`
+      + `${indent}${indent}${indent}n.save_path = ${JSON.stringify(savePath)}\n${indent})\n`;
     assert.match(source, /func _init\([^\n]*\):|func _init\([^\n]*-> void:/);
     const isolated = source.replace(/(func _init\([^\n]*:\r?\n)/, '$1' + isolation);
     assert.notEqual(isolated, source, 'save isolation inserted before suite initialization');
