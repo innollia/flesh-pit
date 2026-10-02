@@ -518,6 +518,9 @@ func _run_canary_tests() -> void:
 	# N3: a barrier at the neck holds the margin while regeneration runs,
 	# and the margin collapses once the barrier is gone.
 	var f3 := _canary_field()
+	# Compare routes after the same healing dose; slower regeneration takes
+	# longer, while this case tests barrier protection and route clearance.
+	var healing_step := 0.005 / f3.config.regen_rate
 	_canary_tunnel(f3, 1.6, 1.3, false)
 	var c3 := _track(FDKCanary.new()) as FDKCanary
 	c3.terrain = f3
@@ -525,11 +528,11 @@ func _run_canary_tests() -> void:
 	var start := float(c3.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5)).min_clearance)
 	f3.regen_blockers = [Vector4(5.0, 0.5, 0.5, 2.2)]
 	for i in range(80):
-		f3.regenerate_all(0.5, Vector3(100, 100, 100), 0.0)
+		f3.regenerate_all(healing_step, Vector3(100, 100, 100), 0.0)
 	var held := c3.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5))
 	f3.regen_blockers = []
 	for i in range(80):
-		f3.regenerate_all(0.5, Vector3(100, 100, 100), 0.0)
+		f3.regenerate_all(healing_step, Vector3(100, 100, 100), 0.0)
 	var failed := c3.compute_route(Vector3(9.5, 0.5, 0.5), Vector3(0.5, 0.5, 0.5))
 	print("  canary N3 start %f held %s failed %s" % [start, held, failed])
 	_assert(float(held.min_clearance) >= start - 0.3, "canary N3: barrier holds the return margin")
