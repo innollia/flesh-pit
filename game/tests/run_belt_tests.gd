@@ -176,7 +176,7 @@ func _run() -> void:
 	var tmat := (belt.get_node("Torso") as MeshInstance3D).material_override as ShaderMaterial
 	_assert(tmat.shader.code.contains("cull_disabled") and tmat.shader.code.contains("unshaded"), "the belly skin is self-lit and double-sided")
 	var cz: float = (belt.get_node("Canary") as Node3D).position.z
-	_assert(cz < -(belt.RZF + belt.BAND_OUT), "the canary sits in front of the belt band (%.3f)" % cz)
+	_assert(cz > -(belt.RZF + belt.BAND_OUT) and cz < -belt.RZF + 0.02, "the canary is tucked inside the briefs waistband (%.3f)" % cz)
 	# the mirror body wears the same belt fitted to its slimmer waist
 	var mb := FPMirrorBody.new()
 	get_root().add_child(mb)
@@ -220,7 +220,7 @@ func _run() -> void:
 			mx = mx.max(sp2)
 	_assert(maxf(mx.x - mn.x, mx.y - mn.y) >= 80.0, "a hung tool is at least 80 px at 720p (%s)" % [mx - mn])	# bare hands: take the knife through fp_interact (the same path every device uses)
 	var y0: float = m.hands_rig.position.y
-	m._interact()
+	bs.begin()
 	_assert(bs.busy(), "interacting starts the reach")
 	bs.tick(FPBeltSwap.SWAP_TIME * 0.45)
 	_assert(m.hands_rig.position.y < y0 - 0.1, "the hand dips toward the belt")
@@ -230,13 +230,13 @@ func _run() -> void:
 	_assert(prog.equipped() == "knife" and belt.call("hung")[0] == "", "bare hands take the knife; its hook is left empty")
 	# swap: knife goes back, blender comes up
 	_aim(1)
-	m._interact()
+	bs.begin()
 	_finish_swap()
 	_assert(prog.equipped() == "blender" and belt.call("hung") == ["knife", "", ""], "swap hangs the knife and takes the blender (%s)" % [belt.call("hung")])
 	# empty ring: hang the held tool
 	_aim(1)
 	_assert(m.interact_target() == "belt", "an empty ring is usable while holding a tool")
-	m._interact()
+	bs.begin()
 	_finish_swap()
 	_assert(prog.equipped() == "" and belt.call("hung") == ["knife", "blender", ""], "the empty ring takes the held tool back")
 	# empty hands at an empty ring: nothing to do
@@ -252,7 +252,7 @@ func _run() -> void:
 	bs.tick(0.0)
 	_aim(2)
 	var n_ref := _refused
-	m._interact()
+	bs.begin()
 	_finish_swap()
 	_assert(prog.equipped() == "knife" and _refused == n_ref + 1, "the saw is refused with flesh in hand (%s)" % prog.equipped())
 	_assert(belt.call("hung")[2] == "big_saw", "the refused saw stays on its hook")

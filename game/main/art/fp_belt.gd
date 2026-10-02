@@ -35,6 +35,8 @@ var wx := RX
 var wzf := RZF
 var wzb := RZ
 var _cans: Array = []
+var _supplies := {}
+var _spray_counts := Vector2i(-1, -1)
 var _canary: Node3D
 var _canary_head: Node3D
 var _scared := false
@@ -101,7 +103,7 @@ func _ready() -> void:
     K.add_mesh(self, "Belt", K.finish(st, 6.0), K.mat("tex_door_paint_64.png", 0.25, true))
     # 3 holster clips + cans on the right hip
     for i in range(3):
-        var a := -0.55 + i * 0.42
+        var a: float = [-0.9, -0.13, -1.5][i]
         var p := Vector3(cos(a) * (wx + 0.04), -0.05, sin(a) * (wzb + 0.04))
         var holder := K.pivot(self, "Can%d" % i, p)
         holder.rotation.y = -a + PI * 0.5
@@ -117,7 +119,7 @@ func _ready() -> void:
     # poking out just past the belt so it shows when looking down
     # belly8: out in front of the band (not behind it) and bigger, so the
     # yellow head and beak read clearly from above
-    _canary = K.pivot(self, "Canary", Vector3(-0.07 * wx / RX, -0.03, -(wzf + BAND_OUT) - 0.026))
+    _canary = K.pivot(self, "Canary", Vector3(-0.07 * wx / RX, -0.085, -wzf - 0.005))
     _canary.scale = Vector3.ONE * 1.4
     # the elastic strap pinning the bird's body against the belly
     var st2 := K.begin()
@@ -143,7 +145,11 @@ func _build_canary() -> void:
     var st := K.begin()
     var yellow := Color(0.98, 0.84, 0.18)
     K.blob(st, Transform3D.IDENTITY, Vector3(0, -0.01, 0), Vector3(0.022, 0.02, 0.02), 0.1, 3, yellow, Color(0.9, 0.72, 0.1))
-    K.add_mesh(_canary, "Body", K.finish(st), K.mat("tex_skin_64.png", 0.1, true))
+    var bird_body := K.add_mesh(_canary, "Body", K.finish(st), K.mat("tex_skin_64.png", 0.1, true))
+    bird_body.visible = false
+    var cloth := K.begin()
+    K.blob(cloth, Transform3D.IDENTITY, Vector3(0, -0.026, -0.014), Vector3(0.038, 0.045, 0.028), 0.08, 4, Color(0.82, 0.84, 0.86), Color(0.66, 0.68, 0.72))
+    K.add_mesh(_canary, "BriefBulge", K.finish(cloth), K.mat("tex_door_paint_128.png", 0.1, true))
     _canary_head = K.pivot(_canary, "Head", Vector3(0, 0.022, -0.004))
     st = K.begin()
     K.blob(st, Transform3D.IDENTITY, Vector3.ZERO, Vector3(0.016, 0.015, 0.016), 0.1, 5, yellow, Color(1.0, 0.9, 0.35))
@@ -152,30 +158,11 @@ func _build_canary() -> void:
         K.blob(st, Transform3D.IDENTITY, Vector3(sx * 0.011, 0.004, -0.009), Vector3(0.0035, 0.0035, 0.0035), 0.0, 1, Color(0.02, 0.02, 0.02), Color(0.02, 0.02, 0.02))
     K.add_mesh(_canary_head, "HeadMesh", K.finish(st), K.mat("tex_skin_64.png", 0.2, true))
 
-## belly8: looking down, the room light never reaches the top of the belly
-## (it read dark red-brown), so the bare skin is self-lit like the Tab doll:
-## vertex paint x skin texture under a soft fixed light from above/front.
-## Double-sided so no seam or flipped face can show through as a hole.
-const SKIN_SHADER := """shader_type spatial;
-render_mode unshaded, cull_disabled;
-uniform sampler2D tex : source_color, filter_nearest, repeat_enable;
-uniform bool use_vertex_color = true;
-void fragment() {
-	vec3 c = COLOR.rgb * mix(vec3(1.0), texture(tex, UV).rgb, 0.5);
-	vec3 n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	float l = 0.8 + 0.25 * max(dot(n, normalize(vec3(0.0, 1.0, -0.4))), 0.0);
-	ALBEDO = c * l;
-}
-"""
+## Shared skin material keeps belly, hands and reflection in one colour pipeline.
 static var _skin: ShaderMaterial
 static func _skin_mat() -> ShaderMaterial:
     if _skin == null:
-        var sh := Shader.new()
-        sh.code = SKIN_SHADER
-        _skin = ShaderMaterial.new()
-        _skin.shader = sh
-        _skin.set_shader_parameter("tex", load(K.TEX + "tex_skin_128.png"))
-        _skin.set_shader_parameter("use_vertex_color", true)
+        _skin = FDKSkinMaterial.make()
     return _skin
 
 ## Like FDKLowPoly.loft but each band's normal follows the real surface
@@ -308,6 +295,7 @@ func set_hung(ids: Array) -> void:
         var tool: Node3D = (load(ToolScenes[id]) as PackedScene).instantiate()
         tool.name = "Tool"
         hook.add_child(tool)
+        _body_layer(tool)
         # hung upright facing the player, then sized so every tool reads at
         # the same height (TOOL_SIZE) and dangles just under its ring
         tool.rotation_degrees = {"knife": Vector3(90, 0, 0), "blender": Vector3(0, 90, 0), "big_saw": Vector3(90, 0, 90)}[id]
@@ -349,6 +337,26 @@ func hook_point(i: int) -> Vector3:
     var hook: Node3D = _hooks[i]
     return hook.global_transform * Vector3(0, -0.13, -0.01)
 
+func slot_point(i: int) -> Vector3:
+    if i < 3:
+        return hook_point(i)
+    if i in [3, 4]:
+        return (_cans[0 if i == 3 else 2] as Node3D).global_position
+    return global_transform * _supply_position(i == 5)
+
+func _supply_position(feed: bool) -> Vector3:
+    return Vector3(-wx + 0.10, 0.035, -wzf - 0.10) if feed else Vector3(-wx + 0.05, -0.22, -wzf - 0.13)
+
+func set_supplies(feed: bool, barrier: bool) -> void:
+    for id in ["canary_feed", "barrier"]:
+        if not _supplies.has(id):
+            var art := FPConsumable.make(id)
+            add_child(art)
+            _body_layer(art)
+            art.position = _supply_position(id == "canary_feed")
+            _supplies[id] = art
+        _supplies[id].visible = feed if id == "canary_feed" else barrier
+
 ## The aimed hook swells a little (wordless: "this one"); -1 = none.
 func set_focus(i: int) -> void:
     for k in range(_hooks.size()):
@@ -357,12 +365,26 @@ func set_focus(i: int) -> void:
 func set_spray_count(cheap: int, expensive: int) -> void:
     var c := clampi(cheap, 0, 3)
     var e := clampi(expensive, 0, 3 - c)
+    var counts := Vector2i(c, e)
+    if counts == _spray_counts:
+        return
+    _spray_counts = counts
     for i in range(3):
         var slot: Node3D = _cans[i]
         for ch in slot.get_children():
+            slot.remove_child(ch)
             ch.queue_free()
-        if i < c + e:
-            K.add_mesh(slot, "CanMesh", _can_mesh(i >= c), K.mat("tex_chrome_64.png", 0.35, true))
+        var deep := (i == 2 and e > 0) or (i == 1 and c <= 1 and e > 1)
+        var cheap_slot := (i == 0 and c > 0) or (i == 1 and c > 1) or (i == 2 and c > 2)
+        if deep or cheap_slot:
+            var can := K.add_mesh(slot, "CanMesh", _can_mesh(deep), K.mat("tex_chrome_64.png", 0.35, true))
+            can.layers = 1 << 11
+
+func _body_layer(node: Node) -> void:
+    if node is VisualInstance3D and not node is Light3D:
+        node.layers = 1 << 11
+    for child in node.get_children():
+        _body_layer(child)
 
 func set_canary(present: bool) -> void:
     _canary.visible = present

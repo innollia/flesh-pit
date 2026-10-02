@@ -6,7 +6,7 @@ extends RefCounted
 ## mutations, tools with one/two-handed rules, consumables, vent stock and
 ## the death drop payload. Pure data/logic; main.gd wires it to the world.
 
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 
 const BIOME_CORE := "core"
 const BIOME_MANTLE := "mantle"
@@ -92,6 +92,7 @@ const TISSUE_MEMBRANE := 3
 const TISSUE_CONTRACTILE := 4
 
 var tools: FDKToolKit = FDKToolKit.new()
+var hands: FPHandEquipment = FPHandEquipment.new()
 var mutation_tree: FDKMutationTree = FDKMutationTree.new()
 var tumors: FDKTumorKit = FDKTumorKit.new()
 var vent: FDKVentShop = FDKVentShop.new()
@@ -456,6 +457,11 @@ func discard_stomach() -> void:
 # --- tools and hands ---------------------------------------------------------
 
 func owns(id: String) -> bool:
+	match id:
+		"spray_cheap": return sprays.count_of_tier(FDKSprayCan.Tier.CHEAP) > 0
+		"spray_deep": return sprays.count_of_tier(FDKSprayCan.Tier.DEEP) > 0
+		"canary_feed": return canary_feed > 0
+		"barrier": return barriers > 0
 	return tools.owns(id)
 
 ## Hands are busy with a flesh pile or a tumor carried without the bag.
@@ -467,7 +473,40 @@ func tumor_in_hand() -> bool:
 
 ## Equip "" (bare hands), knife, blender or big_saw.
 func equip(id: String, carrying_flesh: bool) -> bool:
-	return tools.try_equip(id, one_hand_busy(carrying_flesh))
+	# Legacy single-tool entry point for integrations and old save callers.
+	if id != "" and not owns(id):
+		return false
+	if id == "big_saw" and one_hand_busy(carrying_flesh):
+		return false
+	hands.clear()
+	hands.set_item(id, tools.hand_of(id), tools.is_two_handed(id))
+	tools.equipped = id
+	return true
+
+func equip_hand(id: String, hand: int, carrying_flesh: bool) -> bool:
+	if hand not in [FDKToolKit.Hand.LEFT, FDKToolKit.Hand.RIGHT]:
+		return false
+	if id != "" and not owns(id):
+		return false
+	if id == "blender" and hand != FDKToolKit.Hand.LEFT:
+		return false
+	if id != "" and one_hand_busy(carrying_flesh) and (hand == FDKToolKit.Hand.RIGHT or tools.is_two_handed(id)):
+		return false
+	hands.set_item(id, hand, tools.is_two_handed(id))
+	tools.equipped = id
+	return true
+
+func activate_hand(hand: int) -> String:
+	tools.equipped = hands.item(hand)
+	return tools.equipped
+
+func refresh_equipment() -> void:
+	for hand in [FDKToolKit.Hand.LEFT, FDKToolKit.Hand.RIGHT]:
+		var id := hands.item(hand)
+		if id != "" and not owns(id):
+			hands.set_item("", hand)
+	if tools.equipped != "" and not owns(tools.equipped):
+		tools.equipped = ""
 
 func equipped() -> String:
 	return tools.equipped
@@ -475,11 +514,13 @@ func equipped() -> String:
 ## Call whenever a hand becomes busy: drops a two-handed tool.
 func refresh_hands(carrying_flesh: bool) -> void:
 	tools.force_one_handed_if_needed(one_hand_busy(carrying_flesh))
+	if one_hand_busy(carrying_flesh) and hands.holds("big_saw"):
+		hands.clear()
 
 ## One-handed actions (spray, barrier) need a free hand: not while the
 ## two-handed saw is up.
 func one_handed_action_allowed() -> bool:
-	return not tools.is_two_handed(tools.equipped)
+	return not hands.holds("big_saw") and not tools.is_two_handed(tools.equipped)
 
 ## Chew-speed multiplier for the equipped tool.
 func dig_multiplier() -> float:
@@ -682,6 +723,7 @@ func take_death_payload(stomach_fill: float) -> Dictionary:
 	tumors._carried.clear()
 	_clear_pending()
 	tools.equipped = ""
+	hands.clear()
 	return payload
 
 ## Recovering the drop: consumables come back up to their carry caps; the
@@ -720,6 +762,7 @@ func serialize() -> Dictionary:
 		"tumors_eaten": tumors_eaten,
 		"rng": _rng_state,
 		"tools": tools.serialize(),
+		"hands": hands.serialize(),
 		"mutations": mutation_tree.serialize(),
 		"tumors": tumors.serialize(),
 		"sprays": sprays.serialize(),
@@ -756,6 +799,11 @@ func deserialize(d: Dictionary) -> void:
 		for id in ["knife", "blender", "big_saw"]:
 			if bool(d.get("owns_" + id, false)):
 				tools.grant(id)
+	if d.has("hands"):
+		hands.deserialize(d["hands"])
+	else:
+		hands.clear()
+		hands.set_item(tools.equipped, tools.hand_of(tools.equipped), tools.is_two_handed(tools.equipped))
 	if d.has("mutations"):
 		mutation_tree.deserialize(d["mutations"])
 	if d.has("tumors"):
@@ -763,5 +811,6 @@ func deserialize(d: Dictionary) -> void:
 	tumors.bag_capacity = 2 if has_bag else 1
 	if d.has("sprays"):
 		sprays.deserialize(d["sprays"])
+	refresh_equipment()
 	# older saves: anyone who already owns a tool has traded, so has the belt
 	has_belt = bool(d.get("has_belt", owns("knife") or owns("blender") or owns("big_saw")))

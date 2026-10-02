@@ -11,6 +11,7 @@ const K := preload("res://main/art/fp_art_kit.gd")
 ## set_eye_mood(0 calm..1 frantic).
 
 const SIZE := 0.26
+var _black_cover: MeshInstance3D
 var _grate: Node3D
 var _eyes: Array = []
 var _lids: Array = []
@@ -49,6 +50,10 @@ func _ready() -> void:
         K.quad(st, t, a + Vector3(0, 0.25, 0), b + Vector3(0, 0.25, 0), b + Vector3(0, hgt, 0), a + Vector3(0, hgt, 0), Vector3(0, 0, 1), black)
     K.quad(st, Transform3D.IDENTITY, Vector3(-SIZE, hgt, -SIZE), Vector3(SIZE, hgt, -SIZE), Vector3(SIZE, hgt, SIZE), Vector3(-SIZE, hgt, SIZE), Vector3.DOWN, black)
     K.add_mesh(self, "Duct", K.finish(st, 4.0), K.mat("tex_fixture_64.png", 0.1, false))
+    # A closed vent reads as a clean black opening behind the grille.
+    st = K.begin()
+    K.quad(st, Transform3D.IDENTITY, Vector3(-SIZE, 0.01, -SIZE), Vector3(SIZE, 0.01, -SIZE), Vector3(SIZE, 0.01, SIZE), Vector3(-SIZE, 0.01, SIZE), Vector3.DOWN, Color.BLACK)
+    _black_cover = K.add_mesh(self, "BlackOpening", K.finish(st), K.glow(Color.BLACK))
     # grate on a hinge
     _grate = K.pivot(self, "GrateHinge", Vector3(-SIZE, -0.02, 0))
     st = K.begin()
@@ -144,6 +149,7 @@ func _process(delta: float) -> void:
         e.position.x = (0.07 if i == 1 else -0.07) + sin(_time * 31.0 + i) * 0.004 * _mood
 
 func set_open(amount: float) -> void:
+    _black_cover.visible = amount < 0.02
     _grate.rotation_degrees.z = -100.0 * clampf(amount, 0.0, 1.0)
 
 func play_open() -> void:

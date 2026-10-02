@@ -140,7 +140,7 @@ func step_timed(delta: float) -> void:
 	else:
 		_alien_t = 0.0
 	# M15: holding the flesh pile, a 3 s gulp swallows it whole (no packing)
-	if p.can_lift_without_blender() and m.carried_flesh > 0.0 and Input.is_action_pressed("fp_blend") and not p.owns("blender"):
+	if p.can_lift_without_blender() and m.carried_flesh > 0.0 and Input.is_action_pressed("fdk_eat") and not p.owns("blender"):
 		_gulp_t = maxf(0.0, _gulp_t) + delta
 		if _gulp_t >= FPProgression.GULP_TIME:
 			gulp()

@@ -557,7 +557,7 @@ static func drawing_spot(i: int) -> Vector3:
     if not p is Dictionary:
         p = {}
     var per := maxi(int(p.get("한줄_장수", 7)), 1)
-    return Vector3(float(p.get("x", 1.49)), float(p.get("y", 1.55)) - float(p.get("줄_간격", 0.34)) * (i / per), float(p.get("z_시작", -1.0)) + float(p.get("간격", 0.27)) * (i % per))
+    return Vector3(FPRestroom.HALF.x - 0.025, float(p.get("y", 1.55)) - float(p.get("줄_간격", 0.34)) * (i / per), float(p.get("z_시작", -1.0)) + float(p.get("간격", 0.27)) * (i % per))
 
 func _set_offers(ids: Array[String]) -> void:
     _clear_offers()

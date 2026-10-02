@@ -70,6 +70,13 @@ static func key_of(action: String) -> String:
 			return OS.get_keycode_string(code)
 	return ""
 
+static func binding_of(action: String) -> String:
+	var names := [key_of(action)]
+	for event in InputMap.action_get_events(action):
+		if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+			names.append("LMB" if event.button_index == MOUSE_BUTTON_LEFT else "RMB")
+	return " / ".join(names)
+
 ## Give an action a new key. A key another action already uses swaps.
 func assign(action: String, key_name: String) -> bool:
 	if main == null or key_name == "":
@@ -226,6 +233,6 @@ func _fill() -> void:
 func _refresh() -> void:
 	for action in buttons:
 		var b: Button = buttons[action]
-		b.text = "...새 키를 누르기" if action == waiting else key_of(action)
+		b.text = "...새 키를 누르기" if action == waiting else binding_of(action)
 	if hint != null:
 		hint.text = "새 키를 누르세요  ·  Esc 또는 오른쪽 클릭 = 취소" if waiting != "" else "눌러서 바꾸기  ·  방향키/Tab 이동, Enter 선택  ·  Esc 닫기"

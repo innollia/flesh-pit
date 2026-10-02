@@ -6,22 +6,25 @@ extends Node3D
 ## and a hinged door in the +Z wall. Beyond the doorway the flesh wall
 ## begins right away. Built entirely in code, flat-shaded vertex colours.
 
-## room half-size (floor at y = 0). 형님 2026-09-29: wider left-right (X, door is the front +Z wall): 4.5 x 2.6 x 3 m.
+## Original 4.5 m room width; retain the requested photo furniture layout.
 const HALF := Vector3(2.25, 1.3, 1.5)
 const TILE := 0.3
 const DOOR_HALF_W := 0.45
 const DOOR_H := 2.05
 ## Ceiling opening for the art vent (main.gd places it at x=z=0.75, its
 ## grate opening is 0.52 m square): [x0, z0, x1, z1].
-const VENT_HOLE := [0.49, 0.49, 1.01, 1.01]
+const VENT_HOLE := [-0.81, -1.04, -0.29, -0.52]
 ## Where the vent sits (spec 03 §2): on the ceiling toward the wall facing
 ## the toilet wall, straight ahead of the seat, so lifting the head about
 ## 45 degrees on the toilet brings it into view. main.gd places FPVent here.
-const VENT_CENTER := Vector3(0.75, 2.0 * 1.3, 0.75)
+const VENT_CENTER := Vector3(-0.55, 2.0 * 1.3, -0.78)
+const TOILET_X := -HALF.x + 0.06
+const TOILET_Z := 0.72
+const SINK_Z := -0.3
 ## The canary hole (spec 03 §2, §9): low on the -X wall, in the corner under
 ## the sink. The sink's half-pedestal apron hides it from standing height;
 ## it shows only when crouching or lying down.
-const CANARY_HOLE := Vector3(-2.25, 0.09, -0.56)
+const CANARY_HOLE := Vector3(-HALF.x, 0.09, SINK_Z - 0.21)
 const CANARY_HOLE_HALF := Vector2(0.065, 0.07) # half width (z), half height
 ## Bottom edge of the ceramic apron under the basin.
 const APRON_BOTTOM := 0.34
@@ -45,8 +48,8 @@ var _lid_target: float = 0.0
 ## §4: the open door is a lighthouse on the way back).
 var door_spill: SpotLight3D
 var door_spill_fill: OmniLight3D
-const DOOR_SPILL_ENERGY := 3.2
-const DOOR_FILL_ENERGY := 1.1
+const DOOR_SPILL_ENERGY := 0.85
+const DOOR_FILL_ENERGY := 0.25
 
 func _ready() -> void:
     build()
@@ -66,12 +69,10 @@ func build() -> void:
     var ceramic_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, false, 0.45, 0.25, 1.0, false)
     _build_toilet(ceramic_mat)
     _build_sink(ceramic_mat)
-    _build_sink_apron(ceramic_mat)
     _build_canary_hole()
     var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, false, 0.0, 0.9, 1.0, false)
     _build_door(door_mat, fixture_mat)
     _build_korean(fixture_mat)
-    _build_drawer(ceramic_mat, fixture_mat)
     _build_light()
     _build_collision()
     _set_room_layer(self)
@@ -131,19 +132,21 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
         _tile(st, w[0], w[1], Vector3(0, 0.08, 0), w[2], Color(0.82, 0.84, 0.86))
     var tiles := MeshInstance3D.new()
     tiles.name = "Tiles"
-    tiles.mesh = _split_floor(st.commit() as ArrayMesh, _tiled(mat), _tiled(floor_mat))
+    tiles.mesh = _split_floor(st.commit() as ArrayMesh, _tiled(mat), _tiled(floor_mat, true))
     add_child(tiles)
 
 ## Copy of a shared PS1 material switched to flat tile mode: the grid, grout
 ## and bevels come from the baked normal texture, not geometry.
-func _tiled(base: Material) -> Material:
+func _tiled(base: Material, floor_surface: bool = false) -> Material:
     var m := (base as ShaderMaterial).duplicate() as ShaderMaterial
     m.set_shader_parameter("tile_mode", true)
     m.set_shader_parameter("tile_tex", tile_texture())
     m.set_shader_parameter("tile_size", TILE)
+    m.set_shader_parameter("tile_dimensions", Vector2(0.3, 0.3))
+    m.set_shader_parameter("tint", Color(0.52, 0.51, 0.47) if floor_surface else Color(0.86, 0.88, 0.90))
     # the grid starts at the -X / -Z walls and the floor
     m.set_shader_parameter("tile_offset", Vector3(HALF.x, 0.0, HALF.z))
-    m.set_shader_parameter("grout_color", Color(0.52, 0.55, 0.58))
+    m.set_shader_parameter("grout_color", Color(1.15, 1.15, 1.13) if floor_surface else Color(0.98, 0.97, 0.94))
     return m
 
 static var _tile_tex: ImageTexture
@@ -154,8 +157,8 @@ static func tile_texture() -> ImageTexture:
     if _tile_tex != null:
         return _tile_tex
     const N := 128
-    const GAP := 0.04
-    const BEV := 0.04
+    const GAP := 0.008
+    const BEV := 0.018
     var hgt := PackedFloat32Array()
     hgt.resize(N * N)
     for y in N:
@@ -246,10 +249,10 @@ func _split_floor(mesh: ArrayMesh, wall_mat: Material, floor_mat: Material) -> A
     var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
     var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
     var c: PackedColorArray = arr[Mesh.ARRAY_COLOR]
-    var parts := [[PackedVector3Array(), PackedVector3Array(), PackedColorArray()], [PackedVector3Array(), PackedVector3Array(), PackedColorArray()]]
+    var parts := [[PackedVector3Array(), PackedVector3Array(), PackedColorArray()], [PackedVector3Array(), PackedVector3Array(), PackedColorArray()], [PackedVector3Array(), PackedVector3Array(), PackedColorArray()]]
     for i in range(0, v.size(), 3):
         var is_floor := n[i].y > 0.9 and v[i].y < 0.1
-        var p: Array = parts[1 if is_floor else 0]
+        var p: Array = parts[2 if n[i].y < -0.9 else (1 if is_floor else 0)]
         for k in range(3):
             p[0].append(v[i + k])
             p[1].append(n[i + k])
@@ -265,6 +268,10 @@ func _split_floor(mesh: ArrayMesh, wall_mat: Material, floor_mat: Material) -> A
     var out := FDKLowPoly.planar_uv_mesh(tmp, 2.2)
     out.surface_set_material(0, wall_mat)
     out.surface_set_material(1, floor_mat)
+    var ceiling := StandardMaterial3D.new()
+    ceiling.albedo_color = Color(0.92, 0.92, 0.90)
+    ceiling.roughness = 1.0
+    out.surface_set_material(2, ceiling)
     return out
 
 # --- toilet -----------------------------------------------------------------
@@ -272,7 +279,8 @@ func _split_floor(mesh: ArrayMesh, wall_mat: Material, floor_mat: Material) -> A
 func _build_toilet(mat: Material) -> void:
     toilet = Node3D.new()
     toilet.name = "Toilet"
-    toilet.position = Vector3(0.75, 0, -HALF.z)
+    toilet.position = Vector3(TOILET_X, 0, TOILET_Z)
+    toilet.rotation.y = PI * 0.5
     add_child(toilet)
     var white := Color(0.97, 0.97, 0.98)
     var shade := Color(0.88, 0.89, 0.91)
@@ -298,7 +306,7 @@ func _build_toilet(mat: Material) -> void:
     var wring := _yring(prof, Vector3(0, 0.28, 0.285), 0.1, 0.125)
     for i in range(wring.size()):
         FDKLowPoly.add_tri(st, Vector3(0, 0.28, 0.285), wring[i], wring[(i + 1) % wring.size()], Vector3.UP, water.lightened(0.05 * (i % 2)))
-    bowl_center = toilet.position + Vector3(0, 0.3, 0.3)
+    bowl_center = toilet.transform * Vector3(0, 0.3, 0.3)
     # seat (a flat ring slightly above the rim)
     var seat_o := _yring(prof, Vector3(0, 0.45, 0.31), 0.22, 0.27)
     var seat_i := _yring(prof, Vector3(0, 0.45, 0.31), 0.14, 0.19)
@@ -363,7 +371,7 @@ func _build_korean(mat: Material) -> void:
     var chrome := Color(0.8, 0.82, 0.86)
     var chrome_d := Color(0.6, 0.62, 0.67)
     var x := -HALF.x
-    var sz := 1.0
+    var sz := -1.05
     # shower mixer on the left wall, riser bar, head, hose
     _box(st, Vector3(x, 0.95, sz - 0.08), Vector3(x + 0.06, 1.05, sz + 0.08), chrome, chrome_d)
     _box(st, Vector3(x + 0.06, 0.98, sz - 0.02), Vector3(x + 0.12, 1.02, sz + 0.02), chrome, chrome_d)
@@ -385,13 +393,19 @@ func _build_korean(mat: Material) -> void:
         var mid := (prev + q) * 0.5
         _box(st, mid - Vector3(0.008, 0.06, 0.008), mid + Vector3(0.008, 0.06, 0.008), chrome_d, chrome_d.darkened(0.1))
         prev = q
+    _add(st, mat, "Shower")
+    st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
     # floor drain: square stainless grate slightly sunk into the floor tiles
-    var dc := Vector3(-0.9, 0.012, 1.0)
+    var dc := Vector3(-0.48, 0.012, -0.06)
     _box(st, dc - Vector3(0.1, 0.004, 0.1), dc + Vector3(0.1, 0.0, 0.1), chrome_d, chrome_d)
     for i in range(5):
         var gx := dc.x - 0.08 + i * 0.04
         _box(st, Vector3(gx - 0.006, dc.y, dc.z - 0.08), Vector3(gx + 0.006, dc.y + 0.003, dc.z + 0.08), Color(0.35, 0.36, 0.38), Color(0.3, 0.3, 0.32))
-    # toilet paper holder on the right wall beside the toilet
+    _add(st, mat, "FloorDrain")
+    st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    # Holder mounted on the left wall beside the relocated toilet.
     var px := HALF.x
     _box(st, Vector3(px - 0.03, 0.7, -0.95), Vector3(px, 0.78, -0.75), chrome, chrome_d)
     var roll_a := PackedVector3Array()
@@ -402,6 +416,25 @@ func _build_korean(mat: Material) -> void:
     FDKLowPoly.loft(st, [roll_a, roll_b], [Color(0.98, 0.98, 0.97)], true, true)
     # ceiling exhaust vent: the main/art vent model sits in VENT_HOLE (main.gd)
     _add(st, mat, "KoreanFixtures")
+    (get_node("KoreanFixtures") as Node3D).scale.x = -1.0
+    (get_node("KoreanFixtures") as Node3D).position.z = TOILET_Z + 0.90
+    _build_bath()
+
+func _build_bath() -> void:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var white := Color(0.9, 0.91, 0.9)
+    var inside := Color(0.76, 0.79, 0.8)
+    var left := -HALF.x + 0.025
+    var right := HALF.x - 0.025
+    var back := -HALF.z + 0.025
+    var front := -HALF.z + 0.86
+    _box(st, Vector3(left, 0, front - 0.10), Vector3(right, 0.56, front), white, white.darkened(0.06))
+    _box(st, Vector3(left, 0, back), Vector3(left + 0.09, 0.56, front), white, inside)
+    _box(st, Vector3(right - 0.09, 0, back), Vector3(right, 0.56, front), white, inside)
+    _box(st, Vector3(left, 0, back), Vector3(right, 0.56, back + 0.09), white, inside)
+    _box(st, Vector3(left + 0.09, 0.12, back + 0.09), Vector3(right - 0.09, 0.17, front - 0.10), inside, inside)
+    _add(st, FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 2.0, false, 0.0, 0.7, 1.0, false), "Bathtub")
 
 # --- sink, door, light, collision ---------------------------------------------
 
@@ -409,7 +442,7 @@ func _build_sink(mat: Material) -> void:
     # sink + mirror: the main/art model on the -X wall, facing into the room
     mirror_art = (load("res://main/art/fp_mirror.tscn") as PackedScene).instantiate()
     mirror_art.name = "MirrorSink"
-    mirror_art.position = Vector3(-HALF.x, 0.0, -0.35)
+    mirror_art.position = Vector3(-HALF.x, 0.0, SINK_Z)
     mirror_art.rotation.y = PI * 0.5
     add_child(mirror_art)
 
@@ -420,7 +453,7 @@ func _build_sink_apron(mat: Material) -> void:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var x0 := -HALF.x
-    var cz := -0.35
+    var cz := SINK_Z
     var white := Color(0.97, 0.97, 0.98)
     var shade := Color(0.88, 0.89, 0.91)
     var top := 0.62
@@ -612,21 +645,31 @@ func _build_door(mat: Material, handle_mat: Material) -> void:
     door_pivot.add_child(body)
 
 func _build_light() -> void:
-    var st := SurfaceTool.new()
-    st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var y := 2 * HALF.y - 0.01
-    FDKLowPoly.add_quad(st, Vector3(-0.4, y, -0.4), Vector3(0.4, y, -0.4), Vector3(0.4, y, 0.4), Vector3(-0.4, y, 0.4), Vector3.DOWN, Color(1, 1, 1))
-    var m := StandardMaterial3D.new()
-    m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-    m.albedo_color = Color(1, 1, 0.97)
-    _add(st, m, "LightPanel")
+    var y := 2 * HALF.y - 0.015
+    var fixture := StandardMaterial3D.new()
+    fixture.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    fixture.albedo_color = Color(0.95, 0.93, 0.85)
+    for spot in [Vector2(-0.15, 0.6), Vector2(0.4, -0.7)]:
+        var disk := MeshInstance3D.new()
+        disk.name = "CeilingDownlight"
+        var mesh := CylinderMesh.new()
+        mesh.top_radius = 0.11
+        mesh.bottom_radius = 0.11
+        mesh.height = 0.025
+        mesh.radial_segments = 16
+        disk.mesh = mesh
+        disk.material_override = fixture
+        disk.position = Vector3(spot.x, y, spot.y)
+        add_child(disk)
     var l := OmniLight3D.new()
     l.name = "RoomLight"
     l.position = Vector3(0, 2 * HALF.y - 0.3, 0)
-    l.omni_range = 6.0
-    l.light_energy = 0.3 # 2026-09-30: 0.42 glared off the white tiles
+    l.omni_range = 4.0
+    l.light_energy = 0.3
+    l.light_cull_mask = ROOM_VISUAL_LAYER | (1 << 11) | (1 << 12) | (1 << 13)
+    # Walls already separate render layers; six shadow faces were redundant.
     l.shadow_enabled = true
-    l.light_color = Color(0.95, 0.98, 1.0) # cold fluorescent
+    l.light_color = Color(1.0, 0.97, 0.91)
     add_child(l)
     # door spill: a cold cone of tube light thrown out into the passage, and
     # a soft fill just past the threshold. Both scale with how open the door is.
@@ -668,9 +711,10 @@ func _build_collision() -> void:
         [Vector3(-(h.x + DOOR_HALF_W) * 0.5, h.y, h.z + t * 0.5), Vector3(h.x - DOOR_HALF_W, 2 * h.y, t)],
         [Vector3((h.x + DOOR_HALF_W) * 0.5, h.y, h.z + t * 0.5), Vector3(h.x - DOOR_HALF_W, 2 * h.y, t)],
         [Vector3(0, (DOOR_H + 2 * h.y) * 0.5, h.z + t * 0.5), Vector3(2 * DOOR_HALF_W, 2 * h.y - DOOR_H, t)],
-        [toilet.position + Vector3(0, 0.4, 0.2), Vector3(0.45, 0.8, 0.5)],
-        [Vector3(-h.x + 0.25, 0.45, -0.35), Vector3(0.5, 0.9, 0.45)],
-        [DRAWER_CENTER + Vector3(-DRAWER_SIZE.x * 0.5, 0, 0), DRAWER_SIZE],
+        [toilet.transform * Vector3(0, 0.4, 0.2), Vector3(0.5, 0.8, 0.45)],
+        [Vector3(-h.x + 0.30, 0.45, SINK_Z), Vector3(0.60, 0.9, 0.65)],
+        [Vector3(-h.x + 0.11, 1.78, SINK_Z + 0.60), Vector3(0.22, 1.20, 1.65)],
+        [Vector3(0, 0.28, -h.z + 0.43), Vector3(2 * h.x - 0.05, 0.56, 0.86)],
     ]
     for b in boxes:
         var cs := CollisionShape3D.new()

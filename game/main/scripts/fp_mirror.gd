@@ -12,7 +12,7 @@ extends CanvasLayer
 ## Hovering a doll part (or Left/Right) highlights it and opens a list panel
 ## beside it: each mutation's name, a one-line effect, the cost in hair kind
 ## + count (both kinds for a combination). Unaffordable rows are faded.
-## Hovering a row (or Up/Down, or the wheel) grows that mutation as a ghost
+## Hovering a row (or Up/Down) grows that mutation as a ghost
 ## on the doll; clicking (or Enter) buys it: the doll and the real body
 ## change at once. Not enough hairs: the part blinks red (denied). The
 ## candidate picked per part is remembered while open. Tumor bumps on the
@@ -124,7 +124,7 @@ func _ready() -> void:
 	_vp = SubViewport.new()
 	_vp.name = "HoloView"
 	_vp.transparent_bg = true
-	_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_vp)
 	ocam = Camera3D.new()
 	ocam.name = "HoloCamera"
@@ -223,6 +223,7 @@ func _ui_scale() -> float:
 func open(p: FPProgression) -> void:
 	prog = p
 	visible = true
+	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	panel_layer.visible = true
 	body.visible = true
 	_cand.clear()
@@ -240,6 +241,7 @@ func open(p: FPProgression) -> void:
 
 func close() -> void:
 	visible = false
+	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	panel_layer.visible = false
 	body.visible = false
 	panel.visible = false
@@ -420,9 +422,12 @@ func _place_panel() -> void:
 	var p := part_screen(_part)
 	panel.reset_size()
 	var sz := panel.get_combined_minimum_size()
-	var x := p.x + 40.0 * _ui_scale()
+	# Keep the list beside the restored large doll, rather than over its arm.
+	var right_edge := eye.unproject_position(body.to_global(Vector3(0.30, 1.2, 0))).x
+	var left_edge := eye.unproject_position(body.to_global(Vector3(-0.30, 1.2, 0))).x
+	var x := maxf(p.x + 40.0 * _ui_scale(), right_edge + 16.0 * _ui_scale())
 	if x + sz.x > vs.x - 10.0:
-		x = p.x - 40.0 * _ui_scale() - sz.x
+		x = minf(p.x - 40.0 * _ui_scale(), left_edge - 16.0 * _ui_scale()) - sz.x
 	panel.position = Vector2(clampf(x, 10.0, maxf(10.0, vs.x - sz.x - 10.0)), clampf(p.y - sz.y * 0.5, 10.0, maxf(10.0, vs.y - sz.y - 10.0)))
 	# lead line: part -> the near edge of the text, at the title's height
 	var ex := panel.position.x if panel.position.x > p.x else panel.position.x + sz.x
@@ -516,12 +521,9 @@ func _place() -> void:
 	if eye == null or hand_root == null:
 		return
 	var feet := arm_top(DOLL_ON_ARM.z)
-	# upright, facing the eye
-	var to_eye := eye.global_position - feet
-	to_eye.y = 0.0
-	var z := to_eye.normalized() if to_eye.length() > 0.001 else Vector3.BACK
-	var x := Vector3.UP.cross(z).normalized()
-	body.global_transform = Transform3D(Basis(x, Vector3.UP, z).scaled(Vector3.ONE * DOLL_SCALE), feet)
+	# Only orientation follows the camera. Feet stay on the animated forearm.
+	var basis := eye.global_basis.orthonormalized()
+	body.global_transform = Transform3D(basis.scaled(Vector3.ONE * DOLL_SCALE), feet)
 	ocam.global_transform = eye.global_transform
 	ocam.fov = eye.fov
 	ocam.near = eye.near
@@ -543,7 +545,7 @@ func arm_top(z: float) -> Vector3:
 	var r := lerpf(0.046, 0.029, t) + sin(t * PI) * 0.004
 	var c := hair.global_transform * Vector3(0, sin(t * PI) * 0.006, -along)
 	var s := hair.global_transform.basis.get_scale().x
-	return c + Vector3.UP * r * s
+	return c + hair.global_basis.y.normalized() * r * s
 
 func part_at(screen: Vector2) -> String:
 	if eye == null:
@@ -590,10 +592,6 @@ func _input(event: InputEvent) -> void:
 				focus_part(p)
 				buy_current()
 				get_viewport().set_input_as_handled()
-		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
-			select_candidate(int(_cand.get(_part, 0)) - 1)
-		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			select_candidate(int(_cand.get(_part, 0)) + 1)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT:
 			close()
 	elif event.is_action_pressed("ui_cancel") or (InputMap.has_action("fp_mutate") and event.is_action_pressed("fp_mutate")):

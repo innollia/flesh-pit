@@ -16,7 +16,10 @@ extends Resource
 
 ## Density regenerates toward 1.0 (fully solid) at this many units per second
 ## for a fully torn-out cell. Cells the player currently occupies are excluded.
-@export var regen_rate: float = 0.02
+## 형님 2026-09-30: at 0.02 a torn cell crossed back over iso_level (0.5, so
+## it reads solid again) in under 7s even at the shallowest depth, and under
+## 4s three shells in -- torn flesh looked like it never went away. Halved.
+@export var regen_rate: float = 0.01
 
 ## Radius (in cells) around the player that is protected from regeneration,
 ## so the player is never sealed into solid tissue.

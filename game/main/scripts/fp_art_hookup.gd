@@ -31,8 +31,9 @@ var hand_tumor: Node3D
 var mut_hands: Node3D
 var _rig: Node3D
 var _hair_key := ""
-var _mut_key := ""
+var _mut_key := "__uninitialized__"
 var _last_carry := 0.0
+var _consumables := [{}, {}]
 
 func setup(main: Node3D) -> void:
 	m = main
@@ -101,14 +102,15 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
-	var fa := lroot.get_node_or_null("Forearm") as Node3D
-	if fa != null:
-		fa.visible = false
-	if _rig != rig and _rig != null:
-		var old_fa := _rig.get_node_or_null("HandLeft/Forearm") as Node3D
-		if old_fa != null:
-			old_fa.visible = true
+	# Keep the same forearm mesh on both sides; the hair scene supplies hairs.
+	var hair_arm := arm_hair.get_node_or_null("Forearm") as Node3D
+	if hair_arm != null:
+		hair_arm.visible = false
+		(hair_arm as MeshInstance3D).material_override = FDKSkinMaterial.make()
 	_rig = rig
+	if m._mirror_open:
+		m.mirror.hand_root = lroot
+		FPMirror.tag_layer(rig, FPMirror.HOLO_LAYER)
 
 ## Waist meshes go on main.BODY_LAYER (lit by the soft body fill, not the
 ## eye lamp). Tools hung later keep the default layer.
@@ -123,6 +125,7 @@ func _put(n: Node3D, parent: Node3D, at: Vector3) -> void:
 		n.get_parent().remove_child(n)
 	parent.add_child(n)
 	n.position = at
+	m._tag_hands_layer(n, FPMirror.HOLO_LAYER if m._mirror_open else (FPMirrorReflection.HANDS_ROOM_LAYER if m._hands_in_room else 1))
 
 func _on_torn(_p: Vector3) -> void:
 	match m.progression.equipped():
@@ -137,13 +140,29 @@ func _process(_delta: float) -> void:
 	if m == null:
 		return
 	var prog: FPProgression = m.progression
-	var eq := prog.equipped()
-	knife.visible = eq == "knife"
-	scissors.visible = eq == "knife" and m.carried_flesh <= 0.0
-	blender.visible = eq == "blender" or (prog.owns("blender") and m.carry_mode)
+	knife.visible = prog.hands.holds("knife")
+	if knife.visible and _rig != null:
+		var wrist: Node3D = _rig.get_node("HandLeft/Wrist" if prog.hands.left == "knife" else "HandRight/Wrist")
+		if knife.get_parent() != wrist:
+			_put(knife, wrist, Vector3(0, -0.015, -0.06))
+	scissors.visible = prog.hands.right == "knife" and prog.hands.left == "" and m.carried_flesh <= 0.0
+	blender.visible = prog.hands.holds("blender")
 	if _rig != null:
 		_rig.set("hold_left", blender.visible)
-	saw.visible = eq == "big_saw"
+	saw.visible = prog.hands.holds("big_saw")
+	for hand in range(2):
+		var id := prog.hands.item(hand)
+		for existing in _consumables[hand]:
+			_consumables[hand][existing].visible = existing == id
+		if id in ["spray_cheap", "spray_deep", "canary_feed", "barrier"]:
+			if not _consumables[hand].has(id):
+				var prop := FPConsumable.make(id)
+				_consumables[hand][id] = prop
+			var wrist: Node3D = _rig.get_node("HandLeft/Wrist" if hand == 0 else "HandRight/Wrist")
+			var prop: Node3D = _consumables[hand][id]
+			if prop.get_parent() != wrist:
+				_put(prop, wrist, Vector3(0, -0.025, -0.06))
+			prop.visible = true
 	hand_tumor.visible = prog.tumor_in_hand()
 	knife.call("set_bloody", m.hand_blood)
 	blender.call("set_fill", clampf(m.carried_flesh / 40.0, 0.0, 1.0))
@@ -154,7 +173,8 @@ func _process(_delta: float) -> void:
 	_sync_hairs(prog)
 	_sync_mutations(prog)
 	var sp := prog.sprays
-	belt.call("set_spray_count", sp.count_of_tier(FDKSprayCan.Tier.CHEAP), sp.count_of_tier(FDKSprayCan.Tier.DEEP))
+	belt.call("set_spray_count", sp.count_of_tier(FDKSprayCan.Tier.CHEAP) - int(prog.hands.holds("spray_cheap")), sp.count_of_tier(FDKSprayCan.Tier.DEEP) - int(prog.hands.holds("spray_deep")))
+	belt.call("set_supplies", prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
 	belt.call("set_canary", m.has_canary)
 	belt.call("set_canary_scared", m.canary_urgency > 0.5)
 	bag.visible = prog.has_bag
@@ -202,6 +222,9 @@ func _sync_mutations(prog: FPProgression) -> void:
 		var use_mut := not owned.is_empty()
 		mut_hands.visible = true
 		r2.visible = use_mut
+		r2.set_process(use_mut)
+		mut_hands.set_process(use_mut or "M27" in all)
+		r2.pose_hook = m.hand_motions
 		m.hands_rig.visible = not use_mut
 		_attach_to_rig(r2 if use_mut else m.hands_rig)
 	# M27: the trunk tip twitches toward a tumor within 10 m

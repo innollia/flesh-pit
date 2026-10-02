@@ -25,15 +25,11 @@ signal ui_clicked
 signal belt_swapped(from_id: String, to_id: String)
 signal belt_refused
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 5
 
 const RESTROOM_CENTER := Vector3(0, 1, 0)
-## Empty space around the room box: surface-nets vertices can sit most of a
-## cell inside the solid side, so this must exceed one cell (cell_size 0.5).
-## 형님 2026-09-30: was 0.65 -- comfortably over the 1-cell floor but wide
-## enough that the flesh's inner face sat visibly off every wall except the
-## door, leaving a gap. Trimmed to just clear one cell.
-const ROOM_MARGIN := 0.55
+## The signed density ramp places the flesh surface against the room walls.
+const ROOM_MARGIN := 0.04
 ## Right in front of the door the margin is pulled down to under 5 cm.
 const DOOR_GAP := 0.04
 const MEMBRANE_THICKNESS := 0.9
@@ -41,10 +37,11 @@ const VOMIT_BUTTON_OVERFILL := 0.35
 const WORLD_GEN_HALF := 10.0
 const SHELL_THICKNESS := FPWorldFeatures.SHELL_THICKNESS
 const OUTER_RADIUS := FPWorldFeatures.OUTER_RADIUS
-const START_POS := Vector3(-0.95, 0.95, 0.75)
+const START_POS := Vector3(FPRestroom.TOILET_X + 0.64, 0.95, FPRestroom.TOILET_Z)
 const START_YAW := -PI * 0.5 - 0.02
 const START_PITCH := -0.32
-const SEAT_POS := Vector3(0.75, 0.55, -1.05)
+const SEAT_POS := Vector3(FPRestroom.TOILET_X + 0.30, 0.55, FPRestroom.TOILET_Z)
+const SEAT_YAW := -PI * 0.5
 const OPENING_TIME := FPOpening.TOTAL
 const BODY_PROTECT_RADIUS := 0.9
 const CRUSH_TIME := 6.0
@@ -54,7 +51,9 @@ const CONTRACT_RADIUS := 1.3
 const CONTRACT_AMOUNT := 0.45
 const HAZARD_TIME := 1.2
 const HEALTH_REGEN := 12.0
-const BARRIER_PRESSURE := 14.0
+## Keep barrier load above its 0.15/s relaxation after the slower regrowth.
+## 0.01 * 28 preserves the previous 0.02 * 14 pressure at the same depth.
+const BARRIER_PRESSURE := 28.0
 const CANARY_TICK := 0.25
 const CANARY_FEED_TIME := 120.0
 const REACH := 2.5
@@ -62,6 +61,8 @@ const REACH := 2.5
 @export var terrain_config: FDKTerrainConfig = FDKTerrainConfig.new()
 @export var stomach_config: FDKStomachConfig = FDKStomachConfig.new()
 
+var excavated_cells := 0
+var stomach_hud: FPStomachHUD
 var terrain: FDKTerrainField
 var stomach: FDKStomach
 var chewer: FDKChewer
@@ -70,6 +71,7 @@ var hands_rig: FDKHandsRig:
     get: return player.hands_rig as FDKHandsRig
     set(v): player.hands_rig = v
 var restroom: FPRestroom
+var tank_lid: FPTankLid
 var stomach_view: FPStomachView
 var vomit_button: FPVomitButton
 var settle_camera: Camera3D
@@ -100,10 +102,12 @@ var _vent_hover_id: String = ""
 ## Crayon tumor drawings posted on the wall (03-restroom 10).
 var drawing_nodes: Array[Node3D] = []
 var mirror: FPMirror ## forearm hologram mutation screen (fp_mutate key)
+var mirror_view_right: FPMirrorReflection
 var mirror_view: FPMirrorReflection ## the restroom mirror: reflection only
 var _mutate_guard_frame := -1
 var ending: FPEnding
 var art_hookup: FPArtHookup
+var hand_actions: FPHandActions
 var belt_swap: FPBeltSwap
 ## Situational hand / body motions (fp_hand_motions.gd).
 var hand_motions: FPHandMotions
@@ -124,6 +128,7 @@ var deaths: int = 0
 var opening_done: bool = false
 var ended: bool = false
 var _opening_t: float = -1.0
+var _opening_rising := false
 var _chew_ratio: float = 0.0
 ## 형님 2026-09-29: keeps the chewer aimed at one cell for the whole hold, so a
 ## sub-pixel raycast drift does not reset FDKChewer's progress every frame.
@@ -143,6 +148,8 @@ var settings_menu: FPSettingsMenu
 var settings: Dictionary = {}
 ## Where the run is saved on disk (title "이어하기", pause "저장하고 시작 화면으로").
 var save_path: String = "user://save.bin"
+const AUTOSAVE_INTERVAL := 30.0
+var _autosave_elapsed := 0.0
 var _esc_guard_frame: int = -10
 var _crush_t: float = 0.0
 var _hazards: Array = []
@@ -183,6 +190,11 @@ func _ready() -> void:
     terrain.config = terrain_config
     terrain.depth_origin = RESTROOM_CENTER
     terrain.density_sampler = _world_density
+    terrain.surface_constraint = _room_surface_constraint
+    for id in range(FDKChunk.TISSUE_TEXTURES.size()):
+        var tissue_mat := FDKChunk.terrain_material(id)
+        tissue_mat.set_shader_parameter("fit_room_seams", true)
+        tissue_mat.set_shader_parameter("room_half", FPRestroom.HALF)
     terrain.tissue_sampler = _world_tissue
     terrain.regen_rate_scale = _regen_scale
     add_child(terrain)
@@ -295,6 +307,7 @@ func _ready() -> void:
     add_child(art_hookup)
     art_hookup.setup(self)
     belt_swap = FPBeltSwap.new(self)
+    hand_actions = FPHandActions.new(self)
     hand_motions = FPHandMotions.new(self)
     mutation_apply = FPMutationApply.new()
     mutation_apply.name = "MutationApply"
@@ -304,8 +317,11 @@ func _ready() -> void:
     _setup_environment()
     _build_ui()
     _build_settle_camera()
-    _spawn_door_nerves()
     _setup_restroom_front()
+    tank_lid = FPTankLid.new()
+    tank_lid.name = "LooseTankLid"
+    add_child(tank_lid)
+    tank_lid.setup(self)
     _setup_front_menus()
     # every on-screen button clicks (vomit button, key settings, mirror ...)
     get_tree().node_added.connect(_on_node_added_for_click)
@@ -343,8 +359,6 @@ func _register_inputs() -> void:
         rk.physical_keycode = KEY_R
         InputMap.action_add_event("fp_pick", rk)
     _register_keybinds()
-    # W32: gamepad sticks/triggers and mouse-only bindings (fp_input_modes.gd)
-    (load("res://main/scripts/fp_input_modes.gd") as GDScript).call("register")
 
 ## Default keys live in main/data/keybinds.json. A player's own changes go to
 ## user://keybinds.json (same shape) and win over the defaults.
@@ -358,7 +372,14 @@ func _register_keybinds() -> void:
             var d = JSON.parse_string(FileAccess.get_file_as_string(path))
             if d is Dictionary:
                 for k in d.get("키", {}):
-                    binds[k] = d["키"][k]
+                    if path == USER_KEYBINDS_PATH and not binds.has(k):
+                        continue
+                    var merged: Dictionary = binds.get(k, {}).duplicate()
+                    merged.merge(d["키"][k], true)
+                    binds[k] = merged
+    for retired in ["fp_spray", "fp_blend", "fp_feed_canary", "fp_tool_1", "fp_tool_2", "fp_tool_3", "fp_tool_4"]:
+        if InputMap.has_action(retired):
+            InputMap.erase_action(retired)
     for action in binds:
         var b: Dictionary = binds[action]
         if not InputMap.has_action(action):
@@ -370,10 +391,16 @@ func _register_keybinds() -> void:
             var ev := InputEventKey.new()
             ev.physical_keycode = code
             InputMap.action_add_event(action, ev)
+        if int(b.get("마우스", -1)) > 0:
+            var mouse := InputEventMouseButton.new()
+            mouse.button_index = int(b["마우스"])
+            InputMap.action_add_event(action, mouse)
         if int(b.get("패드", -1)) >= 0:
             var jb := InputEventJoypadButton.new()
             jb.button_index = int(b["패드"])
             InputMap.action_add_event(action, jb)
+    # Rebinding rebuilds events, including the default triggers and hand buttons.
+    (load("res://main/scripts/fp_input_modes.gd") as GDScript).call("register")
 
 ## Change one key and save it for this player (for a future settings screen).
 func rebind_key(action: String, key_name: String) -> bool:
@@ -405,8 +432,33 @@ func _room_dist(p: Vector3) -> float:
     return FPWorldFeatures.room_dist(p, FPRestroom.HALF)
 
 func _world_density(p: Vector3) -> float:
+    # The ceiling duct stays empty and dark instead of revealing exterior flesh.
+    var vent_offset := p - FPRestroom.VENT_CENTER
+    if absf(vent_offset.x) < 0.30 and absf(vent_offset.z) < 0.30 and vent_offset.y >= -0.04 and vent_offset.y < 0.8:
+        return 0.0
     return FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
             ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points)
+
+func _room_surface_constraint(p: Vector3) -> Vector3:
+    var vent_offset := p - FPRestroom.VENT_CENTER
+    if absf(vent_offset.x) < 0.38 and absf(vent_offset.z) < 0.38 and vent_offset.y > -0.04:
+        return p
+    # Keep the exposed doorway organic; only concealed room seams are fitted.
+    if p.z > FPRestroom.HALF.z - 0.25 and absf(p.x) < FPRestroom.DOOR_HALF_W + 0.12 and p.y > 0.1 and p.y < FPRestroom.DOOR_H - 0.08:
+        return p
+    var h := FPRestroom.HALF + Vector3.ONE * 0.055
+    var q := Vector3(absf(p.x) - h.x, absf(p.y - FPRestroom.HALF.y) - h.y, absf(p.z) - h.z)
+    if maxf(q.x, maxf(q.y, q.z)) > 0.35:
+        return p
+    # Snap adjoining faces together at corners too: projecting only the
+    # closest face leaves diagonal triangles cutting through the tiles.
+    if q.x > -0.35:
+        p.x = signf(p.x) * h.x
+    if q.y > -0.35:
+        p.y = FPRestroom.HALF.y + signf(p.y - FPRestroom.HALF.y) * h.y
+    if q.z > -0.35:
+        p.z = signf(p.z) * h.z
+    return p
 
 func _in_door_column(p: Vector3) -> bool:
     return FPWorldFeatures.in_door_column(p, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H)
@@ -418,6 +470,9 @@ func shell_at(p: Vector3) -> int:
 ## 3 membrane (restroom shell), 4 contractile fibers (mantle, needs a blade).
 func _world_tissue(p: Vector3) -> int:
     var room := _room_dist(p) < MEMBRANE_THICKNESS + ROOM_MARGIN and not _in_door_column(p)
+    # Initial exposed doorway is flesh; nerves belong to newly excavated depth.
+    if _in_door_column(p) and p.z > FPRestroom.HALF.z - 0.2 and p.z < FPRestroom.HALF.z + 1.0 and p.y > -0.1 and p.y < FPRestroom.DOOR_H + 0.3:
+        return FDKTissueRules.COMPRESSIVE
     return FPWorldFeatures.world_tissue_at(p, RESTROOM_CENTER, _noise.get_noise_3dv(p), room)
 
 func _regen_scale(p: Vector3) -> float:
@@ -438,13 +493,6 @@ func _stream_world() -> void:
                             _stream_queue.append(c)
     if not _stream_queue.is_empty():
         terrain.get_or_create_chunk(_stream_queue.pop_front())
-
-func _spawn_door_nerves() -> void:
-    var z := FPRestroom.HALF.z + ROOM_MARGIN
-    var spots := [Vector3(-0.35, 1.55, z), Vector3(0.3, 0.55, z), Vector3(0.05, 1.85, z), Vector3(-0.2, 0.3, z)]
-    for s in spots:
-        var n := _spawn_nerve(s + Vector3(0, 0, 0.02), Vector3(0, 0, -1).rotated(Vector3.UP, randf_range(-0.4, 0.4)).rotated(Vector3.RIGHT, randf_range(-0.3, 0.3)))
-        n.length = 0.19
 
 func _add_nerve(n: FDKNerveStalk) -> void:
     add_child(n)
@@ -472,8 +520,8 @@ func _setup_environment() -> void:
     environment.background_mode = Environment.BG_COLOR
     environment.background_color = Color(0.08, 0.01, 0.02)
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = Color(0.55, 0.22, 0.24)
-    environment.ambient_light_energy = 0.35
+    environment.ambient_light_color = Color(0.85, 0.87, 0.9)
+    environment.ambient_light_energy = 0.12
     environment.fog_enabled = false
     environment.fog_light_color = Color(0.22, 0.03, 0.05)
     environment.fog_density = 0.09
@@ -516,7 +564,11 @@ func melody_level() -> float:
 func _build_ui() -> void:
     var layer := CanvasLayer.new()
     layer.name = "HUD"
+    layer.layer = 22
     add_child(layer)
+    stomach_hud = FPStomachHUD.new()
+    stomach_hud.main = self
+    layer.add_child(stomach_hud)
     vomit_button = FPVomitButton.new()
     vomit_button.name = "VomitButton"
     layer.add_child(vomit_button)
@@ -540,7 +592,11 @@ func _build_ui() -> void:
     mirror_view = FPMirrorReflection.new()
     mirror_view.name = "MirrorView"
     add_child(mirror_view)
-    mirror_view.attach(restroom.mirror_art, player, player.camera, progression)
+    mirror_view.attach(restroom.mirror_art.call("reflection_surface"), player, player.camera, progression)
+    mirror_view_right = FPMirrorReflection.new()
+    mirror_view_right.name = "MirrorViewRight"
+    add_child(mirror_view_right)
+    mirror_view_right.attach(restroom.mirror_art.door_surface_right, player, player.camera, progression, mirror_view.body)
     keybind_menu = FPKeybindMenu.new()
     keybind_menu.name = "KeybindMenu"
     add_child(keybind_menu)
@@ -615,9 +671,11 @@ func _tag_hands_layer(n: Node, bits: int) -> void:
 ## The player finishes on the toilet, stands up, opens the stall door.
 func _begin_opening() -> void:
     _opening_t = 0.0
+    _opening_rising = false
+    opening_view.start_hints()
     player.global_position = SEAT_POS
-    player.set("_yaw", PI)
-    player.rotation.y = PI
+    player.set("_yaw", SEAT_YAW)
+    player.rotation.y = SEAT_YAW
     player.set("_pitch", OPENING_SEAT_PITCH)
     player.camera_pivot.rotation.x = OPENING_SEAT_PITCH
     player.set_physics_process(false)
@@ -628,7 +686,16 @@ func _begin_opening() -> void:
 func _process_opening(delta: float) -> void:
     if _opening_t < 0.0:
         return
-    _opening_t += delta
+    var seated_until := FPOpening.BLACK_TIME + FPOpening.FADE_TIME
+    if not _opening_rising:
+        _opening_t = minf(_opening_t + delta, seated_until)
+        opening_view.waiting_to_rise = _opening_t >= seated_until
+        if opening_view.waiting_to_rise and Input.is_action_just_pressed("fdk_move_forward"):
+            _opening_rising = true
+            opening_view.waiting_to_rise = false
+            opening_view.show_movement_hints()
+    else:
+        _opening_t += delta
     apply_opening_at(_opening_t)
     if _opening_t >= OPENING_TIME:
         finish_opening()
@@ -636,7 +703,7 @@ func _process_opening(delta: float) -> void:
 ## Poses the opening at time t (also used by captures and tests).
 func apply_opening_at(t: float) -> void:
     var k := FPOpening.rise_at(t)
-    player.global_position = SEAT_POS.lerp(Vector3(SEAT_POS.x, START_POS.y, SEAT_POS.z + 0.25), k)
+    player.global_position = SEAT_POS.lerp(Vector3(SEAT_POS.x + 0.28, START_POS.y, SEAT_POS.z), k)
     var pitch := lerpf(OPENING_SEAT_PITCH, 0.0, k)
     player.set("_pitch", pitch)
     player.camera_pivot.rotation.x = pitch
@@ -647,6 +714,7 @@ func finish_opening() -> void:
     if _opening_t < 0.0:
         return
     _opening_t = -1.0
+    opening_view.waiting_to_rise = false
     opening_done = true
     if opening_view != null:
         opening_view.done()
@@ -663,13 +731,12 @@ func _process(delta: float) -> void:
     _update_atmosphere(delta)
     _update_restroom_front()
     _update_hands_room_layer()
-    # Space (fdk_jump) is a climb axis, not a gravity jump (this kit has no
-    # gravity). Only allow it while actually inside flesh, so it cannot lift
-    # the player off the open restroom floor (형님 2026-09-30).
-    player.climb_enabled = terrain.density_at(player.global_position) >= 0.5
+    player.climb_enabled = can_climb_at(player.global_position)
     mirror_view.sync(restroom.contains(player.global_position) and not _seated and not _settling, has_canary)
+    mirror_view_right.sync(restroom.contains(player.global_position) and not _seated and not _settling, has_canary)
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
+    opening_view.hints.vomit_hint = not _settling and stomach.fill_ratio() >= 1.0
     hands_rig.set_mutation(progression.mutation_amount())
     hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
     vent.tick(delta)
@@ -706,58 +773,75 @@ func _process(delta: float) -> void:
         open_mirror()
         return
     _handle_actions()
-    if Input.is_action_pressed("fdk_eat"):
-        _chew_step(delta)
-    else:
-        chewer.stop()
-        terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
+    hand_actions.tick(delta)
     step_world(delta)
+    tick_autosave(delta)
+
+func tick_autosave(delta: float) -> void:
+    if is_opening() or ended or _settling or hand_motions.kind.begins_with("vomit") or get_tree().paused:
+        return
+    _autosave_elapsed += delta
+    if _autosave_elapsed >= AUTOSAVE_INTERVAL and save_to_disk():
+        _autosave_elapsed = 0.0
+
+func can_climb_at(at: Vector3) -> bool:
+    if restroom.contains(at):
+        return false
+    if terrain.density_at(at) >= 0.5:
+        return true
+    # Climb along flesh beside an excavated tunnel; an empty center is
+    # normal after tearing. The ground alone does not enable Space.
+    for direction in [Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]:
+        if terrain.density_at(at + direction * 0.6) >= 0.5:
+            return true
+    return false
 
 func _handle_actions() -> void:
+    if tank_lid.held:
+        if Input.is_action_just_pressed("fp_interact"):
+            tank_lid.drop()
+        return
     if Input.is_action_just_pressed("fp_carry"):
         toggle_carry()
     if Input.is_action_just_pressed("fp_vomit"):
         request_vomit()
     if Input.is_action_just_pressed("fp_interact"):
         _interact()
-    if Input.is_action_just_pressed("fp_pick"):
-        _pick()
     if Input.is_action_just_pressed("fp_barrier"):
         place_barrier()
-    if Input.is_action_just_pressed("fp_spray"):
-        use_spray(Input.is_key_pressed(KEY_SHIFT))
-    if Input.is_action_just_pressed("fp_blend"):
-        use_blender()
     if Input.is_action_just_pressed("fp_eat_tumor"):
         eat_tumor()
-    if Input.is_action_just_pressed("fp_feed_canary"):
-        feed_canary()
     if Input.is_action_just_pressed("fp_tool_next"):
         cycle_tool()
-    for i in range(4):
-        if Input.is_action_just_pressed("fp_tool_%d" % (i + 1)):
-            equip_tool(["", "knife", "blender", "big_saw"][i])
+    if Input.is_action_just_pressed("fp_tool_prev"):
+        cycle_tool(-1)
 
 func _chew_step(delta: float) -> void:
+    if tank_lid.held:
+        chewer.stop()
+        return
+    if hands_rig.state == FDKHandsRig.HandState.TEAR:
+        terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
+        return
+    var dir: Vector3 = player.get_look_ray()[1]
+    # Once grabbed, finish this cell despite collider motion during regrowth.
+    # Looking away or leaving reach still cancels the grab.
+    if chewer.is_chewing() and _chew_target != Vector3.INF and _looking_at(_chew_target, 12.0, progression.reach() + terrain_config.cell_size) and terrain.density_at(_chew_target) >= terrain_config.iso_level:
+        var contact := _chew_target - dir * terrain_config.cell_size * 0.5
+        if tissue_tools.chew_at(_chew_target, contact, dir, delta):
+            terrain.set_press(contact, -dir, _chew_ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
+        return
     var hit := _look_hit()
     if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
         chewer.stop()
         terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
         _chew_target = Vector3.INF
         return
-    var dir: Vector3 = player.get_look_ray()[1]
-    # 형님 2026-09-29: hold-to-tear was not tearing -- a re-aimed raycast can
-    # drift into the neighbouring cell frame to frame even while the mouse
-    # is still, which reset FDKChewer's progress every time. Keep chewing
-    # the same target cell for as long as the hit point stays inside it.
     var target: Vector3 = hit.position + dir * terrain_config.cell_size * 0.5
-    if chewer.is_chewing() and _chew_target != Vector3.INF and target.distance_to(_chew_target) < terrain_config.cell_size * 0.5:
-        target = _chew_target
-    else:
-        _chew_target = target
+    _chew_target = target
     # hardness per tissue, membrane only with a blade (fp_tissue_tools.gd)
     if tissue_tools.chew_at(target, hit.position, dir, delta):
-        terrain.set_press(hit.position, -dir, _chew_ratio)
+        terrain.set_press(hit.position, -dir, _chew_ratio if chewer.is_chewing() and hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
     else:
         _chew_target = Vector3.INF
 
@@ -789,7 +873,7 @@ func step_world(delta: float) -> void:
         interact_ring.set("shown", interact_target() != "")
     _step_death_drop(delta)
     terrain.step_contraction(delta, player.global_position)
-    tissue_tools.step_charge(delta, Input.is_action_pressed("fp_blend"))
+    tissue_tools.step_charge(delta, hand_actions.charging())
     tissue_tools.step_blend(delta)
     if not ended and player.global_position.distance_to(RESTROOM_CENTER) >= OUTER_RADIUS - 0.3:
         reach_ending()
@@ -811,59 +895,47 @@ func _looking_at(p: Vector3, deg: float, dist: float) -> bool:
     return to.normalized().dot(ray[1]) > cos(deg_to_rad(deg))
 
 func _interact() -> void:
-    var p := player.global_position
-    if belt_swap != null and belt_swap.aimed_hook() >= 0 and belt_swap.begin():
-        return # reached down to the belt
-    if p.distance_to(mirror_point()) < 1.1 and _looking_at(mirror_point(), 35.0, 1.6):
-        vent.notice("mirror") # the mirror only reflects; mutating is on the forearm (fp_mutate)
-    elif not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
-        begin_canary_pull()
-    elif _near_toilet() and _looking_at(lever_point(), 12.0, 1.4):
-        pull_lever()
-    elif _looking_at(FPRestroom.VENT_CENTER, 25.0, 2.2):
-        use_vent()
-    elif p.distance_to(sink_point()) < 0.9:
-        wash_hands()
-    elif _near_toilet():
-        if stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents():
-            start_settlement()
-        elif not _looking_at(lever_point(), 35.0, 1.6):
-            sit_down() # facing the bowl, not the tank: sit on it
-        else:
-            var opening := restroom._lid_target == 0.0
-            if not opening and progression.teeth_in_hand > 0:
-                put_teeth_back()
-            else:
-                restroom.set_tank_open(opening)
-                vent.notice("lid_open" if opening else "lid_close")
-    elif _looking_at(Vector3(0, 1, FPRestroom.HALF.z), 30.0, 1.6):
-        restroom.set_door_open(not restroom.is_door_open())
-    else:
-        pick_up_tumor()
+    match interact_target():
+        "tank_lid":
+            if tank_lid.held: tank_lid.drop()
+            else: tank_lid.pick()
+        "mirror":
+            restroom.mirror_art.call("toggle_cabinet")
+            vent.notice("mirror")
+        "canary": begin_canary_pull()
+        "tank_teeth": put_teeth_back()
+        "lever": pull_lever()
+        "vent": use_vent()
+        "sink": wash_hands()
+        "toilet":
+            if stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents():
+                start_settlement()
+            else: sit_down()
+        "door": restroom.set_door_open(not restroom.is_door_open())
+        "tumor": pick_up_tumor()
 
 func _pick() -> void:
-    if vent.is_open and not vent.offers.is_empty():
-        take_vent_offer()
-    elif vent.is_open and _looking_at(FPRestroom.VENT_CENTER, 25.0, 2.2):
-        reach_into_vent()
-    elif _near_toilet() and restroom._lid_target != 0.0:
+    if _interaction_aim(FPRestroom.VENT_CENTER, 12.0, 2.0) and vent.is_open:
+        if not vent.offers.is_empty(): take_vent_offer()
+        else: reach_into_vent()
+    elif _interaction_aim(toilet_point(), 12.0, 1.35) and restroom._lid_target != 0.0:
         scoop_teeth()
 
 func mirror_point() -> Vector3:
-    return Vector3(-FPRestroom.HALF.x + 0.05, 1.5, -0.35)
+    return restroom.mirror_art.to_global(Vector3(-0.6, 1.65, 0.24))
 
 func sink_point() -> Vector3:
-    return Vector3(-FPRestroom.HALF.x + 0.3, 0.95, -0.35)
+    return Vector3(-FPRestroom.HALF.x + 0.3, 0.95, FPRestroom.SINK_Z)
 
 ## 형님 2026-09-29: toilet interact ring should only show facing it, close (~1.2m).
 func toilet_point() -> Vector3:
-    return restroom.toilet.global_position + Vector3(0, 0.9, 0.5)
+    return restroom.toilet.to_global(Vector3(0, 0.45, 0.3))
 
 func canary_hole_point() -> Vector3:
     return FPRestroom.CANARY_HOLE + Vector3(0.03, 0.0, 0.0)
 
 func _near_toilet() -> bool:
-    return player.global_position.distance_to(restroom.toilet.global_position + Vector3(0, 0.9, 0.5)) < 1.3
+    return player.global_position.distance_to(restroom.toilet.to_global(Vector3(0, 0.9, 0.5))) < 1.3
 
 func _near_rest_point() -> int:
     for i in range(rest_points.size()):
@@ -954,8 +1026,8 @@ func sit_down() -> bool:
     _seated = true
     player.velocity = Vector3.ZERO
     player.global_position = SEAT_POS
-    player.set("_yaw", PI)
-    player.rotation.y = PI
+    player.set("_yaw", SEAT_YAW)
+    player.rotation.y = SEAT_YAW
     player.set("_pitch", OPENING_SEAT_PITCH)
     player.camera_pivot.rotation.x = OPENING_SEAT_PITCH
     player.set_physics_process(false)
@@ -966,7 +1038,7 @@ func stand_up() -> bool:
     if not _seated:
         return false
     _seated = false
-    player.global_position = Vector3(SEAT_POS.x, START_POS.y, SEAT_POS.z + 0.25)
+    player.global_position = Vector3(SEAT_POS.x + 0.28, START_POS.y, SEAT_POS.z)
     player.set("_pitch", 0.0)
     player.camera_pivot.rotation.x = 0.0
     player.set_physics_process(true)
@@ -1041,6 +1113,8 @@ func _setup_front_menus() -> void:
         _begin_opening()
 
 func show_title() -> void:
+    mirror_view.sync(false, has_canary)
+    mirror_view_right.sync(false, has_canary)
     title_screen.has_save = has_save_file()
     title_screen.open()
     hands_rig.visible = false
@@ -1066,7 +1140,15 @@ func new_game() -> void:
 func continue_game() -> bool:
     _leave_title()
     _begin_opening()
-    return load_from_disk()
+    if not load_from_disk():
+        return false
+    if ended:
+        # A completed slot must not reload into an inert ending flag.
+        # Keep the run's progress and resume in the restroom.
+        ended = false
+        player.global_position = START_POS
+        player.velocity = Vector3.ZERO
+    return true
 
 ## Any menu that holds the game (title, pause, settings, keys).
 func is_menu_up() -> bool:
@@ -1144,12 +1226,16 @@ func has_save_file() -> bool:
     return FileAccess.file_exists(save_path)
 
 func save_to_disk() -> bool:
-    var f := FileAccess.open(save_path, FileAccess.WRITE)
+    var temporary := save_path + ".tmp"
+    var f := FileAccess.open(temporary, FileAccess.WRITE)
     if f == null:
         return false
     f.store_var(serialize())
+    var error := f.get_error()
     f.close()
-    return true
+    if error != OK:
+        return false
+    return DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(save_path)) == OK
 
 func load_from_disk() -> bool:
     if not has_save_file():
@@ -1357,7 +1443,7 @@ func _vent_watch(delta: float) -> void:
     if not inside:
         _vent_away_t += delta
         return
-    var tank_d: float = p.distance_to(restroom.toilet.global_position + Vector3(0, 0.9, 0.5))
+    var tank_d: float = p.distance_to(restroom.toilet.to_global(Vector3(0, 0.9, 0.5)))
     if tank_d < 0.9:
         vent.notice("tank_near")
     elif tank_d > 1.6:
@@ -1365,7 +1451,8 @@ func _vent_watch(delta: float) -> void:
     var vent_d := p.distance_to(Vector3(vent.global_position.x, p.y, vent.global_position.z))
     if vent_d < FPVent.dist("UNDER_VENT", 1.0):
         vent.notice("near_vent")
-    _vent_edge("sink", p.distance_to(sink_point()) < FPVent.dist("SINK_NEAR", 0.9), "near_sink")
+    var sink_d := p.distance_to(sink_point())
+    _vent_edge("sink", sink_d < FPVent.dist("SINK_NEAR", 0.9) and sink_d < tank_d, "near_sink")
     _vent_edge("door", p.distance_to(Vector3(0, p.y, FPRestroom.HALF.z)) < FPVent.dist("DOOR_NEAR", 1.0), "door")
     _vent_edge("away", vent.is_open and not vent.offers.is_empty() and vent_d > FPVent.dist("WALK_AWAY", 2.0), "walk_away")
     _vent_edge("with", progression.teeth_in_hand > 0 and tank_d > FPVent.dist("WALK_WITH", 1.8) and vent_d > FPVent.dist("UNDER_VENT", 1.0), "walk_with")
@@ -1382,11 +1469,18 @@ func _vent_watch(delta: float) -> void:
 func open_mirror() -> void:
     # the forearm hologram: arm up like reading a watch, doll on the forearm,
     # the rest dimmed; the view holds still and the player stands
+    if art_hookup != null:
+        art_hookup._sync_mutations(progression)
     _mirror_open = true
     var holo: Array[Node] = [hands_rig]
     if art_hookup != null and art_hookup.get("mut_hands") != null:
         holo.append(art_hookup.mut_hands)
-    mirror.setup(player.camera, hands_rig.call("get_hand_root", "left"), holo)
+    var active_rig: FDKHandsRig = hands_rig
+    if art_hookup != null and art_hookup.mut_hands != null:
+        var variant: FDKHandsRig = art_hookup.mut_hands.call("rig")
+        if variant.is_visible_in_tree():
+            active_rig = variant
+    mirror.setup(player.camera, active_rig.call("get_hand_root", "left"), holo)
     mirror.open(progression)
     hand_motions.play_watch()
     player.set_physics_process(false)
@@ -1467,19 +1561,48 @@ func _aim_pitch_at(p: Vector3) -> float:
 
 # --- W32 interaction affordance: a ring round the aim dot, no words ---------
 ## What fp_interact would do right now ("" = nothing but digging).
+func _interaction_aim(point: Vector3, degrees: float, reach: float) -> bool:
+    if not _looking_at(point, degrees, reach):
+        return false
+    var eye := player.camera.global_position
+    var q := PhysicsRayQueryParameters3D.create(eye, point)
+    q.exclude = [player.get_rid()]
+    var hit := get_world_3d().direct_space_state.intersect_ray(q)
+    # The target may sit inside its own authored fixture collider.
+    return hit.is_empty() or eye.distance_to(hit.position) >= eye.distance_to(point) - 0.30
+
 func interact_target() -> String:
-    var p := player.global_position
+    if tank_lid != null and tank_lid.held:
+        return "tank_lid"
     if belt_swap != null and belt_swap.can_act():
         return "belt"
-    if not has_canary and _looking_at(canary_hole_point(), 25.0, 1.4):
-        return "canary"
-    if p.distance_to(toilet_point()) < 1.2 and _looking_at(toilet_point(), 35.0, 1.6):
-        return "toilet"
-    if p.distance_to(sink_point()) < 1.2 and _looking_at(sink_point(), 35.0, 1.6):
-        return "sink"
-    if p.distance_to(Vector3(0, 1, FPRestroom.HALF.z)) < 1.6 and _looking_at(Vector3(0, 1, FPRestroom.HALF.z), 45.0, 2.2):
-        return "door"
-    return ""
+    var candidates: Array = [
+        ["mirror", mirror_point(), 18.0, 1.3],
+        ["sink", sink_point(), 12.0, 1.25],
+        ["lever", lever_point(), 8.0, 1.25],
+        ["toilet", toilet_point(), 12.0, 1.35],
+        ["vent", FPRestroom.VENT_CENTER, 12.0, 2.0],
+        ["door", restroom.door_pivot.to_global(Vector3(FPRestroom.DOOR_HALF_W, 1.0, 0)), 8.0, 1.25]]
+    if not has_canary:
+        candidates.append(["canary", canary_hole_point(), 10.0, 1.25])
+    if tank_lid != null and tank_lid.can_pick():
+        candidates.append(["tank_lid", tank_lid.lid.global_position, 8.0, 1.25])
+    if progression.teeth_in_hand > 0 and restroom._lid_target != 0.0:
+        candidates.append(["tank_teeth", restroom.tank_art.to_global(Vector3(0, 0.3, 0)), 10.0, 1.25])
+    var tumor := _nearest_tumor(1.25)
+    if tumor != null:
+        candidates.append(["tumor", tumor.global_position, 10.0, 1.25])
+    var best := ""
+    var best_dot := -1.0
+    var ray: Array = player.get_look_ray()
+    for candidate in candidates:
+        var point: Vector3 = candidate[1]
+        if _interaction_aim(point, candidate[2], candidate[3]):
+            var dot: float = (point - ray[0]).normalized().dot(ray[1])
+            if dot > best_dot:
+                best_dot = dot
+                best = candidate[0]
+    return best
 
 func feed_canary() -> bool:
     if not has_canary or not progression.feed_canary():
@@ -1514,13 +1637,23 @@ func _step_canary(delta: float) -> void:
 # --- tools, carry, blender -------------------------------------------------------
 
 func equip_tool(id: String) -> bool:
+    if tank_lid != null and tank_lid.held:
+        return false
     return progression.equip(id, carried_flesh > 0.0)
 
-func cycle_tool() -> void:
-    var order := ["", "knife", "blender", "big_saw"]
+func equip_hand(id: String, hand: int) -> bool:
+    if tank_lid != null and tank_lid.held:
+        return false
+    return progression.equip_hand(id, hand, carried_flesh > 0.0)
+
+func cycle_tool(direction: int = 1) -> void:
+    var order := ["", "knife", "blender", "big_saw", "spray_cheap", "spray_deep", "canary_feed", "barrier"]
     var i := order.find(progression.equipped())
+    var current_hand := FDKToolKit.Hand.LEFT if progression.hands.left == progression.equipped() and progression.equipped() != "" else FDKToolKit.Hand.RIGHT
     for k in range(1, order.size() + 1):
-        if equip_tool(order[(i + k) % order.size()]):
+        var id: String = order[posmod(i + k * direction, order.size())]
+        var hand: int = current_hand if id == "" else progression.tools.hand_of(id)
+        if equip_hand(id, hand):
             if k < order.size():
                 hand_motions.play_cycle()
             return
@@ -1530,6 +1663,17 @@ func toggle_carry() -> void:
     if not carry_mode and ((not progression.owns("blender") and not progression.can_lift_without_blender()) or not progression.right_hand_can_carry()):
         return
     carry_mode = not carry_mode
+    if carry_mode and progression.hands.right != "":
+        var held := progression.hands.right
+        if held == "knife" and progression.hands.left == "":
+            progression.hands.set_item(held, FDKToolKit.Hand.LEFT)
+        else:
+            progression.hands.set_item("", FDKToolKit.Hand.RIGHT)
+            progression.tools.equipped = progression.hands.left
+    if carry_mode and progression.owns("blender") and progression.hands.left == "":
+        var active_tool := progression.tools.equipped
+        progression.equip_hand("blender", FDKToolKit.Hand.LEFT, true)
+        progression.tools.equipped = active_tool
     chewer.stomach = null if carry_mode else stomach
     if not carry_mode:
         carried_flesh = 0.0
@@ -1593,7 +1737,7 @@ func use_spray(deep: bool = false) -> int:
     var tier := progression.pick_spray_tier(deep)
     if tier < 0:
         return -1
-    if vent.is_open and _looking_at(FPRestroom.VENT_CENTER, 25.0, 2.2):
+    if vent.is_open and _interaction_aim(FPRestroom.VENT_CENTER, 12.0, 2.0):
         vent.notice("spray") # sprayed at the vent being
     var hit := _look_hit()
     if hit.is_empty():
@@ -1619,7 +1763,7 @@ func _nearest_tumor(dist: float) -> Node3D:
 
 func pick_up_tumor() -> bool:
     var t := _nearest_tumor(1.2)
-    if t == null or not progression.pick_up_tumor(String(t.get_meta("kind")), carried_flesh > 0.0):
+    if t == null or not _interaction_aim(t.global_position, 10.0, 1.25) or not progression.pick_up_tumor(String(t.get_meta("kind")), carried_flesh > 0.0):
         return false
     t.visible = false
     taken_tumor_spots.append(int(t.get_meta("spot")))
@@ -1630,7 +1774,7 @@ func eat_tumor() -> bool:
         progression.refresh_hands(carry_mode)
         return true
     var t := _nearest_tumor(1.2)
-    if t == null:
+    if t == null or not _interaction_aim(t.global_position, 10.0, 1.25):
         return false
     progression.eat_tumor_kind(String(t.get_meta("kind")))
     t.visible = false
@@ -1773,6 +1917,8 @@ func reach_ending() -> void:
 func _on_cell_torn(world_pos: Vector3) -> void:
     var shell := shell_at(world_pos)
     hand_blood = minf(1.0, hand_blood + 0.05)
+    excavated_cells += 1
+    _chew_target = Vector3.INF
     tissue_tools.on_cell_torn(world_pos)
     if carry_mode:
         carried_flesh += stomach_config.flesh_per_cell
@@ -1783,7 +1929,7 @@ func _on_cell_torn(world_pos: Vector3) -> void:
     if near != null:
         _disturb_nerve(near, clampf(0.5 * _regen_scale(world_pos), 0.0, 1.0))
     var chance := 0.8 if shell < 2 else 0.55
-    if FDKLowPoly.hash3(int(world_pos.x * 2.0), int(world_pos.y * 2.0), int(world_pos.z * 2.0)) > chance:
+    if excavated_cells >= 8 and FDKLowPoly.hash3(int(world_pos.x * 2.0), int(world_pos.y * 2.0), int(world_pos.z * 2.0)) > chance:
         var dir := Vector3(1, 0, 0) if FDKLowPoly.hash3(int(world_pos.z * 2.0), 1, 2) > 0.5 else Vector3(-1, 0, 0)
         var q := PhysicsRayQueryParameters3D.create(world_pos, world_pos + dir * 1.5)
         var hit := get_world_3d().direct_space_state.intersect_ray(q)
@@ -1795,6 +1941,7 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 func serialize() -> Dictionary:
     return {
         "version": SAVE_VERSION,
+        "excavated_cells": excavated_cells,
         "terrain": terrain.serialize(),
         "stomach": stomach.serialize(),
         "progression": progression.serialize(),
@@ -1812,6 +1959,7 @@ func serialize() -> Dictionary:
         "rest_seed": rest_seed,
         "opening_done": opening_done or not is_opening(),
         "ended": ended,
+        "tank_lid": tank_lid.serialize() if tank_lid != null else {},
         "taken_tumor_spots": taken_tumor_spots.duplicate(),
         "player_position": [player.global_position.x, player.global_position.y, player.global_position.z],
         "drawings": vent.drawings.duplicate(),
@@ -1821,6 +1969,9 @@ func deserialize(data: Dictionary) -> void:
     var v := int(data.get("version", 1))
     if data.has("terrain"):
         terrain.deserialize(data["terrain"])
+        if v < 5:
+            _migrate_restroom_terrain()
+    excavated_cells = int(data.get("excavated_cells", 0))
     if data.has("stomach"):
         stomach.deserialize(data["stomach"])
     progression = FPProgression.new()
@@ -1845,6 +1996,8 @@ func deserialize(data: Dictionary) -> void:
     has_canary = bool(data.get("has_canary", false))
     canary_feed_left = float(data.get("canary_feed_left", 0.0))
     hand_blood = float(data.get("hand_blood", 0.0))
+    if tank_lid != null:
+        tank_lid.deserialize(data.get("tank_lid", {}))
     deaths = int(data.get("deaths", 0))
     if data.has("rest_seed"):
         tissue_tools.relayout_rest_points(int(data["rest_seed"]))
@@ -1859,6 +2012,8 @@ func deserialize(data: Dictionary) -> void:
     var pos: Array = data.get("player_position", [])
     if pos.size() == 3:
         player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+    if v < 5 and terrain.density_at(player.global_position) >= terrain_config.iso_level:
+        player.global_position = START_POS
     _restore_drawings(data.get("drawings", []) as Array)
 
 ## Crayon tumor drawings come back on the wall in the order they were given.
@@ -1870,3 +2025,30 @@ func _restore_drawings(kinds: Array) -> void:
     for k in kinds:
         vent.drawings.append(String(k))
         _on_drawing_dropped(String(k))
+
+## Restore room space in older saves without filling any excavated cavities.
+func _migrate_restroom_terrain() -> void:
+    var cells := terrain_config.chunk_size
+    var n := cells + 1
+    var cs := terrain_config.cell_size
+    for chunk in terrain._chunks.values():
+        var touched := false
+        for z in range(n):
+            for y in range(n):
+                for x in range(n):
+                    var p: Vector3 = chunk.position + Vector3(x, y, z) * cs
+                    if absf(p.x) <= 2.8 and p.y >= -0.55 and p.y <= 3.15 and p.z >= -FPRestroom.HALF.z - 0.55 and p.z < FPRestroom.HALF.z - 0.2:
+                        var index: int = chunk._corner_index(x, y, z)
+                        chunk._density[index] = minf(chunk._density[index], _world_density(p))
+                        touched = true
+        if touched:
+            for z in range(cells):
+                for y in range(cells):
+                    for x in range(cells):
+                        var p: Vector3 = chunk.position + (Vector3(x, y, z) + Vector3.ONE * 0.5) * cs
+                        if absf(p.x) <= 2.8 and p.y >= -0.55 and p.y <= 3.15 and p.z >= -FPRestroom.HALF.z - 0.55 and p.z < FPRestroom.HALF.z - 0.2:
+                            if chunk.get_density_at_corner(x, y, z) >= terrain_config.iso_level:
+                                chunk.set_tissue_at_cell(x, y, z, _world_tissue(p))
+            chunk._regen_scan = true
+            chunk._dirty = true
+    terrain.remesh_all()

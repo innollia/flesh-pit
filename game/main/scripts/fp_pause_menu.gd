@@ -1,7 +1,7 @@
 class_name FPPauseMenu
 extends CanvasLayer
 
-## Esc during play: 계속 / 설정 / 저장하고 시작 화면으로 / 종료.
+## Esc during play: 계속 / 설정 / 시작 화면으로 / 종료 (saving is automatic).
 ## Esc again = 계속. The tree is paused while this is up (main.gd).
 
 signal resumed
@@ -24,7 +24,7 @@ func _ready() -> void:
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(title)
     for pair in [["계속", resume], ["설정", func(): settings_requested.emit()],
-            ["저장하고 시작 화면으로", func(): title_requested.emit()], ["종료", func(): quit_requested.emit()]]:
+            ["시작 화면으로", func(): title_requested.emit()], ["종료", func(): quit_requested.emit()]]:
         var b := FPMenuKit.button(pair[0], 320)
         b.pressed.connect(pair[1])
         col.add_child(b)

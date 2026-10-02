@@ -142,11 +142,11 @@ func _unit_tests() -> void:
 		f.regenerate_all(5.0, Vector3(100, 100, 100), 0.0)
 		rates[tid] = (_corner_density(f, p) - d0) / 5.0
 		f.free()
-	_assert(is_equal_approx(rates[R.COMPRESSIVE], 0.03), "W20 compressive regrows at 0.02 x 1.5 (got %.4f)" % rates[R.COMPRESSIVE])
-	_assert(is_equal_approx(rates[R.CONTRACTILE], 0.02), "W20 contractile regrows at 0.02 x 1.0 (got %.4f)" % rates[R.CONTRACTILE])
-	_assert(is_equal_approx(rates[R.NERVE], 0.016), "W20 nerve-dense regrows at 0.02 x 0.8 (got %.4f)" % rates[R.NERVE])
+	_assert(is_equal_approx(rates[R.COMPRESSIVE], 0.015), "W20 compressive regrows at 0.01 x 1.5 (got %.4f)" % rates[R.COMPRESSIVE])
+	_assert(is_equal_approx(rates[R.CONTRACTILE], 0.01), "W20 contractile regrows at 0.01 x 1.0 (got %.4f)" % rates[R.CONTRACTILE])
+	_assert(is_equal_approx(rates[R.NERVE], 0.008), "W20 nerve-dense regrows at 0.01 x 0.8 (got %.4f)" % rates[R.NERVE])
 	_assert(rates[R.MEMBRANE] == 0.0, "W20 cut membrane never regrows")
-	_assert(absf(1.0 / rates[R.COMPRESSIVE] - 33.3) < 0.5, "W20 a fully eaten compressive cell refills in ~33 s")
+	_assert(absf(1.0 / rates[R.COMPRESSIVE] - 66.7) < 1.0, "W20 a fully eaten compressive cell refills in ~67 s")
 	# W20 contractile periodic squeeze
 	var cf := _field(func(_p): return R.CONTRACTILE)
 	_dig_box(cf, Vector3(0.25, 0.25, 0.25), Vector3(3.75, 1.25, 1.25))
@@ -242,7 +242,7 @@ func _main_tests(m) -> void:
 			mixed += 1
 	_assert(mixed > 10 and mixed < 290, "W21 tissue mixes gradually before a boundary (%d/300)" % mixed)
 	# W10 membrane round the restroom: bare hands press, a knife cuts
-	var mem := Vector3(2.2, 1.0, 0.0)
+	var mem := Vector3(FPRestroom.HALF.x + 0.3, 1.0, -0.5)
 	_assert(m.terrain.tissue_at(mem) == R.MEMBRANE, "W10 the restroom is wrapped in membrane")
 	m.equip_tool("")
 	var d0: float = m.terrain.density_at(mem)

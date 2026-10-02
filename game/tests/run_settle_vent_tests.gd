@@ -120,7 +120,7 @@ func _more() -> void:
     m.scoop_teeth()
     m.player.global_position = room_c + Vector3(0, 0.9, 0.6)
     m._vent_watch(0.1)
-    m.player.global_position = Vector3(-1.2, 0.9, 1.0)
+    m.player.global_position = Vector3(FPRestroom.HALF.x - 0.25, 0.9, 1.0)
     m._vent_watch(0.1)
     _assert(v.spoken.has("lid.walk_with"), "B4 walking off with teeth: 그 손 이리 와")
     var held := prog.teeth_in_hand
@@ -145,7 +145,7 @@ func _more() -> void:
     m._vent_hover_id = "zzz"
     m._vent_watch(0.1)
     _assert(v.spoken.count("pick.hover") == nh, "B4 hover line once per offer")
-    m.player.global_position = Vector3(-1.2, 0.9, -1.2)
+    m.player.global_position = Vector3(FPRestroom.HALF.x - 0.25, 0.9, -0.5)
     m._vent_watch(0.1)
     _assert(v.spoken.has("leave.walk"), "B4 walking away from offers: 네 물건!")
     v.close()

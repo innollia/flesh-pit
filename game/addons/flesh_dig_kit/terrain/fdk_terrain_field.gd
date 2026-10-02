@@ -1,6 +1,9 @@
 class_name FDKTerrainField
 extends Node3D
 
+## Optional world-space surface constraint for authored architecture.
+var surface_constraint: Callable
+
 ## Owns a set of FDKChunk children, indexed by chunk-grid coordinate.
 ## Provides world-space dig/regenerate operations that route to the right
 ## chunk(s) (including shared border corners), a concentric-shell depth_at()
@@ -27,6 +30,8 @@ var regen_blockers: Array = []
 var regen_rate_scale: Callable
 
 var _chunks: Dictionary = {}
+var _urgent_chunks: Dictionary = {}
+var _remesh_cursor := 0
 
 func _ready() -> void:
     set_process(true)
@@ -56,14 +61,20 @@ var _guard_radius: float = -1.0
 func _process(delta: float) -> void:
     var done := 0
     var start := Time.get_ticks_usec()
-    for chunk in _chunks.values():
-        if chunk.is_dirty():
-            chunk.remesh()
-            done += 1
-            if done >= remesh_budget_per_frame:
-                break
-            if (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
-                break
+    var ordered: Array = []
+    for chunk in _urgent_chunks.values():
+        if is_instance_valid(chunk) and chunk.is_dirty(): ordered.append(chunk)
+    var chunks := _chunks.values()
+    for i in range(chunks.size()):
+        var chunk: FDKChunk = chunks[(_remesh_cursor + i) % chunks.size()]
+        if chunk.is_dirty() and not _urgent_chunks.has(chunk.chunk_coord): ordered.append(chunk)
+    for chunk in ordered:
+        chunk.remesh()
+        _urgent_chunks.erase(chunk.chunk_coord)
+        done += 1
+        _remesh_cursor = (chunks.find(chunk) + 1) % maxi(chunks.size(), 1)
+        if done >= remesh_budget_per_frame or (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
+            break
     step_collision(delta)
 
 ## Ages parked regrowth colliders and rebuilds the due ones (oldest first,
@@ -220,7 +231,9 @@ func _add_corner_global(g: Vector3i, delta_density: float) -> void:
                 var idx := chunk._corner_index(l.x, l.y, l.z)
                 chunk._density[idx] = clampf(chunk._density[idx] + delta_density, 0.0, 1.0)
                 chunk._regen_scan = true
+                chunk._contract_list_dirty = true
                 chunk._dirty = true
+                _urgent_chunks[cc] = chunk
 
 func dig_at(world_pos: Vector3, amount: float) -> void:
     var result := world_to_cell(world_pos)
@@ -388,6 +401,8 @@ func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: fl
     set_collision_guard(protect_world_pos, protect_radius + collision_guard_margin)
     for chunk_coord in _chunks.keys():
         var chunk: FDKChunk = _chunks[chunk_coord]
+        if not chunk._regen_scan and chunk._regen_idx.is_empty():
+            continue
         var chunk_origin: Vector3 = Vector3(chunk_coord) * config.chunk_size * config.cell_size
         var local_protect: Vector3 = (protect_world_pos - chunk_origin) / config.cell_size
         var local_radius: float = protect_radius / config.cell_size

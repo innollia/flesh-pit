@@ -32,11 +32,30 @@ func _ready() -> void:
     layer = 38
     process_mode = Node.PROCESS_MODE_ALWAYS
     root = FPMenuKit.make_root(self)
-    FPMenuKit.backdrop(root, 0.55)
+    _tile_backdrop()
     _build()
     _set_shown(false)
     get_viewport().size_changed.connect(func(): FPMenuKit.fit(self, root))
     FPMenuKit.fit(self, root)
+
+func _tile_backdrop() -> void:
+    var wall := ColorRect.new()
+    wall.set_anchors_preset(Control.PRESET_FULL_RECT)
+    wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var shader := Shader.new()
+    shader.code = """shader_type canvas_item;
+uniform sampler2D tile : filter_linear, repeat_enable;
+void fragment() {
+    vec2 p = FRAGCOORD.xy / vec2(120.0, 120.0);
+    vec3 detail = texture(tile, p).rgb;
+    vec3 ceramic = vec3(0.28, 0.29, 0.27) + (detail.r - 0.5) * 0.045;
+    COLOR = vec4(mix(ceramic, vec3(0.13, 0.14, 0.13), detail.b), 1.0);
+}"""
+    var material := ShaderMaterial.new()
+    material.shader = shader
+    material.set_shader_parameter("tile", FPRestroom.tile_texture())
+    wall.material = material
+    root.add_child(wall)
 
 func setup(s: Dictionary, p: Node, kb: FPKeybindMenu) -> void:
     settings = FPSettings.sanitize(s)
@@ -144,7 +163,15 @@ func _fill() -> void:
 # --- building -------------------------------------------------------------------
 
 func _build() -> void:
-    var col := FPMenuKit.plate(root, 620)
+    var center := CenterContainer.new()
+    center.set_anchors_preset(Control.PRESET_FULL_RECT)
+    center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    root.add_child(center)
+    var col := VBoxContainer.new()
+    col.custom_minimum_size.x = 620
+    col.add_theme_constant_override("separation", 10)
+    col.add_theme_font_override("font", load("res://main/art/fonts/BlackHanSans-Regular.ttf"))
+    center.add_child(col)
     var title := FPMenuKit.label("설정", 26)
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(title)
@@ -171,6 +198,10 @@ func _build() -> void:
     bottom.add_child(close_button)
     _focus_order.append(keys_button)
     _focus_order.append(close_button)
+    for control in _focus_order:
+        if control is Button:
+            for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+                control.add_theme_stylebox_override(state, StyleBoxEmpty.new())
     FPMenuKit.chain_focus(_focus_order)
     keys_button.focus_neighbor_right = keys_button.get_path_to(close_button)
     close_button.focus_neighbor_left = close_button.get_path_to(keys_button)

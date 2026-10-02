@@ -31,6 +31,8 @@ func _process(_d: float) -> bool:
         return false
     _m.save_path = TEST_SAVE
     _m.settings_menu.save_path = TEST_SETTINGS
+    # Menu behavior must not inherit a player's saved resolution/invert state.
+    _m.settings_menu.setup(FPSettings.defaults(), _m.player, _m.keybind_menu)
     _settings_file()
     _settings_apply()
     _buses()
@@ -136,7 +138,7 @@ func _title() -> void:
     _m.save_to_disk()
     _m.show_title()
     _assert(ts.continue_button.visible, "save -> 이어하기 shown")
-    _assert(ts.get_viewport().gui_get_focus_owner() == ts.continue_button, "이어하기 has focus")
+    _assert(ts.continue_button.get_viewport().gui_get_focus_owner() == ts.continue_button, "이어하기 has focus")
     ts.request_new_game()
     _assert(got["new"] == 1 and ts.is_confirming(), "save -> asks before new game")
     ts.confirm_no.pressed.emit()

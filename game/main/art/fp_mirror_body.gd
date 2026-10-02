@@ -90,7 +90,7 @@ func build() -> void:
 	if not _parts.is_empty():
 		return
 	_paint = _matte("res://addons/flesh_dig_kit/textures/tex_skin_128.png", 0.0)
-	_skin = _matte("res://addons/flesh_dig_kit/textures/tex_skin_128.png", 1.0)
+	_skin = FDKSkinMaterial.make()
 	var I := Transform3D.IDENTITY
 	# PS1-style body: every part is a hand-pinched ring loft (few sides, flat
 	# faces) whose end rings match the next part, so the silhouette reads as
@@ -100,29 +100,36 @@ func build() -> void:
 	var st := K.begin()
 	var hr: Array = []
 	for r in [[-0.1, 0.05, 0.05, 0.055], [-0.07, 0.078, 0.085, 0.08], [-0.02, 0.092, 0.098, 0.095], [0.04, 0.096, 0.1, 0.1], [0.09, 0.088, 0.092, 0.094], [0.12, 0.066, 0.07, 0.074], [0.138, 0.03, 0.032, 0.034]]:
-		hr.append(_ring(r[0], 0.0, r[1], r[2], r[3], 10))
+		hr.append(_ring(r[0], 0.0, r[1], r[2], r[3], 6))
 	FDKLowPoly.loft(st, hr, [SKIN_D, SKIN, SKIN, SKIN, SKIN, SKIN], true, true)
 	for sx in [-1, 1]:
 		K.lathe(st, K.T(Vector3(sx * 0.094, 0.02, -0.005), Vector3(0, 0, 90 * sx), Vector3(1.0, 1.0, 0.5)), [Vector2(0.0, 0.0), Vector2(0.022, 0.006), Vector2(0.0, 0.016)], 6, [SKIN_D]) # ears
-		K.tube(st, I, [Vector3(sx * 0.018, 0.07, 0.096), Vector3(sx * 0.064, 0.066, 0.084)], [0.006, 0.004], 4, [SKIN_D]) # brow ridge
 	_mesh(face, "Head", st)
-	var eyes := _subpivot(face, "eyes", Vector3(0, 0.045, 0.088))
-	st = K.begin()
-	for sx in [-1, 1]:
-		K.lathe(st, K.T(Vector3(sx * 0.04, 0, 0), Vector3(90, 0, 0), Vector3(1.4, 1.0, 0.8)), [Vector2(0.0, -0.004), Vector2(0.012, 0.0), Vector2(0.0, 0.006)], 6, [Color(0.96, 0.95, 0.92)])
-		K.lathe(st, K.T(Vector3(sx * 0.04, 0, 0.005), Vector3(90, 0, 0)), [Vector2(0.0, 0.0), Vector2(0.007, 0.002), Vector2(0.0, 0.004)], 6, [Color(0.18, 0.12, 0.08)])
-	_mesh(eyes, "Eyes", st, true)
-	st = K.begin()
-	K.tube(st, I, [Vector3(0, 0.055, 0.098), Vector3(0, 0.02, 0.114), Vector3(0, 0.002, 0.118)], [0.008, 0.013, 0.016], 4, [SKIN, SKIN_D])
-	_mesh(_subpivot(face, "nose", Vector3.ZERO), "Nose", st)
-	var jaw := _subpivot(face, "jaw", Vector3(0, -0.05, 0.0))
-	st = K.begin()
-	var jr: Array = []
-	for r in [[-0.07, 0.02, 0.07, 0.01], [-0.055, 0.05, 0.09, 0.04], [-0.03, 0.074, 0.1, 0.06], [0.0, 0.08, 0.1, 0.07]]:
-		jr.append(_ring(r[0], 0.012, r[1], r[2], r[3], 10, 0.0))
-	FDKLowPoly.loft(st, jr, [SKIN_D, SKIN, SKIN], true, false)
-	K.tube(st, I, [Vector3(-0.026, -0.006, 0.103), Vector3(0.0, -0.01, 0.109), Vector3(0.026, -0.006, 0.103)], [0.004, 0.006, 0.004], 4, [Color(0.68, 0.36, 0.36)]) # lips
-	_mesh(jaw, "Jaw", st)
+	_face_texture(face.get_node("Head"))
+	# Keep mutation and mouth-effect anchors; ordinary features cost no geometry.
+	var eyes := _subpivot(face, "eyes", Vector3(0, 0.02, 0.096))
+	# Image eyes gain geometry only for mutations that change their depth/size.
+	for side in [-1, 1]:
+		var eye_st := K.begin()
+		var cx: float = side * 0.034
+		var points := [Vector3(cx-0.018, -0.014, 0.014), Vector3(cx+0.018, -0.014, 0.014), Vector3(cx+0.018, 0.014, 0.014), Vector3(cx-0.018, 0.014, 0.014)]
+		var uvs := [Vector2(0,1), Vector2(1,1), Vector2(1,0), Vector2(0,0)]
+		for index in [0,2,1,0,3,2]:
+			eye_st.set_normal(Vector3.BACK)
+			eye_st.set_color(SKIN)
+			var center := 0.325 if side < 0 else 0.675
+			eye_st.set_uv(Vector2(center + (uvs[index].x-0.5)*0.22, 0.50+(uvs[index].y-0.5)*0.20))
+			eye_st.add_vertex(points[index])
+		var eye_mesh := _mesh(eyes, "EyeImageLeft" if side < 0 else "EyeImageRight", eye_st)
+		eye_mesh.mesh = eye_st.commit()
+		var eye_mat := FDKSkinMaterial.make(1.0, false)
+		eye_mat.set_shader_parameter("face", true)
+		eye_mat.set_shader_parameter("eye_patch", true)
+		eye_mat.set_shader_parameter("face_tex", load("res://main/art/textures/player_face_ps1.png"))
+		eye_mesh.material_override = eye_mat
+		eye_mesh.visible = false
+	_subpivot(face, "nose", Vector3(0, -0.025, 0))
+	_subpivot(face, "jaw", Vector3(0, -0.05, 0.0))
 	# --- neck: its end rings meet the jaw line and the collar
 	var neck := _part("neck", Vector3(0, 1.47, 0))
 	st = K.begin()
@@ -417,6 +424,14 @@ func apply(ids: Array, bumps: int = 0) -> void:
 		_extras.append(_bump(i, false))
 	for p in _parts.keys():
 		_base[p] = (_parts[p] as Node3D).scale
+	var face_mat: ShaderMaterial = _parts["face"].get_node("Head").material_override
+	face_mat.set_shader_parameter("eye_scale", Vector2(_sub["eyes"].scale.x, _sub["eyes"].scale.y))
+	face_mat.set_shader_parameter("jaw_scale", _sub["jaw"].scale)
+	face_mat.set_shader_parameter("jaw_offset", _sub["jaw"].position - _sub["jaw"].get_meta("base_pos"))
+	var mutated_eyes := "M24" in applied or "T5" in applied
+	face_mat.set_shader_parameter("hide_eyes", mutated_eyes)
+	for mesh in _sub["eyes"].get_children():
+		mesh.visible = mutated_eyes
 
 func _apply_one(id: String, _root: Node3D, ghost: bool) -> Node3D:
 	var lk := look(id)
@@ -475,8 +490,18 @@ func ghost(id: String) -> Node3D:
 			if m3.name == "Shimmer":
 				m3.visible = false
 				continue
-			m3.material_override = mat
-			m3.visible = on
+			if m3.name == "Head" or String(m3.name).begins_with("EyeImage"):
+				var original := m3.material_override as ShaderMaterial
+				var face_preview := FDKSkinMaterial.make(1.0, true, true)
+				for uniform in original.shader.get_shader_uniform_list():
+					var value = original.get_shader_parameter(uniform.name)
+					if value != null:
+						face_preview.set_shader_parameter(uniform.name, value)
+				face_preview.set_shader_parameter("ghost", true)
+				m3.material_override = face_preview
+			else:
+				m3.material_override = mat
+			m3.visible = on and (not String(m3.name).begins_with("EyeImage") or "M24" in ids or "T5" in ids)
 		if on:
 			(g._parts[p] as Node3D).scale *= 1.03
 	return g
@@ -616,3 +641,18 @@ func _extra(id: String, _ghost: bool) -> Node3D:
 			return null
 	var mi := K.add_mesh(parent, "Mut_" + id, K.finish(st, 6.0), _skin)
 	return mi
+
+func _face_texture(head: MeshInstance3D) -> void:
+	var arrays := head.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var uv := PackedVector2Array()
+	for v in verts:
+		uv.append(Vector2(v.x / 0.192 + 0.5, (0.138 - v.y) / 0.238))
+	arrays[Mesh.ARRAY_TEX_UV] = uv
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	head.mesh = mesh
+	var mat := FDKSkinMaterial.make()
+	mat.set_shader_parameter("face", true)
+	mat.set_shader_parameter("face_tex", load("res://main/art/textures/player_face_ps1.png"))
+	head.material_override = mat

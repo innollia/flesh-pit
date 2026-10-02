@@ -201,6 +201,7 @@ func _run_mirror() -> void:
 	# doll feet on the forearm top
 	var top := mir.arm_top(FPMirror.DOLL_ON_ARM.z)
 	_assert(mir.body.global_position.distance_to(top) < 0.002, "the doll's feet stand on the forearm top")
+	_assert(mir.body.global_basis.y.normalized().dot(m.player.camera.global_basis.y) > 0.999, "doll orientation follows camera pitch without moving its feet")
 	_assert(not bool(r0.get_meta("afford")) and r0.modulate.a < 0.6, "unaffordable rows are faded")
 	var m28row := mir.cost_text("M28")
 	_assert(m28row.contains("또는"), "a combination shows both hair kinds")
@@ -277,7 +278,8 @@ func _run_tumors() -> void:
 	var prog: FPProgression = m.progression
 	# path 1: eat -> bump on the belly -> press it in the mirror
 	var t: Node3D = m.tumor_nodes[4]
-	m.player.global_position = t.global_position - Vector3(0, 0.6, 0)
+	m.player.global_position = t.global_position - Vector3(0, 0.6, 0.7)
+	m.player.camera.look_at(t.global_position, Vector3.UP)
 	_assert(m.eat_tumor() and prog.belly_bumps() == 1 and not t.visible, "eating a tumor raises one bump on the belly")
 	m.open_mirror()
 	_assert(m.mirror._order.has("tumor") and m.mirror.body.shimmer_on("belly"), "the bump shows in the mirror")
@@ -297,7 +299,8 @@ func _run_tumors() -> void:
 	_assert(p2.tumor_mutations.size() == 7 and uniq.size() == 7 and p2.belly_bumps() == 0, "7 different tumor mutations, then no more bumps")
 	# path 2: carry one in hand to the toilet -> teeth + codex drawing
 	var t2: Node3D = m.tumor_nodes[6]
-	m.player.global_position = t2.global_position - Vector3(0, 0.6, 0)
+	m.player.global_position = t2.global_position - Vector3(0, 0.6, 0.7)
+	m.player.camera.look_at(t2.global_position, Vector3.UP)
 	_assert(m.pick_up_tumor() and prog.tumor_in_hand(), "a tumor is carried in one hand")
 	m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
 	var teeth: int = prog.teeth

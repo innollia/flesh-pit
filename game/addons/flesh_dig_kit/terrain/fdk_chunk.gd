@@ -82,7 +82,9 @@ const UV_SCALE := 0.9
 
 static func terrain_material(tissue_id: int) -> ShaderMaterial:
     var path: String = TISSUE_TEXTURES[tissue_id % TISSUE_TEXTURES.size()]
-    return FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6)
+    var m := FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6)
+    m.set_shader_parameter("organic_motion", 1.0)
+    return m
 
 ## Applies the chew-press deformation to the material of every tissue this
 ## chunk currently uses (kept as a single call site so main.gd's per-frame
@@ -171,6 +173,7 @@ func set_density_at_corner(x: int, y: int, z: int, d: float) -> void:
         return
     _density[_corner_index(x, y, z)] = d
     _regen_scan = true
+    _contract_list_dirty = true
     _dirty = true
 
 func get_tissue_at_cell(x: int, y: int, z: int) -> int:
@@ -201,6 +204,7 @@ func dig_cell(local_cell: Vector3i, amount: float) -> void:
                 var idx := _corner_index(local_cell.x + dx, local_cell.y + dy, local_cell.z + dz)
                 _density[idx] = clampf(_density[idx] - amount, 0.0, 1.0)
     _regen_scan = true
+    _contract_list_dirty = true
     _dirty = true
 
 var _any_sealed: bool = false
@@ -219,6 +223,7 @@ var _contract: PackedFloat32Array = PackedFloat32Array()
 var _has_contract: bool = false
 var _contract_idx: PackedInt32Array = PackedInt32Array()
 var _contract_phase: PackedFloat32Array = PackedFloat32Array()
+var _contract_list_dirty := true
 var _contract_list_age: float = 999.0
 var _has_contractile_tissue: int = -1 ## -1 unknown, 0 no, 1 yes
 
@@ -268,8 +273,8 @@ func step_contraction(time: float, delta: float) -> bool:
         return false
     var n := config.chunk_size + 1
     var s := config.chunk_size
-    _contract_list_age += delta
-    if _contract_list_age >= 1.0:
+    if _contract_list_dirty:
+        _contract_list_dirty = false
         _contract_list_age = 0.0
         _rebuild_contract_list()
     if _contract.size() != n * n * n:
@@ -388,6 +393,8 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
         if _tissue[mini(x, s - 1) + mini(y, s - 1) * s + mini(z, s - 1) * s * s] == 0:
             m *= crowd_growth_factor(_solid_neighbours(x, y, z, n))
         _density[i] = minf(orig, cur + rate * m * delta)
+        if cur < FDKTissueRules.EMPTY_DENSITY and _density[i] >= FDKTissueRules.EMPTY_DENSITY:
+            _contract_list_dirty = true
         if _density[i] >= orig:
             healed += 1
         changed = true
@@ -454,6 +461,7 @@ func seal_cell(x: int, y: int, z: int) -> void:
 func tissue_changed() -> void:
     _regen_mult_dirty = true
     _regen_scan = true
+    _contract_list_dirty = true
     _has_contractile_tissue = -1
     _contract_list_age = 999.0
 
@@ -575,7 +583,10 @@ func remesh(force_collision: bool = false) -> float:
                         FDKLowPoly.hash3(gy, gz, gx) - 0.5,
                         FDKLowPoly.hash3(gz, gx, gy) - 0.5) * 2.0 * config.facet_jitter
                     var ci := cx + cy * cp + cz * cp * cp
-                    cell_vert[ci] = (Vector3(cx - 1, cy - 1, cz - 1) + local) * cs
+                    var vertex := (Vector3(cx - 1, cy - 1, cz - 1) + local) * cs
+                    if field != null and field.surface_constraint.is_valid():
+                        vertex = field.surface_constraint.call(vertex + global_position) - global_position
+                    cell_vert[ci] = vertex
                     cell_has[ci] = 1
         for z in range(s):
             for y in range(s):

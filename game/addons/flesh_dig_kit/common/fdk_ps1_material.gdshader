@@ -43,9 +43,15 @@ uniform float viewmodel_squash = 1.0;
 uniform bool tile_mode = false;
 uniform sampler2D tile_tex : filter_linear, repeat_enable;
 uniform float tile_size = 0.3;
+uniform vec2 tile_dimensions = vec2(0.0);
 uniform vec3 tile_offset = vec3(0.0);
 uniform vec3 grout_color : source_color = vec3(0.52, 0.55, 0.58);
 
+// Shared living-tissue deformation: terrain and title use this same motion.
+uniform float organic_motion = 0.0;
+uniform float motion_clock = -1.0;
+uniform bool fit_room_seams = false;
+uniform vec3 room_half = vec3(1.1, 1.3, 1.5);
 varying float vfog;
 varying vec3 vwpos;
 varying vec3 vwnrm;
@@ -62,6 +68,17 @@ void vertex() {
     vec3 off = -pn * pf * (0.16 * dent - 0.26 * pull * pf);
     off -= side * pf * 0.18 * pull;
     off += pn * pf * pull * 0.02 * sin(TIME * 47.0 + pd * 20.0);
+    if (organic_motion > 0.0) {
+        float clock = motion_clock < 0.0 ? TIME : motion_clock;
+        float moving = organic_motion;
+        if (fit_room_seams && !(wpos.z > room_half.z - 0.25 && abs(wpos.x) < 0.57 && wpos.y > 0.1 && wpos.y < 1.97)) {
+            vec3 q = abs(wpos - vec3(0.0, room_half.y, 0.0)) - room_half;
+            moving *= smoothstep(0.07, 0.4, max(q.x, max(q.y, q.z)));
+        }
+        off += moving * vec3(0.055 * sin(wpos.y * 4.0 + clock * 0.8) + 0.035 * sin(wpos.x * 3.0 + clock * 0.4),
+            0.05 * sin(wpos.x * 4.0 + clock * 0.7),
+            0.10 * sin(wpos.x * 2.3 + clock * 0.45) * cos(wpos.y * 3.4 - clock * 0.3));
+    }
     vec3 pushed = VERTEX + (inverse(mat3(MODEL_MATRIX)) * off);
     // Classic PS1 vertex jitter: transform to clip space, snap XY to a
     // coarse integer grid in NDC, transform back. Done here (not as a
@@ -95,14 +112,14 @@ void fragment() {
         vec3 tb = abs(nax.y) > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
         vec3 ta = cross(tb, nax);
         vec2 tuv = vec2(dot(wp, ta), dot(wp, tb));
-        vec2 g = tuv / tile_size;
+        vec2 g = tuv / (tile_dimensions.x > 0.0 ? tile_dimensions : vec2(tile_size));
         vec2 cell = floor(g);
         vec4 t = texture(tile_tex, g);
         vec2 nxy = t.rg * 2.0 - 1.0;
         vec3 wn = normalize(ta * nxy.x + tb * nxy.y + vwnrm * sqrt(max(0.0, 1.0 - dot(nxy, nxy))));
         NORMAL = normalize((VIEW_MATRIX * vec4(wn, 0.0)).xyz);
         float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-        col = mix(tex * (1.0 - h * 0.04), grout_color, t.b);
+        col = mix(vec3(0.88, 0.87, 0.84) * (1.0 - h * 0.025), grout_color, t.b);
     }
     ALBEDO = mix(col * tint.rgb, fog_color, vfog);
     ROUGHNESS = mix(roughness_value, 0.15, wetness);

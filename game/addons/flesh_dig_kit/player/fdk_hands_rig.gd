@@ -84,7 +84,7 @@ func build() -> void:
     if _built:
         return
     _built = true
-    _material = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_skin_128.png", 6.0, false, 0.32, 0.55, 0.18)
+    _material = FDKSkinMaterial.make(0.18)
     _hands.append(_build_hand(1.0))
     _hands.append(_build_hand(-1.0))
     _pile = _build_pile()

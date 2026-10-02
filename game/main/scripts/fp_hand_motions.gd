@@ -36,12 +36,12 @@ var cancelled: bool = false
 var _cancel_w: float = 1.0
 var _cam_pos := Vector3.ZERO
 var _cam_rot := Vector3.ZERO
+var _vomit_frame := Transform3D.IDENTITY
 ## 형님 2026-09-30: vomit_floor used to add its bow pitch on top of
 ## whatever pitch the player happened to be looking at when it started, so
 ## looking down made the camera clip through the body and looking up left
-## it staring at nothing. The floor heave now always bows from this fixed
-## base pitch instead -- yaw/roll still follow the player, only pitch is
-## pinned.
+## it staring at nothing. The floor heave now uses a captured upright
+## world frame, including a fixed yaw, independent of the head pivot.
 const VOMIT_FLOOR_BASE_PITCH := -0.35
 var _cam_saved := false
 var _settle_base := Transform3D.IDENTITY
@@ -82,6 +82,8 @@ func _start(k: String) -> void:
     _swung = false
     if m.hands_rig != null:
         m.hands_rig.set("pose_hook", self)
+    if m.art_hookup != null and m.art_hookup.mut_hands != null:
+        m.art_hookup.mut_hands.call("rig").set("pose_hook", self)
 
 func play_scoop() -> void:
     _start("scoop")
@@ -114,6 +116,7 @@ func play_take(world_pos: Vector3, art_kind: String, item: MeshInstance3D = null
 
 func play_vomit(at_toilet: bool, fill: float) -> void:
     _start("vomit_toilet" if at_toilet else "vomit_floor")
+    _vomit_frame = Transform3D(Basis(Vector3.UP, m.player.global_rotation.y), m.player.camera_pivot.global_position)
     _spill_n = clampi(int(round(fill * 6.0)) + 2, 2, 8)
     if at_toilet:
         _ensure_rim_rig()
@@ -154,6 +157,10 @@ func cancel() -> void:
 
 ## Any move / action pressed after the motion started interrupts it.
 func check_cancel() -> void:
+    # Tab owns this held pose; clicking mutation rows uses the same mouse
+    # buttons as tools and must not lower the arm. Closing Tab releases it.
+    if kind == "watch":
+        return
     if not busy() or cancelled or t < 0.06:
         return
     for a in CANCEL_ACTIONS:
@@ -230,6 +237,13 @@ func _apply_watch_arm() -> void:
         var lr: Node3D = rig.call("get_hand_root", "left")
         if lr != null:
             lr.basis = b
+            var forearm := lr.get_node_or_null("Forearm") as Node3D
+            var hair_arm := lr.get_node_or_null("ArmHair/Forearm") as MeshInstance3D
+            if hair_arm != null:
+                var raised := watch_raised() > 0.01
+                hair_arm.visible = raised
+                if forearm != null:
+                    forearm.visible = not raised
 
 func _clear_held() -> void:
     if _held_mesh != null:
@@ -328,6 +342,10 @@ func _apply_cams(u: float, reset: bool = false) -> void:
             pitch = -0.06 * sin(progress() * PI) * weight()
         cam.position = _cam_pos + off
         cam.rotation = _cam_rot + Vector3(pitch, 0.0, roll)
+        if not reset and kind == "vomit_floor":
+            # Camera-local rotation still inherits the head pivot's pitch.
+            # Apply the heave in the upright body's frame, captured once.
+            cam.global_transform = Transform3D(_vomit_frame.basis * Basis.from_euler(Vector3(_cam_rot.x + pitch, 0, roll)), _vomit_frame.origin + _vomit_frame.basis * (_cam_pos + off))
     var sc: Camera3D = m.settle_camera
     if sc != null and _settle_saved:
         if reset or kind != "vomit_toilet":
@@ -532,14 +550,14 @@ func _spill(toilet: bool, n: int) -> void:
         # roughly where the mouth/chin would be, below and just in front of
         # the camera -- so it falls from the bottom of the screen into the
         # bowl instead.
-        from = _settle_base.origin - Vector3.UP * 0.16 + fwd * 0.05
-        to = _settle_base.origin + fwd * 0.42
+        from = sc.global_transform * Vector3(0, -0.16, -0.06)
+        to = m.restroom.bowl_center + Vector3.UP * 0.025
     else:
         var cam: Camera3D = m.player.camera
         var fwd2 := -cam.global_basis.z
         fwd2.y = 0.0
         fwd2 = fwd2.normalized() if fwd2.length() > 0.01 else Vector3.FORWARD
-        from = cam.global_position + fwd2 * 0.25 - Vector3.UP * 0.1
+        from = cam.global_transform * Vector3(0, -0.13, -0.07)
         to = from + fwd2 * 0.15 + Vector3.DOWN * 3.0
         var q := PhysicsRayQueryParameters3D.create(from, to)
         q.exclude = [m.player.get_rid()]

@@ -1,16 +1,13 @@
 class_name FPBeltSwap
 extends RefCounted
 
-## Look-down belt swap: bow the head past LOOK_DOWN_DEG and the belt's three
-## tool hooks (knife, blender, big saw) come into view. Aiming at a hook
-## lights the interact ring; fp_interact reaches down, hangs the held tool on
-## its own hook and takes the aimed one (an empty ring = just put away). The
-## hand dips for SWAP_TIME and the tool changes at the bottom of the dip.
-## Rules (flesh in hand, one/two hands) stay in progression.equip. Tab /
-## wheel / pad RB cycling is untouched.
+## Fixed homes for tools and consumables. LMB/RMB exchanges the aimed item
+## with that hand, returning the previous item to its own home. The switch
+## happens at the bottom of the reach; an empty slot stows the held item.
+## begin()/swap_now() keep their legacy single-tool defaults for kit callers.
 
 const LOOK_DOWN_DEG := 55.0
-const SLOTS := ["knife", "blender", "big_saw"] ## hook i holds SLOTS[i]
+const SLOTS := ["knife", "blender", "big_saw", "spray_cheap", "spray_deep", "canary_feed", "barrier"]
 const AIM_DEG := 9.0
 const REACH := 1.2
 const SWAP_TIME := 0.75 ## reach down, hang, grab, bring up (fp_hand_motions "belt")
@@ -20,6 +17,7 @@ const HIP_TWIST := 0.9 ## rad the head may turn over the still hips
 var m: Node3D
 var swap_t := -1.0
 var _want := ""
+var _hand := -1
 var _did := false
 var _base_y := {}
 var _anchored := false
@@ -42,8 +40,8 @@ func busy() -> bool:
 func hung_ids() -> Array:
 	var out: Array = []
 	var prog = m.progression
-	for id in SLOTS:
-		out.append(id if prog.owns(id) and prog.equipped() != id else "")
+	for id in SLOTS.slice(0, 3):
+		out.append(id if prog.owns(id) and not prog.hands.holds(id) else "")
 	return out
 
 ## Index of the aimed hook, or -1.
@@ -54,8 +52,8 @@ func aimed_hook() -> int:
 	var ray: Array = m.player.get_look_ray()
 	var best := -1
 	var best_dot := cos(deg_to_rad(AIM_DEG))
-	for i in range(int(belt.call("hook_count"))):
-		var to: Vector3 = (belt.call("hook_point", i) as Vector3) - ray[0]
+	for i in range(SLOTS.size()):
+		var to: Vector3 = (belt.call("slot_point", i) as Vector3) - ray[0]
 		if to.length() > REACH:
 			continue
 		var d: float = to.normalized().dot(ray[1])
@@ -66,27 +64,30 @@ func aimed_hook() -> int:
 
 ## What using hook i would equip: the tool on it, or bare hands for an empty
 ## ring while something is held. null = nothing to do.
-func target_for(i: int) -> Variant:
+func target_for(i: int, hand: int = -1) -> Variant:
 	if i < 0:
 		return null
-	var hung: String = hung_ids()[i]
+	var id: String = SLOTS[i]
+	var hung: String = id if m.progression.owns(id) and not m.progression.hands.holds(id) else ""
 	if hung != "":
 		return hung
-	return "" if m.progression.equipped() != "" else null
+	var held: String = m.progression.equipped() if hand < 0 else m.progression.hands.item(hand)
+	return "" if held != "" else null
 
 func can_act() -> bool:
 	return not busy() and target_for(aimed_hook()) != null
 
 ## Start the reach. Returns false when there is nothing to do or the rules
 ## refuse it (the hand still dips, and comes back with nothing).
-func begin() -> bool:
+func begin(hand: int = -1) -> bool:
 	if busy():
 		return false
-	var want = target_for(aimed_hook())
+	var want = target_for(aimed_hook(), hand)
 	if want == null:
 		return false
 	if m.get("hand_motions") != null:
 		m.hand_motions.play_belt(aimed_hook())
+	_hand = hand
 	_want = str(want)
 	_did = false
 	swap_t = 0.0
@@ -95,9 +96,9 @@ func begin() -> bool:
 	return true
 
 ## Instant version (tests and the bottom of the dip): hang + take.
-func swap_now(id: String) -> bool:
-	var before: String = m.progression.equipped()
-	var ok: bool = m.equip_tool(id)
+func swap_now(id: String, hand: int = -1) -> bool:
+	var before: String = m.progression.equipped() if hand < 0 else m.progression.hands.item(hand)
+	var ok: bool = m.equip_tool(id) if hand < 0 else m.equip_hand(id, hand)
 	if ok and before != id:
 		m.emit_signal("belt_swapped", before, id)
 	elif not ok:
@@ -128,7 +129,7 @@ func tick(delta: float) -> void:
 			r.position.y = float(_base_y[r]) - DIP * down
 	if k >= 0.5 and not _did:
 		_did = true
-		swap_now(_want)
+		swap_now(_want, _hand)
 	if k >= 1.0:
 		for r in _rigs():
 			if _base_y.has(r):

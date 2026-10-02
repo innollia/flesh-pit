@@ -1,7 +1,7 @@
 extends Node3D
 
 ## Toilet water tank (the bank). Origin = bottom-centre of the tank. Lid
-## hinges up on its back edge (-Z). Inside: dark water and a pile of human
+## is loose and carried by FPTankLid. Inside: dark water and a pile of human
 ## teeth whose height follows set_amount(0..1).
 ## Public: set_lid_open(0..1), play_open(), play_close(), set_amount(0..1),
 ## tooth_count().
@@ -51,11 +51,11 @@ func _ready() -> void:
     wm.roughness = 0.1
     wm.metallic_specular = 0.9
     _water = K.add_mesh(self, "Water", K.finish(st, 3.0), wm)
-    # lid on its back hinge
-    _lid = K.pivot(self, "LidHinge", Vector3(0, H + 0.012, -D - 0.008))
+    # loose ceramic lid, centered so it can be carried and placed flat
+    _lid = K.pivot(self, "LooseLid", Vector3(0, H + 0.012, 0))
     st = K.begin()
-    K.rbox(st, K.T(Vector3(0, 0.0, D + 0.008)), Vector3(W + 0.012, 0.014, D + 0.012), 0.012, white, shade)
-    K.rbox(st, K.T(Vector3(0, 0.02, D + 0.008)), Vector3(W - 0.02, 0.008, D - 0.02), 0.008, white)
+    K.rbox(st, K.T(Vector3.ZERO), Vector3(W + 0.012, 0.014, D + 0.012), 0.012, white, shade)
+    K.rbox(st, K.T(Vector3(0, 0.02, 0)), Vector3(W - 0.02, 0.008, D - 0.02), 0.008, white)
     K.add_mesh(_lid, "Lid", K.finish(st, 5.0), ceramic)
     # teeth
     _teeth = MultiMeshInstance3D.new()
@@ -136,7 +136,8 @@ func tooth_count() -> int:
     return _teeth.multimesh.visible_instance_count
 
 func set_lid_open(t: float) -> void:
-    _lid.rotation_degrees.x = -105.0 * clampf(t, 0.0, 1.0)
+    if _lid.get_parent() == self:
+        _lid.visible = t < 0.5
 
 func play_open() -> void:
     create_tween().tween_method(set_lid_open, 0.0, 1.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

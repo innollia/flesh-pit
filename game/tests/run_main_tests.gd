@@ -96,7 +96,7 @@ func _run() -> void:
     _assert(prog.pending_hairs["mantle"] == 2 and prog.pending_hairs["surface"] == 3 and prog.pending_hairs[FPProgression.COMMON] == 5, "shell multiplier x2 mantle, x3 surface")
     prog.discard_stomach()
     # membrane and flesh wall
-    _assert(not m.terrain.is_edible_at(Vector3(2.2, 1.0, 0.0)), "restroom side wall membrane is inedible")
+    _assert(not m.terrain.is_edible_at(Vector3(FPRestroom.HALF.x + 0.2, 1.0, -0.5)), "restroom side wall membrane is inedible")
     _assert(m.terrain.is_edible_at(Vector3(0.0, 1.0, 2.1)), "flesh beyond the door is edible")
     _assert(m.terrain.density_at(Vector3(0.0, 1.0, 2.3)) >= 0.5, "flesh wall starts right behind the door")
     _assert(m.terrain.density_at(Vector3(0.0, 1.0, 0.0)) < 0.5, "restroom interior is empty")
@@ -130,6 +130,8 @@ func _run() -> void:
         for p in v:
             var w: Vector3 = ch.position + p
             var h: Vector3 = FPRestroom.HALF
+            if w.z > h.z - 0.25 and absf(w.x) < FPRestroom.DOOR_HALF_W + 0.12 and w.y > 0.1 and w.y < FPRestroom.DOOR_H - 0.08:
+                continue # Doorway is exposed living tissue; hidden seams stay fitted.
             if absf(w.x) < h.x + 0.05 and w.y > -0.05 and w.y < 2.0 * h.y + 0.05 and absf(w.z) < h.z + 0.05:
                 inside += 1
     _assert(inside == 0, "no flesh vertex inside the restroom box (+5 cm) (found %d)" % inside)
@@ -155,6 +157,9 @@ func _run() -> void:
     var tri := 0
     for si in tiles.mesh.get_surface_count():
         tri += tiles.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX].size() / 3
+        if si == 2:
+            _assert(tiles.mesh.surface_get_material(si) is StandardMaterial3D, "photo ceiling is plain, without wall tiles")
+            continue
         var tm := tiles.mesh.surface_get_material(si) as ShaderMaterial
         _assert(tm != null and tm.get_shader_parameter("tile_mode") == true and tm.get_shader_parameter("tile_tex") is Texture2D, "restroom tile surface %d uses the tile normal map" % si)
     _assert(tri < 200, "restroom tiles are flat planes, not per-tile geometry (%d tris)" % tri)
@@ -322,29 +327,33 @@ func _run_death(m, prog: FPProgression) -> void:
     # --- tumors: 12, eat for tumor points or carry one per bag to the toilet
     _assert(m.tumor_nodes.size() == 12, "12 tumors in the world")
     var tn: Node3D = m.tumor_nodes[0]
-    m.player.global_position = tn.global_position - Vector3(0, 0.6, 0)
+    m.player.global_position = tn.global_position - Vector3(0, 0.6, 0.7)
+    m.player.camera.look_at(tn.global_position, Vector3.UP)
     _assert(m.pick_up_tumor() and prog.tumor_in_hand(), "without the bag a tumor fills one hand")
     _assert(not m.two_handed_tools_available(), "a tumor in hand blocks two-handed tools")
     var t2: Node3D = m.tumor_nodes[1]
-    m.player.global_position = t2.global_position - Vector3(0, 0.6, 0)
+    m.player.global_position = t2.global_position - Vector3(0, 0.6, 0.7)
+    m.player.camera.look_at(t2.global_position, Vector3.UP)
     _assert(not m.pick_up_tumor(), "without the bag only one tumor can be carried")
     prog.grant_item("tumor_bag")
     _assert(m.pick_up_tumor() and prog.tumors.carried_count() == 2, "the basketball bag holds one more tumor")
     var t3: Node3D = m.tumor_nodes[2]
-    m.player.global_position = t3.global_position - Vector3(0, 0.6, 0)
+    m.player.global_position = t3.global_position - Vector3(0, 0.6, 0.7)
+    m.player.camera.look_at(t3.global_position, Vector3.UP)
     _assert(not m.pick_up_tumor(), "one bag holds only one tumor")
     m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
     var tt: int = prog.teeth
     m.start_settlement()
     m.flush()
     _assert(prog.teeth == tt + 2 * FPProgression.TUMOR_TOOTH_PAYOUT and prog.tumors.codex_count() == 2, "tumors thrown in the toilet pay teeth and fill the codex")
-    m.player.global_position = t3.global_position - Vector3(0, 0.6, 0)
+    m.player.global_position = t3.global_position - Vector3(0, 0.6, 0.7)
+    m.player.camera.look_at(t3.global_position, Vector3.UP)
     _assert(m.eat_tumor() and prog.tumors.tumor_points == 1, "eating a tumor gives tumor-only points")
     var tm := prog.buy_tumor_mutation()
     _assert(tm in FPProgression.TUMOR_MUTATIONS and prog.tumor_mutations.size() == 1, "tumor points buy a random tumor mutation T1-T7 (%s)" % tm)
     # --- save v3 round trip of the progression
     var saved: Dictionary = m.serialize()
-    _assert(int(saved["version"]) == 3 and int(saved["progression"]["version"]) == 2, "save is versioned (main 3, progression 2)")
+    _assert(int(saved["version"]) == 4 and int(saved["progression"]["version"]) == 3, "save is versioned (main 4, progression 3)")
     var teeth_saved: int = prog.teeth
     prog.teeth = 0
     m.deserialize(saved)

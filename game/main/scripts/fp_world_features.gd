@@ -45,11 +45,19 @@ static func room_dist(p: Vector3, room_half: Vector3) -> float:
 static func world_density(p: Vector3, room_half: Vector3, door_half_w: float, door_h: float,
 		room_margin: float, door_gap: float, center: Vector3, outer_radius: float,
 		rests: Array[Vector3]) -> float:
+	if p.distance_to(center) >= outer_radius or in_container(p, rests):
+		return 0.0
 	var margin := room_margin
 	if p.z > room_half.z and absf(p.x) < door_half_w and p.y > -0.1 and p.y < door_h:
 		margin = door_gap
-	if absf(p.x) <= room_half.x + margin and p.y >= -margin and p.y <= 2.0 * room_half.y + margin and absf(p.z) <= room_half.z + margin:
-		return 0.0
+	# Restore the original irregular surface at the exposed door opening.
+	if p.z > room_half.z - 0.2 and absf(p.x) < door_half_w + 0.1 and p.y > 0.0 and p.y < door_h:
+		return 1.0 if p.z > room_half.z + door_gap else 0.0
+	var signed_distance := maxf(absf(p.x) - room_half.x, maxf(maxf(-p.y, p.y - 2.0 * room_half.y), absf(p.z) - room_half.z)) - margin
+	if signed_distance < 0.5:
+		# Interpolated iso crossings fall on the wall instead of half a grid
+		# cell beyond it. A binary carve created a visible perimeter air gap.
+		return clampf(0.5 + signed_distance, 0.0, 1.0)
 	if p.distance_to(center) >= outer_radius:
 		return 0.0
 	if in_container(p, rests):

@@ -31,7 +31,7 @@ func _ready() -> void:
     _rig.name = "HandsRig"
     add_child(_rig)
     _rig.build()
-    var skin_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_skin_128.png", 6.0, false, 0.32, 0.55, 0.18)
+    var skin_mat := FDKSkinMaterial.make(0.18)
     # extra arm: a copy of the right hand's whole chain, entering from below
     var src := _rig.get_hand_root("right")
     _extra = src.duplicate() as Node3D
@@ -249,7 +249,7 @@ func _set_trunk(on: bool) -> void:
             var t := float(k) / 6.0
             pts.append(Vector3(0, -t * 0.12, -t * 0.12 - t * t * 0.05))
         K.tube(st, Transform3D.IDENTITY, pts, [0.03, 0.028, 0.025, 0.022, 0.019, 0.016, 0.013], 8, [Color(0.86, 0.7, 0.6), Color(0.75, 0.58, 0.5)])
-        K.add_mesh(_trunk, "TrunkMesh", K.finish(st, 5.0), FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_skin_128.png", 6.0, false, 0.32, 0.55, 0.18))
+        K.add_mesh(_trunk, "TrunkMesh", K.finish(st, 5.0), FDKSkinMaterial.make(0.18))
     if _trunk != null:
         _trunk.visible = on
 
