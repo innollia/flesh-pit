@@ -38,6 +38,26 @@ func run() -> void:
         var guarded := field.constrain_eye(near_eye, center, 0.02)
         check(guarded.distance_to(center) < near_eye.distance_to(center), "near boundary eye contact")
         check(guarded.distance_to(center) > 0.3, "eye guard remains on physical anchor segment")
+        var blocker := StaticBody3D.new()
+        var blocker_shape := CollisionShape3D.new()
+        var box := BoxShape3D.new()
+        box.size = Vector3(0.05, 0.2, 0.2)
+        blocker_shape.shape = box
+        blocker.add_child(blocker_shape)
+        root.add_child(blocker)
+        blocker.position = center + Vector3.RIGHT * 0.2
+        await physics_frame
+        await physics_frame
+        check(field.constrain_eye(near_eye, center, 0.02).is_equal_approx(guarded), "nonterrain prop cannot hide terrain eye contact")
+        blocker.queue_free()
+        await physics_frame
+        var buried_anchor: Vector3 = center + Vector3.RIGHT
+        var buried_eye := buried_anchor + Vector3.UP * 0.55
+        var resolved := field.constrain_eye(buried_eye, buried_anchor, 0.02)
+        check(resolved.distance_to(buried_eye) > 0.05, "buried eye resolves a nearby physical surface")
+        check(resolved.distance_to(buried_eye) <= 0.7, "buried eye correction is bounded by capsule eye offset")
+        var inside_ray := PhysicsRayQueryParameters3D.create(resolved, center)
+        check(field.get_world_3d().direct_space_state.intersect_ray(inside_ray).is_empty(), "buried eye resolves to original cavity side")
         field.dig_at(center + Vector3(0.55, 0.55, 0.55), 0.65)
         field.remesh_all()
         topology("removal " + str(center))

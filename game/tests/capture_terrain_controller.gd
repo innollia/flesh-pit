@@ -8,9 +8,12 @@ var failures := 0
 var frames_saved := 0
 
 func _init() -> void:
-    destination = ProjectSettings.globalize_path("res://../.dryforge/evidence/terrain-controller")
+    destination = OS.get_environment("FP_TERRAIN_EVIDENCE")
+    if destination.is_empty():
+        destination = ProjectSettings.globalize_path("res://../.dryforge/evidence/terrain-controller")
     DirAccess.make_dir_recursive_absolute(destination)
     main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+    main.rest_seed = 1337
     main.save_path = destination.path_join("isolated.save")
     root.add_child(main)
     # Main input wiring belongs to T3. Apply its future helper hookup here
@@ -27,11 +30,16 @@ func _init() -> void:
             var guarded: Vector3 = main.terrain.constrain_eye(desired, main.player.global_position, main.player.camera.near)
             main.player.camera.global_position = guarded
             eye_delta = main.player.camera.position - desired_local
+            main.player.camera.force_update_transform()
     )
 
 func _process(_delta: float) -> bool:
     frame += 1
     if frame == 3:
+        var started := Time.get_ticks_usec()
+        for i in range(100):
+            main.terrain.constrain_eye(main.player.camera.global_position, main.player.global_position, main.player.camera.near)
+        print("FREE_ROOM_EYE_GUARD avg_ms=", (Time.get_ticks_usec() - started) / 100000.0)
         main.finish_opening()
         main.restroom.set_door_open(true, true)
         for z in range(11):
@@ -61,7 +69,7 @@ func _process(_delta: float) -> bool:
         capture.call_deferred(frame)
     if frame == 123:
         main.terrain.set_press(Vector3.ZERO, Vector3.ZERO, 0)
-        print("CONTROLLER_CAPTURE %d frames, %d background failures, body=%s eye=%s" % [frames_saved, failures, main.player.global_position, main.player.camera.global_position])
+        print("CONTROLLER_CAPTURE %d frames, %d background failures, body=%s eye=%s directory=%s" % [frames_saved, failures, main.player.global_position, main.player.camera.global_position, destination])
         quit(1 if failures else 0)
     return false
 
@@ -77,4 +85,10 @@ func capture(index: int) -> void:
                 exposed += 1
     frames_saved += 1
     if exposed: failures += 1
+    if exposed and failures == 1:
+        print("FIRST_LEAK camera=", main.player.camera.global_position, " near=", main.player.camera.near)
+        for axis in [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]:
+            var hit: Dictionary = main.terrain._eye_terrain_ray(main.player.camera.global_position, main.player.camera.global_position + axis)
+            if not hit.is_empty():
+                print("LEAK_RAY axis=", axis, " hit=", hit.position, " normal=", hit.normal, " outward=", main.terrain._eye_surface_outward(hit), " index=", hit.face_index)
     print("CONTROLLER frame=", index, " background_pixels=", exposed, " eye_correction=", eye_delta.length(), " body=", main.player.global_position)

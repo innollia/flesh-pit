@@ -548,8 +548,9 @@ func get_press_amount() -> float:
 
 ## Contact-driven eye clearance, leaving the body and desired hand-motion
 ## transform intact. Call after camera animation, before aiming/rendering.
-## The anchor must be the collision-protected capsule center. If it is also
-## fully buried, this cannot invent an empty destination or relocate it.
+## The anchor is the capsule center. Shallow full burial resolves only a real
+## nearby surface, bounded by the eye offset; deep solid without such a
+## contact cannot invent an empty destination or relocate the body.
 func constrain_eye(desired_eye: Vector3, body_anchor: Vector3, near: float) -> Vector3:
     if not is_inside_tree():
         return desired_eye
@@ -566,13 +567,59 @@ func constrain_eye(desired_eye: Vector3, body_anchor: Vector3, near: float) -> V
     var other := direction.cross(side)
     var distance := length
     for epsilon in [Vector3.ZERO, side, -side, other, -other]:
-        var query := PhysicsRayQueryParameters3D.create(body_anchor + epsilon, desired_eye + direction * margin + epsilon)
-        query.hit_back_faces = true
-        var hit := get_world_3d().direct_space_state.intersect_ray(query)
-        if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
+        var hit := _eye_terrain_ray(body_anchor + epsilon, desired_eye + direction * margin + epsilon)
+        if hit.is_empty() or _eye_surface_outward(hit).dot(direction) >= 0:
             continue
         distance = minf(distance, maxf(0.0, (hit.position - body_anchor - epsilon).dot(direction) - margin))
-    return body_anchor + direction * distance
+    if distance < length:
+        return body_anchor + direction * distance
+    # Strong contraction can physically put the capsule and eye on the
+    # solid side together. Resolve only a nearby real surface contact; this
+    # never moves the body or searches for a remote escape destination.
+    var closest := desired_eye
+    var best := INF
+    var limit := minf(0.85, length + 0.15)
+    for z in range(-1, 2):
+        for y in range(-1, 2):
+            for x in range(-1, 2):
+                if x == 0 and y == 0 and z == 0: continue
+                var ray := Vector3(x, y, z).normalized()
+                var hit := _eye_terrain_ray(desired_eye, desired_eye + ray * limit)
+                if hit.is_empty(): continue
+                var outward := _eye_surface_outward(hit)
+                # Backface normals in intersect_ray are flipped toward the
+                # ray. Read the triangle's actual solid-to-empty orientation.
+                if outward.dot(ray) <= 0.0001: continue
+                var candidate: Vector3 = hit.position + outward * margin
+                var correction := candidate.distance_to(desired_eye)
+                if correction < best and correction <= limit:
+                    closest = candidate
+                    best = correction
+    return closest
+
+func _eye_terrain_ray(from: Vector3, to: Vector3) -> Dictionary:
+    var query := PhysicsRayQueryParameters3D.create(from, to)
+    query.hit_back_faces = true
+    # Props keep their own layers and behavior. They must not hide a terrain
+    # contact from this terrain-only camera guard.
+    for attempt in range(16):
+        var hit := get_world_3d().direct_space_state.intersect_ray(query)
+        if hit.is_empty() or hit.collider.has_meta("fdk_terrain_chunk"):
+            return hit
+        var excluded := query.exclude
+        excluded.append(hit.rid)
+        query.exclude = excluded
+    return {}
+
+func _eye_surface_outward(hit: Dictionary) -> Vector3:
+    var chunk := hit.collider.get_parent() as FDKChunk
+    if chunk == null or chunk._collision.shape == null:
+        return Vector3.ZERO
+    var index := int(hit.get("face_index", -1)) * 3
+    var faces: PackedVector3Array = chunk._collision.shape.get_faces()
+    if index < 0 or index + 2 >= faces.size():
+        return Vector3.ZERO
+    return -(faces[index + 1] - faces[index]).cross(faces[index + 2] - faces[index]).normalized()
 
 ## Strong local contraction (docs/spec/02-world-tissue.md, nerve tissue): the tunnel
 ## squeezes shut around `center` -- density jumps back toward its original

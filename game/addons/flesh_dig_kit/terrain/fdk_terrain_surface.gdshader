@@ -86,7 +86,7 @@ void vertex() {
     // within that physical clearance. This uses positions (not flat face
     // normals), so tissue/chunk duplicates receive exactly the same cap.
     float eye_distance = distance(wpos, CAMERA_POSITION_WORLD);
-    float motion_limit = mix(0.055, 0.5, smoothstep(1.1, 1.6, eye_distance));
+    float motion_limit = mix(0.055, 0.5, smoothstep(1.5, 2.0, eye_distance));
     off *= min(1.0, motion_limit / max(length(off), 0.000001));
     vec3 pushed = VERTEX + (inverse(mat3(MODEL_MATRIX)) * off);
     // Classic PS1 vertex jitter: transform to clip space, snap XY to a
