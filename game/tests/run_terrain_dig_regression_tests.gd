@@ -141,6 +141,77 @@ func shared_vertex_case() -> void:
             check(offset.cross(actual_ray[1]).length() <= 0.0011, "shared-vertex fallback remains within one millimeter of aim")
             check(offset.length() <= m.progression.reach(), "shared-vertex fallback retains reach")
 
+func published_contact_occlusion_case() -> void:
+    await fixture(Vector3.FORWARD)
+    var origin: Vector3 = m.player.camera.global_position
+    var rear := blocker(origin + Vector3.FORWARD * 2.0, Vector3.FORWARD)
+    await physics_frame
+    await physics_frame
+    # Deterministically represent the PhysicsServer cache gap while keeping
+    # the actual published ConcavePolygonShape3D geometry intact. Restore
+    # every body immediately after these synchronous query assertions.
+    var disabled: Array[StaticBody3D] = []
+    for chunk in m.terrain.get_chunks():
+        if chunk._collision.shape != null:
+            var body: StaticBody3D = chunk.get_body()
+            PhysicsServer3D.body_set_shape_disabled(body.get_rid(), 0, true)
+            disabled.append(body)
+    var physical := ray(origin, Vector3.FORWARD, m.progression.reach())
+    check(not physical.is_empty() and physical.collider == rear, "cache-gap fixture physically sees the rear prop")
+    var gap_started := Time.get_ticks_usec()
+    for i in range(100): m._look_hit()
+    print("AIM_TIMING cache_gap_avg_ms=", (Time.get_ticks_usec() - gap_started) / 100000.0)
+    var contact: Dictionary = m._look_hit()
+    check(not contact.is_empty() and contact.collider.has_meta("fdk_terrain_chunk") and origin.distance_to(contact.position) < 2.0, "published flesh ahead of rear prop wins during physics cache gap")
+    rear.global_position = origin + Vector3.FORWARD * 0.35
+    rear.force_update_transform()
+    var front: Dictionary = m._look_hit()
+    check(not front.is_empty() and front.collider == rear, "front prop wins over published terrain in cache gap")
+    for body in disabled:
+        PhysicsServer3D.body_set_shape_disabled(body.get_rid(), 0, false)
+    rear.queue_free()
+    await physics_frame
+    await physics_frame
+    for i in range(3):
+        m._look_hit()
+        await physics_frame
+    var stable_started := Time.get_ticks_usec()
+    for i in range(100): m._look_hit()
+    print("AIM_TIMING stable_physics_avg_ms=", (Time.get_ticks_usec() - stable_started) / 100000.0)
+
+func newly_published_front_chunk_case() -> void:
+    await fixture(Vector3.RIGHT)
+    m.terrain.fill_box_uniform(AABB(Vector3(4, 2, 4), Vector3(8, 7, 8)), 0.0, 0)
+    m.terrain.fill_box_uniform(AABB(Vector3(8.5, 3, 5), Vector3(0.6, 4, 4)), 1.0, 0)
+    m.terrain.remesh_all()
+    m.player.global_position = Vector3(6.8, 5, 7) - Vector3.UP * m.player.eye_pivot_y(false)
+    m.player.velocity = Vector3.ZERO
+    aim(Vector3.RIGHT)
+    await physics_frame
+    await physics_frame
+    for i in range(3):
+        m._look_hit()
+        await physics_frame
+    var origin: Vector3 = m.player.camera.global_position
+    var far: Dictionary = ray(origin, Vector3.RIGHT, m.progression.reach())
+    check(not far.is_empty() and far.collider.has_meta("fdk_terrain_chunk"), "stable rear terrain fixture has a real physics face")
+    if far.is_empty(): return
+    var far_shape: RID = (far.collider.get_parent() as FDKChunk)._collision.shape.get_rid()
+    # Add a separate, closer chunk surface without changing the old rear
+    # chunk. Only its PhysicsServer visibility is suppressed synchronously.
+    m.terrain.fill_box_uniform(AABB(Vector3(7.5, 3, 5), Vector3(0.1, 4, 4)), 1.0, 0)
+    var near_chunk: FDKChunk = m.terrain.get_chunk(Vector3i(0, 0, 0))
+    near_chunk.remesh(true)
+    var near_body: StaticBody3D = near_chunk.get_body()
+    PhysicsServer3D.body_set_shape_disabled(near_body.get_rid(), 0, true)
+    var physical: Dictionary = ray(origin, Vector3.RIGHT, m.progression.reach())
+    check(not physical.is_empty() and physical.collider == far.collider and (far.collider.get_parent() as FDKChunk)._collision.shape.get_rid() == far_shape, "new front cache gap leaves the rear terrain shape unchanged")
+    var actual: Dictionary = m._look_hit()
+    check(not actual.is_empty() and actual.collider == near_body and origin.distance_to(actual.position) < origin.distance_to(far.position) - 0.5, "new front published terrain wins over an already stable rear physics face")
+    PhysicsServer3D.body_set_shape_disabled(near_body.get_rid(), 0, false)
+    await physics_frame
+    await physics_frame
+
 func run() -> void:
     await create_timer(0.1).timeout
     m.finish_opening()
@@ -160,6 +231,8 @@ func run() -> void:
     await hold_case(Vector3.ONE, "chunk corner")
     center = Vector3(8, 5, 8)
     await shared_vertex_case()
+    await published_contact_occlusion_case()
+    await newly_published_front_chunk_case()
     await fixture(Vector3.FORWARD)
     mouse(true)
     await create_timer(0.2).timeout

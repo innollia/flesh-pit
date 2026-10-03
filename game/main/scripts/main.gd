@@ -138,6 +138,8 @@ var _chew_contact: Vector3 = Vector3.INF
 ## Camera motion owns the desired local pose; terrain contact is temporary.
 var _terrain_eye_delta := Vector3.ZERO
 var _terrain_eye_pose := Vector3.ZERO
+## Bounded query metadata only; no contacts or poses survive a shape change.
+var _terrain_query_shapes: Dictionary = {}
 var _settling: bool = false
 var _settle_amount: float = 0.0
 var _mirror_open: bool = false
@@ -925,8 +927,18 @@ func _look_hit() -> Dictionary:
     q.hit_back_faces = true
     var space := get_world_3d().direct_space_state
     var hit := space.intersect_ray(q)
-    if not hit.is_empty():
+    var current_face: bool = not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and _physics_face_matches(hit, ray[0], ray[1])
+    # A stable rear face alone does not prove that a nearer chunk has
+    # synchronized. Check every chunk intersecting this bounded ray before
+    # using its exact current published face as the normal fast path.
+    if current_face and _terrain_ray_shapes_synced(ray[0], ray[1], progression.reach()):
         return hit
+    if not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and not current_face:
+        hit = {}
+    var published := _published_terrain_contact(ray[0], ray[1], progression.reach())
+    var chosen := _nearest_look_contact([hit, published], ray[0], ray[1], progression.reach())
+    if not chosen.is_empty():
+        return chosen
     # Exact shared triangle vertices can miss numerically. These one-mm
     # parallel rays retain reach and accept only actual terrain contacts.
     var right: Vector3 = player.camera.global_basis.x.normalized()
@@ -940,6 +952,8 @@ func _look_hit() -> Dictionary:
         var candidate := space.intersect_ray(q)
         if candidate.is_empty() or not candidate.collider.has_meta("fdk_terrain_chunk"):
             continue
+        if not _physics_face_matches(candidate, shifted, ray[1]):
+            continue
         var distance: float = ray[0].distance_to(candidate.position)
         if distance > progression.reach() or distance >= nearest:
             continue
@@ -951,17 +965,60 @@ func _look_hit() -> Dictionary:
             continue
         nearest = distance
         result = candidate
-    if not result.is_empty():
-        return result
-    # A published collider resource can precede PhysicsServer's next sync.
-    # Verify its actual triangles on this exact reach segment, rather than
-    # dropping an otherwise valid held grab or guessing a density target.
-    return _published_terrain_contact(ray[0], ray[1], progression.reach())
+    return result
 
-func _published_terrain_contact(origin: Vector3, direction: Vector3, reach: float) -> Dictionary:
-    var end := origin + direction * reach
-    var nearest := reach + 0.00001
+func _physics_face_matches(hit: Dictionary, origin: Vector3, direction: Vector3) -> bool:
+    var chunk := hit.collider.get_parent() as FDKChunk
+    if chunk == null or chunk._collision.shape == null:
+        return false
+    var shape: ConcavePolygonShape3D = chunk._collision.shape
+    if PhysicsServer3D.body_get_shape(hit.rid, int(hit.get("shape", 0))) != shape.get_rid():
+        return false
+    var faces := shape.get_faces()
+    var index := int(hit.get("face_index", -1)) * 3
+    if index < 0 or index + 2 >= faces.size():
+        return false
+    var transform: Transform3D = chunk.global_transform
+    var contact = Geometry3D.ray_intersects_triangle(origin, direction, transform * faces[index], transform * faces[index + 1], transform * faces[index + 2])
+    return contact != null and origin.distance_to(contact) <= progression.reach() and (contact - origin).dot(direction) > 0.00001 and (contact as Vector3).distance_to(hit.position) <= 0.0001
+
+func _terrain_ray_shapes_synced(origin: Vector3, direction: Vector3, reach: float) -> bool:
+    var frame := Engine.get_physics_frames()
+    var synced := true
+    for chunk in _terrain_ray_chunks(origin, direction, reach):
+        var key: int = chunk.get_instance_id()
+        var shape_rid: RID = chunk._collision.shape.get_rid() if chunk._collision.shape != null else RID()
+        var known: Dictionary = _terrain_query_shapes.get(key, {})
+        if known.get("shape") != shape_rid:
+            if _terrain_query_shapes.size() >= 32:
+                _terrain_query_shapes.clear()
+            _terrain_query_shapes[key] = {"shape": shape_rid, "observed": frame}
+            synced = false
+        elif frame - int(known.observed) < 2:
+            synced = false
+        if shape_rid.is_valid() and PhysicsServer3D.body_get_shape(chunk.get_body().get_rid(), 0) != shape_rid:
+            synced = false
+    return synced
+
+func _nearest_look_contact(candidates: Array, origin: Vector3, direction: Vector3, reach: float) -> Dictionary:
     var result := {}
+    var closest := reach + 0.00001
+    for candidate in candidates:
+        if (candidate as Dictionary).is_empty():
+            continue
+        var offset: Vector3 = candidate.position - origin
+        var distance := offset.length()
+        if distance > reach or offset.dot(direction) < -0.00001:
+            continue
+        if candidate.collider.has_meta("fdk_terrain_chunk") and offset.dot(direction) <= 0.00001:
+            continue
+        if distance < closest or is_equal_approx(distance, closest) and not candidate.collider.has_meta("fdk_terrain_chunk"):
+            closest = distance
+            result = candidate
+    return result
+
+func _terrain_ray_chunks(origin: Vector3, direction: Vector3, reach: float) -> Array:
+    var end := origin + direction * reach
     var cs: float = terrain_config.cell_size
     var width: float = cs * terrain_config.chunk_size
     var local_start: Vector3 = terrain.to_local(origin)
@@ -974,14 +1031,19 @@ func _published_terrain_contact(origin: Vector3, direction: Vector3, reach: floa
             for x in range(first.x, last.x + 1):
                 var nearby := terrain.get_chunk(Vector3i(x, y, z))
                 if nearby != null:
-                    candidates.append(nearby)
+                    var bounds: AABB = nearby.global_transform * AABB(Vector3.ONE * -cs, Vector3.ONE * (width + 2.0 * cs))
+                    if bounds.intersects_segment(origin, end) != null:
+                        candidates.append(nearby)
+    return candidates
+
+func _published_terrain_contact(origin: Vector3, direction: Vector3, reach: float) -> Dictionary:
+    var nearest := reach + 0.00001
+    var result := {}
+    var candidates := _terrain_ray_chunks(origin, direction, reach)
     for chunk in candidates:
         if chunk._collision.shape == null:
             continue
         var transform: Transform3D = chunk.global_transform
-        var bounds := transform * AABB(Vector3.ONE * -cs, Vector3.ONE * (width + 2.0 * cs))
-        if bounds.intersects_segment(origin, end) == null:
-            continue
         var faces: PackedVector3Array = chunk._collision.shape.get_faces()
         for i in range(0, faces.size(), 3):
             var a: Vector3 = transform * faces[i]
