@@ -52,8 +52,9 @@ const CONTRACT_AMOUNT := 0.45
 const HAZARD_TIME := 1.2
 const HEALTH_REGEN := 12.0
 ## Keep barrier load above its 0.15/s relaxation after the slower regrowth.
-## 0.01 * 28 preserves the previous 0.02 * 14 pressure at the same depth.
-const BARRIER_PRESSURE := 28.0
+## 0.003 * (0.28 / 0.003) preserves the previous 0.01 * 28 pressure
+## at the same depth without changing barrier strength or relaxation.
+const BARRIER_PRESSURE := 0.28 / 0.003
 const CANARY_TICK := 0.25
 const CANARY_FEED_TIME := 120.0
 const REACH := 2.5

@@ -132,6 +132,7 @@ func _unit_tests() -> void:
 	jch.free()
 	jf.free()
 	# W20 regrowth multiplier per tissue: compressive 1.5, contractile 1.0, nerve 0.8, membrane 0
+	var base_regen: float = FDKTerrainConfig.new().regen_rate
 	var rates := {}
 	for tid in [R.COMPRESSIVE, R.CONTRACTILE, R.NERVE, R.MEMBRANE]:
 		var tt: int = tid
@@ -142,11 +143,12 @@ func _unit_tests() -> void:
 		f.regenerate_all(5.0, Vector3(100, 100, 100), 0.0)
 		rates[tid] = (_corner_density(f, p) - d0) / 5.0
 		f.free()
-	_assert(is_equal_approx(rates[R.COMPRESSIVE], 0.015), "W20 compressive regrows at 0.01 x 1.5 (got %.4f)" % rates[R.COMPRESSIVE])
-	_assert(is_equal_approx(rates[R.CONTRACTILE], 0.01), "W20 contractile regrows at 0.01 x 1.0 (got %.4f)" % rates[R.CONTRACTILE])
-	_assert(is_equal_approx(rates[R.NERVE], 0.008), "W20 nerve-dense regrows at 0.01 x 0.8 (got %.4f)" % rates[R.NERVE])
+	_assert(is_equal_approx(rates[R.COMPRESSIVE], base_regen * 1.5), "W20 compressive regrows at the configured rate x 1.5 (got %.4f)" % rates[R.COMPRESSIVE])
+	_assert(is_equal_approx(rates[R.CONTRACTILE], base_regen * 1.0), "W20 contractile regrows at the configured rate x 1.0 (got %.4f)" % rates[R.CONTRACTILE])
+	_assert(is_equal_approx(rates[R.NERVE], base_regen * 0.8), "W20 nerve-dense regrows at the configured rate x 0.8 (got %.4f)" % rates[R.NERVE])
 	_assert(rates[R.MEMBRANE] == 0.0, "W20 cut membrane never regrows")
-	_assert(absf(1.0 / rates[R.COMPRESSIVE] - 66.7) < 1.0, "W20 a fully eaten compressive cell refills in ~67 s")
+	var refill_seconds := 1.0 / (base_regen * 1.5)
+	_assert(absf(1.0 / rates[R.COMPRESSIVE] - refill_seconds) < 1.0, "W20 a fully eaten compressive cell refills in ~%.1f s" % refill_seconds)
 	# W20 contractile periodic squeeze
 	var cf := _field(func(_p): return R.CONTRACTILE)
 	_dig_box(cf, Vector3(0.25, 0.25, 0.25), Vector3(3.75, 1.25, 1.25))
