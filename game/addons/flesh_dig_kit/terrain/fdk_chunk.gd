@@ -39,6 +39,13 @@ var _mesh_instance: MeshInstance3D
 var _collision: CollisionShape3D
 var _static_body: StaticBody3D
 var _dirty: bool = false
+var _staged_mesh: Mesh
+var _staged_faces := PackedVector3Array()
+var _staged_density := PackedFloat32Array()
+var _staged_force_collision := false
+var _staged_shape: ConcavePolygonShape3D
+var _mesh_source := PackedFloat32Array()
+var _mesh_regen_indices := PackedInt32Array()
 
 ## P0 debug timing of the last remesh() in ms: density (padded read), mesh
 ## (surface nets), arraymesh (surfaces + assign), collider, total. Debug
@@ -57,6 +64,8 @@ var _coll_pending: bool = false
 var _coll_pending_age: float = 0.0
 var _pending_faces: PackedVector3Array = PackedVector3Array()
 var _pending_density: PackedFloat32Array = PackedFloat32Array()
+var _pending_shape: ConcavePolygonShape3D
+var _pending_shape_ready := false
 
 ## P2: corners still below their original density (the only ones regrowth
 ## has to visit). Rebuilt by a full scan only after something lowered
@@ -79,11 +88,16 @@ const TISSUE_TEXTURES: Array[String] = [
     "res://addons/flesh_dig_kit/textures/tissue_melted_64.png",
 ]
 const UV_SCALE := 0.9
+static var _terrain_materials: Dictionary = {}
 
 static func terrain_material(tissue_id: int) -> ShaderMaterial:
+    if _terrain_materials.has(tissue_id):
+        return _terrain_materials[tissue_id]
     var path: String = TISSUE_TEXTURES[tissue_id % TISSUE_TEXTURES.size()]
-    var m := FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6)
+    var m := FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6).duplicate() as ShaderMaterial
+    m.shader = load("res://addons/flesh_dig_kit/terrain/fdk_terrain_surface.gdshader")
     m.set_shader_parameter("organic_motion", 1.0)
+    _terrain_materials[tissue_id] = m
     return m
 
 ## Applies the chew-press deformation to the material of every tissue this
@@ -475,14 +489,21 @@ func _build_padded(s: int) -> PackedFloat32Array:
     var out := PackedFloat32Array()
     out.resize(p * p * p)
     var base := chunk_coord * s
+    var source := _density
+    var snapshot: bool = field != null and field._reading_mesh_snapshot
+    if snapshot:
+        source = field._mesh_snapshot[chunk_coord]
     for z in range(-1, s + 1):
         for y in range(-1, s + 1):
-            var inside_yz := y >= 0 and z >= 0 and y < n and z < n
+            # The upper border belongs to the positive neighbor. Its
+            # duplicate may regenerate at a different tissue/depth rate.
+            var owned_limit := s if field != null else n
+            var inside_yz := y >= 0 and z >= 0 and y < owned_limit and z < owned_limit
             for x in range(-1, s + 1):
                 var v: float
-                if inside_yz and x >= 0 and x < n:
-                    v = _density[x + y * n + z * n * n]
-                    if _has_contract:
+                if inside_yz and x >= 0 and x < owned_limit:
+                    v = source[x + y * n + z * n * n]
+                    if _has_contract and not snapshot:
                         v += _contract[x + y * n + z * n * n]
                 elif field != null:
                     v = field.corner_density_global(base + Vector3i(x, y, z))
@@ -493,7 +514,7 @@ func _build_padded(s: int) -> PackedFloat32Array:
 
 ## Remeshes the chunk. `force_collision` rebuilds the collider now even for
 ## pure regrowth (start-up, capture tools).
-func remesh(force_collision: bool = false) -> float:
+func remesh(force_collision: bool = false, stage: bool = false) -> float:
     var start_usec := Time.get_ticks_usec()
     var s := config.chunk_size
     var cs := config.cell_size
@@ -621,22 +642,31 @@ func remesh(force_collision: bool = false) -> float:
         mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
         mesh.surface_set_material(mesh.get_surface_count() - 1, FDKChunk.terrain_material(i))
 
-    _mesh_instance.mesh = mesh if have_any else null
+    var next_mesh: Mesh = mesh if have_any else null
     if not have_any:
         all_verts = PackedVector3Array()
     var t_arraymesh := Time.get_ticks_usec()
 
-    if force_collision or field == null or _needs_immediate_collision(d):
-        _apply_collision(all_verts, d)
+    if stage:
+        _staged_mesh = next_mesh
+        _staged_faces = all_verts
+        _staged_density = d
+        _staged_force_collision = force_collision or field == null or _needs_immediate_collision(d)
+        # Construct physics resources during the budgeted build; publication
+        # only swaps prepared references, even across a shared seam group.
+        _staged_shape = _collision_shape_for(all_verts)
     else:
-        if not _coll_pending:
-            _coll_pending_age = 0.0
-        _coll_pending = true
-        _pending_faces = all_verts
-        _pending_density = d
+        _publish_mesh(next_mesh, all_verts, d, force_collision)
+        _mesh_source = effective_density()
+        _mesh_regen_indices = _regen_idx.duplicate()
+        _staged_mesh = null
+        _staged_faces = PackedVector3Array()
+        _staged_density = PackedFloat32Array()
+        _staged_shape = null
     var t_end := Time.get_ticks_usec()
 
-    _dirty = false
+    if not stage:
+        _dirty = false
     var elapsed_ms := (t_end - start_usec) / 1000.0
     last_stats = {
         "density_ms": (t_density - start_usec) / 1000.0,
@@ -647,6 +677,41 @@ func remesh(force_collision: bool = false) -> float:
     }
     remeshed.emit(elapsed_ms)
     return elapsed_ms
+
+func effective_density() -> PackedFloat32Array:
+    var values := _density.duplicate()
+    if _has_contract:
+        for i in _contract_idx:
+            values[i] += contract_at_corner(i)
+    return values
+
+func publish_staged_mesh() -> void:
+    # The body may enter the chunk while the snapshot is being built.
+    # A broad guard overlap is cheap and conservatively keeps that collider
+    # immediate without scanning all density corners during publication.
+    if field != null:
+        var guard: Vector4 = field.collision_guard_local(self)
+        var center := Vector3(guard.x, guard.y, guard.z)
+        if guard.w > 0 and center.distance_to(center.clamp(Vector3.ONE * -1, Vector3.ONE * config.chunk_size)) <= guard.w:
+            _staged_force_collision = true
+    _publish_mesh(_staged_mesh, _staged_faces, _staged_density, _staged_force_collision, _staged_shape, true)
+    _staged_mesh = null
+    _staged_faces = PackedVector3Array()
+    _staged_density = PackedFloat32Array()
+    _staged_shape = null
+
+func _publish_mesh(mesh: Mesh, faces: PackedVector3Array, d: PackedFloat32Array, force_collision: bool, prepared_shape: ConcavePolygonShape3D = null, prepared: bool = false) -> void:
+    _mesh_instance.mesh = mesh
+    if force_collision or field == null or (not prepared and _needs_immediate_collision(d)):
+        _apply_collision(faces, d, prepared_shape, prepared)
+    else:
+        if not _coll_pending:
+            _coll_pending_age = 0.0
+        _coll_pending = true
+        _pending_faces = faces
+        _pending_density = d
+        _pending_shape = prepared_shape
+        _pending_shape_ready = prepared
 
 ## True when the collider must follow this remesh at once: first build, any
 ## padded corner lower than the collider's (tissue removed -- the player must
@@ -676,18 +741,24 @@ func _needs_immediate_collision(d: PackedFloat32Array) -> bool:
                 return true
     return false
 
-func _apply_collision(faces: PackedVector3Array, d: PackedFloat32Array) -> void:
+func _collision_shape_for(faces: PackedVector3Array) -> ConcavePolygonShape3D:
     if faces.is_empty():
-        _collision.shape = null
-    else:
-        var shape := ConcavePolygonShape3D.new()
-        shape.set_faces(faces)
-        _collision.shape = shape
+        return null
+    var shape := ConcavePolygonShape3D.new()
+    # A solid-side near eye must still physically query the same boundary.
+    shape.backface_collision = true
+    shape.set_faces(faces)
+    return shape
+
+func _apply_collision(faces: PackedVector3Array, d: PackedFloat32Array, prepared_shape: ConcavePolygonShape3D = null, prepared: bool = false) -> void:
+    _collision.shape = prepared_shape if prepared else _collision_shape_for(faces)
     _coll_density = d
     _coll_pending = false
     _coll_pending_age = 0.0
     _pending_faces = PackedVector3Array()
     _pending_density = PackedFloat32Array()
+    _pending_shape = null
+    _pending_shape_ready = false
 
 ## True while the collider lags behind the visual mesh (regrowth only).
 func is_collision_pending() -> bool:
@@ -697,7 +768,7 @@ func is_collision_pending() -> bool:
 func flush_collision() -> bool:
     if not _coll_pending:
         return false
-    _apply_collision(_pending_faces, _pending_density)
+    _apply_collision(_pending_faces, _pending_density, _pending_shape, _pending_shape_ready)
     return true
 
 ## Emits one quad (two flat triangles) into the tissue-appropriate bucket,
@@ -753,12 +824,10 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
         uv1 = Vector2((v1 + world_off).x, (v1 + world_off).y)
         uv2 = Vector2((v2 + world_off).x, (v2 + world_off).y)
         uv3 = Vector2((v3 + world_off).x, (v3 + world_off).y)
-    all_verts.append(v0); all_verts.append(v1); all_verts.append(v2)
-    all_verts.append(v0); all_verts.append(v2); all_verts.append(v3)
-    _tri(verts[tissue], normals[tissue], uvs[tissue], v0, v1, v2, uv0, uv1, uv2, outward)
-    _tri(verts[tissue], normals[tissue], uvs[tissue], v0, v2, v3, uv0, uv2, uv3, outward)
+    _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v2, uv0, uv1, uv2, outward)
+    _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v3, uv0, uv2, uv3, outward)
 
-func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array,
+func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array, all_verts: PackedVector3Array,
         a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2, outward: Vector3) -> void:
     var n := (b - a).cross(c - a)
     if n.length_squared() < 1e-12:
@@ -773,6 +842,9 @@ func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVec
         n = -n
     var nn := -n.normalized()
     verts.append(a); verts.append(b); verts.append(c)
+    # Godot uses clockwise front faces for both rendering and concave physics.
+    # Share the final order, including degenerate-triangle rejection.
+    all_verts.append(a); all_verts.append(b); all_verts.append(c)
     normals.append(nn); normals.append(nn); normals.append(nn)
     uvs.append(uva); uvs.append(uvb); uvs.append(uvc)
 
