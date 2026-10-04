@@ -400,4 +400,3 @@ func contact_ray(from: Vector3, to: Vector3) -> Dictionary:
 			"fdk_patch_outward": outward
 		}
 	return result
-
