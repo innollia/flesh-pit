@@ -62,6 +62,22 @@ func run() -> void:
 	# Trilinear density at root-near (z = -0.0375): lerp(1.0, 0.3, 0.925) = 0.35 < 0.5 (GAP AT ROOT).
 	var chunk: FDKChunk = field.get_or_create_chunk(Vector3i(0, 0, 0))
 	var s_n := config.chunk_size + 1
+	# A 0.019m retreat leaves every old behind-root probe solid.
+	# Only checking contact at the visible root detects this gap.
+	for y in range(s_n):
+		for x in range(s_n):
+			chunk._density[x + y * s_n] = 0.48
+	check(n.sample_density(n.base_probe) >= config.iso_level,
+		"micro cut: deep probe stays solid")
+	check(n.sample_density(surface_pos - surface_normal * 0.0375) >= config.iso_level,
+		"micro cut: nearest old probe stays solid")
+	check(n.sample_density(surface_pos) < config.iso_level,
+		"micro cut: actual root has lost surface contact")
+	check(not n.update_anchor() and not n.visible,
+		"micro cut pending: disconnected actual root is hidden")
+	field.remesh_all()
+	check(not n.update_anchor() and not n.visible,
+		"micro cut published: disconnected actual root stays hidden")
 	for y in range(s_n):
 		for x in range(s_n):
 			# corner at z = 0 (z index in chunk where z=0 is z=0 since origin is 0,0,0)
