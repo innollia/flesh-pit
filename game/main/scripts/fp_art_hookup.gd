@@ -147,6 +147,7 @@ func _on_torn(_p: Vector3) -> void:
 func _process(_delta: float) -> void:
 	if m == null:
 		return
+	_sync_belt_posture(_delta)
 	var prog: FPProgression = m.progression
 	knife.visible = prog.hands.holds("knife")
 	if knife.visible and _rig != null:
@@ -280,3 +281,33 @@ func _sync_barriers() -> void:
 		if int(b.get_meta("art_stage")) != st:
 			b.set_meta("art_stage", st)
 			art.call("set_stage", st)
+
+func _sync_belt_posture(_delta: float) -> void:
+	if belt == null or not is_instance_valid(belt) or m == null or not is_instance_valid(m.player):
+		return
+	var pl: Node3D = m.player
+	var pivot: Node3D = pl.get_node_or_null("CameraPivot")
+	if pivot == null:
+		return
+	var feet_y := -0.9
+	if pl.has_method("get_feet_position"):
+		feet_y = pl.to_local(pl.call("get_feet_position")).y
+	var eye_h: float = pivot.position.y - feet_y
+	var h_scale: float = clampf(eye_h / 1.60, 0.45, 1.05)
+	var base_waist_y: float = feet_y + 0.962 * h_scale
+
+	var pitch: float = pivot.rotation.x
+	var pitch_down: float = -minf(pitch, 0.0)
+	var down_t: float = clampf(pitch_down / deg_to_rad(89.0), 0.0, 1.0)
+	var bow: float = sin(down_t * PI * 0.5)
+
+	var bob_base_y: float = float(pl.get("_pivot_base_y")) if pl.get("_pivot_base_y") != null else pivot.position.y
+	var bob_y: float = pivot.position.y - bob_base_y
+	var bob_x: float = pivot.position.x
+
+	var waist_x: float = bob_x * 0.5
+	var waist_y: float = base_waist_y + bob_y * 0.6 - 0.03 * bow * h_scale
+	var waist_z: float = 0.02 + 0.04 * bow * h_scale
+
+	belt.position = Vector3(waist_x, waist_y, waist_z)
+	belt.rotation.x = -0.12 * bow

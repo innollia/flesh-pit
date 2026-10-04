@@ -150,6 +150,7 @@ func sync(body_ok: bool = true, has_canary: bool = false) -> void:
 		if _signature() != _sig:
 			refresh()
 		_sync_live_details()
+		_sync_body_posture()
 	if not visible_in_eye:
 		return
 	var n := xf.basis.z
@@ -275,6 +276,25 @@ func _sync_live_details() -> void:
 		body._belt.call("set_supplies", prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
 		body._belt.call("set_hung", main.belt_swap.hung_ids())
 		FPMirror.tag_layer(body._belt, MIRROR_BODY_LAYER)
+
+func _sync_body_posture() -> void:
+	if body == null or player == null or not is_instance_valid(player):
+		return
+	var feet_y := -0.9
+	if player.has_method("get_feet_position"):
+		feet_y = player.to_local(player.call("get_feet_position")).y
+	var pivot: Node3D = player.get_node_or_null("CameraPivot")
+	var crouch := 0.0
+	var pitch := 0.0
+	if pivot != null:
+		var eye_h: float = pivot.position.y - feet_y
+		crouch = clampf((1.60 - eye_h) / 0.80, 0.0, 1.0)
+		pitch = pivot.rotation.x
+	var walk_phase := float(player.get("_bob_time")) if player.get("_bob_time") != null else 0.0
+	var walk_weight := float(player.get("_bob_weight")) if player.get("_bob_weight") != null else 0.0
+	body.position.y = feet_y
+	if body.has_method("set_posture"):
+		body.call("set_posture", crouch, walk_phase, walk_weight, pitch)
 
 ## Where a world point appears on screen in the mirror (its image across
 ## the glass plane, projected by the eye camera).

@@ -238,6 +238,9 @@ func build() -> void:
 	_belt.set("wzf", 0.104)
 	_belt.set("wzb", 0.118)
 	add_child(_belt)
+	_belt.set_meta("base_pos", _belt.position)
+	_belt.set_meta("base_rot", _belt.rotation)
+	_belt.set_meta("base_scale", _belt.scale)
 	var bag := BAG_SCENE.instantiate()
 	bag.name = "TumorBag"
 	bag.position = Vector3(-0.2, -0.02, 0.06)
@@ -291,6 +294,9 @@ func _part(p: String, at: Vector3) -> Node3D:
 	_parts[p] = n
 	_meshes[p] = []
 	_base[p] = Vector3.ONE
+	n.set_meta("base_pos", at)
+	n.set_meta("base_rot", Vector3.ZERO)
+	n.set_meta("base_scale", Vector3.ONE)
 	return n
 
 func _subpivot(parent: Node3D, sub: String, at: Vector3) -> Node3D:
@@ -372,6 +378,76 @@ func _process(delta: float) -> void:
 	if "M22" in applied:
 		var h: Node3D = _sub["hand_l"]
 		h.rotation.z = (h.get_meta("base_rot") as Vector3).z + sin(_time * 9.0) * 0.12 * maxf(0.0, sin(_time * 1.3))
+
+## Applies real crouch/feet/eye posture and actual walk gait to the mirror reflection body.
+## Smoothly returns to idle when stopped, without creating any forward-reaching arm pose.
+func set_posture(crouch: float, walk_phase: float, walk_weight: float, pitch: float, _delta: float = 0.0) -> void:
+	var c_scale := lerpf(1.0, 0.50, crouch)
+	var bounce := sin(walk_phase) * 0.02 * walk_weight
+	var sway := sin(walk_phase * 0.5) * 0.015 * walk_weight
+	var pelvis_rot := sin(walk_phase * 0.5) * 0.06 * walk_weight
+	var arm_swing := sin(walk_phase * 0.5) * 0.28 * walk_weight
+
+	var legs_n: Node3D = _parts.get("legs", null)
+	if legs_n != null:
+		legs_n.position.y = lerpf(0.95, 0.48, crouch) + bounce
+		legs_n.scale.y = c_scale
+
+	if _belt != null:
+		_belt.position.y = lerpf(0.962, 0.485, crouch) + bounce
+		_belt.position.x = sway
+		_belt.rotation.y = PI + pelvis_rot
+
+	var belly_n: Node3D = _parts.get("belly", null)
+	if belly_n != null:
+		belly_n.position.y = lerpf(1.06, 0.53, crouch) + bounce
+		belly_n.position.x = sway * 0.8
+
+	var chest_n: Node3D = _parts.get("chest", null)
+	if chest_n != null:
+		chest_n.position.y = lerpf(1.28, 0.64, crouch) + bounce * 0.7
+		chest_n.position.x = sway * 0.5
+		chest_n.rotation.z = -sway * 0.3
+
+	var arms_n: Node3D = _parts.get("arms", null)
+	if arms_n != null:
+		arms_n.position.y = lerpf(1.36, 0.68, crouch) + bounce * 0.7
+		arms_n.position.x = sway * 0.4
+
+	var ur: Node3D = _sub.get("upper_r", null)
+	var ul: Node3D = _sub.get("upper_l", null)
+	if ur != null:
+		var b_ur: Vector3 = ur.get_meta("base_rot") if ur.has_meta("base_rot") else Vector3.ZERO
+		ur.rotation = b_ur + Vector3(arm_swing, 0, 0)
+	if ul != null:
+		var b_ul: Vector3 = ul.get_meta("base_rot") if ul.has_meta("base_rot") else Vector3.ZERO
+		ul.rotation = b_ul + Vector3(-arm_swing, 0, 0)
+
+	var hr: Node3D = _sub.get("hand_r", null)
+	var hl: Node3D = _sub.get("hand_l", null)
+	if hr != null:
+		var b_hr: Vector3 = hr.get_meta("base_rot") if hr.has_meta("base_rot") else Vector3.ZERO
+		hr.rotation = b_hr + Vector3(arm_swing * 0.35, 0, 0)
+	if hl != null:
+		var b_hl: Vector3 = hl.get_meta("base_rot") if hl.has_meta("base_rot") else Vector3.ZERO
+		hl.rotation = b_hl + Vector3(-arm_swing * 0.35, 0, 0)
+
+	var rh: Node3D = _parts.get("right_hand", null)
+	var lh: Node3D = _parts.get("left_hand", null)
+	if rh != null:
+		rh.position.y = lerpf(1.1, 0.55, crouch) + bounce * 0.7
+	if lh != null:
+		lh.position.y = lerpf(1.1, 0.55, crouch) + bounce * 0.7
+
+	var neck_n: Node3D = _parts.get("neck", null)
+	if neck_n != null:
+		neck_n.position.y = lerpf(1.47, 0.735, crouch) + bounce * 0.5
+		neck_n.rotation.x = pitch * 0.25
+
+	var face_n: Node3D = _parts.get("face", null)
+	if face_n != null:
+		face_n.position.y = lerpf(1.62, 0.81, crouch) + bounce * 0.5
+		face_n.rotation.x = pitch * 0.65
 
 # --- mutation looks -------------------------------------------------------
 
