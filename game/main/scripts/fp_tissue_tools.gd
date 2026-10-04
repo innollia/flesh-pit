@@ -118,7 +118,7 @@ func on_cell_torn(world_pos: Vector3) -> int:
 			continue
 		m.terrain.dig_at(p, 1.0)
 		m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
-		m.progression.on_flesh_eaten(m.shell_at(p))
+		m.progression.on_flesh_eaten(m.shell_at(p), m.stomach_config.flesh_per_cell)
 		extra += 1
 	return 1 + extra
 
@@ -222,7 +222,8 @@ func step_blend(delta: float) -> void:
 func finish_drink() -> void:
 	m.stomach.add_flesh(_blend_amount * BLEND_RATIO)
 	for s in _blend_units.keys():
-		m.progression.on_flesh_eaten(int(s), int(_blend_units[s]))
+		var flesh_units: float = float(_blend_units[s]) * m.stomach_config.flesh_per_cell * BLEND_RATIO
+		m.progression.on_flesh_eaten(int(s), flesh_units)
 	_blend_amount = 0.0
 	_blend_units.clear()
 	blend_state = Blend.IDLE

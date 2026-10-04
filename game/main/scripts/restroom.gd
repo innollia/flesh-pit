@@ -742,7 +742,7 @@ func _build_collision() -> void:
         [Vector3((h.x + DOOR_HALF_W) * 0.5, h.y, h.z + t * 0.5), Vector3(h.x - DOOR_HALF_W, 2 * h.y, t)],
         [Vector3(0, (DOOR_H + 2 * h.y) * 0.5, h.z + t * 0.5), Vector3(2 * DOOR_HALF_W, 2 * h.y - DOOR_H, t)],
         [toilet.transform * Vector3(0, 0.4, 0.2), Vector3(0.5, 0.8, 0.45)],
-        [Vector3(-h.x + 0.30, 0.45, SINK_Z), Vector3(0.60, 0.9, 0.65)],
+        [Vector3(-h.x + 0.30, (APRON_BOTTOM + 0.9) * 0.5, SINK_Z), Vector3(0.60, 0.9 - APRON_BOTTOM, 0.65)],
         [Vector3(-h.x + 0.11, 1.78, SINK_Z + 0.60), Vector3(0.22, 1.20, 1.65)],
         [Vector3(bath_right - BATH_LENGTH * 0.5, 0.28, -h.z + 0.43), Vector3(BATH_LENGTH, 0.56, 0.86)],
     ]
