@@ -14,9 +14,9 @@ func check(ok: bool, label: String) -> void:
 		print("FAIL: ", label)
 
 func run() -> void:
-	# -------------------------------------------------------------
-	# Test Suite: T7 Nerve Stalk Ground Anchoring & Detachment (R11)
-	# -------------------------------------------------------------
+	# -------------------------------------------------------------------------
+	# Test Suite: T7 Nerve Stalk Ground Anchoring, Continuity & Detachment (R11)
+	# -------------------------------------------------------------------------
 	var config := FDKTerrainConfig.new()
 	config.chunk_size = 4
 	config.cell_size = 0.5
@@ -25,7 +25,7 @@ func run() -> void:
 	field.config = config
 	root.add_child(field)
 
-	# 1. Stalk with no terrain: should NOT be anchored, should NOT be visible (no floating stalk)
+	# 1. Stalk with no terrain: should NOT be anchored, should NOT be visible (부유 0)
 	var n_unanchored := FDKNerveStalk.new()
 	root.add_child(n_unanchored)
 	check(not n_unanchored.is_anchored(), "unanchored stalk: is_anchored() is false when terrain is null")
@@ -33,56 +33,78 @@ func run() -> void:
 	check(not n_unanchored.visible, "unanchored stalk: visible is false when unanchored")
 	check(n_unanchored.is_detached, "unanchored stalk: is_detached is true")
 
-	# 2. Fill solid box: box from (-2, -2, -2) to (2, 2, 2)
-	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
+	# 2. Actual surface placement (실제 FDKTerrainField 표면):
+	# Create an actual wall where z <= 0 is solid (density 1.0) and z > 0 is empty (density 0.0).
+	# AABB from (-2, -2, -2) to (2, 2, 0).
+	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 2)), 1.0, 0)
+	field.remesh_all()
 
-	# 3. Create stalk rooted in solid tissue and verify initial attachment
+	var surface_pos := Vector3(0.5, 0.5, 0.0)
+	var surface_normal := Vector3(0.0, 0.0, 1.0) # pointing outward into open air (z > 0)
+
 	var n := FDKNerveStalk.new()
 	n.terrain = field
 	root.add_child(n)
-	n.place(Vector3(0, 0, 0), Vector3(0, 0, 1))
+	n.place(surface_pos, surface_normal)
 
-	check(n.is_anchored(), "initial attachment: is_anchored() is true when rooted in solid tissue")
-	check(n.visible, "initial attachment: visible is true")
-	check(not n.is_detached, "initial attachment: is_detached is false")
-	check(field.density_at(n.base_probe) >= 0.5, "initial attachment: base_probe density >= 0.5")
+	check(n.is_anchored(), "actual surface: stalk is anchored when placed on real terrain surface")
+	check(n.visible, "actual surface: stalk is visible when anchored")
+	check(not n.is_detached, "actual surface: is_detached is false")
+	check(field.density_at(n.base_probe) >= 0.5, "actual surface: base_probe density >= 0.5")
 
-	# 4. Base excavation (기반 뜯기): dig out the base tissue so density drops below 0.5
-	# Verify that in unpublished state (before remesh/publish), the stalk detects base removal
-	field.dig_at(n.base_probe, 1.0)
-	var density_after_dig: float = field.density_at(n.base_probe)
-	check(density_after_dig < 0.5, "excavation: base density dropped below iso (%f < 0.5)" % density_after_dig)
+	# 3. Shallow surface cut fixture (얕은 surface cut 후 probe는 solid지만 root와 벽 틈 발생 fixture):
+	# Baseline flaw: if the surface retreats by < 0.15, base_probe (at depth 0.15) is still solid,
+	# but root has a gap with the wall. The stalk MUST NOT float (줄 안 뜸).
+	#
+	# We shave the surface layer at z = 0: set the surface corners (z=0) to 0.3.
+	# Corners at z = -0.5 remain solid 1.0.
+	# Trilinear density at base_probe (z = -0.15): lerp(1.0, 0.3, 0.70) = 0.51 >= 0.5 (PROBE IS SOLID).
+	# Trilinear density at root-near (z = -0.0375): lerp(1.0, 0.3, 0.925) = 0.35 < 0.5 (GAP AT ROOT).
+	var chunk: FDKChunk = field.get_or_create_chunk(Vector3i(0, 0, 0))
+	var s_n := config.chunk_size + 1
+	for y in range(s_n):
+		for x in range(s_n):
+			# corner at z = 0 (z index in chunk where z=0 is z=0 since origin is 0,0,0)
+			# local z for z=0.0 with origin (0,0,0) is z_idx = 0.
+			var idx := x + y * s_n + 0 * s_n * s_n
+			chunk._density[idx] = 0.3
 
-	# Call update_anchor() and verify detachment (부유 0)
-	var anchored_after_dig: bool = n.update_anchor()
-	check(not anchored_after_dig, "excavation: update_anchor() returns false after base removed")
-	check(not n.is_anchored(), "excavation: is_anchored() is false after base removed")
-	check(not n.visible, "excavation: visible is false (0 floating stalks in unpublished state)")
-	check(n.is_detached, "excavation: is_detached is true after base removal")
+	# Probe is solid (>= 0.5) according to baseline check:
+	check(n.sample_density(n.base_probe) >= 0.5 or field.density_at(n.base_probe) >= 0.5,
+		"shallow cut fixture: base_probe is verified solid (>= 0.5)")
 
-	# Step should maintain invisibility and deactivation
+	# A) Remesh pending check: before remesh_all, update_anchor must detect gap and NOT float
+	var anchored_pending := n.update_anchor()
+	check(not anchored_pending, "shallow cut (remesh pending): update_anchor() returns false")
+	check(not n.is_anchored(), "shallow cut (remesh pending): is_anchored() is false (root gap detected)")
+	check(not n.visible, "shallow cut (remesh pending): visible is false (줄 안 뜸)")
+	check(n.is_detached, "shallow cut (remesh pending): is_detached is true")
+
+	# Step should maintain invisibility without duplicate update waste
 	n.step(0.016)
-	check(not n.visible, "excavation: step maintains invisible state when unanchored")
+	check(not n.visible, "shallow cut (remesh pending): step maintains invisible state")
 
-	# Verify published state: remesh/publish terrain mesh
+	# B) Published check: after remesh_all, stalk still does not float
 	field.remesh_all()
-	n.update_anchor()
-	check(not n.visible, "published state: stalk remains invisible after terrain publish (부유 0)")
+	var anchored_published := n.update_anchor()
+	check(not anchored_published, "shallow cut (published): update_anchor() returns false after remesh")
+	check(not n.visible, "shallow cut (published): stalk remains invisible after terrain publish (줄 안 뜸)")
 
-	# 5. Base regeneration (지형 재생): restore solid tissue at base
-	# Refill solid tissue around base_probe
-	field.fill_box_uniform(AABB(Vector3(-2, -2, -2), Vector3(4, 4, 4)), 1.0, 0)
-	var density_after_regen: float = field.density_at(n.base_probe)
-	check(density_after_regen >= 0.5, "regeneration: base density restored >= 0.5 (%f)" % density_after_regen)
+	# 4. Regeneration check (지형 재생으로 기반 복구 시 부착 상태 재확인):
+	# Restore the surface layer corners to 1.0 (healing the wall back to surface_pos)
+	for y in range(s_n):
+		for x in range(s_n):
+			var idx := x + y * s_n + 0 * s_n * s_n
+			chunk._density[idx] = 1.0
+	field.remesh_all()
 
-	# Re-verify anchor update upon regeneration
-	var anchored_after_regen: bool = n.update_anchor()
-	check(anchored_after_regen, "regeneration: update_anchor() returns true after tissue restored")
-	check(n.is_anchored(), "regeneration: is_anchored() is true after tissue restored")
-	check(n.visible, "regeneration: visible restored to true")
+	var anchored_regen := n.update_anchor()
+	check(anchored_regen, "regeneration: update_anchor() returns true after surface restored")
+	check(n.is_anchored(), "regeneration: is_anchored() is true when wall re-connects to root")
+	check(n.visible, "regeneration: visible restored to true on real surface")
 	check(not n.is_detached, "regeneration: is_detached reset to false")
 
-	# 6. Disturb reaction (신경 상호작용 및 국소 수축)
+	# 5. Disturb reaction on real surface (신경 상호작용 및 국소 수축):
 	var got_disturbed_signal := [false]
 	var disturbed_pos := [Vector3.INF]
 	n.disturbed.connect(func(pos: Vector3):
@@ -92,26 +114,26 @@ func run() -> void:
 
 	var density_pre_disturb: float = field.density_at(n.base_probe)
 	n.disturb(1.0)
-	check(got_disturbed_signal[0], "disturb: disturbed signal was emitted")
+	check(got_disturbed_signal[0], "disturb: disturbed signal emitted on real surface")
 	check(disturbed_pos[0].is_finite(), "disturb: disturbed position is valid")
 	var density_post_disturb: float = field.density_at(n.base_probe)
 	check(density_post_disturb < density_pre_disturb,
 		"disturb: local contraction reduced base density (%f -> %f)" % [density_pre_disturb, density_post_disturb])
-	check(n.is_anchored(), "disturb: still anchored after standard single disturb flinch")
+	check(n.is_anchored(), "disturb: still anchored after single disturb flinch")
 
-	# 7. Contraction/repeated excavation stripping base tissue completely:
+	# 6. Deep excavation (완전 굴착) stripping the base completely:
 	field.dig_at(n.base_probe, 1.0)
 	n.update_anchor()
-	check(not n.is_anchored(), "repeated excavation: base tissue loss causes stalk detachment")
-	check(not n.visible, "repeated excavation: stalk hidden when base tissue is stripped")
+	check(not n.is_anchored(), "deep excavation: stalk detached when base tissue excavated")
+	check(not n.visible, "deep excavation: stalk hidden after full excavation")
 
-	# 8. Unanchored stalk does not disturb
+	# 7. Unanchored detached stalk does not disturb
 	var disturbed_when_detached := [false]
 	n.disturbed.connect(func(_p): disturbed_when_detached[0] = true)
 	n.disturb(1.0)
-	check(not disturbed_when_detached[0], "disturb: unanchored detached stalk does not emit disturb or contract tissue")
+	check(not disturbed_when_detached[0], "disturb: detached stalk does not emit disturb or contract tissue")
 
-	# 9. Free on detach option
+	# 8. Free on detach option
 	var n_auto_free := FDKNerveStalk.new()
 	n_auto_free.free_on_detach = true
 	n_auto_free.terrain = field
