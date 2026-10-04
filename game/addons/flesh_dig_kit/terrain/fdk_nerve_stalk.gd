@@ -16,15 +16,48 @@ extends Node3D
 @export var wiggle_speed: float = 2.4
 @export var wiggle_amount: float = 16.0
 
-var terrain: Node = null
-var base_probe: Vector3 = Vector3.ZERO
+var terrain: Node = null:
+    set(v):
+        terrain = v
+        update_anchor()
+var base_probe: Vector3 = Vector3.ZERO:
+    set(v):
+        base_probe = v
+        update_anchor()
+var is_detached: bool = false
+var detaching: bool = false
+@export var free_on_detach: bool = false
 var _joints: Array[Node3D] = []
 var _phase: float = 0.0
 var _time: float = 0.0
 var _built := false
+var _placed := false
 
 func _ready() -> void:
     build()
+    update_anchor()
+
+## Returns true if the stalk is rooted in solid tissue (density >= iso_level).
+func is_anchored() -> bool:
+    if terrain == null or not terrain.has_method("density_at"):
+        return false
+    if not _placed and base_probe == Vector3.ZERO:
+        return false
+    var iso: float = 0.5
+    if "config" in terrain and terrain.config != null and "iso_level" in terrain.config:
+        iso = terrain.config.iso_level
+    return terrain.density_at(base_probe) >= iso
+
+## Updates attachment state based on whether base tissue is anchored.
+## Hides and deactivates the stalk if base is lost. Returns is_anchored().
+func update_anchor() -> bool:
+    var anchored := is_anchored()
+    visible = anchored
+    is_detached = not anchored
+    detaching = not anchored
+    if free_on_detach and not anchored:
+        queue_free()
+    return anchored
 
 ## Points the stalk out of the wall along `normal`, rooted at `at`.
 func place(at: Vector3, normal: Vector3) -> void:
@@ -34,7 +67,9 @@ func place(at: Vector3, normal: Vector3) -> void:
     var x := up.cross(n).normalized()
     var z := n.cross(x).normalized()
     basis = Basis(x, n, z)
+    _placed = true
     base_probe = at - n * 0.15
+    update_anchor()
 
 func build() -> void:
     if _built:
@@ -95,23 +130,28 @@ var _disturb_extra: float = 0.0
 ## dig_at, nudges nearby tissue to shift by digging a small amount at the
 ## stalk's own root so the wall visibly contracts/moves away from the poke.
 func disturb(strength: float = 1.0) -> void:
+    if not is_anchored():
+        return
     _disturb_extra += disturb_kick * clampf(strength, 0.0, 1.0)
     if terrain != null and terrain.has_method("dig_at"):
         # local contraction: the tissue right around the root recoils,
         # reading as the organism flinching away from the disturbance
         terrain.dig_at(base_probe, 0.12 * clampf(strength, 0.0, 1.0))
-    disturbed.emit(global_position)
+        update_anchor()
+    disturbed.emit(global_position if is_inside_tree() else position)
 
 func _process(delta: float) -> void:
+    if not update_anchor():
+        return
     if _disturb_extra > 0.0:
         _disturb_extra = maxf(0.0, _disturb_extra - disturb_decay * disturb_kick * delta)
     step(delta)
 
 func step(delta: float) -> void:
+    if not update_anchor():
+        return
     _time += delta
     for i in range(_joints.size()):
         var t := _time * wiggle_speed + _phase - float(i) * 0.7
         var a := deg_to_rad(wiggle_amount + _disturb_extra) * (0.4 + 0.6 * float(i) / _joints.size())
         _joints[i].rotation = Vector3(sin(t) * a, 0.0, cos(t * 0.8) * a * 0.7)
-    if terrain != null and terrain.has_method("density_at"):
-        visible = terrain.density_at(base_probe) >= 0.5
