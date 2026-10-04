@@ -10,6 +10,8 @@ var _home: Transform3D
 
 func setup(m: Node3D) -> void:
 	main = m
+	if get_parent() == null:
+		m.add_child(self)
 	lid = m.restroom.tank_art.get("_lid")
 	_home = lid.transform
 
@@ -17,13 +19,13 @@ func can_pick() -> bool:
 	return not held and main.carried_flesh <= 0.0 and not main.progression.tumor_in_hand() and main.progression.hands.right == ""
 
 func aimed() -> bool:
-	return not held and main._interaction_aim(lid.global_position, 12.0, 1.35)
+	return not held and main._interaction_aim(lid.global_position, 8.0, 1.25)
 
 func is_aiming_tank() -> bool:
 	if main == null or main.restroom == null or main.restroom.tank_art == null:
 		return false
 	var tank_top: Vector3 = main.restroom.tank_art.to_global(Vector3(0, 0.34, 0))
-	return main._interaction_aim(tank_top, 14.0, 1.35)
+	return main._interaction_aim(tank_top, 8.0, 1.25)
 
 func pick() -> bool:
 	if not can_pick():

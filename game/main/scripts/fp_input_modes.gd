@@ -78,6 +78,21 @@ static func _add(action: String, ev: InputEvent) -> void:
 	InputMap.action_add_event(action, ev)
 
 ## R03: checks if any of the settlement exit inputs were pressed (V, WASD, Space, F, Esc, LMB, RMB, gamepad).
+static func settlement_inputs() -> Dictionary:
+	var state := {}
+	for action in ["fp_vomit", "fp_interact", "fp_pick", "fdk_eat", "fdk_jump", "ui_cancel",
+		"fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right"]:
+		state[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
+	var keys := {"key_v": KEY_V, "key_f": KEY_F, "key_r": KEY_R, "key_w": KEY_W,
+		"key_a": KEY_A, "key_s": KEY_S, "key_d": KEY_D, "key_space": KEY_SPACE, "key_escape": KEY_ESCAPE}
+	for id in keys:
+		state[id] = Input.is_key_pressed(keys[id]) or Input.is_physical_key_pressed(keys[id])
+	state["mouse_left"] = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	state["mouse_right"] = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	for pad in Input.get_connected_joypads():
+		state["pad_move_%d" % pad] = Vector2(Input.get_joy_axis(pad, JOY_AXIS_LEFT_X), Input.get_joy_axis(pad, JOY_AXIS_LEFT_Y)).length() > 0.4
+	return state
+
 static func is_settle_exit_requested(entry_frame: int = -1, entry_action: String = "") -> bool:
 	if entry_frame >= 0 and Engine.get_process_frames() == entry_frame:
 		return false
