@@ -131,7 +131,7 @@ func spray(deep: bool) -> int:
 	if tier < 0:
 		return -1
 	var hit: Dictionary = m._look_hit()
-	if hit.is_empty():
+	if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
 		return -1
 	var dir: Vector3 = m.player.get_look_ray()[1]
 	return m.progression.sprays.use(m.terrain, hit.position, tier, dir)
