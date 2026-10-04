@@ -111,4 +111,3 @@ func run() -> void:
     m.queue_free()
     await process_frame
     quit(1 if failed else 0)
-
