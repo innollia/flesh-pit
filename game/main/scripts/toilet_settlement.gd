@@ -3,9 +3,10 @@ extends Node
 
 ## Toilet settlement (spec 03-restroom 6, 04-economy). No numbers, no shop
 ## screen: the player vomits into the bowl, then must press the lever by
-## hand. Until the lever is pressed nothing is settled (teeth 0, no hair).
+## hand. Until the lever is pressed nothing is settled (teeth 0).
 ## On the lever: teeth drop into the tank (a rattle whose length follows the
-## amount; a whole tumor makes it much longer) and hairs grow on the arm.
+## amount; a whole tumor makes it much longer). Under R17 hairs grow immediately
+## upon eating, so lever settlement yields hair_gain = 0.
 ## Main wires the camera and input; this node owns the bowl and the rattle.
 
 signal lever_pulled(teeth_gain: int, hair_gain: int)
