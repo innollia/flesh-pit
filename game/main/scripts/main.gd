@@ -114,6 +114,8 @@ var belt_swap: FPBeltSwap
 var hand_motions: FPHandMotions
 var mutation_apply: FPMutationApply
 var rest_points: Array[Vector3] = []
+var _world_density_cache: Dictionary = {}
+const WORLD_DENSITY_CACHE_LIMIT := 8192
 var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
 
@@ -444,12 +446,20 @@ func _room_dist(p: Vector3) -> float:
     return FPWorldFeatures.room_dist(p, FPRestroom.HALF)
 
 func _world_density(p: Vector3) -> float:
+    if _world_density_cache.has(p):
+        return _world_density_cache[p]
     # The ceiling duct stays empty and dark instead of revealing exterior flesh.
     var vent_offset := p - FPRestroom.VENT_CENTER
+    var density: float
     if absf(vent_offset.x) < 0.30 and absf(vent_offset.z) < 0.30 and vent_offset.y >= -0.04 and vent_offset.y < 0.8:
-        return 0.0
-    return FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
+        density = 0.0
+    else:
+        density = FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
             ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points)
+    if _world_density_cache.size() >= WORLD_DENSITY_CACHE_LIMIT:
+        _world_density_cache.clear()
+    _world_density_cache[p] = density
+    return density
 
 func _room_surface_constraint(p: Vector3) -> Vector3:
     var vent_offset := p - FPRestroom.VENT_CENTER
@@ -1467,6 +1477,9 @@ func load_from_disk() -> bool:
     if not data is Dictionary:
         return false
     deserialize(data)
+    # Restore the actual mesh and collision before input/rendering resumes.
+    # This runs once per load; ordinary digging keeps its frame budget.
+    terrain.remesh_all()
     return true
 
 ## Pause "저장하고 시작 화면으로": save, then a fresh scene with the title up.

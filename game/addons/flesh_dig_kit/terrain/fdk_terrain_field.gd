@@ -421,7 +421,8 @@ func _ready() -> void:
     set_process(true)
 
 ## Per-frame remesh time budget (ms). At least one dirty chunk is always
-## remeshed; more only while the frame stays under this budget, so a burst
+## remeshed once its batch is prepared; preparation also spends the budget.
+## More only while the frame stays under this budget, so a burst
 ## of dirty chunks (contraction wave, spray) never stalls a frame.
 var remesh_ms_per_frame: float = 8.0
 ## Seconds of simulated time for the contractile squeeze clock.
@@ -448,6 +449,12 @@ func _process(delta: float) -> void:
     var start := Time.get_ticks_usec()
     if _mesh_batch.is_empty():
         _begin_mesh_batch()
+        if not _mesh_batch.is_empty() and (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
+            # The frozen snapshot is useful work. Resume this same batch next
+            # frame instead of adding a mesh build to expensive preparation.
+            step_collision(delta)
+            _refresh_or_clear_surface_patch()
+            return
     while _mesh_batch_cursor < _mesh_batch.size():
         var chunk: FDKChunk = _mesh_batch[_mesh_batch_cursor]
         _reading_mesh_snapshot = true
@@ -485,31 +492,51 @@ func _begin_mesh_batch() -> void:
         if not links.has(chunk.chunk_coord):
             links[chunk.chunk_coord] = {}
         var source: PackedFloat32Array = chunk.effective_density()
-        var changed_indices: PackedInt32Array = range(source.size()) if chunk._regen_scan or chunk._mesh_source.is_empty() or not chunk._contract.is_empty() else chunk._regen_idx
+        var previous: PackedFloat32Array = chunk._mesh_source
+        var comparable := previous.size() == source.size()
+        var changed_indices: PackedInt32Array = range(source.size()) if chunk._regen_scan or previous.is_empty() or not chunk._contract.is_empty() else chunk._regen_idx
         if not chunk._mesh_regen_indices.is_empty():
             changed_indices = changed_indices.duplicate()
             changed_indices.append_array(chunk._mesh_regen_indices)
+        var reader_mask := 0
         for i in changed_indices:
-            if chunk._mesh_source.size() == source.size() and source[i] == chunk._mesh_source[i]:
+            if comparable and source[i] == previous[i]:
                 continue
-            var local := Vector3i(i % n, (i / n) % n, i / (n * n))
-            if local.x > 0 and local.x < s - 1 and local.y > 0 and local.y < s - 1 and local.z > 0 and local.z < s - 1:
+            var lx := i % n
+            var ly := (i / n) % n
+            var lz := i / (n * n)
+            if lx > 0 and lx < s - 1 and ly > 0 and ly < s - 1 and lz > 0 and lz < s - 1:
                 continue
-            var g: Vector3i = chunk.chunk_coord * s + local
             # A mesh reads corners -1..s. Include padding readers even if
             # they do not store the changed corner themselves.
-            for z in range(-1, 2):
-                for y in range(-1, 2):
-                    for x in range(-1, 2):
-                        var cc: Vector3i = chunk.chunk_coord + Vector3i(x, y, z)
-                        var p: Vector3i = g - cc * s
-                        if p.x < -1 or p.y < -1 or p.z < -1 or p.x > s or p.y > s or p.z > s:
-                            continue
-                        if _chunks.has(cc):
-                            targets[cc] = _chunks[cc]
-                            links[chunk.chunk_coord][cc] = true
-                            if not links.has(cc): links[cc] = {}
-                            links[cc][chunk.chunk_coord] = true
+            var x_lo := 0 if lx <= 0 else 1
+            var x_hi := 2 if lx >= s - 1 else 1
+            var y_lo := 0 if ly <= 0 else 1
+            var y_hi := 2 if ly >= s - 1 else 1
+            var z_lo := 0 if lz <= 0 else 1
+            var z_hi := 2 if lz >= s - 1 else 1
+            for dz in range(z_lo, z_hi + 1):
+                var z_base := dz * 9
+                for dy in range(y_lo, y_hi + 1):
+                    var y_base := z_base + dy * 3
+                    for dx in range(x_lo, x_hi + 1):
+                        reader_mask |= (1 << (y_base + dx))
+            if reader_mask == 0x7ffffff:
+                break
+        if reader_mask != 0:
+            for idx in range(27):
+                if (reader_mask & (1 << idx)) == 0:
+                    continue
+                var ox := (idx % 3) - 1
+                var oy := ((idx / 3) % 3) - 1
+                var oz := (idx / 9) - 1
+                var cc: Vector3i = chunk.chunk_coord + Vector3i(ox, oy, oz)
+                if _chunks.has(cc):
+                    targets[cc] = _chunks[cc]
+                    links[chunk.chunk_coord][cc] = true
+                    if not links.has(cc):
+                        links[cc] = {}
+                    links[cc][chunk.chunk_coord] = true
     if targets.is_empty():
         return
     _mesh_snapshot_epoch = _dig_epoch
