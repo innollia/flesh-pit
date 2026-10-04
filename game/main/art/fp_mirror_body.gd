@@ -54,6 +54,7 @@ var _sub := {}     ## sub pivot name -> Node3D (jaw, shoulders, hand, fingers, f
 var _time := 0.0
 var applied: Array[String] = []
 var _belt: Node3D
+var _rest_pose := {} ## mutation-adjusted transforms, before posture composition
 
 ## World-y trunk rings [y, half width, front depth, back depth], hips to collar.
 const TRUNK := [
@@ -172,10 +173,9 @@ func build() -> void:
 			ar.append(_ring(r[0], sx * r[1], r[3], r[4], r[4], 8, r[2]))
 		FDKLowPoly.loft(st, ar, [SKIN, SKIN, SKIN, SKIN, SKIN_D], true, false)
 		_mesh(ua, "UpperArm", st)
-	# --- hands: forearms hang relaxed at the sides, palms to the thighs
-	for side in ["right_hand", "left_hand"]:
-		var sx := 1.0 if side == "right_hand" else -1.0
-		var hp := _part(side, Vector3(sx * 0.28, 1.1, 0.08))
+		# --- hands: child of upper arm (elbow joint), full articulated arm chain
+		var side := "right_hand" if sx > 0 else "left_hand"
+		var hp := _part_child(ua, side, Vector3(sx * 0.08, -0.26, 0.08))
 		var s := "r" if sx > 0 else "l"
 		var fa := _subpivot(hp, "forearm_" + s, Vector3.ZERO)
 		st = K.begin()
@@ -200,8 +200,8 @@ func build() -> void:
 			var ln := 0.066 - absf(i - 1.3) * 0.01
 			K.tube(st, I, [Vector3(x, 0, 0), Vector3(x * 1.02, ln * 0.5, 0.016), Vector3(x * 1.03, ln * 0.8, 0.05)], [0.0095, 0.0088, 0.0075], 4, [SKIN, SKIN, Color(0.93, 0.78, 0.72)])
 		_mesh(fing, "Fingers", st)
-	# --- legs (not a mirror part): briefs over the hips, then one pinched
-	# loft per leg: thigh, knee, calf bulge, ankle, foot
+	# --- legs (not a mirror part): briefs over the hips, then articulated
+	# thigh and shin/foot preserving exact original profile and mesh lengths
 	var legs := _part("legs", Vector3(0, 0.95, 0))
 	st = K.begin()
 	var cloth := Color(0.82, 0.84, 0.86)
@@ -213,14 +213,41 @@ func build() -> void:
 	for sx in [-1, 1]:
 		FDKLowPoly.loft(st, [_ring(-0.08, sx * 0.085, 0.084, 0.085, 0.09, 8), _ring(-0.13, sx * 0.087, 0.082, 0.083, 0.088, 8)], [cloth_d], false, false)
 	_mesh(legs, "Briefs", st, true)
-	st = K.begin()
 	for sx in [-1, 1]:
-		var lg: Array = []
-		for r in [[-0.12, 0.087, 0.0, 0.084, 0.086, 0.09], [-0.2, 0.092, 0.012, 0.078, 0.082, 0.076], [-0.32, 0.089, 0.02, 0.062, 0.066, 0.058], [-0.42, 0.086, 0.025, 0.048, 0.05, 0.044], [-0.47, 0.085, 0.03, 0.042, 0.046, 0.038], [-0.53, 0.084, 0.005, 0.046, 0.04, 0.056], [-0.62, 0.083, -0.01, 0.05, 0.04, 0.066], [-0.72, 0.081, -0.004, 0.036, 0.034, 0.044], [-0.82, 0.079, 0.0, 0.026, 0.026, 0.028], [-0.88, 0.078, 0.0, 0.028, 0.027, 0.03]]:
-			lg.append(_ring(r[0], sx * r[1], r[3], r[4], r[5], 8, r[2]))
-		FDKLowPoly.loft(st, lg, [SKIN, SKIN, SKIN, SKIN_D, SKIN, SKIN, SKIN, SKIN, SKIN_D], false, false)
-		K.tube(st, I, [Vector3(sx * 0.078, -0.89, -0.03), Vector3(sx * 0.08, -0.915, 0.03), Vector3(sx * 0.085, -0.93, 0.12)], [0.032, 0.036, 0.026], 6, [SKIN_D, SKIN, SKIN], true, 0.65) # foot
-	_mesh(legs, "Legs", st)
+		var s := "r" if sx > 0 else "l"
+		var thigh := _subpivot(legs, "thigh_" + s, Vector3(sx * 0.087, -0.08, 0.0))
+		st = K.begin()
+		var tr: Array = []
+		for r in [
+			[-0.12, 0.087, 0.0, 0.084, 0.086, 0.09],
+			[-0.2, 0.092, 0.012, 0.078, 0.082, 0.076],
+			[-0.32, 0.089, 0.02, 0.062, 0.066, 0.058],
+			[-0.42, 0.086, 0.025, 0.048, 0.05, 0.044],
+			[-0.47, 0.085, 0.03, 0.042, 0.046, 0.038]
+		]:
+			tr.append(_ring(r[0] + 0.08, sx * (r[1] - 0.087), r[3], r[4], r[5], 8, r[2]))
+		FDKLowPoly.loft(st, tr, [SKIN, SKIN, SKIN, SKIN_D], false, false)
+		_mesh(thigh, "Thigh", st)
+
+		var shin := _subpivot(thigh, "shin_" + s, Vector3(-sx * 0.002, -0.39, 0.03))
+		st = K.begin()
+		var sr: Array = []
+		for r in [
+			[-0.47, 0.085, 0.03, 0.042, 0.046, 0.038],
+			[-0.53, 0.084, 0.005, 0.046, 0.04, 0.056],
+			[-0.62, 0.083, -0.01, 0.05, 0.04, 0.066],
+			[-0.72, 0.081, -0.004, 0.036, 0.034, 0.044],
+			[-0.82, 0.079, 0.0, 0.026, 0.026, 0.028],
+			[-0.88, 0.078, 0.0, 0.028, 0.027, 0.03]
+		]:
+			sr.append(_ring(r[0] + 0.47, sx * (r[1] - 0.085), r[3], r[4], r[5], 8, r[2] - 0.03))
+		FDKLowPoly.loft(st, sr, [SKIN, SKIN, SKIN, SKIN, SKIN_D], false, false)
+		_mesh(shin, "Shin", st)
+		# The foot keeps its full original shape and stays flat as the knee bends.
+		var foot := _subpivot(shin, "foot_" + s, Vector3(-sx * 0.007, -0.41, -0.03))
+		st = K.begin()
+		K.tube(st, I, [Vector3(0, -0.01, -0.03), Vector3(sx * 0.002, -0.035, 0.03), Vector3(sx * 0.007, -0.05, 0.12)], [0.032, 0.036, 0.026], 6, [SKIN_D, SKIN, SKIN], true, 0.65)
+		_mesh(foot, "Foot", st)
 	# --- belt: the same first-person waist belt (fp_belt.gd: leather band,
 	# buckle, spray cans, canary pocket) plus the tumor bag, worn over the
 	# briefs so the mirror shows the gear the player carries. Reused scenes,
@@ -274,6 +301,7 @@ func build() -> void:
 			s2.visible = false
 			(mi as MeshInstance3D).add_child(s2)
 			_shim[part].append(s2)
+	_capture_rest_pose()
 
 ## PS1-style matte: texture times vertex paint, no gloss, nearest filtering.
 func _matte(tex: String, tex_amount: float) -> StandardMaterial3D:
@@ -290,7 +318,10 @@ func _matte(tex: String, tex_amount: float) -> StandardMaterial3D:
 	return m
 
 func _part(p: String, at: Vector3) -> Node3D:
-	var n := K.pivot(self, "Part_" + p, at)
+	return _part_child(self, p, at)
+
+func _part_child(parent: Node3D, p: String, at: Vector3) -> Node3D:
+	var n := K.pivot(parent, "Part_" + p, at)
 	_parts[p] = n
 	_meshes[p] = []
 	_base[p] = Vector3.ONE
@@ -382,72 +413,79 @@ func _process(delta: float) -> void:
 ## Applies real crouch/feet/eye posture and actual walk gait to the mirror reflection body.
 ## Smoothly returns to idle when stopped, without creating any forward-reaching arm pose.
 func set_posture(crouch: float, walk_phase: float, walk_weight: float, pitch: float, _delta: float = 0.0) -> void:
-	var c_scale := lerpf(1.0, 0.50, crouch)
-	var bounce := sin(walk_phase) * 0.02 * walk_weight
-	var sway := sin(walk_phase * 0.5) * 0.015 * walk_weight
-	var pelvis_rot := sin(walk_phase * 0.5) * 0.06 * walk_weight
-	var arm_swing := sin(walk_phase * 0.5) * 0.28 * walk_weight
-
-	var legs_n: Node3D = _parts.get("legs", null)
-	if legs_n != null:
-		legs_n.position.y = lerpf(0.95, 0.48, crouch) + bounce
-		legs_n.scale.y = c_scale
-
+	var c := clampf(crouch, 0.0, 1.0)
+	var w := clampf(walk_weight, 0.0, 1.0)
+	for n in _rest_pose:
+		(n as Node3D).transform = _rest_pose[n]
+	# Solve the full-length leg segments for the deep squat once. Interpolate
+	# joint angles, then derive pelvis position from the planted ankle, rather
+	# than scaling legs or sinking the feet through the floor.
+	var upper_vector := Vector2(-0.39, 0.03)
+	var lower_vector := Vector2(-0.41, -0.03)
+	var target := Vector2(-0.17, 0.38) # crouched hip -> planted ankle
+	var reach := target.length()
+	var along := (upper_vector.length_squared() - lower_vector.length_squared() + reach * reach) / (2.0 * reach)
+	var unit := target / reach
+	var knee := unit * along + Vector2(unit.y, -unit.x) * sqrt(maxf(0.0, upper_vector.length_squared() - along * along))
+	var thigh_angle := wrapf(knee.angle() - upper_vector.angle(), -PI, PI) * c
+	var shin_angle := wrapf((target - knee).angle() - lower_vector.angle(), -PI, PI) * c
+	var thigh_basis := Basis(Vector3.RIGHT, thigh_angle)
+	var shin_basis := Basis(Vector3.RIGHT, shin_angle)
+	var pelvis := Vector3(0, 0.07, 0) - thigh_basis * Vector3(0, -0.39, 0.03) - shin_basis * Vector3(0, -0.41, -0.03) + Vector3(0, 0.08, 0)
+	var gait := sin(walk_phase * 0.5) * 0.22 * w * (1.0 - c * 0.65)
+	var sway := sin(walk_phase * 0.5) * 0.012 * w
+	var bounce := sin(walk_phase) * 0.012 * w
+	pelvis += Vector3(sway, bounce, 0)
+	_parts["legs"].position = pelvis
+	for s in ["r", "l"]:
+		var swing: float = gait if s == "r" else -gait
+		_sub["thigh_" + s].basis = Basis(Vector3.RIGHT, thigh_angle + swing)
+		_sub["shin_" + s].basis = Basis(Vector3.RIGHT, shin_angle - thigh_angle - swing * 0.5)
+		_sub["foot_" + s].basis = Basis(Vector3.RIGHT, -shin_angle - swing * 0.5)
+	# The torso folds at the hips with its original dimensions. Its connected
+	# collar/head chain follows the crouched eye height; part mutation scales
+	# and offsets remain in the saved rest transforms.
+	# The unscaled head is 0.138 m tall above its pivot. At full crouch
+	# place that pivot at 0.76 m so the visible head fits the 0.9 m capsule.
+	var fold := acos((0.76 - 0.32) / 0.67) * c
+	var spine := Transform3D(Basis(Vector3.RIGHT, fold), pelvis)
+	for p in ["belly", "chest", "arms"]:
+		var n: Node3D = _parts[p]
+		var rest: Transform3D = _rest_pose[n]
+		n.transform = spine * Transform3D(rest.basis, rest.origin - Vector3(0, 0.95, 0))
 	if _belt != null:
-		_belt.position.y = lerpf(0.962, 0.485, crouch) + bounce
-		_belt.position.x = sway
-		_belt.rotation.y = PI + pelvis_rot
+		_belt.position = pelvis + Vector3(0, 0.012, 0)
+	# Forearms are elbow children of the corresponding upper arm, including
+	# the original hand rotation and attached tools. No independent hand root
+	# translation can tear the elbow seam during walking or crouching.
+	for s in ["r", "l"]:
+		var swing: float = -gait if s == "r" else gait
+		var upper: Node3D = _sub["upper_" + s]
+		var upper_rest: Transform3D = _rest_pose[upper]
+		upper.basis = Basis(Vector3.RIGHT, -fold + swing) * upper_rest.basis
+		var forearm_root: Node3D = _parts["right_hand" if s == "r" else "left_hand"]
+		var forearm_rest: Transform3D = _rest_pose[forearm_root]
+		forearm_root.basis = Basis(Vector3.RIGHT, -0.85 * c) * forearm_rest.basis
+	var neck: Node3D = _parts["neck"]
+	var neck_rest: Transform3D = _rest_pose[neck]
+	neck.transform = spine * Transform3D(neck_rest.basis, neck_rest.origin - Vector3(0, 0.95, 0))
+	neck.basis = spine.basis * Basis(Vector3.RIGHT, -pitch * 0.25) * neck_rest.basis
+	var face: Node3D = _parts["face"]
+	var face_rest: Transform3D = _rest_pose[face]
+	face.position = neck.position + neck.basis * (face_rest.origin - neck_rest.origin)
+	# This model faces +Z (the reflection flips only Z). A positive local
+	# X rotation lowers its gaze, whereas the camera's down pitch is negative.
+	face.basis = Basis(Vector3.RIGHT, -pitch * 0.65) * face_rest.basis
+	if "M22" in applied:
+		var hand: Node3D = _sub["hand_l"]
+		hand.rotation.z += sin(_time * 9.0) * 0.12 * maxf(0.0, sin(_time * 1.3))
 
-	var belly_n: Node3D = _parts.get("belly", null)
-	if belly_n != null:
-		belly_n.position.y = lerpf(1.06, 0.53, crouch) + bounce
-		belly_n.position.x = sway * 0.8
-
-	var chest_n: Node3D = _parts.get("chest", null)
-	if chest_n != null:
-		chest_n.position.y = lerpf(1.28, 0.64, crouch) + bounce * 0.7
-		chest_n.position.x = sway * 0.5
-		chest_n.rotation.z = -sway * 0.3
-
-	var arms_n: Node3D = _parts.get("arms", null)
-	if arms_n != null:
-		arms_n.position.y = lerpf(1.36, 0.68, crouch) + bounce * 0.7
-		arms_n.position.x = sway * 0.4
-
-	var ur: Node3D = _sub.get("upper_r", null)
-	var ul: Node3D = _sub.get("upper_l", null)
-	if ur != null:
-		var b_ur: Vector3 = ur.get_meta("base_rot") if ur.has_meta("base_rot") else Vector3.ZERO
-		ur.rotation = b_ur + Vector3(arm_swing, 0, 0)
-	if ul != null:
-		var b_ul: Vector3 = ul.get_meta("base_rot") if ul.has_meta("base_rot") else Vector3.ZERO
-		ul.rotation = b_ul + Vector3(-arm_swing, 0, 0)
-
-	var hr: Node3D = _sub.get("hand_r", null)
-	var hl: Node3D = _sub.get("hand_l", null)
-	if hr != null:
-		var b_hr: Vector3 = hr.get_meta("base_rot") if hr.has_meta("base_rot") else Vector3.ZERO
-		hr.rotation = b_hr + Vector3(arm_swing * 0.35, 0, 0)
-	if hl != null:
-		var b_hl: Vector3 = hl.get_meta("base_rot") if hl.has_meta("base_rot") else Vector3.ZERO
-		hl.rotation = b_hl + Vector3(-arm_swing * 0.35, 0, 0)
-
-	var rh: Node3D = _parts.get("right_hand", null)
-	var lh: Node3D = _parts.get("left_hand", null)
-	if rh != null:
-		rh.position.y = lerpf(1.1, 0.55, crouch) + bounce * 0.7
-	if lh != null:
-		lh.position.y = lerpf(1.1, 0.55, crouch) + bounce * 0.7
-
-	var neck_n: Node3D = _parts.get("neck", null)
-	if neck_n != null:
-		neck_n.position.y = lerpf(1.47, 0.735, crouch) + bounce * 0.5
-		neck_n.rotation.x = pitch * 0.25
-
-	var face_n: Node3D = _parts.get("face", null)
-	if face_n != null:
-		face_n.position.y = lerpf(1.62, 0.81, crouch) + bounce * 0.5
-		face_n.rotation.x = pitch * 0.65
+func _capture_rest_pose() -> void:
+	_rest_pose.clear()
+	for n in _parts.values() + _sub.values():
+		_rest_pose[n] = (n as Node3D).transform
+	if _belt != null:
+		_rest_pose[_belt] = _belt.transform
 
 # --- mutation looks -------------------------------------------------------
 
@@ -478,7 +516,10 @@ func _reset_shapes() -> void:
 		(n as Node3D).position = n.get_meta("base_pos")
 		(n as Node3D).rotation = n.get_meta("base_rot")
 	for p in _parts.keys():
-		(_parts[p] as Node3D).scale = Vector3.ONE
+		var part: Node3D = _parts[p]
+		part.position = part.get_meta("base_pos")
+		part.rotation = part.get_meta("base_rot")
+		part.scale = part.get_meta("base_scale")
 		_base[p] = Vector3.ONE
 	for e in _extras:
 		e.queue_free()
@@ -508,6 +549,7 @@ func apply(ids: Array, bumps: int = 0) -> void:
 	face_mat.set_shader_parameter("hide_eyes", mutated_eyes)
 	for mesh in _sub["eyes"].get_children():
 		mesh.visible = mutated_eyes
+	_capture_rest_pose()
 
 func _apply_one(id: String, _root: Node3D, ghost: bool) -> Node3D:
 	var lk := look(id)

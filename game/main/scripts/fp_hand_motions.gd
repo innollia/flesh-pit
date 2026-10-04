@@ -314,13 +314,11 @@ func _cam_rest_offset() -> Vector3:
         return Vector3.ZERO
     var down_t: float = clampf(pitch_down / deg_to_rad(89.0), 0.0, 1.0)
     var bow: float = sin(down_t * PI * 0.5)
-    var feet_y := -0.9
-    if m.player.has_method("get_feet_position"):
-        feet_y = m.player.to_local(m.player.call("get_feet_position")).y
-    var eye_above_feet: float = m.player.camera_pivot.position.y - feet_y
-    var h_scale: float = clampf(eye_above_feet / 1.60, 0.45, 1.05)
-    var head_forward := 0.17 * bow * h_scale
-    var head_down := 0.08 * bow * h_scale
+    # Crouching folds full-size joints; it does not halve the head/neck or
+    # belly. Keep the same bow distance so the unscaled belly remains below
+    # the aim line when looking straight down in either capsule posture.
+    var head_forward := 0.17 * bow
+    var head_down := 0.08 * bow
     var delta_player := Vector3(0.0, -head_down, -head_forward)
     return m.player.camera_pivot.basis.inverse() * delta_player
 

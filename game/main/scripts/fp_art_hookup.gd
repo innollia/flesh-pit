@@ -289,25 +289,13 @@ func _sync_belt_posture(_delta: float) -> void:
 	var pivot: Node3D = pl.get_node_or_null("CameraPivot")
 	if pivot == null:
 		return
-	var feet_y := -0.9
-	if pl.has_method("get_feet_position"):
-		feet_y = pl.to_local(pl.call("get_feet_position")).y
-	var eye_h: float = pivot.position.y - feet_y
-	var h_scale: float = clampf(eye_h / 1.60, 0.45, 1.05)
-	var base_waist_y: float = feet_y + 0.962 * h_scale
 
-	var pitch: float = pivot.rotation.x
-	var pitch_down: float = -minf(pitch, 0.0)
-	var down_t: float = clampf(pitch_down / deg_to_rad(89.0), 0.0, 1.0)
-	var bow: float = sin(down_t * PI * 0.5)
+	var crouch := 1.0 if bool(pl.get("_is_crouching")) else 0.0
+	if pl.get("_pivot_base_y") != null:
+		crouch = clampf((0.70 - float(pl.get("_pivot_base_y"))) / 0.80, 0.0, 1.0)
 
-	var bob_base_y: float = float(pl.get("_pivot_base_y")) if pl.get("_pivot_base_y") != null else pivot.position.y
-	var bob_y: float = pivot.position.y - bob_base_y
-	var bob_x: float = pivot.position.x
-
-	var waist_x: float = bob_x * 0.5
-	var waist_y: float = base_waist_y + bob_y * 0.6 - 0.03 * bow * h_scale
-	var waist_z: float = 0.02 + 0.04 * bow * h_scale
-
-	belt.position = Vector3(waist_x, waist_y, waist_z)
-	belt.rotation.x = -0.12 * bow
+	# The waist follows capsule posture, never the head's pitch/bob or its
+	# terrain correction. The head moves when looking down; holsters remain
+	# fixed to the body during WASD instead of acquiring their own velocity.
+	belt.position = Vector3(0.0, 0.05 - 0.48 * crouch, 0.02)
+	belt.rotation = Vector3.ZERO

@@ -287,8 +287,9 @@ func _sync_body_posture() -> void:
 	var crouch := 0.0
 	var pitch := 0.0
 	if pivot != null:
-		var eye_h: float = pivot.position.y - feet_y
-		crouch = clampf((1.60 - eye_h) / 0.80, 0.0, 1.0)
+		# Bob affects the eye, not the capsule's posture. Reading the animated
+		# eye height here makes a standing walker repeatedly bend their knees.
+		crouch = 1.0 if bool(player.get("_is_crouching")) else 0.0
 		pitch = pivot.rotation.x
 	var walk_phase := float(player.get("_bob_time")) if player.get("_bob_time") != null else 0.0
 	var walk_weight := float(player.get("_bob_weight")) if player.get("_bob_weight") != null else 0.0
