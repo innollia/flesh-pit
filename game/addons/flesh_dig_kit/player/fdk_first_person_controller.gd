@@ -149,28 +149,23 @@ func _process_move_and_climb(delta: float) -> void:
 	var right: Vector3 = global_transform.basis.x
 	var horizontal: Vector3 = (forward * -input_dir.y + right * input_dir.x) * speed
 
-	# Climb mode: digging straight up/down through flesh. Jump = up, crouch
-	# while already crouched-and-holding-eat or crouch in flesh = down.
-	# climb_enabled (set by the game, per frame) gates the "up" half only:
-	# outside flesh there is no jump to allow, and gating both halves would
-	# also block climbing back down out of flesh once already inside it.
+	# Climb mode: digging straight up/down through flesh. Jump = up (when climb_enabled),
+	# crouch + eat = down (excavation descent input). Ctrl alone is purely posture.
 	_climb_input = 0.0
 	if Input.is_action_pressed("fdk_jump") and climb_enabled:
 		_climb_input += 1.0
-	if (Input.is_action_pressed("fdk_crouch") and Input.is_action_pressed("fdk_eat")) or (Input.is_action_pressed("fdk_crouch") and climb_enabled):
+	if Input.is_action_pressed("fdk_crouch") and Input.is_action_pressed("fdk_eat"):
 		_climb_input -= 1.0
-	_climb_input = clampf(_climb_input, -1.0, 1.0)
 
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
 	if _climb_input != 0.0:
 		velocity.y = _climb_input * config.climb_speed
+	elif not is_on_floor():
+		velocity.y = -config.climb_speed
 	else:
-		if is_on_floor():
-			velocity.y = 0.0
-		else:
-			velocity.y = maxf(velocity.y - config.gravity * delta, -config.terminal_velocity)
+		velocity.y = 0.0
 
 	move_and_slide()
 

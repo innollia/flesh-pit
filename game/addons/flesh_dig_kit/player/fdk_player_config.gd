@@ -21,5 +21,3 @@ extends Resource
 @export var bob_roll: float = 0.35 ## camera roll per metre of sway
 @export var bob_ease_speed: float = 4.0 ## how fast the bob fades in/out on start/stop
 @export var pitch_limit_deg: float = 89.0
-@export var gravity: float = 9.8 ## downward acceleration when in air / over pits
-@export var terminal_velocity: float = 24.0 ## maximum fall speed
