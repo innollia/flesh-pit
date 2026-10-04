@@ -6,6 +6,12 @@ var destination: String
 var eye_delta := Vector3.ZERO
 var failures := 0
 var frames_saved := 0
+var proof_times: Array[int] = []
+var prepare_times: Array[int] = []
+var proof_triangles: Array[int] = []
+var deaths_observed := 0
+var full_solid_frames := 0
+var partial_solid_frames := 0
 
 func _init() -> void:
     destination = OS.get_environment("FP_TERRAIN_EVIDENCE")
@@ -15,6 +21,7 @@ func _init() -> void:
     main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
     main.rest_seed = 1337
     main.save_path = destination.path_join("isolated.save")
+    main.died.connect(func(_cause: String): deaths_observed += 1)
     root.add_child(main)
     # Main input wiring belongs to T3. Apply its future helper hookup here
     # at the render boundary, restoring the desired animation pose first.
@@ -68,6 +75,16 @@ func _process(_delta: float) -> bool:
     if frame >= 12 and frame <= 60 and frame % 3 == 0 or frame >= 63 and frame <= 120:
         capture.call_deferred(frame)
     if frame == 123:
+        var stayed_in_terrain: bool = main.player.global_position.z > FPRestroom.HALF.z
+        if deaths_observed > 0 or not stayed_in_terrain: failures += 1
+        print("CONTROLLER_LIFECYCLE deaths=",deaths_observed," stayed_in_terrain=",stayed_in_terrain,
+            " full_solid_frames=",full_solid_frames," partial_solid_frames=",partial_solid_frames)
+        proof_times.sort()
+        prepare_times.sort()
+        proof_triangles.sort()
+        print("VOLUME_COST proof_us_p95=",proof_times[int((proof_times.size()-1)*0.95)]," proof_us_max=",proof_times.back(),
+            " prepare_us_p95=",prepare_times[int((prepare_times.size()-1)*0.95)]," prepare_us_max=",prepare_times.back(),
+            " proof_triangles_max=",proof_triangles.back())
         main.terrain.set_press(Vector3.ZERO, Vector3.ZERO, 0)
         print("CONTROLLER_CAPTURE %d frames, %d background failures, body=%s eye=%s directory=%s" % [frames_saved, failures, main.player.global_position, main.player.camera.global_position, destination])
         quit(1 if failures else 0)
@@ -84,6 +101,12 @@ func capture(index: int) -> void:
             if color.r > 0.8 and color.b > 0.8 and color.g < 0.2:
                 exposed += 1
     frames_saved += 1
+    proof_times.append(main.terrain._solid_volume.last_proof_us)
+    prepare_times.append(main.terrain._solid_volume.last_prepare_us)
+    proof_triangles.append(main.terrain._solid_volume.last_proof_triangle_count)
+    if main.terrain._solid_volume.visible:
+        if main.terrain._solid_volume.observer_proof.get("kind","") == "full_cell": full_solid_frames += 1
+        else: partial_solid_frames += 1
     if exposed: failures += 1
     if exposed and failures == 1:
         print("FIRST_LEAK camera=", main.player.camera.global_position, " near=", main.player.camera.near)

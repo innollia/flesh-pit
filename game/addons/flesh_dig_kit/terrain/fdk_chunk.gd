@@ -44,7 +44,23 @@ var _staged_faces := PackedVector3Array()
 var _staged_density := PackedFloat32Array()
 var _staged_force_collision := false
 var _staged_shape: ConcavePolygonShape3D
+var _staged_edit_epoch: int = 0
 var _mesh_source := PackedFloat32Array()
+## Exact published render triangles, also used to prove which side of a
+## partial isosurface contains a near observer. Collision may lag regrowth.
+var _surface_faces := PackedVector3Array()
+var _surface_revision := 0
+var _surface_density := PackedFloat32Array()
+var _surface_edit_epoch: int = 0
+
+func get_surface_edit_epoch() -> int:
+    return _surface_edit_epoch
+
+func get_staged_edit_epoch() -> int:
+    return _staged_edit_epoch
+var folded_quads := 0
+var unresolved_folded_quads := 0
+var constrained_vertices := 0
 var _mesh_regen_indices := PackedInt32Array()
 
 ## P0 debug timing of the last remesh() in ms: density (padded read), mesh
@@ -137,6 +153,16 @@ func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
 
 func get_body() -> StaticBody3D:
     return _static_body
+
+func get_published_corner_density(lx: int, ly: int, lz: int) -> float:
+    if _surface_density.is_empty():
+        return -999999.0
+    var p := config.chunk_size + 2
+    var pp := p * p
+    var idx := (lx + 1) + (ly + 1) * p + (lz + 1) * pp
+    if idx < 0 or idx >= _surface_density.size():
+        return -999999.0
+    return _surface_density[idx]
 
 func _corner_index(x: int, y: int, z: int) -> int:
     var n := config.chunk_size + 1
@@ -515,12 +541,21 @@ func _build_padded(s: int) -> PackedFloat32Array:
 ## Remeshes the chunk. `force_collision` rebuilds the collider now even for
 ## pure regrowth (start-up, capture tools).
 func remesh(force_collision: bool = false, stage: bool = false) -> float:
+    folded_quads = 0
+    unresolved_folded_quads = 0
+    constrained_vertices = 0
     var start_usec := Time.get_ticks_usec()
     var s := config.chunk_size
     var cs := config.cell_size
     var iso := config.iso_level
     var p := s + 2
     var pp := p * p
+    var captured_epoch := 0
+    if field != null:
+        if field._reading_mesh_snapshot:
+            captured_epoch = field._mesh_snapshot_epoch
+        else:
+            captured_epoch = field._dig_epoch
     var d := _build_padded(s)
     var t_density := Time.get_ticks_usec()
 
@@ -599,12 +634,26 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
                     var gx := gbase.x + cx - 1
                     var gy := gbase.y + cy - 1
                     var gz := gbase.z + cz - 1
-                    local += Vector3(
+                    var jitter := Vector3(
                         FDKLowPoly.hash3(gx, gy, gz) - 0.5,
                         FDKLowPoly.hash3(gy, gz, gx) - 0.5,
                         FDKLowPoly.hash3(gz, gx, gy) - 0.5) * 2.0 * config.facet_jitter
+                    # A nearly healed feature can be narrower than the
+                    # fixed jitter. Limit the entire displacement by the
+                    # crossing centroid's smallest available clearance;
+                    # per-axis clipping left large tangential shifts which
+                    # let neighboring thin faces cut across each other.
+                    var clearance := minf(minf(local.x,minf(local.y,local.z)),minf(1.0-local.x,minf(1.0-local.y,1.0-local.z)))
+                    var limit := maxf(0.0,clearance*0.9)
+                    if jitter.length() > limit:
+                        constrained_vertices += 1
+                        jitter = jitter.limit_length(limit)
+                    local += jitter
                     var ci := cx + cy * cp + cz * cp * cp
-                    var vertex := (Vector3(cx - 1, cy - 1, cz - 1) + local) * cs
+                    # Compute shared cells in one canonical world frame
+                    # before subtracting this chunk's origin. Otherwise
+                    # border copies accumulate different local rounding.
+                    var vertex := (Vector3(gx,gy,gz)+local)*cs-Vector3(chunk_coord)*s*cs
                     if field != null and field.surface_constraint.is_valid():
                         vertex = field.surface_constraint.call(vertex + global_position) - global_position
                     cell_vert[ci] = vertex
@@ -655,14 +704,16 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
         # Construct physics resources during the budgeted build; publication
         # only swaps prepared references, even across a shared seam group.
         _staged_shape = _collision_shape_for(all_verts)
+        _staged_edit_epoch = captured_epoch
     else:
-        _publish_mesh(next_mesh, all_verts, d, force_collision)
+        _publish_mesh(next_mesh, all_verts, d, force_collision, null, false, captured_epoch)
         _mesh_source = effective_density()
         _mesh_regen_indices = _regen_idx.duplicate()
         _staged_mesh = null
         _staged_faces = PackedVector3Array()
         _staged_density = PackedFloat32Array()
         _staged_shape = null
+        _staged_edit_epoch = 0
     var t_end := Time.get_ticks_usec()
 
     if not stage:
@@ -674,6 +725,8 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
         "arraymesh_ms": (t_arraymesh - t_mesh) / 1000.0,
         "collider_ms": (t_end - t_arraymesh) / 1000.0,
         "total_ms": elapsed_ms,
+        "constrained_vertices": constrained_vertices,
+        "unresolved_folded_quads": unresolved_folded_quads,
     }
     remeshed.emit(elapsed_ms)
     return elapsed_ms
@@ -694,14 +747,19 @@ func publish_staged_mesh() -> void:
         var center := Vector3(guard.x, guard.y, guard.z)
         if guard.w > 0 and center.distance_to(center.clamp(Vector3.ONE * -1, Vector3.ONE * config.chunk_size)) <= guard.w:
             _staged_force_collision = true
-    _publish_mesh(_staged_mesh, _staged_faces, _staged_density, _staged_force_collision, _staged_shape, true)
+    _publish_mesh(_staged_mesh, _staged_faces, _staged_density, _staged_force_collision, _staged_shape, true, _staged_edit_epoch)
     _staged_mesh = null
     _staged_faces = PackedVector3Array()
     _staged_density = PackedFloat32Array()
     _staged_shape = null
+    _staged_edit_epoch = 0
 
-func _publish_mesh(mesh: Mesh, faces: PackedVector3Array, d: PackedFloat32Array, force_collision: bool, prepared_shape: ConcavePolygonShape3D = null, prepared: bool = false) -> void:
+func _publish_mesh(mesh: Mesh, faces: PackedVector3Array, d: PackedFloat32Array, force_collision: bool, prepared_shape: ConcavePolygonShape3D = null, prepared: bool = false, edit_epoch: int = 0) -> void:
     _mesh_instance.mesh = mesh
+    _surface_faces = faces
+    _surface_revision += 1
+    _surface_density = d.duplicate()
+    _surface_edit_epoch = edit_epoch
     if force_collision or field == null or (not prepared and _needs_immediate_collision(d)):
         _apply_collision(faces, d, prepared_shape, prepared)
     else:
@@ -824,22 +882,40 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
         uv1 = Vector2((v1 + world_off).x, (v1 + world_off).y)
         uv2 = Vector2((v2 + world_off).x, (v2 + world_off).y)
         uv3 = Vector2((v3 + world_off).x, (v3 + world_off).y)
-    _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v2, uv0, uv1, uv2, outward)
-    _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v3, uv0, uv2, uv3, outward)
+    # Both triangles inherit the crossing edge's grid topology. Facet
+    # jitter can locally fold one triangle; flipping it independently by
+    # its geometric normal breaks oriented shared edges of the volume.
+    var grid_normal := Vector3(c1-c0).cross(Vector3(c2-c0))
+    if grid_normal.dot(outward) > 0.0:
+        var quality := minf(-(v2-v0).cross(v1-v0).dot(outward),-(v3-v0).cross(v2-v0).dot(outward))
+        var alternate := minf(-(v3-v0).cross(v1-v0).dot(outward),-(v3-v1).cross(v2-v1).dot(outward))
+        if quality < 0:
+            folded_quads += 1
+            if alternate < 0: unresolved_folded_quads += 1
+        if quality < 0 and alternate > quality:
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v3, v1, uv0, uv3, uv1, outward)
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v1, v3, v2, uv1, uv3, uv2, outward)
+        else:
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v1, uv0, uv2, uv1, outward)
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v3, v2, uv0, uv3, uv2, outward)
+    else:
+        var quality := minf(-(v1-v0).cross(v2-v0).dot(outward),-(v2-v0).cross(v3-v0).dot(outward))
+        var alternate := minf(-(v1-v0).cross(v3-v0).dot(outward),-(v2-v1).cross(v3-v1).dot(outward))
+        if quality < 0:
+            folded_quads += 1
+            if alternate < 0: unresolved_folded_quads += 1
+        if quality < 0 and alternate > quality:
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v3, uv0, uv1, uv3, outward)
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v1, v2, v3, uv1, uv2, uv3, outward)
+        else:
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v2, uv0, uv1, uv2, outward)
+            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v3, uv0, uv2, uv3, outward)
 
 func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array, all_verts: PackedVector3Array,
-        a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2, outward: Vector3) -> void:
+        a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2, _outward: Vector3) -> void:
     var n := (b - a).cross(c - a)
     if n.length_squared() < 1e-12:
         return
-    if n.dot(outward) > 0.0:
-        var tmp_v := b
-        b = c
-        c = tmp_v
-        var tmp_uv := uvb
-        uvb = uvc
-        uvc = tmp_uv
-        n = -n
     var nn := -n.normalized()
     verts.append(a); verts.append(b); verts.append(c)
     # Godot uses clockwise front faces for both rendering and concave physics.
