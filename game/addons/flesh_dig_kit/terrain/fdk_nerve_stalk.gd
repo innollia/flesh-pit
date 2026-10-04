@@ -91,20 +91,28 @@ func is_anchored() -> bool:
     if d_probe < iso:
         return false
 
-    # 2. Connection and ground attachment check between root and base_probe:
+    var root_pos := global_position if is_inside_tree() else position
+
+    # 2. Actual root contact check: verify root itself touches the surface/solid tissue
+    # Allowing only tiny numerical tolerance (0.0001) for float precision, disallowing cm-scale gaps.
+    var d_root := sample_density(root_pos)
+    if d_root < iso - 0.0001:
+        return false
+
+    # 3. Connection and ground attachment check between root and base_probe:
     # A shallow cut behind the root leaves the root floating with a gap, even if
     # the deep probe at 0.15 is still solid. We sample intermediate points
     # along the anchor axis between the root and base_probe to guarantee continuity.
-    var n := (position - base_probe).normalized()
+    var n := (root_pos - base_probe).normalized()
     if n.is_zero_approx():
-        n = basis.y.normalized()
-    var probe_dist := position.distance_to(base_probe)
+        n = (global_basis if is_inside_tree() else basis).y.normalized()
+    var probe_dist := root_pos.distance_to(base_probe)
     if probe_dist < 0.001:
         probe_dist = 0.15
 
     # Check near the surface root (25% of depth into wall) and midway (60% of depth)
-    var p_near := position - n * (probe_dist * 0.25)
-    var p_mid := position - n * (probe_dist * 0.60)
+    var p_near := root_pos - n * (probe_dist * 0.25)
+    var p_mid := root_pos - n * (probe_dist * 0.60)
     if sample_density(p_near) < iso:
         return false
     if sample_density(p_mid) < iso:
