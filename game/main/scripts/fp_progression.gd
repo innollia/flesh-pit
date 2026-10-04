@@ -414,43 +414,51 @@ func total_hairs() -> int:
 static func biome_for_shell(shell: int) -> String:
 	return BIOMES[clampi(shell, 0, BIOMES.size() - 1)]
 
-## One torn flesh unit, times the shell multiplier, is held as pending
-## weighted flesh until vomited at the toilet or a rest point.
-func on_flesh_eaten(shell: int, units: int = 1) -> void:
+## Actual flesh units eaten, multiplied by shell multiplier, immediately
+## grow hairs on the arm (biome: 1 per 50, common: 1 per 150; fractions carry).
+## No need to flush or settle at the toilet (R17).
+func on_flesh_eaten(shell: int, units: float = 1.0) -> void:
+	if units <= 0.0:
+		return
 	var biome := biome_for_shell(shell)
-	var gain: int = units * int(SHELL_MULTIPLIER[biome])
-	pending_hairs[COMMON] = int(pending_hairs[COMMON]) + gain
-	pending_hairs[biome] = int(pending_hairs[biome]) + gain
+	var mult: float = float(SHELL_MULTIPLIER.get(biome, 1))
+	var weighted: float = float(units) * mult
 	deepest_shell = maxi(deepest_shell, shell)
 
-## Weighted flesh still pending in the stomach (0 = nothing to settle).
+	# Biome pool hair growth
+	var c_biome: float = float(hair_carry.get(biome, 0.0)) + weighted
+	var n_biome: int = int(floor(c_biome / FLESH_PER_BIOME_HAIR + 1e-6))
+	hair_carry[biome] = c_biome - float(n_biome) * FLESH_PER_BIOME_HAIR
+	if n_biome > 0:
+		mutation_tree.add_points(biome, n_biome)
+
+	# Common pool hair growth
+	var c_common: float = float(hair_carry.get(COMMON, 0.0)) + weighted
+	var n_common: int = int(floor(c_common / FLESH_PER_COMMON_HAIR + 1e-6))
+	hair_carry[COMMON] = c_common - float(n_common) * FLESH_PER_COMMON_HAIR
+	if n_common > 0:
+		mutation_tree.add_points(COMMON, n_common)
+
+## Weighted flesh still pending in the stomach (0 under R17 immediate hair growth).
 func pending_hair_total() -> int:
 	var n := 0
 	for k in pending_hairs.keys():
 		n += int(pending_hairs[k])
 	return n
 
-## Settling vomited flesh: teeth into the tank, pending flesh turns into
-## hairs (biome: 1 per 50, common: 1 per 150, fractions carried).
+## Settling vomited flesh: teeth into the tank. Under R17, hairs grew
+## immediately when eaten, so settle hair gain is always 0.
 ## Returns {teeth, hairs, by_pool}.
 func settle(flesh_amount: float) -> Dictionary:
 	var gain_teeth := int(round(flesh_amount * TEETH_PER_FLESH))
 	teeth += gain_teeth
-	var gain_hairs := 0
-	var by_pool := {}
-	for k in pending_hairs.keys():
-		var per := FLESH_PER_COMMON_HAIR if k == COMMON else FLESH_PER_BIOME_HAIR
-		var c := float(hair_carry.get(k, 0.0)) + float(pending_hairs[k])
-		var n := int(floor(c / per + 1e-6))
-		hair_carry[k] = c - n * per
-		if n > 0:
-			mutation_tree.add_points(k, n)
-			gain_hairs += n
-		by_pool[k] = n
+	var by_pool := {COMMON: 0}
+	for b in BIOMES:
+		by_pool[b] = 0
 	_clear_pending()
-	return {"teeth": gain_teeth, "hairs": gain_hairs, "by_pool": by_pool}
+	return {"teeth": gain_teeth, "hairs": 0, "by_pool": by_pool}
 
-## Vomit anywhere else: flesh and its pending hairs are simply gone.
+## Vomit anywhere else: flesh in stomach is gone, but already grown hairs remain.
 func discard_stomach() -> void:
 	_clear_pending()
 
@@ -704,8 +712,9 @@ func buy_tumor_mutation() -> String:
 
 # --- death --------------------------------------------------------------------
 
-## What drops at the death spot: stomach contents (with its pending hairs)
-## and carried consumables. Owned tools and teeth in the tank stay.
+## What drops at the death spot: stomach contents and carried consumables.
+## Under R17, already grown hairs and purchased mutations stay on the body.
+## Owned tools and teeth in the tank stay.
 func take_death_payload(stomach_fill: float) -> Dictionary:
 	var payload := {
 		"stomach_fill": stomach_fill,
@@ -715,6 +724,7 @@ func take_death_payload(stomach_fill: float) -> Dictionary:
 		"canary_feed": canary_feed,
 		"tumors": tumors._carried.duplicate(),
 		"teeth_in_hand": teeth_in_hand,
+		"migrated_v5_hairs": true,
 	}
 	barriers = 0
 	canary_feed = 0
@@ -727,11 +737,24 @@ func take_death_payload(stomach_fill: float) -> Dictionary:
 	return payload
 
 ## Recovering the drop: consumables come back up to their carry caps; the
-## stomach flesh returns as fill (caller adds it) with its pending hairs.
+## stomach flesh returns as fill (caller adds it). Already eaten flesh does
+## NOT re-award hairs. Legacy payloads with unmigrated pending_hairs are
+## migrated exactly once into hairs and hair_carry.
 func restore_death_payload(p: Dictionary) -> float:
+	var is_migrated: bool = bool(p.get("migrated_v5_hairs", false))
 	var ph: Dictionary = p.get("pending_hairs", {})
-	for k in ph.keys():
-		pending_hairs[k] = int(pending_hairs.get(k, 0)) + int(ph[k])
+	if not is_migrated and not ph.is_empty():
+		for k in ph.keys():
+			var val := float(ph[k])
+			if val > 0.0:
+				var per := FLESH_PER_COMMON_HAIR if k == COMMON else FLESH_PER_BIOME_HAIR
+				var c := float(hair_carry.get(k, 0.0)) + val
+				var n := int(floor(c / per + 1e-6))
+				hair_carry[k] = c - float(n) * per
+				if n > 0:
+					mutation_tree.add_points(k, n)
+		p["migrated_v5_hairs"] = true
+		p["pending_hairs"] = {}
 	barriers = mini(MAX_BARRIERS, barriers + int(p.get("barriers", 0)))
 	canary_feed = mini(MAX_CANARY_FEED, canary_feed + int(p.get("canary_feed", 0)))
 	teeth_in_hand += int(p.get("teeth_in_hand", 0))
@@ -766,6 +789,7 @@ func serialize() -> Dictionary:
 		"mutations": mutation_tree.serialize(),
 		"tumors": tumors.serialize(),
 		"sprays": sprays.serialize(),
+		"migrated_v5_hairs": true,
 	}
 
 func deserialize(d: Dictionary) -> void:
@@ -777,9 +801,9 @@ func deserialize(d: Dictionary) -> void:
 	has_bag = bool(d.get("has_bag", false))
 	deepest_shell = int(d.get("deepest_shell", 0))
 	_clear_pending()
-	var ph: Dictionary = d.get("pending_hairs", {})
-	for k in ph.keys():
-		pending_hairs[k] = int(ph[k])
+	hair_carry = {COMMON: 0.0}
+	for b in BIOMES:
+		hair_carry[b] = 0.0
 	var hc: Dictionary = d.get("hair_carry", {})
 	for k in hc.keys():
 		hair_carry[k] = float(hc[k])
@@ -811,6 +835,24 @@ func deserialize(d: Dictionary) -> void:
 	tumors.bag_capacity = 2 if has_bag else 1
 	if d.has("sprays"):
 		sprays.deserialize(d["sprays"])
+
+	var is_migrated: bool = bool(d.get("migrated_v5_hairs", false))
+	var ph: Dictionary = d.get("pending_hairs", {})
+	if not is_migrated and not ph.is_empty():
+		for k in ph.keys():
+			var val := float(ph[k])
+			if val > 0.0:
+				var per := FLESH_PER_COMMON_HAIR if k == COMMON else FLESH_PER_BIOME_HAIR
+				var c := float(hair_carry.get(k, 0.0)) + val
+				var n := int(floor(c / per + 1e-6))
+				hair_carry[k] = c - float(n) * per
+				if n > 0:
+					mutation_tree.add_points(k, n)
+		_clear_pending()
+	else:
+		for k in ph.keys():
+			pending_hairs[k] = int(ph[k])
+
 	refresh_equipment()
 	# older saves: anyone who already owns a tool has traded, so has the belt
 	has_belt = bool(d.get("has_belt", owns("knife") or owns("blender") or owns("big_saw")))
