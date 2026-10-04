@@ -260,6 +260,7 @@ func relayout_rest_points(seed: int) -> void:
 		if c.has_meta("rest_point"):
 			nodes.append(c)
 	m.rest_points = pts
+	m._world_density_cache.clear()
 	for i in range(mini(nodes.size(), pts.size())):
 		(nodes[i] as Node3D).position = pts[i]
 	var h := FPWorldFeatures.CONTAINER_HALF
