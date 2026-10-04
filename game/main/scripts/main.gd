@@ -1467,6 +1467,9 @@ func load_from_disk() -> bool:
     if not data is Dictionary:
         return false
     deserialize(data)
+    # Restore the actual mesh and collision before input/rendering resumes.
+    # This runs once per load; ordinary digging keeps its frame budget.
+    terrain.remesh_all()
     return true
 
 ## Pause "저장하고 시작 화면으로": save, then a fresh scene with the title up.
