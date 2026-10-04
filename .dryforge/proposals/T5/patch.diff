@@ -1,0 +1,116 @@
+--- a/game/main/scripts/main.gd
++++ b/game/main/scripts/main.gd
+@@ -148,6 +148,8 @@ var _settle_amount: float = 0.0
+ var _mirror_open: bool = false
+ ## Sitting on the toilet (F at the bowl while standing).
+ var _seated: bool = false
++var _settle_entry_frame: int = -1
++var _settle_entry_action: String = ""
+ ## Esc menu: key settings screen (fp_keybind_menu.gd).
+ var keybind_menu: FPKeybindMenu
+ ## Title screen, Esc pause and settings (fp_title_screen.gd, fp_pause_menu.gd,
+@@ -777,10 +779,16 @@ func _process(delta: float) -> void:
+     if _settling:
+         chewer.stop()
+-        if Input.is_action_just_pressed("fp_interact"):
+-            flush() # the lever, pressed by hand
+-        elif Input.is_action_just_pressed("ui_cancel"):
+-            leave_settlement() # stand up without flushing: nothing settles
++        var settle_act := FPInteractions.handle_settling_input(self, _settle_entry_frame, _settle_entry_action)
++        if settle_act == "exit" or settle_act == "flush":
++            _settle_entry_action = ""
++        elif settle_act != "guard" and settle_act != "holding" and _settle_entry_action != "":
++            if not Input.is_action_pressed(_settle_entry_action):
++                _settle_entry_action = ""
+         return
+     if keybind_menu != null and keybind_menu.is_open():
+         chewer.stop()
+@@ -1134,7 +1142,10 @@ func _interact() -> void:
+         "canary": begin_canary_pull()
+-        "tank_teeth": put_teeth_back()
++        "tank_teeth":
++            if progression.teeth_in_hand > 0:
++                put_teeth_back()
++            else:
+                 scoop_teeth()
+         "lever": pull_lever()
+         "vent": use_vent()
+         "sink": wash_hands()
+@@ -1146,8 +1157,12 @@ func _interact() -> void:
+ func _pick() -> void:
+     if _interaction_aim(FPRestroom.VENT_CENTER, 12.0, 2.0) and vent.is_open:
+         if not vent.offers.is_empty(): take_vent_offer()
+         else: reach_into_vent()
+-    elif _interaction_aim(toilet_point(), 12.0, 1.35) and restroom._lid_target != 0.0:
++    elif _interaction_aim(lever_point(), 8.0, 1.25):
++        pull_lever()
++    elif _interaction_aim(tank_teeth_point(), 12.0, 1.35) and (not tank_lid.on_tank or restroom._lid_target != 0.0):
+         scoop_teeth()
+ 
+ func mirror_point() -> Vector3:
+@@ -1164,6 +1179,9 @@ func canary_hole_point() -> Vector3:
+     return FPRestroom.CANARY_HOLE + Vector3(0.03, 0.0, 0.0)
+ 
++func tank_teeth_point() -> Vector3:
++    return restroom.tank_art.to_global(Vector3(0, 0.3, 0))
++
+ func _near_toilet() -> bool:
+     return player.global_position.distance_to(restroom.toilet.to_global(Vector3(0, 0.9, 0.5))) < 1.3
+ 
+@@ -1200,6 +1218,8 @@ func start_settlement() -> void:
+     if toilet.throw_tumors(progression) > 0:
+         progression.refresh_hands(carry_mode)
+     _settling = true
++    _settle_entry_frame = Engine.get_process_frames()
++    _settle_entry_action = "fp_vomit" if Input.is_action_pressed("fp_vomit") else ("fp_interact" if Input.is_action_pressed("fp_interact") else "")
+     settle_camera.current = true
+     restroom.set_tank_open(false)
+     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+@@ -1796,10 +1816,7 @@ func _step_canary_pull(delta: float) -> void:
+-func _interaction_aim(point: Vector3, degrees: float, reach: float) -> bool:
++func _interaction_aim(point: Vector3, degrees: float, reach: float, target_name: String = "") -> bool:
+     if not _looking_at(point, degrees, reach):
+         return false
+-    var eye := player.camera.global_position
+-    var q := PhysicsRayQueryParameters3D.create(eye, point)
+-    q.exclude = [player.get_rid()]
+-    var hit := get_world_3d().direct_space_state.intersect_ray(q)
+-    # The target may sit inside its own authored fixture collider.
+-    return hit.is_empty() or eye.distance_to(hit.position) >= eye.distance_to(point) - 0.30
++    return FPInteractions.check_aim(self, point, target_name)
+ 
+ func interact_target() -> String:
+     if tank_lid != null and tank_lid.held:
+@@ -1811,18 +1828,7 @@ func interact_target() -> String:
+     if belt_swap != null and belt_swap.can_act():
+         return "belt"
+-    var candidates: Array = [
+-        ["mirror", mirror_point(), 18.0, 1.3],
+-        ["sink", sink_point(), 12.0, 1.25],
+-        ["lever", lever_point(), 8.0, 1.25],
+-        ["toilet", toilet_point(), 12.0, 1.35],
+-        ["vent", FPRestroom.VENT_CENTER, 12.0, 2.0],
+-        ["door", Vector3(0, 1, FPRestroom.HALF.z), 30.0, 1.6]]
+-    if not has_canary:
+-        candidates.append(["canary", canary_hole_point(), 10.0, 1.25])
+-    if tank_lid != null and tank_lid.can_pick():
+-        candidates.append(["tank_lid", tank_lid.lid.global_position, 8.0, 1.25])
+-    if progression.teeth_in_hand > 0 and restroom._lid_target != 0.0:
+-        candidates.append(["tank_teeth", restroom.tank_art.to_global(Vector3(0, 0.3, 0)), 10.0, 1.25])
+-    var tumor := _nearest_tumor(1.25)
+-    if tumor != null:
+-        candidates.append(["tumor", tumor.global_position, 10.0, 1.25])
++    var candidates: Array = FPInteractions.get_candidates(self)
+     var best := ""
+     var best_dot := -1.0
+     var ray: Array = player.get_look_ray()
+@@ -1831,7 +1837,7 @@ func interact_target() -> String:
+     for candidate in candidates:
+         var point: Vector3 = candidate[1]
+-        if _interaction_aim(point, candidate[2], candidate[3]):
++        if _interaction_aim(point, candidate[2], candidate[3], candidate[0]):
+             var dot: float = (point - ray[0]).normalized().dot(ray[1])
+             if dot > best_dot:
+                 best_dot = dot
+                 best = candidate[0]
+     return best
