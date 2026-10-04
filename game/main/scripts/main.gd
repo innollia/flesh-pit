@@ -52,8 +52,9 @@ const CONTRACT_AMOUNT := 0.45
 const HAZARD_TIME := 1.2
 const HEALTH_REGEN := 12.0
 ## Keep barrier load above its 0.15/s relaxation after the slower regrowth.
-## 0.01 * 28 preserves the previous 0.02 * 14 pressure at the same depth.
-const BARRIER_PRESSURE := 28.0
+## 0.003 * (0.28 / 0.003) preserves the previous 0.01 * 28 pressure
+## at the same depth without changing barrier strength or relaxation.
+const BARRIER_PRESSURE := 0.28 / 0.003
 const CANARY_TICK := 0.25
 const CANARY_FEED_TIME := 120.0
 const REACH := 2.5
@@ -113,6 +114,8 @@ var belt_swap: FPBeltSwap
 var hand_motions: FPHandMotions
 var mutation_apply: FPMutationApply
 var rest_points: Array[Vector3] = []
+var _world_density_cache: Dictionary = {}
+const WORLD_DENSITY_CACHE_LIMIT := 8192
 var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
 
@@ -133,6 +136,12 @@ var _chew_ratio: float = 0.0
 ## 형님 2026-09-29: keeps the chewer aimed at one cell for the whole hold, so a
 ## sub-pixel raycast drift does not reset FDKChewer's progress every frame.
 var _chew_target: Vector3 = Vector3.INF
+var _chew_contact: Vector3 = Vector3.INF
+## Camera motion owns the desired local pose; terrain contact is temporary.
+var _terrain_eye_delta := Vector3.ZERO
+var _terrain_eye_pose := Vector3.ZERO
+## Bounded query metadata only; no contacts or poses survive a shape change.
+var _terrain_query_shapes: Dictionary = {}
 var _settling: bool = false
 var _settle_amount: float = 0.0
 var _mirror_open: bool = false
@@ -309,6 +318,11 @@ func _ready() -> void:
     belt_swap = FPBeltSwap.new(self)
     hand_actions = FPHandActions.new(self)
     hand_motions = FPHandMotions.new(self)
+    # Capture the neutral animation base before a terrain correction can
+    # be mistaken for a permanent offset by the first hand motion.
+    hand_motions._save_cams()
+    get_tree().process_frame.connect(_restore_terrain_eye)
+    RenderingServer.frame_pre_draw.connect(_guard_terrain_eye)
     mutation_apply = FPMutationApply.new()
     mutation_apply.name = "MutationApply"
     add_child(mutation_apply)
@@ -432,12 +446,20 @@ func _room_dist(p: Vector3) -> float:
     return FPWorldFeatures.room_dist(p, FPRestroom.HALF)
 
 func _world_density(p: Vector3) -> float:
+    if _world_density_cache.has(p):
+        return _world_density_cache[p]
     # The ceiling duct stays empty and dark instead of revealing exterior flesh.
     var vent_offset := p - FPRestroom.VENT_CENTER
+    var density: float
     if absf(vent_offset.x) < 0.30 and absf(vent_offset.z) < 0.30 and vent_offset.y >= -0.04 and vent_offset.y < 0.8:
-        return 0.0
-    return FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
+        density = 0.0
+    else:
+        density = FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
             ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points)
+    if _world_density_cache.size() >= WORLD_DENSITY_CACHE_LIMIT:
+        _world_density_cache.clear()
+    _world_density_cache[p] = density
+    return density
 
 func _room_surface_constraint(p: Vector3) -> Vector3:
     var vent_offset := p - FPRestroom.VENT_CENTER
@@ -728,6 +750,7 @@ func is_opening() -> bool:
 func _process(delta: float) -> void:
     if player == null or chewer == null:
         return
+    _restore_terrain_eye()
     _update_atmosphere(delta)
     _update_restroom_front()
     _update_hands_room_layer()
@@ -742,6 +765,7 @@ func _process(delta: float) -> void:
     vent.tick(delta)
     hand_motions.check_cancel()
     hand_motions.tick(delta)
+    _guard_terrain_eye()
     _vent_watch(delta)
     _update_tank_teeth()
     if ended:
@@ -775,7 +799,32 @@ func _process(delta: float) -> void:
     _handle_actions()
     hand_actions.tick(delta)
     step_world(delta)
+    _guard_terrain_eye()
     tick_autosave(delta)
+
+func _restore_terrain_eye() -> void:
+    if is_instance_valid(player) and is_instance_valid(player.camera):
+        # A motion or scene transition may replace the local camera pose
+        # outright between ticks; its new desired pose has no old correction.
+        if player.camera.position.is_equal_approx(_terrain_eye_pose):
+            player.camera.position -= _terrain_eye_delta
+    _terrain_eye_delta = Vector3.ZERO
+
+func _guard_terrain_eye() -> void:
+    if not is_instance_valid(player) or not is_instance_valid(player.camera) or not is_instance_valid(terrain):
+        return
+    _restore_terrain_eye()
+    var desired_local: Vector3 = player.camera.position
+    player.camera.global_position = terrain.constrain_eye(player.camera.global_position, player.global_position, player.camera.near)
+    _terrain_eye_delta = player.camera.position - desired_local
+    _terrain_eye_pose = player.camera.position
+    # Terrain can publish after the main tick. Flush the corrected camera
+    # transform so the renderer does not retain the previous frame's view.
+    player.camera.force_update_transform()
+
+func _exit_tree() -> void:
+    if RenderingServer.frame_pre_draw.is_connected(_guard_terrain_eye):
+        RenderingServer.frame_pre_draw.disconnect(_guard_terrain_eye)
 
 func tick_autosave(delta: float) -> void:
     if is_opening() or ended or _settling or hand_motions.kind.begins_with("vomit") or get_tree().paused:
@@ -824,26 +873,28 @@ func _chew_step(delta: float) -> void:
         terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
         return
     var dir: Vector3 = player.get_look_ray()[1]
-    # Once grabbed, finish this cell despite collider motion during regrowth.
-    # Looking away or leaving reach still cancels the grab.
-    if chewer.is_chewing() and _chew_target != Vector3.INF and _looking_at(_chew_target, 12.0, progression.reach() + terrain_config.cell_size) and terrain.density_at(_chew_target) >= terrain_config.iso_level:
-        var contact := _chew_target - dir * terrain_config.cell_size * 0.5
-        if tissue_tools.chew_at(_chew_target, contact, dir, delta):
-            terrain.set_press(contact, -dir, _chew_ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
-        return
     var hit := _look_hit()
     if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
         chewer.stop()
         terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
         _chew_target = Vector3.INF
+        _chew_contact = Vector3.INF
         return
-    var target: Vector3 = hit.position + dir * terrain_config.cell_size * 0.5
+    # A locked grab must still have real unoccluded contact. Nearby collider
+    # motion is allowed without restarting progress on the same cell.
+    if chewer.is_chewing() and _chew_target != Vector3.INF and _chew_contact != Vector3.INF and _looking_at(_chew_contact, 12.0, progression.reach()) and terrain.density_at(_chew_target) >= terrain_config.iso_level and _chew_target.distance_to(hit.position) <= terrain_config.cell_size * 1.5:
+        if tissue_tools.chew_at(_chew_target, hit.position, dir, delta):
+            terrain.set_press(hit.position, -dir, _chew_ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
+        return
+    var target := _terrain_target(hit, dir)
     _chew_target = target
+    _chew_contact = hit.position
     # hardness per tissue, membrane only with a blade (fp_tissue_tools.gd)
     if tissue_tools.chew_at(target, hit.position, dir, delta):
         terrain.set_press(hit.position, -dir, _chew_ratio if chewer.is_chewing() and hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
     else:
         _chew_target = Vector3.INF
+        _chew_contact = Vector3.INF
 
 ## Everything that moves on its own each frame (tests drive it directly).
 func step_world(delta: float) -> void:
@@ -880,9 +931,187 @@ func step_world(delta: float) -> void:
 
 func _look_hit() -> Dictionary:
     var ray: Array = player.get_look_ray()
-    var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * progression.reach())
+    var reach: float = progression.reach()
+    var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * reach)
     q.exclude = [player.get_rid()]
-    return get_world_3d().direct_space_state.intersect_ray(q)
+    q.hit_from_inside = true
+    q.hit_back_faces = true
+    var space := get_world_3d().direct_space_state
+    var hit := space.intersect_ray(q)
+    var solid_contact := {}
+    if terrain != null and terrain.has_method("solid_contact_ray"):
+        var sc: Dictionary = terrain.solid_contact_ray(ray[0], ray[0] + ray[1] * reach)
+        if not sc.is_empty():
+            var body = sc.get("collider", null)
+            if body != null and is_instance_valid(body) and body is CollisionObject3D:
+                var dist: float = ray[0].distance_to(sc.position)
+                if dist <= reach and (sc.position - ray[0]).dot(ray[1]) > 0.00001:
+                    var obstruction := PhysicsRayQueryParameters3D.create(ray[0], sc.position)
+                    obstruction.exclude = [player.get_rid()]
+                    obstruction.hit_from_inside = true
+                    var blocking := space.intersect_ray(obstruction)
+                    if not blocking.is_empty() and not blocking.collider.has_meta("fdk_terrain_chunk"):
+                        solid_contact = blocking
+                    else:
+                        solid_contact = sc
+    var current_face: bool = not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and _physics_face_matches(hit, ray[0], ray[1])
+    # A stable rear face alone does not prove that a nearer chunk has
+    # synchronized. Check every chunk intersecting this bounded ray before
+    # using its exact current published face as the normal fast path.
+    if current_face and _terrain_ray_shapes_synced(ray[0], ray[1], reach):
+        return _nearest_look_contact([hit, solid_contact], ray[0], ray[1], reach)
+    if not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and not current_face:
+        hit = {}
+    var published := _published_terrain_contact(ray[0], ray[1], reach)
+    var chosen := _nearest_look_contact([hit, published, solid_contact], ray[0], ray[1], reach)
+    if not chosen.is_empty():
+        return chosen
+    # Exact shared triangle vertices can miss numerically. These one-mm
+    # parallel rays retain reach and accept only actual terrain contacts.
+    var right: Vector3 = player.camera.global_basis.x.normalized()
+    var up: Vector3 = player.camera.global_basis.y.normalized()
+    var nearest := reach + 0.001
+    var result := {}
+    for offset in [right, -right, up, -up, (right + up).normalized(), (right - up).normalized(), (-right + up).normalized(), (-right - up).normalized()]:
+        var shifted: Vector3 = ray[0] + offset * 0.001
+        q.from = shifted
+        q.to = shifted + ray[1] * reach
+        var candidate := space.intersect_ray(q)
+        if candidate.is_empty() or not candidate.collider.has_meta("fdk_terrain_chunk") or not _physics_face_matches(candidate, shifted, ray[1]):
+            candidate = {}
+        if terrain != null and terrain.has_method("solid_contact_ray"):
+            var vcandidate: Dictionary = terrain.solid_contact_ray(shifted, shifted + ray[1] * reach)
+            if not vcandidate.is_empty():
+                var vbody = vcandidate.get("collider", null)
+                if vbody != null and is_instance_valid(vbody) and vbody is CollisionObject3D:
+                    var vdist: float = ray[0].distance_to(vcandidate.position)
+                    if vdist <= reach and (vcandidate.position - ray[0]).dot(ray[1]) > 0.00001:
+                        candidate = _nearest_look_contact([candidate, vcandidate], ray[0], ray[1], reach)
+        if candidate.is_empty():
+            continue
+        var distance: float = ray[0].distance_to(candidate.position)
+        if distance > reach or distance >= nearest:
+            continue
+        var obstruction := PhysicsRayQueryParameters3D.create(ray[0], candidate.position)
+        obstruction.exclude = [player.get_rid()]
+        obstruction.hit_from_inside = true
+        var blocking := space.intersect_ray(obstruction)
+        if not blocking.is_empty() and not blocking.collider.has_meta("fdk_terrain_chunk"):
+            continue
+        nearest = distance
+        result = candidate
+    return result
+
+func _physics_face_matches(hit: Dictionary, origin: Vector3, direction: Vector3) -> bool:
+    var chunk := hit.collider.get_parent() as FDKChunk
+    if chunk == null or chunk._collision.shape == null:
+        return false
+    var shape: ConcavePolygonShape3D = chunk._collision.shape
+    if PhysicsServer3D.body_get_shape(hit.rid, int(hit.get("shape", 0))) != shape.get_rid():
+        return false
+    var faces := shape.get_faces()
+    var index := int(hit.get("face_index", -1)) * 3
+    if index < 0 or index + 2 >= faces.size():
+        return false
+    var transform: Transform3D = chunk.global_transform
+    var contact = Geometry3D.ray_intersects_triangle(origin, direction, transform * faces[index], transform * faces[index + 1], transform * faces[index + 2])
+    return contact != null and origin.distance_to(contact) <= progression.reach() and (contact - origin).dot(direction) > 0.00001 and (contact as Vector3).distance_to(hit.position) <= 0.0001
+
+func _terrain_ray_shapes_synced(origin: Vector3, direction: Vector3, reach: float) -> bool:
+    var frame := Engine.get_physics_frames()
+    var synced := true
+    for chunk in _terrain_ray_chunks(origin, direction, reach):
+        var key: int = chunk.get_instance_id()
+        var shape_rid: RID = chunk._collision.shape.get_rid() if chunk._collision.shape != null else RID()
+        var known: Dictionary = _terrain_query_shapes.get(key, {})
+        if known.get("shape") != shape_rid:
+            if _terrain_query_shapes.size() >= 32:
+                _terrain_query_shapes.clear()
+            _terrain_query_shapes[key] = {"shape": shape_rid, "observed": frame}
+            synced = false
+        elif frame - int(known.observed) < 2:
+            synced = false
+        if shape_rid.is_valid() and PhysicsServer3D.body_get_shape(chunk.get_body().get_rid(), 0) != shape_rid:
+            synced = false
+    return synced
+
+func _nearest_look_contact(candidates: Array, origin: Vector3, direction: Vector3, reach: float) -> Dictionary:
+    var result := {}
+    var closest := reach + 0.00001
+    for candidate in candidates:
+        if (candidate as Dictionary).is_empty():
+            continue
+        var offset: Vector3 = candidate.position - origin
+        var distance := offset.length()
+        if distance > reach or offset.dot(direction) < -0.00001:
+            continue
+        if candidate.collider.has_meta("fdk_terrain_chunk") and offset.dot(direction) <= 0.00001:
+            continue
+        if distance < closest or is_equal_approx(distance, closest) and not candidate.collider.has_meta("fdk_terrain_chunk"):
+            closest = distance
+            result = candidate
+    return result
+
+func _terrain_ray_chunks(origin: Vector3, direction: Vector3, reach: float) -> Array:
+    var end := origin + direction * reach
+    var cs: float = terrain_config.cell_size
+    var width: float = cs * terrain_config.chunk_size
+    var local_start: Vector3 = terrain.to_local(origin)
+    var local_end: Vector3 = terrain.to_local(end)
+    var first := terrain.world_to_chunk_coord(local_start.min(local_end) - Vector3.ONE * cs)
+    var last := terrain.world_to_chunk_coord(local_start.max(local_end) + Vector3.ONE * cs)
+    var candidates: Array = []
+    for z in range(first.z, last.z + 1):
+        for y in range(first.y, last.y + 1):
+            for x in range(first.x, last.x + 1):
+                var nearby := terrain.get_chunk(Vector3i(x, y, z))
+                if nearby != null:
+                    var bounds: AABB = nearby.global_transform * AABB(Vector3.ONE * -cs, Vector3.ONE * (width + 2.0 * cs))
+                    if bounds.intersects_segment(origin, end) != null:
+                        candidates.append(nearby)
+    return candidates
+
+func _published_terrain_contact(origin: Vector3, direction: Vector3, reach: float) -> Dictionary:
+    var nearest := reach + 0.00001
+    var result := {}
+    var candidates := _terrain_ray_chunks(origin, direction, reach)
+    for chunk in candidates:
+        if chunk._collision.shape == null:
+            continue
+        var transform: Transform3D = chunk.global_transform
+        var faces: PackedVector3Array = chunk._collision.shape.get_faces()
+        for i in range(0, faces.size(), 3):
+            var a: Vector3 = transform * faces[i]
+            var b: Vector3 = transform * faces[i + 1]
+            var c: Vector3 = transform * faces[i + 2]
+            var contact = Geometry3D.ray_intersects_triangle(origin, direction, a, b, c)
+            if contact == null:
+                continue
+            if (contact - origin).dot(direction) <= 0.00001:
+                continue
+            var distance: float = origin.distance_to(contact)
+            if distance > reach or distance >= nearest:
+                continue
+            nearest = distance
+            var body: StaticBody3D = chunk.get_body()
+            result = {"position": contact, "normal": -(b - a).cross(c - a).normalized(), "collider": body, "collider_id": body.get_instance_id(), "rid": body.get_rid(), "shape": 0, "face_index": i / 3}
+    if result.is_empty():
+        return result
+    var obstruction := PhysicsRayQueryParameters3D.create(origin, result.position)
+    obstruction.exclude = [player.get_rid()]
+    obstruction.hit_from_inside = true
+    var blocking := get_world_3d().direct_space_state.intersect_ray(obstruction)
+    if not blocking.is_empty() and not blocking.collider.has_meta("fdk_terrain_chunk"):
+        return blocking
+    return result
+
+func _terrain_target(hit: Dictionary, direction: Vector3) -> Vector3:
+    # Follow the actual solid side on grazing, vertical and back-face hits.
+    var outward: Vector3 = terrain._eye_surface_outward(hit)
+    var into := -outward if outward.length_squared() > 0.5 else direction
+    var sample: Vector3 = hit.position + into * terrain_config.cell_size * 0.5
+    var cell: Vector3 = (sample / terrain_config.cell_size).floor()
+    return (cell + Vector3.ONE * 0.5) * terrain_config.cell_size
 
 func _pitch() -> float:
     return player.camera_pivot.rotation.x
@@ -1248,6 +1477,9 @@ func load_from_disk() -> bool:
     if not data is Dictionary:
         return false
     deserialize(data)
+    # Restore the actual mesh and collision before input/rendering resumes.
+    # This runs once per load; ordinary digging keeps its frame budget.
+    terrain.remesh_all()
     return true
 
 ## Pause "저장하고 시작 화면으로": save, then a fresh scene with the title up.
@@ -1919,6 +2151,7 @@ func _on_cell_torn(world_pos: Vector3) -> void:
     hand_blood = minf(1.0, hand_blood + 0.05)
     excavated_cells += 1
     _chew_target = Vector3.INF
+    _chew_contact = Vector3.INF
     tissue_tools.on_cell_torn(world_pos)
     if carry_mode:
         carried_flesh += stomach_config.flesh_per_cell

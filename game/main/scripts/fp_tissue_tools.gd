@@ -131,7 +131,7 @@ func spray(deep: bool) -> int:
 	if tier < 0:
 		return -1
 	var hit: Dictionary = m._look_hit()
-	if hit.is_empty():
+	if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
 		return -1
 	var dir: Vector3 = m.player.get_look_ray()[1]
 	return m.progression.sprays.use(m.terrain, hit.position, tier, dir)
@@ -260,6 +260,7 @@ func relayout_rest_points(seed: int) -> void:
 		if c.has_meta("rest_point"):
 			nodes.append(c)
 	m.rest_points = pts
+	m._world_density_cache.clear()
 	for i in range(mini(nodes.size(), pts.size())):
 		(nodes[i] as Node3D).position = pts[i]
 	var h := FPWorldFeatures.CONTAINER_HALF

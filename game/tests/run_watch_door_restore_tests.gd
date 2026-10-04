@@ -130,8 +130,19 @@ func run() -> void:
 	check(not m.restroom.is_door_open(), "F closes open door")
 	await wait(0.9)
 	m.restroom.set_door_open(true, true)
+	# Reach the passage side through an actually excavated opening. Placing
+	# the player in untouched solid flesh makes the flesh occlude the door.
+	for x in range(-2, 3):
+		for y in range(0, 7):
+			for z in range(0, 4):
+				m.terrain.dig_at(Vector3(x * 0.5, y * 0.5, FPRestroom.HALF.z + z * 0.5), 1.0)
+	m.terrain.remesh_all()
+	await physics_frame
+	await physics_frame
 	pose(Vector3(0, 0.95, FPRestroom.HALF.z + 0.5), 0, 0)
 	await wait(0.1)
+	check(m.terrain.density_at(m.player.global_position) < m.terrain.config.iso_level, "passage-side fixture has space for the player")
+	check(m.terrain.density_at(m.player.camera.global_position) < m.terrain.config.iso_level, "passage-side fixture has space for the camera")
 	face(door_point)
 	await wait(0.05)
 	check(m.interact_target() == "door", "open door can be reached from passage side")

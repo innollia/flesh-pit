@@ -31,13 +31,398 @@ var regen_rate_scale: Callable
 
 var _chunks: Dictionary = {}
 var _urgent_chunks: Dictionary = {}
-var _remesh_cursor := 0
+var _mesh_snapshot: Dictionary = {}
+var _mesh_missing_snapshot: Dictionary = {}
+var _reading_mesh_snapshot := false
+var _mesh_batch: Array = []
+var _mesh_batch_cursor := 0
+var _dig_epoch: int = 0
+var _mesh_snapshot_epoch: int = 0
+
+func get_dig_epoch() -> int:
+    return _dig_epoch
+
+func get_mesh_snapshot_epoch() -> int:
+    return _mesh_snapshot_epoch
+var _mesh_groups: Array = []
+var _mesh_group_for: Dictionary = {}
+var _mesh_group_remaining: Dictionary = {}
+const SolidVolume = preload("res://addons/flesh_dig_kit/terrain/fdk_solid_volume.gd")
+var _solid_volume
+var _surface_patch: FDKSurfacePatch = null
+var _surface_patch_cell := Vector3i.ZERO
+var _surface_patch_min := Vector3i.ZERO
+var _surface_patch_max := Vector3i.ZERO
+var _surface_patch_revision := 0
+var _surface_patch_state: Array = []
+var _surface_patch_required_epoch: int = 0
+var _surface_patch_is_aggregate: bool = false
+var _surface_patch_tiles: Dictionary = {}
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_PREDELETE:
+        _clear_surface_patch()
+
+func get_surface_patch_required_epoch() -> int:
+    return _surface_patch_required_epoch
+
+func _clear_surface_patch() -> void:
+    _surface_patch_required_epoch = 0
+    _surface_patch_is_aggregate = false
+    for t_info in _surface_patch_tiles.values():
+        var p: Object = t_info.get("patch", null)
+        if is_instance_valid(p):
+            if p.get_parent() != null:
+                p.get_parent().remove_child(p)
+            p.free()
+    _surface_patch_tiles.clear()
+    if _surface_patch != null:
+        if _surface_patch.has_method("clear_tile_children"):
+            _surface_patch.clear_tile_children()
+        if _surface_patch.is_inside_tree():
+            _surface_patch.get_parent().remove_child(_surface_patch)
+        _surface_patch.free()
+        _surface_patch = null
+        _surface_patch_cell = Vector3i.ZERO
+        _surface_patch_min = Vector3i.ZERO
+        _surface_patch_max = Vector3i.ZERO
+        _surface_patch_revision += 1
+        _surface_patch_state.clear()
+
+func _check_tear_fully_solid(tear_cell: Vector3i) -> bool:
+    var s := config.chunk_size
+    var iso := config.iso_level
+    for kz in range(4):
+        for ky in range(4):
+            for kx in range(4):
+                var gcorner := tear_cell - Vector3i.ONE + Vector3i(kx, ky, kz)
+                var cc := Vector3i(_floordiv(gcorner.x, s), _floordiv(gcorner.y, s), _floordiv(gcorner.z, s))
+                var chunk: FDKChunk = _chunks.get(cc, null)
+                if chunk == null:
+                    return false
+                if corner_density_global(gcorner) < iso:
+                    return false
+    return true
+
+func _compute_patch_state_region(min_cell: Vector3i, max_cell: Vector3i) -> Array:
+    var state: Array = []
+    var span_x := max_cell.x - min_cell.x + 1
+    var span_y := max_cell.y - min_cell.y + 1
+    var span_z := max_cell.z - min_cell.z + 1
+    if span_x < 1 or span_x > 7 or span_y < 1 or span_y > 7 or span_z < 1 or span_z > 7:
+        return state
+    var nx := span_x + 1
+    var ny := span_y + 1
+    var nz := span_z + 1
+    state.append(min_cell)
+    state.append(max_cell)
+    state.append(config.cell_size)
+    state.append(config.iso_level)
+    state.append(config.facet_jitter)
+    for kz in range(nz):
+        for ky in range(ny):
+            for kx in range(nx):
+                var gcorner := min_cell + Vector3i(kx, ky, kz)
+                state.append(corner_density_global(gcorner))
+    var s := config.chunk_size
+    for cz in range(span_z):
+        for cy in range(span_y):
+            for cx in range(span_x):
+                var gcell := min_cell + Vector3i(cx, cy, cz)
+                var cc := Vector3i(_floordiv(gcell.x, s), _floordiv(gcell.y, s), _floordiv(gcell.z, s))
+                var chunk: FDKChunk = _chunks.get(cc, null)
+                var tissue := 0
+                var sealed := false
+                if chunk != null:
+                    var lc := gcell - cc * s
+                    tissue = chunk.get_tissue_at_cell(clampi(lc.x, 0, s - 1), clampi(lc.y, 0, s - 1), clampi(lc.z, 0, s - 1))
+                    sealed = chunk.is_sealed_at_cell(clampi(lc.x, 0, s - 1), clampi(lc.y, 0, s - 1), clampi(lc.z, 0, s - 1))
+                state.append(tissue)
+                state.append(sealed)
+    state.append(surface_constraint)
+    return state
+
+func _compute_patch_state(center: Vector3i) -> Array:
+    return _compute_patch_state_region(center - Vector3i.ONE, center + Vector3i.ONE)
+
+func _get_tile_origins_reading_corner(gcorner: Vector3i) -> Array[Vector3i]:
+    var tx0 := int(floor(float(gcorner.x - 1) / 4.0)) * 4
+    var tx1 := int(floor(float(gcorner.x + 1) / 4.0)) * 4
+    var ty0 := int(floor(float(gcorner.y - 1) / 4.0)) * 4
+    var ty1 := int(floor(float(gcorner.y + 1) / 4.0)) * 4
+    var tz0 := int(floor(float(gcorner.z - 1) / 4.0)) * 4
+    var tz1 := int(floor(float(gcorner.z + 1) / 4.0)) * 4
+    var xs := [tx0] if tx0 == tx1 else [tx0, tx1]
+    var ys := [ty0] if ty0 == ty1 else [ty0, ty1]
+    var zs := [tz0] if tz0 == tz1 else [tz0, tz1]
+    var res: Array[Vector3i] = []
+    for z in zs:
+        for y in ys:
+            for x in xs:
+                res.append(Vector3i(x, y, z))
+    return res
+
+func _get_tile_origins_for_cell(cell: Vector3i) -> Array[Vector3i]:
+    var tile_dict: Dictionary = {}
+    for dz in range(2):
+        for dy in range(2):
+            for dx in range(2):
+                var gc := cell + Vector3i(dx, dy, dz)
+                for to in _get_tile_origins_reading_corner(gc):
+                    tile_dict[to] = true
+    var res: Array[Vector3i] = []
+    for to in tile_dict.keys():
+        res.append(to)
+    return res
+
+func _is_tile_published(tile_origin: Vector3i, required_epoch: int) -> bool:
+    var info: Dictionary = _surface_patch_tiles.get(tile_origin, {})
+    if not info.is_empty() and info.patch.faces.is_empty():
+        return _compute_tile_state(tile_origin) == info.state
+    var s := config.chunk_size
+    var iso := config.iso_level
+    var min_corner := tile_origin - Vector3i.ONE
+    for kz in range(6):
+        for ky in range(6):
+            for kx in range(6):
+                var gcorner := min_corner + Vector3i(kx, ky, kz)
+                # Read the actual edge owner's published padding, including
+                # corners whose canonical provider has not streamed in yet.
+                var owner_cell := Vector3i(clampi(gcorner.x, tile_origin.x, tile_origin.x + 3), clampi(gcorner.y, tile_origin.y, tile_origin.y + 3), clampi(gcorner.z, tile_origin.z, tile_origin.z + 3))
+                var cc := Vector3i(_floordiv(owner_cell.x, s), _floordiv(owner_cell.y, s), _floordiv(owner_cell.z, s))
+                var chunk: FDKChunk = _chunks.get(cc, null)
+                if chunk == null or chunk._surface_density.is_empty():
+                    return false
+                var lc := gcorner - cc * s
+                var published_d := chunk.get_published_corner_density(lc.x, lc.y, lc.z)
+                var current_d := corner_density_global(gcorner)
+                if (published_d >= iso) != (current_d >= iso):
+                    return false
+                if absf(published_d - current_d) > 0.00001:
+                    if chunk._surface_edit_epoch < required_epoch:
+                        return false
+    return true
+
+func _compute_tile_state(tile_origin: Vector3i) -> Array:
+    var state: Array = []
+    state.append(tile_origin)
+    state.append(config.cell_size)
+    state.append(config.iso_level)
+    state.append(config.facet_jitter)
+    var min_corner := tile_origin - Vector3i.ONE
+    for kz in range(6):
+        for ky in range(6):
+            for kx in range(6):
+                var gcorner := min_corner + Vector3i(kx, ky, kz)
+                state.append(corner_density_global(gcorner))
+    var s := config.chunk_size
+    for cz in range(5):
+        for cy in range(5):
+            for cx in range(5):
+                var gcell := tile_origin - Vector3i.ONE + Vector3i(cx, cy, cz)
+                var cc := Vector3i(_floordiv(gcell.x, s), _floordiv(gcell.y, s), _floordiv(gcell.z, s))
+                var chunk: FDKChunk = _chunks.get(cc, null)
+                var tissue := 0
+                var sealed := false
+                if chunk != null:
+                    var lc := gcell - cc * s
+                    tissue = chunk.get_tissue_at_cell(clampi(lc.x, 0, s - 1), clampi(lc.y, 0, s - 1), clampi(lc.z, 0, s - 1))
+                    sealed = chunk.is_sealed_at_cell(clampi(lc.x, 0, s - 1), clampi(lc.y, 0, s - 1), clampi(lc.z, 0, s - 1))
+                state.append(tissue)
+                state.append(sealed)
+    state.append(surface_constraint)
+    return state
+
+func _rebuild_aggregate_tiles(new_tile_states: Dictionary = {}) -> void:
+    if _surface_patch == null:
+        return
+    _surface_patch.faces = PackedVector3Array()
+    _surface_patch.mesh = null
+    var sorted_origins := _surface_patch_tiles.keys()
+    sorted_origins.sort_custom(func(a: Vector3i, b: Vector3i) -> bool:
+        if a.z != b.z: return a.z < b.z
+        if a.y != b.y: return a.y < b.y
+        return a.x < b.x
+    )
+    for origin in sorted_origins:
+        var t_info: Dictionary = _surface_patch_tiles[origin]
+        var patch: FDKSurfacePatch = t_info.patch
+        patch.build_tile(origin)
+        if new_tile_states.has(origin):
+            t_info.state = new_tile_states[origin]
+        else:
+            t_info.state = _compute_tile_state(origin)
+        if patch.faces.size() > 0:
+            if _surface_patch.has_method("add_tile_child"):
+                _surface_patch.add_tile_child(origin, patch)
+            else:
+                if patch.get_parent() != _surface_patch:
+                    _surface_patch.add_child(patch)
+            _surface_patch.faces.append_array(patch.faces)
+        else:
+            if patch.get_parent() == _surface_patch:
+                _surface_patch.remove_child(patch)
+    _surface_patch_revision += 1
+    if _surface_patch.faces.is_empty():
+        _clear_surface_patch()
+
+func _refresh_or_clear_aggregate_patch() -> void:
+    if _surface_patch_tiles.is_empty():
+        _clear_surface_patch()
+        return
+
+    var all_published := true
+    for origin in _surface_patch_tiles.keys():
+        var t_info: Dictionary = _surface_patch_tiles[origin]
+        if not _is_tile_published(origin, t_info.required_epoch):
+            all_published = false
+            break
+
+    if all_published:
+        _clear_surface_patch()
+        return
+
+    var any_state_changed := false
+    var new_states: Dictionary = {}
+    for origin in _surface_patch_tiles.keys():
+        var s := _compute_tile_state(origin)
+        new_states[origin] = s
+        if s != _surface_patch_tiles[origin].state:
+            any_state_changed = true
+
+    if any_state_changed:
+        _rebuild_aggregate_tiles(new_states)
+
+func _handle_aggregate_dig(tear_cell: Vector3i, union_min: Vector3i, union_max: Vector3i) -> void:
+    var prev_min := _surface_patch_min
+    var prev_max := _surface_patch_max
+    _surface_patch_min = union_min
+    _surface_patch_max = union_max
+    _surface_patch_required_epoch = _dig_epoch
+
+    if not _surface_patch_is_aggregate:
+        _surface_patch_is_aggregate = true
+        _surface_patch.mesh = null
+        if _surface_patch.has_method("clear_tile_children"):
+            _surface_patch.clear_tile_children()
+        _surface_patch_tiles.clear()
+
+        var old_tile_dict: Dictionary = {}
+        for kz in range(prev_min.z, prev_max.z + 2):
+            for ky in range(prev_min.y, prev_max.y + 2):
+                for kx in range(prev_min.x, prev_max.x + 2):
+                    var gc := Vector3i(kx, ky, kz)
+                    if corner_density_global(gc) < 0.9999:
+                        for to in _get_tile_origins_reading_corner(gc):
+                            old_tile_dict[to] = true
+        for to in _get_tile_origins_for_cell(_surface_patch_cell):
+            old_tile_dict[to] = true
+
+        for to in old_tile_dict.keys():
+            var p := FDKSurfacePatch.new(self)
+            _surface_patch_tiles[to] = {
+                "patch": p,
+                "required_epoch": _surface_patch_required_epoch,
+                "state": []
+            }
+
+    var new_origins := _get_tile_origins_for_cell(tear_cell)
+    for to in new_origins:
+        if not _surface_patch_tiles.has(to):
+            var p := FDKSurfacePatch.new(self)
+            _surface_patch_tiles[to] = {
+                "patch": p,
+                "required_epoch": _dig_epoch,
+                "state": []
+            }
+        else:
+            _surface_patch_tiles[to].required_epoch = _dig_epoch
+
+    _rebuild_aggregate_tiles()
+
+func _refresh_or_clear_surface_patch() -> void:
+    if _surface_patch == null:
+        return
+    if _surface_patch_is_aggregate:
+        _refresh_or_clear_aggregate_patch()
+        return
+    var s := config.chunk_size
+    var iso := config.iso_level
+    var span_x := _surface_patch_max.x - _surface_patch_min.x + 1
+    var span_y := _surface_patch_max.y - _surface_patch_min.y + 1
+    var span_z := _surface_patch_max.z - _surface_patch_min.z + 1
+    if span_x < 1 or span_x > 7 or span_y < 1 or span_y > 7 or span_z < 1 or span_z > 7:
+        _clear_surface_patch()
+        return
+    var nx := span_x + 1
+    var ny := span_y + 1
+    var nz := span_z + 1
+    var all_published := true
+    for kz in range(nz):
+        if not all_published:
+            break
+        for ky in range(ny):
+            if not all_published:
+                break
+            for kx in range(nx):
+                var gcorner := _surface_patch_min + Vector3i(kx, ky, kz)
+                var cc := Vector3i(_floordiv(gcorner.x, s), _floordiv(gcorner.y, s), _floordiv(gcorner.z, s))
+                var chunk: FDKChunk = _chunks.get(cc, null)
+                if chunk == null or chunk._surface_density.is_empty():
+                    all_published = false
+                    break
+                var lc := gcorner - cc * s
+                var published_d := chunk.get_published_corner_density(lc.x, lc.y, lc.z)
+                var current_d := corner_density_global(gcorner)
+                if (published_d >= iso) != (current_d >= iso):
+                    all_published = false
+                    break
+                if absf(published_d - current_d) > 0.00001:
+                    if chunk._surface_edit_epoch < _surface_patch_required_epoch:
+                        all_published = false
+                        break
+    if all_published:
+        _clear_surface_patch()
+        return
+    var new_state := _compute_patch_state_region(_surface_patch_min, _surface_patch_max)
+    if new_state != _surface_patch_state:
+        _surface_patch_state = new_state
+        _surface_patch.build_region(_surface_patch_min, _surface_patch_max)
+        _surface_patch_revision += 1
+        if _surface_patch.faces.is_empty():
+            _clear_surface_patch()
+
+func _update_solid_volume(eye: Vector3) -> void:
+    if _solid_volume == null:
+        _solid_volume = SolidVolume.new()
+        _solid_volume.field = self
+        add_child(_solid_volume)
+    var started := Time.get_ticks_usec()
+    _solid_volume.update_eye(eye)
+    _solid_volume.last_prepare_us = Time.get_ticks_usec()-started
+
+## Local filled-mass contact for an eye proven inside solid mass. Ordinary
+func solid_contact_ray(from: Vector3, to: Vector3) -> Dictionary:
+    _refresh_or_clear_surface_patch()
+    _update_solid_volume(from)
+    var hit_vol: Dictionary = _solid_volume.contact_ray(from, to)
+    var hit_patch: Dictionary = {}
+    if _surface_patch != null and not _surface_patch.faces.is_empty():
+        hit_patch = _surface_patch.contact_ray(from, to)
+    if not hit_vol.is_empty() and not hit_patch.is_empty():
+        var d_vol: float = from.distance_to(hit_vol.position)
+        var d_patch: float = from.distance_to(hit_patch.position)
+        return hit_patch if d_patch < d_vol else hit_vol
+    elif not hit_patch.is_empty():
+        return hit_patch
+    return hit_vol
 
 func _ready() -> void:
     set_process(true)
 
 ## Per-frame remesh time budget (ms). At least one dirty chunk is always
-## remeshed; more only while the frame stays under this budget, so a burst
+## remeshed once its batch is prepared; preparation also spends the budget.
+## More only while the frame stays under this budget, so a burst
 ## of dirty chunks (contraction wave, spray) never stalls a frame.
 var remesh_ms_per_frame: float = 8.0
 ## Seconds of simulated time for the contractile squeeze clock.
@@ -59,23 +444,150 @@ var _guard_pos: Vector3 = Vector3.ZERO
 var _guard_radius: float = -1.0
 
 func _process(delta: float) -> void:
+    _refresh_or_clear_surface_patch()
     var done := 0
     var start := Time.get_ticks_usec()
-    var ordered: Array = []
-    for chunk in _urgent_chunks.values():
-        if is_instance_valid(chunk) and chunk.is_dirty(): ordered.append(chunk)
-    var chunks := _chunks.values()
-    for i in range(chunks.size()):
-        var chunk: FDKChunk = chunks[(_remesh_cursor + i) % chunks.size()]
-        if chunk.is_dirty() and not _urgent_chunks.has(chunk.chunk_coord): ordered.append(chunk)
-    for chunk in ordered:
-        chunk.remesh()
-        _urgent_chunks.erase(chunk.chunk_coord)
+    if _mesh_batch.is_empty():
+        _begin_mesh_batch()
+        if not _mesh_batch.is_empty() and (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
+            # The frozen snapshot is useful work. Resume this same batch next
+            # frame instead of adding a mesh build to expensive preparation.
+            step_collision(delta)
+            _refresh_or_clear_surface_patch()
+            return
+    while _mesh_batch_cursor < _mesh_batch.size():
+        var chunk: FDKChunk = _mesh_batch[_mesh_batch_cursor]
+        _reading_mesh_snapshot = true
+        chunk.remesh(false, true)
+        _reading_mesh_snapshot = false
+        var group_id: int = _mesh_group_for[chunk.chunk_coord]
+        _mesh_group_remaining[group_id] -= 1
+        if _mesh_group_remaining[group_id] == 0:
+            for ready in _mesh_groups[group_id]:
+                ready.publish_staged_mesh()
+            _refresh_or_clear_surface_patch()
+        _mesh_batch_cursor += 1
         done += 1
-        _remesh_cursor = (chunks.find(chunk) + 1) % maxi(chunks.size(), 1)
         if done >= remesh_budget_per_frame or (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
             break
+    if not _mesh_batch.is_empty() and _mesh_batch_cursor == _mesh_batch.size():
+        _mesh_batch.clear()
+        _mesh_snapshot.clear()
+        _mesh_missing_snapshot.clear()
     step_collision(delta)
+    _refresh_or_clear_surface_patch()
+
+## Keep the old closed surface until all meshes that share changed cells are
+## ready. Density changes arriving during this bounded batch stay dirty for
+## the next batch; continuous regeneration must never restart work in flight.
+func _begin_mesh_batch() -> void:
+    var targets := {}
+    var links := {}
+    var s := config.chunk_size
+    var n := s + 1
+    for chunk in _chunks.values():
+        if not chunk.is_dirty():
+            continue
+        targets[chunk.chunk_coord] = chunk
+        if not links.has(chunk.chunk_coord):
+            links[chunk.chunk_coord] = {}
+        var source: PackedFloat32Array = chunk.effective_density()
+        var previous: PackedFloat32Array = chunk._mesh_source
+        var comparable := previous.size() == source.size()
+        var changed_indices: PackedInt32Array = range(source.size()) if chunk._regen_scan or previous.is_empty() or not chunk._contract.is_empty() else chunk._regen_idx
+        if not chunk._mesh_regen_indices.is_empty():
+            changed_indices = changed_indices.duplicate()
+            changed_indices.append_array(chunk._mesh_regen_indices)
+        var reader_mask := 0
+        for i in changed_indices:
+            if comparable and source[i] == previous[i]:
+                continue
+            var lx := i % n
+            var ly := (i / n) % n
+            var lz := i / (n * n)
+            if lx > 0 and lx < s - 1 and ly > 0 and ly < s - 1 and lz > 0 and lz < s - 1:
+                continue
+            # A mesh reads corners -1..s. Include padding readers even if
+            # they do not store the changed corner themselves.
+            var x_lo := 0 if lx <= 0 else 1
+            var x_hi := 2 if lx >= s - 1 else 1
+            var y_lo := 0 if ly <= 0 else 1
+            var y_hi := 2 if ly >= s - 1 else 1
+            var z_lo := 0 if lz <= 0 else 1
+            var z_hi := 2 if lz >= s - 1 else 1
+            for dz in range(z_lo, z_hi + 1):
+                var z_base := dz * 9
+                for dy in range(y_lo, y_hi + 1):
+                    var y_base := z_base + dy * 3
+                    for dx in range(x_lo, x_hi + 1):
+                        reader_mask |= (1 << (y_base + dx))
+            if reader_mask == 0x7ffffff:
+                break
+        if reader_mask != 0:
+            for idx in range(27):
+                if (reader_mask & (1 << idx)) == 0:
+                    continue
+                var ox := (idx % 3) - 1
+                var oy := ((idx / 3) % 3) - 1
+                var oz := (idx / 9) - 1
+                var cc: Vector3i = chunk.chunk_coord + Vector3i(ox, oy, oz)
+                if _chunks.has(cc):
+                    targets[cc] = _chunks[cc]
+                    links[chunk.chunk_coord][cc] = true
+                    if not links.has(cc):
+                        links[cc] = {}
+                    links[cc][chunk.chunk_coord] = true
+    if targets.is_empty():
+        return
+    _mesh_snapshot_epoch = _dig_epoch
+    # Capture only the target meshes' density providers, not the whole world.
+    for cc in targets.keys():
+        for z in range(-1, 2):
+            for y in range(-1, 2):
+                for x in range(-1, 2):
+                    var provider: Vector3i = cc + Vector3i(x, y, z)
+                    if _chunks.has(provider) and not _mesh_snapshot.has(provider):
+                        _mesh_snapshot[provider] = _chunks[provider].effective_density()
+                    elif not _chunks.has(provider):
+                        # Freeze only the absent provider's corners actually
+                        # read by this target (-1..s), without generating it.
+                        var base: Vector3i = cc * s
+                        var lo := base + Vector3i(-1 if x < 0 else (s if x > 0 else 0), -1 if y < 0 else (s if y > 0 else 0), -1 if z < 0 else (s if z > 0 else 0))
+                        var hi := lo + Vector3i(s if x == 0 else 1, s if y == 0 else 1, s if z == 0 else 1)
+                        for gz in range(lo.z, hi.z):
+                            for gy in range(lo.y, hi.y):
+                                for gx in range(lo.x, hi.x):
+                                    var g := Vector3i(gx, gy, gz)
+                                    if not _mesh_missing_snapshot.has(g):
+                                        _mesh_missing_snapshot[g] = float(density_sampler.call(Vector3(g) * config.cell_size)) if density_sampler.is_valid() else 1.0
+    _mesh_batch = targets.values()
+    _mesh_batch.sort_custom(func(a, b): return _urgent_chunks.has(a.chunk_coord) and not _urgent_chunks.has(b.chunk_coord))
+    _mesh_batch_cursor = 0
+    _mesh_groups.clear()
+    _mesh_group_for.clear()
+    _mesh_group_remaining.clear()
+    # Separate holes can publish independently. Only the meshes connected
+    # through a changed shared cell wait for one another.
+    for chunk in _mesh_batch:
+        if _mesh_group_for.has(chunk.chunk_coord): continue
+        var id := _mesh_groups.size()
+        var group: Array = []
+        var pending: Array = [chunk.chunk_coord]
+        _mesh_group_for[chunk.chunk_coord] = id
+        while not pending.is_empty():
+            var cc: Vector3i = pending.pop_back()
+            group.append(targets[cc])
+            for neighbor in links.get(cc, {}).keys():
+                if not _mesh_group_for.has(neighbor):
+                    _mesh_group_for[neighbor] = id
+                    pending.append(neighbor)
+        _mesh_groups.append(group)
+        _mesh_group_remaining[id] = group.size()
+    for chunk in _mesh_batch:
+        chunk._dirty = false
+        chunk._mesh_source = _mesh_snapshot[chunk.chunk_coord]
+        chunk._mesh_regen_indices = chunk._regen_idx.duplicate()
+        _urgent_chunks.erase(chunk.chunk_coord)
 
 ## Ages parked regrowth colliders and rebuilds the due ones (oldest first,
 ## budgeted). Returns how many were rebuilt.
@@ -134,11 +646,17 @@ func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
 
 ## Remeshes every dirty chunk now (used at start-up and by capture tools).
 func remesh_all() -> void:
+    for chunk in _mesh_batch:
+        chunk._dirty = true
+    _mesh_batch.clear()
+    _mesh_snapshot.clear()
+    _mesh_missing_snapshot.clear()
     for chunk in _chunks.values():
-        if chunk.is_dirty():
+        if chunk.is_dirty() or not chunk._staged_density.is_empty():
             chunk.remesh(true)
         elif chunk.is_collision_pending():
             chunk.flush_collision()
+    _refresh_or_clear_surface_patch()
 
 func get_or_create_chunk(chunk_coord: Vector3i) -> FDKChunk:
     if _chunks.has(chunk_coord):
@@ -200,6 +718,14 @@ func corner_density_global(g: Vector3i) -> float:
     var s := config.chunk_size
     var cc := Vector3i(_floordiv(g.x, s), _floordiv(g.y, s), _floordiv(g.z, s))
     var chunk: FDKChunk = _chunks.get(cc, null)
+    if _reading_mesh_snapshot and _mesh_snapshot.has(cc):
+        var l := g - cc * s
+        var values: PackedFloat32Array = _mesh_snapshot[cc]
+        return values[chunk._corner_index(l.x, l.y, l.z)]
+    if _reading_mesh_snapshot:
+        # Streaming + digging a neighbor during a batch must not inject its
+        # live density into only the later meshes, even for a mutable sampler.
+        return float(_mesh_missing_snapshot[g])
     if chunk != null:
         var l := g - cc * s
         var ci := chunk._corner_index(l.x, l.y, l.z)
@@ -239,11 +765,50 @@ func dig_at(world_pos: Vector3, amount: float) -> void:
     var result := world_to_cell(world_pos)
     var chunk_coord: Vector3i = result[0]
     get_or_create_chunk(chunk_coord)
-    var g: Vector3i = chunk_coord * config.chunk_size + (result[1] as Vector3i)
+    var tear_cell: Vector3i = chunk_coord * config.chunk_size + (result[1] as Vector3i)
+    var was_fully_solid := _check_tear_fully_solid(tear_cell)
+    _dig_epoch += 1
     for dz in range(2):
         for dy in range(2):
             for dx in range(2):
-                _add_corner_global(g + Vector3i(dx, dy, dz), -amount)
+                _add_corner_global(tear_cell + Vector3i(dx, dy, dz), -amount)
+    if _surface_patch != null:
+        var new_min := tear_cell - Vector3i.ONE
+        var new_max := tear_cell + Vector3i.ONE
+        var union_min := Vector3i(mini(_surface_patch_min.x, new_min.x), mini(_surface_patch_min.y, new_min.y), mini(_surface_patch_min.z, new_min.z))
+        var union_max := Vector3i(maxi(_surface_patch_max.x, new_max.x), maxi(_surface_patch_max.y, new_max.y), maxi(_surface_patch_max.z, new_max.z))
+        var span_x := union_max.x - union_min.x + 1
+        var span_y := union_max.y - union_min.y + 1
+        var span_z := union_max.z - union_min.z + 1
+        if not _surface_patch_is_aggregate and span_x <= 7 and span_y <= 7 and span_z <= 7:
+            _surface_patch_min = union_min
+            _surface_patch_max = union_max
+            _surface_patch_required_epoch = _dig_epoch
+            _surface_patch.build_region(_surface_patch_min, _surface_patch_max)
+            _surface_patch_revision += 1
+            _surface_patch_state = _compute_patch_state_region(_surface_patch_min, _surface_patch_max)
+            if _surface_patch.faces.is_empty():
+                _clear_surface_patch()
+        else:
+            _handle_aggregate_dig(tear_cell, union_min, union_max)
+    elif was_fully_solid:
+        var patch := FDKSurfacePatch.new(self)
+        _surface_patch_cell = tear_cell
+        _surface_patch_min = tear_cell - Vector3i.ONE
+        _surface_patch_max = tear_cell + Vector3i.ONE
+        patch.build_region(_surface_patch_min, _surface_patch_max)
+        if patch.faces.size() > 0:
+            _surface_patch = patch
+            _surface_patch_is_aggregate = false
+            _surface_patch_revision += 1
+            _surface_patch_required_epoch = _dig_epoch
+            _surface_patch_state = _compute_patch_state_region(_surface_patch_min, _surface_patch_max)
+            add_child(_surface_patch)
+        else:
+            patch.free()
+            _surface_patch_min = Vector3i.ZERO
+            _surface_patch_max = Vector3i.ZERO
+            _surface_patch_required_epoch = 0
 
 ## Tissue id at a world position (cell center lookup).
 ## Sprayed cells report FDKTissueRules.MELTED ("���� ��").
@@ -429,6 +994,101 @@ func get_press_amount() -> float:
     var v = FDKChunk.terrain_material(0).get_shader_parameter("press_amount")
     return float(v) if v != null else 0.0
 
+## Contact-driven eye clearance, leaving the body and desired hand-motion
+## transform intact. Call after camera animation, before aiming/rendering.
+## The anchor is the capsule center. Shallow full burial resolves only a real
+## nearby surface, bounded by the eye offset; deep solid without such a
+## contact cannot invent an empty destination or relocate the body.
+func constrain_eye(desired_eye: Vector3, body_anchor: Vector3, near: float) -> Vector3:
+    if not is_inside_tree():
+        return desired_eye
+    var offset := desired_eye - body_anchor
+    var length := offset.length()
+    if length < 0.00001:
+        _update_solid_volume(desired_eye)
+        return desired_eye
+    var direction := offset / length
+    var margin := 0.055 + maxf(near, 0.001) * 2.0 + 0.005
+    var side := direction.cross(Vector3.UP)
+    if side.length_squared() < 0.001:
+        side = direction.cross(Vector3.RIGHT)
+    side = side.normalized() * 0.001
+    var other := direction.cross(side)
+    var distance := length
+    for epsilon in [Vector3.ZERO, side, -side, other, -other]:
+        var hit := _eye_terrain_ray(body_anchor + epsilon, desired_eye + direction * margin + epsilon)
+        if hit.is_empty() or _eye_surface_outward(hit).dot(direction) >= 0:
+            continue
+        distance = minf(distance, maxf(0.0, (hit.position - body_anchor - epsilon).dot(direction) - margin))
+    if distance < length:
+        var guarded := body_anchor + direction * distance
+        _update_solid_volume(guarded)
+        return guarded
+    # Strong contraction can physically put the capsule and eye on the
+    # solid side together. Resolve only a nearby real surface contact; this
+    # never moves the body or searches for a remote escape destination.
+    var closest := desired_eye
+    var best := INF
+    var limit := minf(0.85, length + 0.15)
+    for z in range(-1, 2):
+        for y in range(-1, 2):
+            for x in range(-1, 2):
+                if x == 0 and y == 0 and z == 0: continue
+                var ray := Vector3(x, y, z).normalized()
+                var hit := _eye_terrain_ray(desired_eye, desired_eye + ray * limit)
+                if hit.is_empty(): continue
+                var outward := _eye_surface_outward(hit)
+                # Backface normals in intersect_ray are flipped toward the
+                # ray. Read the triangle's actual solid-to-empty orientation.
+                if outward.dot(ray) <= 0.0001: continue
+                var candidate: Vector3 = hit.position + outward * margin
+                var correction := candidate.distance_to(desired_eye)
+                if correction < best and correction <= limit:
+                    closest = candidate
+                    best = correction
+    _update_solid_volume(closest)
+    return closest
+
+func _eye_terrain_ray(from: Vector3, to: Vector3) -> Dictionary:
+    _refresh_or_clear_surface_patch()
+    var query := PhysicsRayQueryParameters3D.create(from, to)
+    query.hit_back_faces = true
+    # Props keep their own layers and behavior. They must not hide a terrain
+    # contact from this terrain-only camera guard.
+    var hit_phys := Dictionary()
+    for attempt in range(16):
+        var hit := get_world_3d().direct_space_state.intersect_ray(query)
+        if hit.is_empty() or hit.collider.has_meta("fdk_terrain_chunk"):
+            hit_phys = hit
+            break
+        var excluded := query.exclude
+        excluded.append(hit.rid)
+        query.exclude = excluded
+    var hit_patch: Dictionary = {}
+    if _surface_patch != null and not _surface_patch.faces.is_empty():
+        hit_patch = _surface_patch.contact_ray(from, to)
+    if not hit_phys.is_empty() and not hit_patch.is_empty():
+        if from.distance_to(hit_patch.position) < from.distance_to(hit_phys.position):
+            return hit_patch
+        return hit_phys
+    elif not hit_patch.is_empty():
+        return hit_patch
+    return hit_phys
+
+func _eye_surface_outward(hit: Dictionary) -> Vector3:
+    if hit.get("fdk_surface_patch", false):
+        return hit.get("fdk_patch_outward", Vector3.ZERO)
+    if hit.get("fdk_solid_volume", false):
+        return hit.get("fdk_volume_outward", Vector3.ZERO)
+    var chunk := hit.collider.get_parent() as FDKChunk
+    if chunk == null or chunk._collision.shape == null:
+        return Vector3.ZERO
+    var index := int(hit.get("face_index", -1)) * 3
+    var faces: PackedVector3Array = chunk._collision.shape.get_faces()
+    if index < 0 or index + 2 >= faces.size():
+        return Vector3.ZERO
+    return -(faces[index + 1] - faces[index]).cross(faces[index + 2] - faces[index]).normalized()
+
 ## Strong local contraction (docs/spec/02-world-tissue.md, nerve tissue): the tunnel
 ## squeezes shut around `center` -- density jumps back toward its original
 ## value by up to `amount` (more at the middle). Sprayed cells stay open.
@@ -531,6 +1191,7 @@ func serialize() -> Dictionary:
     return {"version": 1, "chunks": chunks_data}
 
 func deserialize(data: Dictionary) -> void:
+    _clear_surface_patch()
     var chunks_data: Array = data.get("chunks", [])
     for entry in chunks_data:
         var coord_arr: Array = entry.get("chunk_coord", [0, 0, 0])

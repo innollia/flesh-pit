@@ -50,7 +50,7 @@ func run() -> void:
     Input.action_release("fdk_eat")
     var left: Node3D = m.hands_rig.get_hand_root("left")
     check(left.position.distance_to(FPHandMotions.WATCH_WRIST_POS) < 0.03, "left wrist lifts into watch position")
-    check(left.get_node("ArmHair/Forearm").visible, "full watch forearm is visible")
+    check(left.get_node("Forearm").visible and not left.get_node("ArmHair/Forearm").visible, "approved B watch shows the original forearm without a duplicate hair arm")
     check(m.mirror.hand_root == left, "doll uses the visible normal arm")
     for pitch in [-1.2, 0.0, 1.2]:
         m.player.camera_pivot.rotation.x = pitch
