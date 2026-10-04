@@ -1,5 +1,5 @@
 class_name FPTankLid
-extends Node
+extends Node3D
 
 ## The loose ceramic lid has one owner: the tank, a hand, or the floor.
 var main: Node3D
@@ -10,6 +10,8 @@ var _home: Transform3D
 
 func setup(m: Node3D) -> void:
 	main = m
+	if get_parent() == null:
+		m.add_child(self)
 	lid = m.restroom.tank_art.get("_lid")
 	_home = lid.transform
 
@@ -18,6 +20,12 @@ func can_pick() -> bool:
 
 func aimed() -> bool:
 	return not held and main._interaction_aim(lid.global_position, 8.0, 1.25)
+
+func is_aiming_tank() -> bool:
+	if main == null or main.restroom == null or main.restroom.tank_art == null:
+		return false
+	var tank_top: Vector3 = main.restroom.tank_art.to_global(Vector3(0, 0.34, 0))
+	return main._interaction_aim(tank_top, 8.0, 1.25)
 
 func pick() -> bool:
 	if not can_pick():
@@ -37,6 +45,9 @@ func pick() -> bool:
 func drop() -> bool:
 	if not held:
 		return false
+	if is_aiming_tank():
+		replace_on_tank()
+		return true
 	var ray: Array = main.player.get_look_ray()
 	var at: Vector3 = ray[0] + ray[1] * 0.7
 	var query := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 0.25, at + Vector3.DOWN * 8.0)
@@ -45,7 +56,10 @@ func drop() -> bool:
 	var landing: Vector3 = hit.position if not hit.is_empty() else main.player.global_position + Vector3.DOWN * (main.player.config.stand_height * 0.5)
 	lid.reparent(self, false)
 	lid.global_transform = Transform3D(Basis.IDENTITY, landing + Vector3.UP * 0.018)
-	FPRestroom.tag_room_layer(lid) if main.restroom.contains(landing) else FPRestroom.tag_default_layer(lid)
+	if main.restroom.contains(landing):
+		FPRestroom.tag_room_layer(lid)
+	else:
+		FPRestroom.tag_default_layer(lid)
 	lid.visible = true
 	held = false
 	return true
@@ -58,6 +72,8 @@ func replace_on_tank() -> void:
 	lid.visible = true
 	main.restroom.set_tank_open(false, true)
 	FPRestroom.tag_room_layer(lid)
+	if main.vent != null:
+		main.vent.notice("lid_close")
 
 func serialize() -> Dictionary:
 	return {"on_tank": on_tank, "held": held, "position": [lid.global_position.x, lid.global_position.y, lid.global_position.z]}
