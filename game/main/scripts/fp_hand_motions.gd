@@ -368,7 +368,11 @@ func _apply_cams(u: float, reset: bool = false) -> void:
         if not reset and kind == "vomit_floor":
             # Camera-local rotation still inherits the head pivot's pitch.
             # Apply the heave in the upright body's frame, captured once.
-            cam.global_transform = Transform3D(_vomit_frame.basis * Basis.from_euler(Vector3(_cam_rot.x + pitch, 0, roll)), _vomit_frame.origin + _vomit_frame.basis * (_cam_pos + off))
+            # _cam_pos is the pitch-dependent idle bow in pivot-local axes;
+            # it belongs to other motions and the return to rest, never to
+            # this fixed floor-vomit frame. Adding it here changes the world
+            # heave depending on whether the player started looking down.
+            cam.global_transform = Transform3D(_vomit_frame.basis * Basis.from_euler(Vector3(_cam_rot.x + pitch, 0, roll)), _vomit_frame.origin + _vomit_frame.basis * off)
     var sc: Camera3D = m.settle_camera
     if sc != null and _settle_saved:
         if reset or kind != "vomit_toilet":
