@@ -172,6 +172,7 @@ func check_cancel() -> void:
 
 func tick(delta: float) -> void:
     if not busy():
+        _apply_cam_rest()
         return
     t += delta
     if cancelled:
@@ -196,7 +197,10 @@ func _finish() -> void:
         _stream.visible = false
     _clear_held()
     cancelled = false
+    _cam_saved = false
+    _settle_saved = false
     _apply_watch_arm()
+    _apply_cam_rest()
 
 ## B orientation, whole arm 12 cm farther and 11 cm lower (2026-10-02).
 ## The elbow/shoulder connection exits the lower-left of the view.
@@ -301,12 +305,36 @@ func _events(u: float) -> void:
 
 # --- cameras ------------------------------------------------------------------------
 
+func _cam_rest_offset() -> Vector3:
+    if m == null or not is_instance_valid(m.player) or not is_instance_valid(m.player.camera_pivot):
+        return Vector3.ZERO
+    var pitch: float = m.player.camera_pivot.rotation.x
+    var pitch_down: float = -minf(pitch, 0.0)
+    if pitch_down <= 0.001:
+        return Vector3.ZERO
+    var down_t: float = clampf(pitch_down / deg_to_rad(89.0), 0.0, 1.0)
+    var bow: float = sin(down_t * PI * 0.5)
+    # Crouching folds full-size joints; it does not halve the head/neck or
+    # belly. Keep the same bow distance so the unscaled belly remains below
+    # the aim line when looking straight down in either capsule posture.
+    var head_forward := 0.17 * bow
+    var head_down := 0.08 * bow
+    var delta_player := Vector3(0.0, -head_down, -head_forward)
+    return m.player.camera_pivot.basis.inverse() * delta_player
+
+func _apply_cam_rest() -> void:
+    var cam: Camera3D = m.player.camera if (m != null and is_instance_valid(m.player)) else null
+    if cam == null or not is_instance_valid(cam):
+        return
+    cam.position = _cam_rest_offset()
+    cam.rotation = Vector3.ZERO
+
 func _save_cams() -> void:
     var cam: Camera3D = m.player.camera if m.player != null else null
     if cam != null and not _cam_saved:
         _cam_saved = true
-        _cam_pos = cam.position
-        _cam_rot = cam.rotation
+        _cam_pos = _cam_rest_offset()
+        _cam_rot = Vector3.ZERO
     if m.settle_camera != null and not _settle_saved:
         _settle_saved = true
         _settle_base = m.settle_camera.transform
