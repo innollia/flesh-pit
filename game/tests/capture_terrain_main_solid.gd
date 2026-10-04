@@ -40,6 +40,7 @@ func shot(label: String,background_expected := false) -> void:
     await process_frame
     await RenderingServer.frame_post_draw
     var image := root.get_texture().get_image()
+    check(image.get_size() == Vector2i(640,360),label+" actual resolution")
     image.save_png(destination.path_join(label+".png"))
     var exposed := 0
     for y in range(image.get_height()):
@@ -51,6 +52,7 @@ func shot(label: String,background_expected := false) -> void:
 
 func run() -> void:
     await process_frame
+    root.size = Vector2i(640,360)
     m.finish_opening()
     InputMap.action_erase_events("fdk_eat")
     var binding := InputEventMouseButton.new()
@@ -109,3 +111,4 @@ func run() -> void:
     m.queue_free()
     await process_frame
     quit(1 if failed else 0)
+
