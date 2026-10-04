@@ -11,6 +11,7 @@ const HALF := Vector3(2.25, 1.3, 1.5)
 const TILE := 0.3
 const DOOR_HALF_W := 0.45
 const DOOR_H := 2.05
+const BATH_LENGTH := 1.7
 ## Ceiling opening for the art vent (main.gd places it at x=z=0.75, its
 ## grate opening is 0.52 m square): [x0, z0, x1, z1].
 const VENT_HOLE := [-0.81, -1.04, -0.29, -0.52]
@@ -454,7 +455,7 @@ func _build_bath() -> void:
     var white := Color(0.9, 0.91, 0.9)
     var inside := Color(0.76, 0.79, 0.8)
     var right := HALF.x - 0.025
-    var left := right - 1.7
+    var left := right - BATH_LENGTH
     var back := -HALF.z + 0.025
     var front := -HALF.z + 0.86
     _box(st, Vector3(left, 0, front - 0.10), Vector3(right, 0.56, front), white, white.darkened(0.06))
@@ -730,6 +731,7 @@ func _build_collision() -> void:
     add_child(body)
     var h := HALF
     var t := 0.1
+    var bath_right := h.x - 0.025
     var boxes := [
         [Vector3(0, -t * 0.5, 0), Vector3(2 * h.x, t, 2 * h.z)],
         [Vector3(0, 2 * h.y + t * 0.5, 0), Vector3(2 * h.x, t, 2 * h.z)],
@@ -742,7 +744,7 @@ func _build_collision() -> void:
         [toilet.transform * Vector3(0, 0.4, 0.2), Vector3(0.5, 0.8, 0.45)],
         [Vector3(-h.x + 0.30, 0.45, SINK_Z), Vector3(0.60, 0.9, 0.65)],
         [Vector3(-h.x + 0.11, 1.78, SINK_Z + 0.60), Vector3(0.22, 1.20, 1.65)],
-        [Vector3(h.x - 0.875, 0.28, -h.z + 0.43), Vector3(1.7, 0.56, 0.86)],
+        [Vector3(bath_right - BATH_LENGTH * 0.5, 0.28, -h.z + 0.43), Vector3(BATH_LENGTH, 0.56, 0.86)],
     ]
     for b in boxes:
         var cs := CollisionShape3D.new()

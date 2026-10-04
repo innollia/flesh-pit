@@ -54,10 +54,11 @@ func _test_bathtub_visual_length() -> void:
 	if bath == null or bath.mesh == null:
 		return
 
+	_assert(is_equal_approx(FPRestroom.BATH_LENGTH, 1.7), "bathtub: BATH_LENGTH constant is 1.7m")
 	var aabb: AABB = bath.mesh.get_aabb()
 	_assert(is_equal_approx(aabb.size.x, 1.7), "bathtub: visual mesh length X is 1.7m (got %.4f)" % aabb.size.x)
 	var expected_right := FPRestroom.HALF.x - 0.025
-	var expected_left := expected_right - 1.7
+	var expected_left := expected_right - FPRestroom.BATH_LENGTH
 	_assert(is_equal_approx(aabb.position.x, expected_left), "bathtub: visual mesh left X is %.3f (got %.4f)" % [expected_left, aabb.position.x])
 	_assert(is_equal_approx(aabb.end.x, expected_right), "bathtub: visual mesh right X is %.3f (got %.4f)" % [expected_right, aabb.end.x])
 	_assert(is_equal_approx(aabb.size.y, 0.56), "bathtub: visual mesh height Y is 0.56m (got %.4f)" % aabb.size.y)
