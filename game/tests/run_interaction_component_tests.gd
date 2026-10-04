@@ -4,7 +4,7 @@ var m: Node3D
 var passed := 0
 var failed := 0
 func _init() -> void:
-	if not OS.get_user_data_dir().contains("flesh-pit-restoration-T5"):
+	if not OS.get_user_data_dir().contains("flesh-pit-restoration-"):
 		quit(2)
 		return
 	m = load("res://main/scenes/main.tscn").instantiate()
