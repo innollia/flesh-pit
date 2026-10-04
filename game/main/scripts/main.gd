@@ -921,41 +921,66 @@ func step_world(delta: float) -> void:
 
 func _look_hit() -> Dictionary:
     var ray: Array = player.get_look_ray()
-    var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * progression.reach())
+    var reach: float = progression.reach()
+    var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * reach)
     q.exclude = [player.get_rid()]
     q.hit_from_inside = true
     q.hit_back_faces = true
     var space := get_world_3d().direct_space_state
     var hit := space.intersect_ray(q)
+    var solid_contact := {}
+    if terrain != null and terrain.has_method("solid_contact_ray"):
+        var sc: Dictionary = terrain.solid_contact_ray(ray[0], ray[0] + ray[1] * reach)
+        if not sc.is_empty():
+            var body = sc.get("collider", null)
+            if body != null and is_instance_valid(body) and body is CollisionObject3D:
+                var dist: float = ray[0].distance_to(sc.position)
+                if dist <= reach and (sc.position - ray[0]).dot(ray[1]) > 0.00001:
+                    var obstruction := PhysicsRayQueryParameters3D.create(ray[0], sc.position)
+                    obstruction.exclude = [player.get_rid()]
+                    obstruction.hit_from_inside = true
+                    var blocking := space.intersect_ray(obstruction)
+                    if not blocking.is_empty() and not blocking.collider.has_meta("fdk_terrain_chunk"):
+                        solid_contact = blocking
+                    else:
+                        solid_contact = sc
     var current_face: bool = not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and _physics_face_matches(hit, ray[0], ray[1])
     # A stable rear face alone does not prove that a nearer chunk has
     # synchronized. Check every chunk intersecting this bounded ray before
     # using its exact current published face as the normal fast path.
-    if current_face and _terrain_ray_shapes_synced(ray[0], ray[1], progression.reach()):
-        return hit
+    if current_face and _terrain_ray_shapes_synced(ray[0], ray[1], reach):
+        return _nearest_look_contact([hit, solid_contact], ray[0], ray[1], reach)
     if not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and not current_face:
         hit = {}
-    var published := _published_terrain_contact(ray[0], ray[1], progression.reach())
-    var chosen := _nearest_look_contact([hit, published], ray[0], ray[1], progression.reach())
+    var published := _published_terrain_contact(ray[0], ray[1], reach)
+    var chosen := _nearest_look_contact([hit, published, solid_contact], ray[0], ray[1], reach)
     if not chosen.is_empty():
         return chosen
     # Exact shared triangle vertices can miss numerically. These one-mm
     # parallel rays retain reach and accept only actual terrain contacts.
     var right: Vector3 = player.camera.global_basis.x.normalized()
     var up: Vector3 = player.camera.global_basis.y.normalized()
-    var nearest := progression.reach() + 0.001
+    var nearest := reach + 0.001
     var result := {}
     for offset in [right, -right, up, -up, (right + up).normalized(), (right - up).normalized(), (-right + up).normalized(), (-right - up).normalized()]:
         var shifted: Vector3 = ray[0] + offset * 0.001
         q.from = shifted
-        q.to = shifted + ray[1] * progression.reach()
+        q.to = shifted + ray[1] * reach
         var candidate := space.intersect_ray(q)
-        if candidate.is_empty() or not candidate.collider.has_meta("fdk_terrain_chunk"):
-            continue
-        if not _physics_face_matches(candidate, shifted, ray[1]):
+        if candidate.is_empty() or not candidate.collider.has_meta("fdk_terrain_chunk") or not _physics_face_matches(candidate, shifted, ray[1]):
+            candidate = {}
+        if terrain != null and terrain.has_method("solid_contact_ray"):
+            var vcandidate: Dictionary = terrain.solid_contact_ray(shifted, shifted + ray[1] * reach)
+            if not vcandidate.is_empty():
+                var vbody = vcandidate.get("collider", null)
+                if vbody != null and is_instance_valid(vbody) and vbody is CollisionObject3D:
+                    var vdist: float = ray[0].distance_to(vcandidate.position)
+                    if vdist <= reach and (vcandidate.position - ray[0]).dot(ray[1]) > 0.00001:
+                        candidate = _nearest_look_contact([candidate, vcandidate], ray[0], ray[1], reach)
+        if candidate.is_empty():
             continue
         var distance: float = ray[0].distance_to(candidate.position)
-        if distance > progression.reach() or distance >= nearest:
+        if distance > reach or distance >= nearest:
             continue
         var obstruction := PhysicsRayQueryParameters3D.create(ray[0], candidate.position)
         obstruction.exclude = [player.get_rid()]

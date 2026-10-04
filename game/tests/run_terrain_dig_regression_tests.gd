@@ -225,7 +225,11 @@ func run() -> void:
     m.chewer.chew_progress.connect(func(_r, _p): progress += 1)
     m.chewer.released.connect(func(): releases += 1)
     for direction in [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK, Vector3(1, 0.9, 0.8), Vector3(-1, 0.4, -1), Vector3.ONE]:
-        await hold_case(direction, "direction " + str(direction))
+        # The extra capsule-clearance sphere puts the old downward floor
+        # outside reach after its first bite. Keep two surfaces reachable here;
+        # the original wide floor is separately checked as a reach boundary.
+        await hold_case(direction, "direction " + str(direction), 1.0 if direction == Vector3.DOWN else 1.2)
+    await down_reach_boundary_case()
     await hold_case(Vector3.RIGHT, "close wall", 0.85)
     center = Vector3(7.5, 5, 7.5)
     await hold_case(Vector3.ONE, "chunk corner")
@@ -344,3 +348,18 @@ func run() -> void:
     m.queue_free()
     await process_frame
     quit(1 if failed else 0)
+
+func down_reach_boundary_case() -> void:
+    await fixture(Vector3.DOWN, 1.2)
+    mouse(true)
+    await create_timer(2.05).timeout
+    mouse(false)
+    await process_frame
+    await process_frame
+    check(torn.size() == 1, "wide downward floor stops after the only reachable tear")
+    check(m.excavated_cells == 1, "wide downward floor records only one actual excavation")
+    check(is_equal_approx(m.stomach.fill, m.stomach_config.flesh_per_cell), "wide downward floor never adds food for the distant next surface")
+    var rr: Array = m.player.get_look_ray()
+    var beyond: Dictionary = m._published_terrain_contact(rr[0], rr[1], m.progression.reach() + m.terrain_config.cell_size)
+    check(not beyond.is_empty() and rr[0].distance_to(beyond.position) > m.progression.reach(), "actual next downward surface is beyond unchanged reach")
+    check(m._look_hit().is_empty() and not m.chewer.is_chewing(), "actual distant downward surface is rejected and grab stops")
