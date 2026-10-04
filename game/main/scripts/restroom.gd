@@ -65,6 +65,7 @@ func build() -> void:
     var fixture_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_chrome_128.png", 1.5, false, 0.55, 0.2, 1.0, false)
     var floor_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_tile_floor_128.png", 2.5, false, 0.0, 0.9, 1.0, false)
     _build_tiles(tile_mat, floor_mat)
+    _build_outer_walls()
     # 형님 결정: 변기·세면대는 얼룩 없는 순백 도자기(약한 광택).
     var ceramic_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, false, 0.45, 0.25, 1.0, false)
     _build_toilet(ceramic_mat)
@@ -134,6 +135,33 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
     tiles.name = "Tiles"
     tiles.mesh = _split_floor(st.commit() as ArrayMesh, _tiled(mat), _tiled(floor_mat, true))
     add_child(tiles)
+
+func _build_outer_walls() -> void:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var h := HALF
+    var outer_color := Color(0.24, 0.23, 0.22)
+    # 6 directions facing outward: floor DOWN, ceiling UP, back FORWARD, left LEFT, right RIGHT, front BACK
+    _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 0, 2 * h.z), Vector3.DOWN, outer_color)
+    _plane(st, Vector3(-h.x, 2 * h.y, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 0, 2 * h.z), Vector3.UP, outer_color)
+    _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.FORWARD, outer_color)
+    _plane(st, Vector3(-h.x, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3(0, 2 * h.y, 0), Vector3.LEFT, outer_color)
+    _plane(st, Vector3(h.x, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3(0, 2 * h.y, 0), Vector3.RIGHT, outer_color)
+    # front wall minus doorway: three pieces
+    _plane(st, Vector3(-h.x, 0, h.z), Vector3(h.x - DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.BACK, outer_color)
+    _plane(st, Vector3(DOOR_HALF_W, 0, h.z), Vector3(h.x - DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.BACK, outer_color)
+    _plane(st, Vector3(-DOOR_HALF_W, DOOR_H, h.z), Vector3(2 * DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y - DOOR_H, 0), Vector3.BACK, outer_color)
+
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = outer_color
+    mat.roughness = 0.9
+    mat.cull_mode = BaseMaterial3D.CULL_BACK
+
+    var mi := MeshInstance3D.new()
+    mi.name = "OuterWalls"
+    mi.mesh = st.commit()
+    mi.material_override = mat
+    add_child(mi)
 
 ## Copy of a shared PS1 material switched to flat tile mode: the grid, grout
 ## and bevels come from the baked normal texture, not geometry.
@@ -425,8 +453,8 @@ func _build_bath() -> void:
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var white := Color(0.9, 0.91, 0.9)
     var inside := Color(0.76, 0.79, 0.8)
-    var left := -HALF.x + 0.025
     var right := HALF.x - 0.025
+    var left := right - 1.7
     var back := -HALF.z + 0.025
     var front := -HALF.z + 0.86
     _box(st, Vector3(left, 0, front - 0.10), Vector3(right, 0.56, front), white, white.darkened(0.06))
@@ -714,7 +742,7 @@ func _build_collision() -> void:
         [toilet.transform * Vector3(0, 0.4, 0.2), Vector3(0.5, 0.8, 0.45)],
         [Vector3(-h.x + 0.30, 0.45, SINK_Z), Vector3(0.60, 0.9, 0.65)],
         [Vector3(-h.x + 0.11, 1.78, SINK_Z + 0.60), Vector3(0.22, 1.20, 1.65)],
-        [Vector3(0, 0.28, -h.z + 0.43), Vector3(2 * h.x - 0.05, 0.56, 0.86)],
+        [Vector3(h.x - 0.875, 0.28, -h.z + 0.43), Vector3(1.7, 0.56, 0.86)],
     ]
     for b in boxes:
         var cs := CollisionShape3D.new()
