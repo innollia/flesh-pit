@@ -1,0 +1,20 @@
+{
+  "source_commit": "5c30d3ad992f8bc4d9530cd90ee6a584db78690b",
+  "game_save_version": 5,
+  "regen_rate": 0.01,
+  "hole": [
+    0.25,
+    1.25,
+    4.25
+  ],
+  "hole_density": 0.0,
+  "melt": [
+    1.25,
+    1.25,
+    4.25
+  ],
+  "sealed": true,
+  "generator_exit_code": 0,
+  "size_bytes": 6722764,
+  "sha256": "71946D862FD19B6E17C9DDD12880C8838B7664DA00C07C3E057E052BD6385F02"
+}
