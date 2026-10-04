@@ -107,6 +107,53 @@ func run() -> void:
     for p in torn: check(m.terrain.density_at(p)<m.terrain_config.iso_level,"actual density removed")
     check(not m.chewer.is_chewing(),"real release stops chew")
     check(m.deaths == 0 and m.hazard.health > 0,"no death reset hides failure")
+    # Restore an actual buried-mass fixture for each remaining direction.
+    # Main, physics, regeneration, input and rendering keep their ordinary order.
+    for direction in [Vector3.BACK,Vector3.LEFT,Vector3.RIGHT,Vector3.UP,Vector3.DOWN,Vector3(1,0.9,0.8).normalized()]:
+        # These are independent buried-player cases, not a long expedition.
+        # Refill an occupied mass repeatedly in one life would accumulate the
+        # intended crush hazard and reset the player during later cases.
+        m.queue_free()
+        await process_frame
+        m = load("res://main/scenes/main.tscn").instantiate()
+        m.rest_seed = 1337
+        m.save_path = destination.path_join("direction_%d.bin" % torn.size())
+        root.add_child(m)
+        await process_frame
+        m.finish_opening()
+        m.chewer.cell_torn.connect(func(p): torn.append(p))
+        m.terrain.remesh_budget_per_frame = 1
+        m.environment.background_color = Color(1,0,1)
+        m.apply_atmosphere_now()
+        m.terrain.fill_box_uniform(AABB(center-Vector3.ONE*4,Vector3.ONE*8),1.0,0)
+        m.terrain.remesh_all()
+        m.player.global_position = center-Vector3.UP*m.player.eye_pivot_y(false)
+        m.player.velocity = Vector3.ZERO
+        aim(direction)
+        await physics_frame
+        await physics_frame
+        var before := torn.size()
+        var fill_before: float = m.stomach.fill
+        await shot("axis_before_"+str(before))
+        mouse(true)
+        var captured_axis := before
+        for frame in range(150):
+            await process_frame
+            if frame % 15 == 0:
+                await shot("axis_%d_frame_%03d" % [before,frame])
+            if torn.size() > captured_axis:
+                captured_axis = torn.size()
+                await shot("axis_actual_tear_"+str(captured_axis))
+            if torn.size() >= before+2: break
+        mouse(false)
+        await process_frame
+        await process_frame
+        check(torn.size() >= before+2,"held repeat at actual direction "+str(direction))
+        check(is_equal_approx(m.stomach.fill-fill_before,(torn.size()-before)*m.stomach_config.flesh_per_cell),"directional food equals actual tears")
+        for index in range(before,torn.size()):
+            check(m.terrain.density_at(torn[index])<m.terrain_config.iso_level,"directional actual density removed")
+        check(not m.chewer.is_chewing(),"directional release stops")
+        check(m.deaths == 0 and m.hazard.health > 0,"directional no death reset")
     print("%d passed, %d failed" % [passed,failed])
     m.queue_free()
     await process_frame
