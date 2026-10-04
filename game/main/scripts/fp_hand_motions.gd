@@ -198,26 +198,13 @@ func _finish() -> void:
     cancelled = false
     _apply_watch_arm()
 
-## Left-arm roll for the watch look: the hand root turns so the forearm lies
-## slanted across the lower third (elbow low-left, wrist in the middle) with
-## its hairy top facing the camera, tipped a little up so the strands lie
-## visible instead of pointing into the lens (형님 지시, mirror 3).
+## B orientation, whole arm 12 cm farther and 11 cm lower (2026-10-02).
+## The elbow/shoulder connection exits the lower-left of the view.
 ## Root basis only; the rig itself never writes it, so it is reset here.
-const WATCH_ARM_TIP := 0.35 ## rad, hairy top tipped from the camera toward up
-## Wrist direction (camera space): right, a little up and AWAY from the eye,
-## so the elbow 0.34 m back comes close and low-left, past the frame edge,
-## and the forearm reads as running in from off-screen (mirror 4).
-const WATCH_ARM_DIR := Vector3(0.745, 0.186, -0.641)
-static func _watch_basis() -> Basis:
-    var d := WATCH_ARM_DIR.normalized() # wrist direction
-    var up := Vector3(0.0, sin(WATCH_ARM_TIP), cos(WATCH_ARM_TIP))
-    up = (up - d * up.dot(d)).normalized()
-    var z := -d
-    return Basis(up.cross(z).normalized(), up, z).orthonormalized()
-static var WATCH_ARM_BASIS := _watch_basis()
-## Wrist spot (camera space) while looking: 0.35-0.45 m out, lower third.
-const WATCH_WRIST_POS := Vector3(0.0, -0.13, -0.4)
-## Right hand drops out of view under the frame while looking.
+const WATCH_ARM_BASIS := Basis(Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0))
+const WATCH_WRIST_POS := Vector3(0.02, -0.21, -0.34)
+## Retain the existing right-hand exit from 5fe85ea; B's old idle right hand
+## was visible in the comparison capture, not the requested final behavior.
 const WATCH_RIGHT_POS := Vector3(0.2, -0.62, -0.25)
 func watch_arm_basis() -> Basis:
     var w := weight() if kind == "watch" else 0.0
@@ -237,13 +224,21 @@ func _apply_watch_arm() -> void:
         var lr: Node3D = rig.call("get_hand_root", "left")
         if lr != null:
             lr.basis = b
-            var forearm := lr.get_node_or_null("Forearm") as Node3D
-            var hair_arm := lr.get_node_or_null("ArmHair/Forearm") as MeshInstance3D
-            if hair_arm != null:
-                var raised := watch_raised() > 0.01
-                hair_arm.visible = raised
-                if forearm != null:
-                    forearm.visible = not raised
+            var forearm := lr.get_node_or_null("Forearm") as MeshInstance3D
+            if forearm != null and forearm.has_meta("watch_skin"):
+                var skin := forearm.material_override as ShaderMaterial
+                skin.set_shader_parameter("watch_shoulder_drop", 0.14 * watch_raised())
+                skin.set_shader_parameter("wet", rig.get("_wet"))
+                var base_skin: ShaderMaterial = rig.get("_material")
+                skin.set_shader_parameter("tint", base_skin.get_shader_parameter("tint"))
+                if forearm.material_overlay != null:
+                    if not forearm.has_meta("watch_blood_source"):
+                        forearm.set_meta("watch_blood_source", forearm.material_overlay)
+                        forearm.material_overlay = forearm.material_overlay.duplicate()
+                    var source: ShaderMaterial = forearm.get_meta("watch_blood_source")
+                    var blood := forearm.material_overlay as ShaderMaterial
+                    blood.set_shader_parameter("amount", source.get_shader_parameter("amount"))
+                    blood.set_shader_parameter("watch_shoulder_drop", 0.14 * watch_raised())
 
 func _clear_held() -> void:
     if _held_mesh != null:
@@ -476,13 +471,16 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
                 q["pos"] = WATCH_RIGHT_POS
                 return q
             var sway := Vector3(sin(t * 1.3) * 0.003, sin(t * 1.9) * 0.002, 0.0)
-            # hand relaxed and loosely curled, back of the hand up (like
-            # reading a wristwatch)
-            _fingers(q, 0.45)
+            _fingers(q, 0.32)
+            # Relax the thumb into the palm without changing the fingers.
+            q["t1"] = 18.0
+            q["t2"] = 30.0
+            q["t3"] = 30.0
+            q["t_opp"] = 8.0
             # the root is turned (watch_arm_basis): the forearm lies across
             # the lower-left view, hairy top to the camera; the wrist sits
             # just left of the middle so the mirror panel (right) stays clear
-            q["wrist_pitch"] = 4.0
+            q["wrist_pitch"] = 8.0
             q["wrist_yaw"] = 0.0
             q["wrist_roll"] = 0.0
             q["pos"] = WATCH_WRIST_POS + sway

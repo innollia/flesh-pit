@@ -19,8 +19,15 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform vec4 skin_color : source_color = vec4(0.88, 0.72, 0.62, 1.0);
 uniform float viewmodel_squash = 1.0;
 uniform float wet = 0.0;
+uniform float watch_shoulder_drop = 0.0;
 varying vec3 local_normal;
 void vertex() {
+    // Forearm mesh origin is the elbow; only +Z is the upper arm.
+    if (VERTEX.z > 0.0) {
+        float slope = watch_shoulder_drop / 0.32;
+        VERTEX.x += slope * VERTEX.z;
+        NORMAL = normalize(vec3(NORMAL.xy, NORMAL.z - slope * NORMAL.x));
+    }
     local_normal = NORMAL;
     if (face && !eye_patch) {
         float jaw_weight = 1.0 - smoothstep(-0.07, 0.01, VERTEX.y);

@@ -34,7 +34,7 @@ func run():
     aim(Vector3(0, 1, FPRestroom.HALF.z))
     check(m.interact_target() != "door", "distant door cannot be selected")
     m.player.global_position = Vector3(0, 0.95, 0.8)
-    aim(Vector3(0.5, 1, FPRestroom.HALF.z))
+    aim(Vector3(1.5, 1, FPRestroom.HALF.z))
     check(m.interact_target() != "door", "door rejects peripheral aim")
     var wall := StaticBody3D.new()
     var shape := CollisionShape3D.new()

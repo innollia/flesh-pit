@@ -35,6 +35,9 @@ var wx := RX
 var wzf := RZF
 var wzb := RZ
 var _cans: Array = []
+## First-person holsters must not project detached-looking rings onto the room.
+## Mirror and Tab bodies retain their ordinary shadows.
+var spray_cast_shadows := true
 var _supplies := {}
 var _spray_counts := Vector2i(-1, -1)
 var _canary: Node3D
@@ -110,7 +113,9 @@ func _ready() -> void:
         st = K.begin()
         K.rbox(st, K.T(Vector3(0, 0.05, -0.028)), Vector3(0.012, 0.012, 0.01), 0.003, Color(0.2, 0.2, 0.22))
         K.tube(st, Transform3D.IDENTITY, [Vector3(0, -0.02, 0), Vector3(0, 0.0, 0)], [0.036], 8, [Color(0.25, 0.25, 0.27)], false)
-        K.add_mesh(holder, "Clip", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.2, true))
+        var clip := K.add_mesh(holder, "Clip", K.finish(st, 6.0), K.mat("tex_chrome_64.png", 0.2, true))
+        if not spray_cast_shadows:
+            clip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         var can := K.pivot(holder, "Spray")
         _cans.append(can)
     _build_hooks()
@@ -379,6 +384,8 @@ func set_spray_count(cheap: int, expensive: int) -> void:
         if deep or cheap_slot:
             var can := K.add_mesh(slot, "CanMesh", _can_mesh(deep), K.mat("tex_chrome_64.png", 0.35, true))
             can.layers = 1 << 11
+            if not spray_cast_shadows:
+                can.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _body_layer(node: Node) -> void:
     if node is VisualInstance3D and not node is Light3D:

@@ -1582,7 +1582,7 @@ func interact_target() -> String:
         ["lever", lever_point(), 8.0, 1.25],
         ["toilet", toilet_point(), 12.0, 1.35],
         ["vent", FPRestroom.VENT_CENTER, 12.0, 2.0],
-        ["door", restroom.door_pivot.to_global(Vector3(FPRestroom.DOOR_HALF_W, 1.0, 0)), 8.0, 1.25]]
+        ["door", Vector3(0, 1, FPRestroom.HALF.z), 30.0, 1.6]]
     if not has_canary:
         candidates.append(["canary", canary_hole_point(), 10.0, 1.25])
     if tank_lid != null and tank_lid.can_pick():
