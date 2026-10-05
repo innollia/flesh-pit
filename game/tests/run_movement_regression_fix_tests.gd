@@ -125,6 +125,20 @@ func run() -> void:
 	print("Movement filter median_us=", times[10], " max_us=", times[19], " corners=", corners)
 	check(corners <= 1000, "per-frame terrain snapshot has bounded local corner count")
 	check(times[10] < 20000, "headless local movement median remains under 20ms")
+	# The game strengthens ascent only; the existing descent check above
+	# still uses the original 2.5m/s and room Space still has no jump.
+	m.terrain.fill_box_uniform(AABB(CENTER - Vector3.ONE * 3, Vector3.ONE * 6), 0.0, 0)
+	m.terrain.fill_box_uniform(AABB(Vector3(9,2,5), Vector3(2,6,6)), 1.0, 0)
+	m.terrain.remesh_all()
+	m.player.global_position = Vector3(8.25,5,8.25)
+	m.player.velocity = Vector3.ZERO
+	await frames(2)
+	check(m.can_climb_at(m.player.global_position), "actual flesh side enables excavation ascent")
+	var ascent_start: float = m.player.global_position.y
+	key("fdk_jump", true)
+	await frames(12)
+	key("fdk_jump", false)
+	check(m.player.global_position.y - ascent_start > 0.75, "normal Space ascends more strongly through excavated vertical space")
 	# Current growth intrusion uses Main's normal relief writer alongside the
 	# movement filter; a short verified escape must not become a deadlock.
 	var old_field: Node = m.terrain
@@ -155,6 +169,9 @@ func run() -> void:
 	var relieved: Dictionary = m._body_clearance.assess(m.player,field)
 	check(not relieved.overlap and not relieved.trapped, "normal Main relief and movement filter clear short intrusion together")
 	check(m.player.global_position.z > prior.z and m.player.global_position.distance_to(prior)<0.25, "short escape remains bounded physical retreat")
+	var prior_deaths: int = m.deaths
+	await frames(ceili(m.progression.crush_time() * 60.0) + 10)
+	check(m.deaths == prior_deaths and is_zero_approx(m._crush_t), "verified back escape stays alive beyond the entire crush timer")
 	await diagonal_pending_case()
 	print("Movement boundary: ", passed, " passed, ", failed, " failed")
 	m.queue_free()

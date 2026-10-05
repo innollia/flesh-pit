@@ -7,6 +7,11 @@ extends Control
 ## gamepad X button, or a mouse with its side button lit).
 
 var shown: bool = false
+var action: String = "fp_interact":
+	set(value):
+		if action != value:
+			action = value
+			queue_redraw()
 ## "keyboard" | "pad" | "mouse" — follows the last input device used.
 var device: String = "keyboard"
 var _a: float = 0.0
@@ -59,7 +64,8 @@ func _draw() -> void:
 		"pad":
 			_draw_pad(p)
 		"mouse":
-			_draw_mouse(p)
+			if action == "fp_vomit": _draw_key(p, _key_label())
+			else: _draw_mouse(p)
 		_:
 			_draw_key(p, _key_label())
 	draw_set_transform(Vector2.ZERO)
@@ -94,7 +100,7 @@ func _draw_pad(p: Vector2) -> void:
 	var spots := [Vector2(0, -off), Vector2(off, 0), Vector2(0, off), Vector2(-off, 0)]
 	for i in spots.size():
 		var q: Vector2 = p + spots[i]
-		if i == 3:
+		if i == (0 if action == "fp_vomit" else 3):
 			draw_circle(q, 3.4, Color(INK, 0.95 * _a))
 		else:
 			draw_arc(q, 2.8, 0.0, TAU, 16, Color(INK, 0.6 * _a), 1.2, true)
@@ -109,12 +115,12 @@ func _draw_mouse(p: Vector2) -> void:
 	draw_rect(Rect2(p + Vector2(-8.5, -1), Vector2(3, 5)), Color(INK, 0.95 * _a), true)
 
 func _key_label() -> String:
-	if InputMap.has_action("fp_interact"):
-		for e in InputMap.action_get_events("fp_interact"):
+	if InputMap.has_action(action):
+		for e in InputMap.action_get_events(action):
 			if e is InputEventKey:
 				var k := e as InputEventKey
 				var code := k.physical_keycode if k.physical_keycode != KEY_NONE else k.keycode
 				var s := OS.get_keycode_string(code)
 				if s != "":
 					return s
-	return "F"
+	return "V" if action == "fp_vomit" else "F"

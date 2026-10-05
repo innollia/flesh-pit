@@ -223,6 +223,7 @@ func _ready() -> void:
 
     var player_scene: PackedScene = load("res://addons/flesh_dig_kit/player/fdk_first_person_controller.tscn")
     player = player_scene.instantiate()
+    player.config.climb_up_speed = 4.5
     player.name = "Player"
     player.movement_filter = _filter_terrain_motion
     player.position = START_POS
@@ -827,6 +828,10 @@ func _process(delta: float) -> void:
     _process_opening(delta)
     if is_opening():
         return
+    if is_pulling_canary():
+        step_world(delta)
+        _guard_terrain_eye(false)
+        return
     if _settling:
         chewer.stop()
         FPInteractions.handle_settling_input(self, _settle_entry_frame)
@@ -1010,7 +1015,9 @@ func step_world(delta: float) -> void:
     if belt_swap != null:
         belt_swap.tick(delta)
     if interact_ring != null:
-        interact_ring.set("shown", interact_target() != "")
+        var target := interact_target()
+        interact_ring.set("action", "fp_vomit" if target == "toilet" else "fp_interact")
+        interact_ring.set("shown", target != "")
     _step_death_drop(delta)
     terrain.step_contraction(delta, player.global_position)
     tissue_tools.step_charge(delta, hand_actions.charging())
@@ -1242,7 +1249,8 @@ func _pick() -> void:
         if progression.teeth_in_hand > 0: put_teeth_back()
         else: scoop_teeth()
     elif target == "vent" and vent.is_open:
-        if not vent.offers.is_empty(): take_vent_offer()
+        if progression.teeth_in_hand > 0: place_teeth_at_vent()
+        elif not vent.offers.is_empty(): take_vent_offer()
         else: reach_into_vent()
 
 func mirror_point() -> Vector3:
@@ -1377,7 +1385,8 @@ func is_seated() -> bool:
     return _seated
 
 func _process_seated() -> void:
-    for action in ["fp_pick", "fp_vomit", "fp_interact", "ui_cancel", "fdk_eat"]:
+    for action in ["fp_pick", "fp_vomit", "fp_interact", "ui_cancel", "fdk_eat",
+        "fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right", "fdk_jump"]:
         if Input.is_action_just_pressed(action):
             seated_action(action)
             return
@@ -1389,7 +1398,7 @@ func seated_action(action: String) -> void:
             pull_lever()
         "fp_vomit":
             request_vomit()
-        "fp_interact", "ui_cancel", "fdk_eat":
+        "fp_interact", "ui_cancel", "fdk_eat", "fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right", "fdk_jump":
             stand_up()
 
 # --- title screen, pause, settings ----------------------------------------------
@@ -1851,14 +1860,15 @@ func take_canary() -> bool:
     has_canary = true
     return true
 
-# --- W03 canary pull: lie down, reach into the hole, pocket one bird --------
-const CANARY_PULL_TIME := 1.6
+# --- Canary pull: lie prone, fish out one bird, tuck into existing briefs ---
+const CANARY_PULL_TIME := FPCanaryPull.DURATION
 ## -1 = not pulling; otherwise seconds into the pull.
 var canary_pull_t: float = -1.0
 var interact_ring: Control
 ## W27 wordless danger (bruised hands, crush squeeze); fp_danger_show.gd.
 var danger_show = null
 var _pull_eye_y: float = 0.0
+var canary_pull: FPCanaryPull
 
 func is_pulling_canary() -> bool:
     return canary_pull_t >= 0.0
@@ -1868,26 +1878,18 @@ func begin_canary_pull() -> bool:
         return false
     canary_pull_t = 0.0
     _pull_eye_y = player.camera_pivot.position.y
+    canary_pull = FPCanaryPull.new(self)
     return true
 
-## Drives the prone pose: the eye sinks to the floor and tilts at the hole,
-## the canary is pocketed at the bottom of the reach, then the player gets up.
+## Physical prone capsule, one searching arm, then a held bird and briefs tuck.
 func _step_canary_pull(delta: float) -> void:
     if not is_pulling_canary():
         return
     canary_pull_t += delta
-    var k := clampf(canary_pull_t / CANARY_PULL_TIME, 0.0, 1.0)
-    var down := sin(k * PI) # 0 -> 1 (prone) -> 0
-    var low_eye_y: float = player.get_feet_position().y - player.global_position.y + 0.18
-    player.camera_pivot.position.y = lerpf(_pull_eye_y, low_eye_y, down)
-    var a := _aim_pitch_at(canary_hole_point())
-    player.camera_pivot.rotation.x = lerpf(player.camera_pivot.rotation.x, a, down * 0.5)
-    hands_rig.set_carry(down * 0.6) # both hands reach forward into the hole
-    if k >= 0.5 and not has_canary:
-        take_canary()
-    if k >= 1.0:
-        player.camera_pivot.position.y = _pull_eye_y
+    if canary_pull.step(delta):
         canary_pull_t = -1.0
+        canary_pull = null
+        mirror_view._sync_body_posture()
 
 func _aim_pitch_at(p: Vector3) -> float:
     var eye: Vector3 = player.camera_pivot.global_position
@@ -2287,6 +2289,7 @@ func serialize() -> Dictionary:
         "taken_tumor_spots": taken_tumor_spots.duplicate(),
         "player_position": [player.global_position.x, player.global_position.y, player.global_position.z],
         "drawings": vent.drawings.duplicate(),
+        "vent_progress": vent.serialize_progress(),
     }
 
 func deserialize(data: Dictionary) -> void:
@@ -2343,6 +2346,7 @@ func deserialize(data: Dictionary) -> void:
     if v < 5 and terrain.density_at(player.global_position) >= terrain_config.iso_level:
         player.global_position = START_POS
     _restore_drawings(data.get("drawings", []) as Array)
+    vent.restore_progress(data.get("vent_progress", {}), progression.has_belt)
 
 ## Crayon tumor drawings come back on the wall in the order they were given.
 func _restore_drawings(kinds: Array) -> void:

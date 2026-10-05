@@ -69,7 +69,7 @@ func setup(main: Node3D) -> void:
 	m.chewer.released.connect(r2.on_released)
 	m.player.footstep_bob.connect(r2.apply_bob)
 	m.chewer.cell_torn.connect(_on_torn)
-	# waist: belt with sprays + canary pocket, tumor bag on the left hip
+	# waist: belt with sprays + canary in briefs, tumor bag on the left hip
 	belt = BeltScene.instantiate()
 	belt.spray_cast_shadows = false
 	belt.name = "Belt"
@@ -299,3 +299,7 @@ func _sync_belt_posture(_delta: float) -> void:
 	# fixed to the body during WASD instead of acquiring their own velocity.
 	belt.position = Vector3(0.0, 0.05 - 0.48 * crouch, 0.02)
 	belt.rotation = Vector3.ZERO
+	if m.is_pulling_canary() and m.canary_pull != null:
+		var prone: float = m.canary_pull.prone()
+		belt.position = belt.position.lerp(Vector3(0, -m.player.config.stand_height * 0.5 + 0.22, 0.52), prone)
+		belt.rotation.x = -PI * 0.5 * prone

@@ -179,7 +179,7 @@ func test_f_and_fixture_inputs() -> void:
 	await press("fp_interact")
 	check(m.is_pulling_canary(), "정상 F 입력이 기존 카나리아 꺼내기를 시작한다")
 	await shot("canary-pull-start")
-	await frames(105)
+	await frames(ceili(FPCanaryPull.DURATION * 60.0) + 6)
 	check(m.has_canary, "기존 꺼내기 시간 뒤 실제 새를 소지한다")
 	check(probe.peak <= eye_before + 0.001, "실제 웅크린 카나리아 꺼내기 중 머리가 위로 튀지 않는다")
 	check(probe.low < eye_before - 0.3, "기존 낮은 꺼내기 모션은 실제 발 기준으로 눈을 낮춘다")

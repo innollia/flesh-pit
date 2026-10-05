@@ -112,6 +112,7 @@ var _offer_root: Node3D
 var art: Node3D
 
 var _met: bool = false
+var _first_flush_heard: bool = false
 var _chain: Array[String] = []
 var _chain_step: int = 0
 var _nag_t: float = 0.0
@@ -237,13 +238,18 @@ func _wants_teeth() -> bool:
 # --- flush and opening --------------------------------------------------------
 
 func on_flush() -> void:
+    # Opening the grate and hearing the first flush are distinct first events.
+    # Repeated flushing must not restart the introduction while it is playing.
+    if _first_flush_heard and _chain_first and not is_open and _chain_step < _chain.size():
+        return
     _since_flush = 0.0
     _nag_t = 0.0
     _chain_step = 0
-    _chain_first = not _met
+    _chain_first = not _met and not _first_flush_heard
     if final_trade:
         _chain = []
-    elif not _met:
+    elif _chain_first:
+        _first_flush_heard = true
         _chain = FIRST_CHAIN.duplicate()
     elif shell >= 2:
         _chain = [_ev("겉껍질_물내림", "surface.flush")] as Array[String]
@@ -341,6 +347,18 @@ func _empty_open() -> void:
         _say(_pick(UNAWARE))
     else:
         _say(_pick(AWARE))
+
+## Conversation milestones survive Continue; transient offers do not become payments.
+func serialize_progress() -> Dictionary:
+    return {"met": _met, "first_flush_heard": _first_flush_heard, "paid_ever": _paid_ever}
+
+func restore_progress(data: Dictionary, has_trade_belt: bool) -> void:
+    _met = bool(data.get("met", has_trade_belt))
+    _paid_ever = bool(data.get("paid_ever", has_trade_belt))
+    _first_flush_heard = bool(data.get("first_flush_heard", _met or _paid_ever))
+    _chain.clear()
+    _chain_step = 0
+    _chain_first = false
 
 func close() -> void:
     var was_open := is_open

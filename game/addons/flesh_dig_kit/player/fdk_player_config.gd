@@ -14,6 +14,7 @@ extends Resource
 @export var invert_y: bool = false ## flip vertical look (mouse, keys, stick)
 @export var keyboard_look_speed: float = 2.0 ## radians/sec, for keyboard-only look (arrow keys)
 @export var climb_speed: float = 2.5 ## vertical speed while digging up/down against a wall
+@export var climb_up_speed: float = 0.0 ## positive override for ascent; zero uses climb_speed
 @export var bob_frequency: float = 6.0
 @export var bob_amplitude: float = 0.045
 @export var head_bob_enabled: bool = true ## camera follows the bob (the signal fires either way)

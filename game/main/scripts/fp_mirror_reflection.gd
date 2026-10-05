@@ -50,6 +50,8 @@ var _blood: ShaderMaterial
 var _held := {}
 var _mouth_flesh: MeshInstance3D
 var _carry_flesh: MeshInstance3D
+var _briefs: MeshInstance3D
+var _brief_meshes: Array[ArrayMesh] = []
 
 func attach(mirror_art: Node3D, p: Node3D, eye_cam: Camera3D, progression: FPProgression, shared_body: FPMirrorBody = null) -> void:
 	art = mirror_art
@@ -185,6 +187,22 @@ func refresh() -> void:
 	FPMirror.tag_layer(body, MIRROR_BODY_LAYER)
 
 func _build_live_details() -> void:
+	_briefs = body._parts["legs"].get_node("Briefs")
+	_brief_meshes.append(_briefs.mesh)
+	var swollen := ArrayMesh.new()
+	for surface in range(_briefs.mesh.get_surface_count()):
+		var arrays: Array = _briefs.mesh.surface_get_arrays(surface)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for index in range(vertices.size()):
+			var v := vertices[index]
+			if v.z > 0.04:
+				var lateral := 1.0 - smoothstep(0.02, 0.10, absf(v.x + 0.07))
+				var vertical := 1.0 - smoothstep(0.025, 0.08, absf(v.y + 0.045))
+				v.z += 0.035 * lateral * vertical
+				vertices[index] = v
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		swollen.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_brief_meshes.append(swollen)
 	# Reflection uses depth-tested blood so it cannot paint through the body.
 	_blood = ShaderMaterial.new()
 	var shader := Shader.new()
@@ -217,6 +235,7 @@ func _build_live_details() -> void:
 
 func _sync_live_details() -> void:
 	var main := player.get_parent()
+	_briefs.mesh = _brief_meshes[1 if main.has_canary else 0]
 	FPHandBlood.set_amount(_blood, float(main.get("hand_blood")))
 	var scenes := {"knife": "fp_knife", "blender": "fp_blender", "big_saw": "fp_big_saw", "tumor": "fp_tumor", "scissors": "fp_scissors"}
 	for id in scenes:
@@ -293,9 +312,17 @@ func _sync_body_posture() -> void:
 		pitch = pivot.rotation.x
 	var walk_phase := float(player.get("_bob_time")) if player.get("_bob_time") != null else 0.0
 	var walk_weight := float(player.get("_bob_weight")) if player.get("_bob_weight") != null else 0.0
-	body.position.y = feet_y
+	body.transform = Transform3D(Basis().scaled(Vector3(1, 1, -1)), Vector3(0, feet_y, 0))
+	var main := player.get_parent()
+	if main.is_pulling_canary() and main.canary_pull != null:
+		var prone: float = main.canary_pull.prone()
+		body.basis = Basis(Vector3.RIGHT, -PI * 0.5 * prone) * body.basis
+		body.position += Vector3(0, 0.22 * prone, 1.2 * prone)
+		crouch *= 1.0 - prone
 	if body.has_method("set_posture"):
 		body.call("set_posture", crouch, walk_phase, walk_weight, pitch)
+	if main.is_pulling_canary() and main.canary_pull != null:
+		main.canary_pull.pose_reflection(body)
 
 ## Where a world point appears on screen in the mirror (its image across
 ## the glass plane, projected by the eye camera).

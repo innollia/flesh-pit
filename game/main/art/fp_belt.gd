@@ -5,7 +5,7 @@ extends Node3D
 ## trousers, and round it a leather belt with a
 ## buckle, up to 3 spray cans in clip holsters on the right hip (cheap can =
 ## white/yellow, expensive = black/red), and the canary riding in the left
-## front trouser POCKET (docs/spec/07-danger-navigation.md: pocket, no cage), head peeking out.
+## side of the existing briefs, with its head peeking above the cloth.
 ## Origin = centre of the waist at belt height; the player faces -Z.
 ## Public: set_spray_count(cheap, expensive) (total capped at 3),
 ## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool),
@@ -42,6 +42,9 @@ var _supplies := {}
 var _spray_counts := Vector2i(-1, -1)
 var _canary: Node3D
 var _canary_head: Node3D
+var _briefs: MeshInstance3D
+var _brief_meshes: Array[ArrayMesh] = []
+var _has_bird := false
 var _scared := false
 var _time := 0.0
 const HOOK_ANG := [-1.0, -0.2, 1.0] ## hooks round the front of the belt (rad from the front centre)
@@ -66,6 +69,23 @@ func _ready() -> void:
         # short brief legs round the top of the thighs (no trouser legs)
         K.tube(st, Transform3D.IDENTITY, [Vector3(sx * 0.1, -0.12, -0.02), Vector3(sx * 0.105, -0.2, -0.035)], [0.1, 0.092], 8, [cloth_d, cloth_d])
     var trousers_mi := K.add_mesh(self, "Trousers", K.finish(st, 5.0), K.mat("tex_door_paint_128.png", 0.1, true))
+    _briefs = trousers_mi
+    _brief_meshes.append(trousers_mi.mesh)
+    # Stretch the existing cloth vertices; no sewn-on pocket or separate blob.
+    var swollen := ArrayMesh.new()
+    for surface in range(trousers_mi.mesh.get_surface_count()):
+        var arrays: Array = trousers_mi.mesh.surface_get_arrays(surface)
+        var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+        for index in range(vertices.size()):
+            var v := vertices[index]
+            if v.z < -0.06:
+                var lateral := 1.0 - smoothstep(0.02, 0.11, absf(v.x + 0.07))
+                var vertical := 1.0 - smoothstep(0.025, 0.1, absf(v.y + 0.075))
+                v.z -= 0.04 * lateral * vertical
+                vertices[index] = v
+        arrays[Mesh.ARRAY_VERTEX] = vertices
+        swollen.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+    _brief_meshes.append(swollen)
     trousers_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     # mut6: bare body in briefs; 7123bd7 had put work trousers and a
     # khaki shirt on it by itself. The node keeps its name for the wiring.
@@ -122,14 +142,9 @@ func _ready() -> void:
     # belly7: the canary is tucked into the front waistband of the briefs,
     # below the navel to one side: body squeezed under the elastic, head
     # poking out just past the belt so it shows when looking down
-    # belly8: out in front of the band (not behind it) and bigger, so the
-    # yellow head and beak read clearly from above
-    _canary = K.pivot(self, "Canary", Vector3(-0.07 * wx / RX, -0.085, -wzf - 0.005))
+    # Body stays inside the cloth; only the head peeks above its existing seam.
+    _canary = K.pivot(self, "Canary", Vector3(-0.07 * wx / RX, -0.015, -wzf - 0.005))
     _canary.scale = Vector3.ONE * 1.4
-    # the elastic strap pinning the bird's body against the belly
-    var st2 := K.begin()
-    K.rbox(st2, K.T(Vector3(0, -0.012, -0.004)), Vector3(0.03, 0.006, 0.004), 0.002, Color(0.9, 0.91, 0.92))
-    K.add_mesh(_canary, "Waistband", K.finish(st2), K.mat("tex_door_paint_64.png", 0.1, true))
     _build_canary()
     set_spray_count(2, 1)
     # actual possession is synced in afterward (fp_art_hookup.gd for the
@@ -152,9 +167,6 @@ func _build_canary() -> void:
     K.blob(st, Transform3D.IDENTITY, Vector3(0, -0.01, 0), Vector3(0.022, 0.02, 0.02), 0.1, 3, yellow, Color(0.9, 0.72, 0.1))
     var bird_body := K.add_mesh(_canary, "Body", K.finish(st), K.mat("tex_skin_64.png", 0.1, true))
     bird_body.visible = false
-    var cloth := K.begin()
-    K.blob(cloth, Transform3D.IDENTITY, Vector3(0, -0.026, -0.014), Vector3(0.038, 0.045, 0.028), 0.08, 4, Color(0.82, 0.84, 0.86), Color(0.66, 0.68, 0.72))
-    K.add_mesh(_canary, "BriefBulge", K.finish(cloth), K.mat("tex_door_paint_128.png", 0.1, true))
     _canary_head = K.pivot(_canary, "Head", Vector3(0, 0.022, -0.004))
     st = K.begin()
     K.blob(st, Transform3D.IDENTITY, Vector3.ZERO, Vector3(0.016, 0.015, 0.016), 0.1, 5, yellow, Color(1.0, 0.9, 0.35))
@@ -395,6 +407,9 @@ func _body_layer(node: Node) -> void:
 
 func set_canary(present: bool) -> void:
     _canary.visible = present
+    if _has_bird != present and _briefs != null:
+        _briefs.mesh = _brief_meshes[1 if present else 0]
+    _has_bird = present
 
 func canary_look(yaw_deg: float) -> void:
     _canary_head.rotation_degrees.y = yaw_deg

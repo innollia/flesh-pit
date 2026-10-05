@@ -131,10 +131,12 @@ func eye_pivot_y(crouched: bool) -> float:
 
 ## Returns feet position in world space.
 func get_feet_position() -> Vector3:
-	var offset := 0.0
 	if collision_shape != null and collision_shape.shape is CapsuleShape3D:
-		offset = collision_shape.position.y - (collision_shape.shape as CapsuleShape3D).height * 0.5
-	return global_transform * Vector3(0.0, offset, 0.0)
+		var capsule := collision_shape.shape as CapsuleShape3D
+		var axis := collision_shape.global_basis.y.normalized()
+		var extent := capsule.radius + (capsule.height * 0.5 - capsule.radius) * absf(axis.y)
+		return collision_shape.global_position - Vector3.UP * extent
+	return global_position
 
 func _process_move_and_climb(delta: float) -> void:
 	var input_dir := Vector2.ZERO
@@ -166,6 +168,8 @@ func _process_move_and_climb(delta: float) -> void:
 
 	if _climb_input != 0.0:
 		velocity.y = _climb_input * config.climb_speed
+		if _climb_input > 0.0 and config.climb_up_speed > 0.0:
+			velocity.y = config.climb_up_speed
 	elif not is_on_floor():
 		velocity.y = -config.climb_speed
 	else:

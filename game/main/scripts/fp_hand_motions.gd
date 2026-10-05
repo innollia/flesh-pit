@@ -394,6 +394,8 @@ func _apply_cams(u: float, reset: bool = false) -> void:
 ## `p` = the rig's own target pose for one hand; returns it blended toward
 ## the motion pose. `rig` tells the main hands from the bowl-rim hands.
 func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
+    if m.is_pulling_canary() and m.canary_pull != null:
+        return m.canary_pull.hand_pose(rig, side, p)
     if rig == rim_rig:
         return _rim_pose(side, p)
     var w := weight()

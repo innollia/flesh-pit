@@ -50,3 +50,5 @@ node --test game/tests/run_godot_checks.cjs
 추가 프로그램은 userdata가 flesh-pit-restoration- 이름의 격리 환경인지 확인하며, Main을 트리에 넣기 전에 별도 저장 경로를 지정한다. 역사 파일 복사본은 runner의 Main 초기 설정 뒤 실제 복원 직전에 경로를 다시 지정한다. 정상 사용자 저장이나 settings를 읽지 않는다. 자료 출처·바이트 수·SHA-256은 tests/fixtures/restoration_historical_progress_provenance.json에 있다.
 
 카메라 가드의 headless 검사는 process_frame 신호 직후가 아닌 정상 Main/손 노드 이후의 읽기 전용 관찰로 판정한다. 관찰 노드는 가드를 추가 호출하거나 카메라를 쓰지 않는다. 혼합 셀의 max8 밀도는 실제 점의 고체 판정이 아니므로, 통로 검사는 실제 현재 면의 안팎과 전체 캡슐을 확인하고 독립 8모서리 보간값을 진단 기록에 남긴다.
+
+기본 `run_godot_checks.cjs`에는 `run_live_interactions_tests.gd`의 실제 키 입력 회귀가 포함된다. 단독 원본 스크립트 실행은 restoration userdata를 요구한다. runner가 생성한 격리 사본은 Main을 추가하기 전에 별도 저장 경로를 지정하므로 일반 프로젝트에서 CPU 검사할 때도 정상 슬롯을 사용하지 않는다. GUI에서 같은 사본을 실행하면 `.dryforge/evidence/live-interactions/`에 V 안내·NPC 지급·카나리아 단계와 실제 엎드린 몸을 캡처한다.

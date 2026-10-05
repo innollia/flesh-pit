@@ -9,7 +9,7 @@ const suites = process.env.FP_CHECK_SUITES
   ? process.env.FP_CHECK_SUITES.split(',')
   : ['run_tests.gd', 'run_tissue_tools_tests.gd', 'run_save_load.gd',
     'run_oct02_tests.gd', 'run_motion_tests.gd', 'run_watch_door_restore_tests.gd',
-    'run_spray_attachment_tests.gd'];
+    'run_spray_attachment_tests.gd', 'run_live_interactions_tests.gd'];
 const evidence = path.join(root, '.dryforge/evidence/checks');
 fs.mkdirSync(evidence, { recursive: true });
 for (const suite of suites) {
