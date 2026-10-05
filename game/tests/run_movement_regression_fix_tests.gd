@@ -155,7 +155,64 @@ func run() -> void:
 	var relieved: Dictionary = m._body_clearance.assess(m.player,field)
 	check(not relieved.overlap and not relieved.trapped, "normal Main relief and movement filter clear short intrusion together")
 	check(m.player.global_position.z > prior.z and m.player.global_position.distance_to(prior)<0.25, "short escape remains bounded physical retreat")
+	await diagonal_pending_case()
 	print("Movement boundary: ", passed, " passed, ", failed, " failed")
 	m.queue_free()
 	await process_frame
 	quit(1 if failed else 0)
+
+func diagonal_pending_case() -> void:
+	var old_field: Node = m.terrain
+	var field := FDKTerrainField.new()
+	field.config = FDKTerrainConfig.new()
+	field.config.chunk_size = 8
+	field.config.facet_jitter = 0.0
+	field.density_sampler = func(_p): return 0.0
+	field.tissue_sampler = func(_p): return 0
+	root.add_child(field)
+	field.generate_region(AABB(Vector3(6,2,6),Vector3(6,6,6)))
+	field.remesh_all()
+	m.terrain = field
+	m.chewer.terrain = field
+	old_field.queue_free()
+	# Let the normal crouch-release use the new open ceiling first.
+	m.player.global_position = Vector3(8,5,8)
+	await frames(2)
+	m.player.global_position = Vector3(8,5,8)
+	m.player.velocity = Vector3.ZERO
+	for y in range(7,14): field._add_corner_global(Vector3i(18,y,18),1.0)
+	var desired := Vector3(2,0,2)
+	check(not m.player.test_move(m.player.global_transform,desired), "pending diagonal corner has no published physics collider yet")
+	var permitted: Vector3 = m._filter_terrain_motion(desired)
+	var shape := m.player.collision_shape.shape as CapsuleShape3D
+	check(not m.player._is_crouching and is_equal_approx(shape.height,m.player.config.stand_height), "diagonal fixture uses the actual configured standing capsule")
+	var xf: Transform3D = m.player.collision_shape.global_transform
+	var half_axis: float = shape.height*0.5-shape.radius
+	var a: Vector3 = xf.origin-Vector3.UP*half_axis
+	var b: Vector3 = xf.origin+Vector3.UP*half_axis
+	var straight_clear: bool = m._body_clearance._sweep_clear(a,b,permitted,shape.radius-0.002)
+	print("DIAGONAL requested=",desired," permitted=",permitted," actual_straight_clear=",straight_clear)
+	check(not m._body_clearance._sweep_clear(a,b,desired,shape.radius-0.002), "actual current capsule diagonal intersects the pending corner")
+	check(straight_clear, "returned motion validates the same straight capsule sweep used by normal physics")
+	check(permitted.length()>0.1, "blocked diagonal retains a verified ordinary axis slide")
+	# A fast configured player makes the disputed sweep observable in one
+	# real physics tick. It still uses normal Main and move_and_slide; the
+	# capsule is the unchanged configured standing body, not a point probe.
+	var old_speed: float = m.player.config.walk_speed
+	m.player.config.walk_speed = 170.0
+	m.player._yaw = 0.0
+	m.player.rotation.y = 0.0
+	var prior: Vector3 = m.player.global_position
+	key("fdk_move_back",true)
+	key("fdk_move_right",true)
+	await physics_frame
+	await physics_frame
+	key("fdk_move_back",false)
+	key("fdk_move_right",false)
+	m.player.config.walk_speed = old_speed
+	var actual: Vector3 = m.player.global_position-prior
+	# Both real tick motion and the returned callback motion have one safe
+	# physical route; no centre-only / endpoint-only evidence substitutes it.
+	print("DIAGONAL normal physics actual=",actual)
+	check(actual.length()>0.1, "normal Main physics makes progress after diagonal rejection")
+	check(m._body_clearance._sweep_clear(a,b,actual,shape.radius-0.002) and not m._body_clearance._touches_surface(a+actual,b+actual,shape.radius-0.002), "normal Main diagonal result keeps the whole capsule outside actual corner")

@@ -128,6 +128,15 @@ func constrain_motion(body: CharacterBody3D, field: FDKTerrainField, motion: Vec
 			else:
 				high = fraction
 		allowed += axis * low
+	# Axis candidates above may describe an L-shaped route. move_and_slide()
+	# receives one combined velocity, so validate its actual straight sweep.
+	# Otherwise return only a directly verified axis from the same origin.
+	if not _motion_clear(xf.origin, a, b, Vector3.ZERO, allowed, skin_radius):
+		var slide := Vector3.ZERO
+		for axis in [Vector3(allowed.x,0,0), Vector3(0,allowed.y,0), Vector3(0,0,allowed.z)]:
+			if axis.length_squared() <= slide.length_squared(): continue
+			if _motion_clear(xf.origin, a, b, Vector3.ZERO, axis, skin_radius): slide = axis
+		allowed = slide
 	last_motion_us = Time.get_ticks_usec() - started
 	last_motion_corner_reads = last_corner_reads
 	return allowed
