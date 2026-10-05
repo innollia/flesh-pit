@@ -6,6 +6,8 @@ var failed := 0
 var torn: Array[Vector3] = []
 var destination: String
 var isolated_save_path: String
+var surface_probe: FPBodyClearance
+var capsule_overlap_seen := false
 
 func _init() -> void:
 	root.size = Vector2i(640, 360)
@@ -155,18 +157,25 @@ func run() -> void:
 	await shot("phase4_during_regeneration")
 
 	# Movement: Real W input to advance toward excavated passage
+	surface_probe = FPBodyClearance.new()
+	await passage_surface_controls()
 	var z_start: float = m.player.global_position.z
 	send_key(KEY_W, true)
-
 	var penetrated := false
 	for frame in range(60):
 		await physics_frame
 		if frame % 5 == 0:
 			await shot("walking_frame_%02d" % frame)
-		if m.terrain.density_at(m.player.global_position) >= m.terrain_config.iso_level:
-			penetrated = true
-			break
-		if m.terrain.density_at(m.player.camera.global_position) >= m.terrain_config.iso_level:
+		var lo: Vector3 = m.player.global_position.min(m.player.camera.global_position) - Vector3.ONE * 1.5
+		var hi: Vector3 = m.player.global_position.max(m.player.camera.global_position) + Vector3.ONE * 1.5
+		surface_probe._prepare_surface(m.terrain, lo, hi)
+		var body_inside: bool = surface_probe._point_in_solid(m.player.global_position)
+		var camera_inside: bool = surface_probe._point_in_solid(m.player.camera.global_position)
+		var capsule: Dictionary = FPBodyClearance.new().assess(m.player, m.terrain)
+		capsule_overlap_seen = capsule_overlap_seen or bool(capsule.overlap)
+		if frame % 5 == 0 or m.terrain.density_at(m.player.camera.global_position) >= m.terrain_config.iso_level:
+			print("PASSAGE_CURRENT frame=",frame," body=",m.player.global_position," camera=",m.player.camera.global_position," body_inside=",body_inside," camera_inside=",camera_inside," capsule_overlap=",capsule.overlap," conservative_camera_cell=",m.terrain.density_at(m.player.camera.global_position)," independent_trilinear=",continuous_density(m.player.camera.global_position))
+		if body_inside or camera_inside:
 			penetrated = true
 			break
 
@@ -175,6 +184,7 @@ func run() -> void:
 	await physics_frame
 
 	check(not penetrated, "no collision penetration into solid flesh while walking forward")
+	check(not capsule_overlap_seen, "actual whole capsule stays outside current terrain surface while walking")
 	check(m.player.global_position.z > z_start + 0.05, "player advanced forward along excavated direction")
 	check(m.player.global_position.y > 0.0, "player grounded without falling through floor")
 
@@ -210,3 +220,57 @@ func run() -> void:
 	m.queue_free()
 	await process_frame
 	quit(1 if failed else 0)
+
+func continuous_density(p: Vector3) -> float:
+	# Independent diagnostic only. Surface-net triangles remain authoritative
+	# in mixed cells; max-of-eight is a conservative cell query, not a point.
+	var scaled: Vector3 = p / m.terrain_config.cell_size
+	var base := Vector3i(scaled.floor())
+	var weight: Vector3 = scaled - Vector3(base)
+	var result := 0.0
+	for z in range(2):
+		for y in range(2):
+			for x in range(2):
+				var w: float = (weight.x if x else 1.0-weight.x) * (weight.y if y else 1.0-weight.y) * (weight.z if z else 1.0-weight.z)
+				result += m.terrain.corner_density_global(base+Vector3i(x,y,z)) * w
+	return result
+
+func passage_surface_controls() -> void:
+	var empty := Vector3(0,1.2,0)
+	surface_probe._prepare_surface(m.terrain,empty-Vector3.ONE,empty+Vector3.ONE)
+	check(not surface_probe._point_in_solid(empty) and continuous_density(empty) < m.terrain_config.iso_level,"actual room empty-point negative control")
+	var solid := Vector3.ZERO
+	var found := false
+	for x in range(3,12):
+		for y in range(0,6):
+			for z in range(3,12):
+				var point: Vector3 = (Vector3(x,y,z)+Vector3.ONE*0.5)*m.terrain_config.cell_size
+				var base := Vector3i(x,y,z)
+				var low := INF
+				for dz in range(2):
+					for dy in range(2):
+						for dx in range(2): low=minf(low,m.terrain.corner_density_global(base+Vector3i(dx,dy,dz)))
+				if low >= m.terrain_config.iso_level:
+					solid=point
+					found=true
+					break
+			if found: break
+		if found: break
+	check(found,"actual fully solid eight-corner positive fixture exists")
+	if found:
+		surface_probe._prepare_surface(m.terrain,solid-Vector3.ONE,solid+Vector3.ONE)
+		check(surface_probe._point_in_solid(solid) and continuous_density(solid) >= m.terrain_config.iso_level,"actual full-solid inside positive control is detected")
+	var eye: Vector3 = m.player.camera.global_position
+	surface_probe._prepare_surface(m.terrain,eye-Vector3.ONE*2.0,eye+Vector3.ONE*2.0)
+	var faces: PackedVector3Array = surface_probe._faces
+	check(faces.size() >= 3,"actual current mixed-cell surface triangles exist")
+	if faces.size() >= 3:
+		var a := faces[0]
+		var b := faces[1]
+		var c := faces[2]
+		var at := (a+b+c)/3.0
+		var outward := -(b-a).cross(c-a).normalized()
+		var inside := at-outward*0.02
+		var outside := at+outward*0.02
+		check(Geometry3D.segment_intersects_triangle(inside,outside,a,b,c)!=null,"known actual triangle crosses oriented inside/outside control segment")
+		check(surface_probe._point_in_solid(inside) and not surface_probe._point_in_solid(outside),"actual oriented mixed-face inside/outside controls agree")

@@ -24,8 +24,8 @@ const TEETH_PER_FLESH := 0.08
 const EXPEDITION_TEETH := 8
 ## One handful scooped from the tank and placed at the vent.
 const HANDFUL_TEETH := 4
-## 04-economy 2: hairs per settled flesh (after the shell multiplier).
-## Fractions carry over to the next settlement.
+## 실제 섭취한 살에 껍질 배율을 적용해 털을 즉시 지급한다.
+## 한 가닥 미만의 잔량은 다음 섭취로 넘긴다.
 const FLESH_PER_BIOME_HAIR := 50.0
 const FLESH_PER_COMMON_HAIR := 150.0
 
@@ -111,12 +111,11 @@ var has_belt: bool = false
 var tumor_mutations: Array[String] = []
 var deepest_shell: int = 0
 var tumors_eaten: int = 0
-## Hairs for flesh currently in the stomach: they only grow on the arm when
-## the flesh is vomited into the toilet (or a rest point).
-## Keys: COMMON + each biome. Values: weighted flesh units (unit x shell
-## multiplier) still in the stomach; they turn into hairs on settling.
+## 구형 저장의 미지급 가중 살 단위를 읽는 호환 필드다.
+## COMMON과 바이옴별 값은 이미 껍질 배율이 적용됐으며 한 번만 이전한다.
+## 새 섭취는 위장·정산을 기다리지 않고 털과 잔량에 바로 반영한다.
 var pending_hairs: Dictionary = {}
-## Leftover weighted flesh below one hair, carried to the next settlement.
+## 한 가닥 미만의 가중 섭취량을 다음 섭취에 합산한다.
 var hair_carry: Dictionary = {}
 ## Junk the vent being pushed out and the player took (no use).
 var junk_taken: int = 0

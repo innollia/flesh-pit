@@ -1,5 +1,20 @@
 extends SceneTree
 
+# Observation only: sample after the normal Main and hand process writers.
+# This node never calls the guard and never writes camera or player transforms.
+class GuardObservation:
+    extends Node
+    var game: Node3D
+    var actual := Vector3.ZERO
+    var desired := Vector3.ZERO
+    var expected := Vector3.ZERO
+    var samples := 0
+    func _process(_delta: float) -> void:
+        var camera: Camera3D = game.player.camera
+        desired = game.player.camera_pivot.to_global(game.hand_motions._cam_rest_offset())
+        expected = game.terrain.constrain_eye(desired, game.player.global_position, camera.near)
+        actual = camera.global_position
+        samples += 1
 # Exercise the real main loop and physical mouse input, including its hand
 # animation and world updates. Save isolation is supplied by the check runner.
 var m: Node3D
@@ -10,6 +25,7 @@ var center := Vector3(8, 5, 8)
 var grabs := 0
 var progress := 0
 var releases := 0
+var fixed_down_support: StaticBody3D
 
 func _init() -> void:
     Engine.max_fps = 60
@@ -39,6 +55,7 @@ func aim(direction: Vector3) -> void:
 
 func fixture(direction: Vector3, radius := 1.2, tissue := 0) -> void:
     mouse(false)
+    if is_instance_valid(fixed_down_support): fixed_down_support.queue_free()
     m._crush_t = 0.0
     await create_timer(0.5).timeout
     m.terrain.fill_box_uniform(AABB(center - Vector3.ONE * 3, Vector3.ONE * 6), 1.0, tissue)
@@ -318,31 +335,56 @@ func run() -> void:
     mouse(false)
     check(torn.size() == 1 and is_equal_approx(m.carried_flesh, m.stomach_config.flesh_per_cell) and m.stomach.fill == 0, "carry receives exactly the actually torn cell")
     m.toggle_carry()
-    await fixture(Vector3.RIGHT, 1.2)
-    # A constrained eye must neither move the player nor become an animation
-    # base offset after changing the pivot's orientation and returning.
+    # Camera guard is an independent initial fixture: previous movement
+    # relief directions must not select its settling position.
+    m.queue_free()
+    await process_frame
+    m = load("res://main/scenes/main.tscn").instantiate()
+    m.rest_seed = 1337
+    root.add_child(m)
+    for frame in range(6): await physics_frame
+    m.finish_opening()
+    # Initial actual terrain chamber gives the approved DOWN idle head bow
+    # a real surface contact. Normal physics settles the capsule first.
+    mouse(false)
+    if is_instance_valid(fixed_down_support): fixed_down_support.queue_free()
+    m.terrain_config.facet_jitter = 0.0
+    m.terrain.fill_box_uniform(AABB(Vector3(6, 2, 6), Vector3(4, 5, 4)), 1.0, 0)
+    m.terrain.fill_box_uniform(AABB(Vector3(7.75, 4, 7.75), Vector3(0.5, 1, 0.5)), 0.0, 0)
+    m.terrain.remesh_all()
+    m.player.global_position = Vector3(8, 4.63, 8)
+    m.player.velocity = Vector3.ZERO
+    m._crush_t = 0.0
+    aim(Vector3.DOWN)
+    var observation := GuardObservation.new()
+    observation.game = m
+    observation.process_priority = 1000
+    m.add_child(observation)
+    await create_timer(0.4).timeout
     var body_before: Vector3 = m.player.global_position
-    m.player.camera.position = Vector3.RIGHT * 1.3
-    await create_timer(0.05).timeout
-    var expected: Vector3 = m.terrain.constrain_eye(m.player.camera_pivot.to_global(Vector3.RIGHT * 1.3), m.player.global_position, m.player.camera.near)
-    check(m.player.camera.global_position.distance_to(expected) < 0.003, "actual main applies terrain eye guard headless (actual %s, expected %s, local %s, delta %s)" % [m.player.camera.global_position, expected, m.player.camera.position, m._terrain_eye_delta])
+    var base_before: Vector3 = m.hand_motions._cam_rest_offset()
+    await create_timer(0.1).timeout
+    print("GUARD_INITIAL_STATE samples=", observation.samples, " desired=", observation.desired, " expected=", observation.expected, " actual=", observation.actual, " body=", m.player.global_position, " rest=", m.hand_motions._cam_rest_offset(), " delta=", m._terrain_eye_delta, " crush=", m.crush_progress(), " pitch=", m.player._pitch)
+    check(observation.samples > 0 and observation.desired.distance_to(observation.expected) > 0.01, "actual current surface requires positive idle eye correction")
+    check(observation.actual.distance_to(observation.expected) < 0.003, "actual main applies terrain eye guard headless after normal process writers (actual %s, expected %s)" % [observation.actual, observation.expected])
     check(m.player.global_position.distance_to(body_before) < 0.01, "eye guard never relocates body")
     for i in range(20):
         aim(Vector3.FORWARD if i % 2 else Vector3.RIGHT)
         await process_frame
-    m.player.camera.position = Vector3.ZERO
-    await create_timer(0.05).timeout
-    check(m.player.camera.position.length() < 0.003, "eye guard local correction does not accumulate after pivot changes")
-    # Start and finish the existing motion while the desired eye contacts
-    # terrain. Its camera base must remain neutral throughout the transition.
-    m.player.camera.position = Vector3.RIGHT * 1.3
-    await create_timer(0.05).timeout
+    aim(Vector3.DOWN)
+    await create_timer(0.1).timeout
+    check(observation.actual.distance_to(observation.expected) < 0.003 and m.hand_motions._cam_rest_offset().distance_to(base_before) < 0.003, "eye guard local correction does not accumulate after pivot changes")
+    # Existing motion restores the approved idle base rather than storing
+    # the terrain correction in that base. Production writers remain active.
     m.hand_motions.play_vomit(false, 0.2)
     await create_timer(0.4).timeout
     m.hand_motions.cancel()
     await create_timer(0.4).timeout
-    check(m.player.camera.position.length() < 0.003, "existing vomit motion restores neutral camera without storing guard offset")
+    aim(Vector3.DOWN)
+    await create_timer(0.1).timeout
+    check(observation.actual.distance_to(observation.expected) < 0.003 and m.hand_motions._cam_rest_offset().distance_to(base_before) < 0.003, "existing vomit motion restores neutral camera without storing guard offset")
     check(m.player.global_position.distance_to(body_before) < 0.01, "motion and guard preserve the capsule position")
+    observation.queue_free()
     check(grabs > 0 and progress > 0 and releases > 0, "existing grab/progress/release signals remain active")
     print("%d passed, %d failed" % [passed, failed])
     m.queue_free()
@@ -351,11 +393,14 @@ func run() -> void:
 
 func down_reach_boundary_case() -> void:
     await fixture(Vector3.DOWN, 1.2)
+    await support_fixed_down_reach()
+    var supported_before: Vector3 = m.player.global_position
     mouse(true)
     await create_timer(2.05).timeout
     mouse(false)
     await process_frame
     await process_frame
+    check(m.player.global_position.distance_to(supported_before) < 0.02, "reach fixture normal physics preserves actual distance")
     check(torn.size() == 1, "wide downward floor stops after the only reachable tear")
     check(m.excavated_cells == 1, "wide downward floor records only one actual excavation")
     check(is_equal_approx(m.stomach.fill, m.stomach_config.flesh_per_cell), "wide downward floor never adds food for the distant next surface")
@@ -363,3 +408,26 @@ func down_reach_boundary_case() -> void:
     var beyond: Dictionary = m._published_terrain_contact(rr[0], rr[1], m.progression.reach() + m.terrain_config.cell_size)
     check(not beyond.is_empty() and rr[0].distance_to(beyond.position) > m.progression.reach(), "actual next downward surface is beyond unchanged reach")
     check(m._look_hit().is_empty() and not m.chewer.is_chewing(), "actual distant downward surface is rejected and grab stops")
+
+func support_fixed_down_reach() -> void:
+    # Initial physical fixture for the unchanged 2.5m reach boundary. The
+    # approved idle head bow changes eye height; use an absolute initial
+    # pose so prior unsupported physics frames cannot shorten the boundary.
+    # A real support beside the feet keeps physics active and leaves the
+    # down aim ray unobstructed. Separate radius1.0 cases remain unsupported.
+    m.player.global_position = center - Vector3.UP * m.player.eye_pivot_y(false) + Vector3.UP * 0.3
+    fixed_down_support = StaticBody3D.new()
+    var shape := CollisionShape3D.new()
+    var box := BoxShape3D.new()
+    box.size = Vector3(0.2, 0.1, 0.2)
+    shape.shape = box
+    fixed_down_support.add_child(shape)
+    m.add_child(fixed_down_support)
+    fixed_down_support.global_position = m.player.get_feet_position() + Vector3(0.25, -0.05, 0)
+    await physics_frame
+    await physics_frame
+    await process_frame
+    var rr: Array = m.player.get_look_ray()
+    var hit: Dictionary = ray(rr[0], rr[1], m.progression.reach() + 1.0)
+    check(m.player.is_on_floor(), "reach fixture actual support grounds normal physics")
+    check(not hit.is_empty() and hit.collider != fixed_down_support, "reach fixture support does not occlude actual flesh ray")

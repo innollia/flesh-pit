@@ -11,6 +11,7 @@ var center := Vector3(8, 5, 8)
 var grabs := 0
 var progress := 0
 var releases := 0
+var fixed_down_support: StaticBody3D
 
 func _init() -> void:
 	Engine.max_fps = 60
@@ -265,6 +266,8 @@ func run() -> void:
 	await physics_frame
 	await process_frame
 	torn.clear()
+	await support_fixed_down_reach()
+	var supported_before: Vector3 = m.player.global_position
 
 	mouse(true)
 	await create_timer(2.05).timeout
@@ -272,6 +275,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 
+	check(m.player.global_position.distance_to(supported_before) < 0.02, "reach fixture normal physics preserves actual distance")
 	check(torn.size() == 1, down_reach_label + " wide downward floor stops after only reachable tear")
 	check(m.excavated_cells == 1, down_reach_label + " excavated_cells == 1")
 	check(is_equal_approx(m.stomach.fill, m.stomach_config.flesh_per_cell), down_reach_label + " no food for out-of-reach surface")
@@ -283,6 +287,7 @@ func run() -> void:
 	# --- 6. Downward reachable consecutive case (radius 1.0 -> 2 reachable cells -> 2 tears) ---
 	var down_repeat_label := "down_reachable_consecutive"
 	mouse(false)
+	if is_instance_valid(fixed_down_support): fixed_down_support.queue_free()
 	m._crush_t = 0.0
 	await create_timer(0.2).timeout
 	m.terrain.fill_box_uniform(AABB(center - Vector3.ONE * 3, Vector3.ONE * 6), 1.0, 0)
@@ -322,3 +327,26 @@ func run() -> void:
 	m.queue_free()
 	await process_frame
 	quit(1 if failed else 0)
+
+func support_fixed_down_reach() -> void:
+	# Initial physical fixture for the unchanged 2.5m reach boundary. The
+	# approved idle head bow changes eye height; use an absolute initial
+	# pose so prior unsupported physics frames cannot shorten the boundary.
+	# A real support beside the feet keeps physics active and leaves the
+	# down aim ray unobstructed. Separate radius1.0 cases remain unsupported.
+	m.player.global_position = center - Vector3.UP * m.player.eye_pivot_y(false) + Vector3.UP * 0.3
+	fixed_down_support = StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.2, 0.1, 0.2)
+	shape.shape = box
+	fixed_down_support.add_child(shape)
+	m.add_child(fixed_down_support)
+	fixed_down_support.global_position = m.player.get_feet_position() + Vector3(0.25, -0.05, 0)
+	await physics_frame
+	await physics_frame
+	await process_frame
+	var rr: Array = m.player.get_look_ray()
+	var hit: Dictionary = ray(rr[0], rr[1], m.progression.reach() + 1.0)
+	check(m.player.is_on_floor(), "reach fixture actual support grounds normal physics")
+	check(not hit.is_empty() and hit.collider != fixed_down_support, "reach fixture support does not occlude actual flesh ray")
