@@ -18,6 +18,8 @@ var last_corner_reads := 0
 var surface_rebuilds := 0
 var surface_cache_hits := 0
 var last_assess_us := 0
+var last_motion_us := 0
+var last_motion_corner_reads := 0
 var _iso := 0.5
 var _cell_size := 0.5
 
@@ -85,6 +87,54 @@ func assess(body: CharacterBody3D, field: FDKTerrainField, preferred: Vector3 = 
 	_last_direction = Vector3.ZERO
 	last_assess_us = Time.get_ticks_usec() - started
 	return {"trapped": true, "overlap": overlaps, "motion": Vector3.ZERO, "reason": "no_capsule_path", "queries": last_direction_queries}
+
+## Normal movement uses the same actual capsule and current triangles as crush.
+## Surface-only physics has no collider inside a fully solid mass. Reject that
+## interior displacement before ordinary physics, while preserving axis sliding.
+## Already intruding bodies can still leave via assess()/relieve()'s verified
+## complete escape sweep; a short endpoint inside flesh is not an escape.
+func constrain_motion(body: CharacterBody3D, field: FDKTerrainField, motion: Vector3) -> Vector3:
+	if motion.is_zero_approx(): return motion
+	var started := Time.get_ticks_usec()
+	last_corner_reads = 0
+	var node := body.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if node == null or not node.shape is CapsuleShape3D: return motion
+	var shape := node.shape as CapsuleShape3D
+	var xf := node.global_transform
+	var radius := shape.radius * maxf(xf.basis.x.length(), xf.basis.z.length())
+	var half_axis := maxf(0.0, shape.height * xf.basis.y.length() * 0.5 - radius)
+	var up := xf.basis.y.normalized()
+	var a := xf.origin - up * half_axis
+	var b := xf.origin + up * half_axis
+	var skin_radius := maxf(0.001, radius - CONTACT_SKIN)
+	_prepare_surface(field, a.min(b).min(a + motion).min(b + motion) - Vector3.ONE * radius,
+		a.max(b).max(a + motion).max(b + motion) + Vector3.ONE * radius)
+	var allowed := Vector3.ZERO
+	for axis in [Vector3(0, motion.y, 0), Vector3(motion.x, 0, 0), Vector3(0, 0, motion.z)]:
+		if axis.is_zero_approx(): continue
+		if _motion_clear(xf.origin, a, b, allowed, axis, skin_radius):
+			allowed += axis
+			continue
+		# Keep normal physics contact instead of hovering one whole tick above
+		# a surface. The skin leaves room for the actual collider safe margin.
+		# A fully boxed starting centre has no legal partial displacement.
+		if _point_in_solid(xf.origin + allowed): continue
+		var low := 0.0
+		var high := 1.0
+		for step in range(7):
+			var fraction := (low + high) * 0.5
+			if _motion_clear(xf.origin, a, b, allowed, axis * fraction, skin_radius):
+				low = fraction
+			else:
+				high = fraction
+		allowed += axis * low
+	last_motion_us = Time.get_ticks_usec() - started
+	last_motion_corner_reads = last_corner_reads
+	return allowed
+
+func _motion_clear(origin: Vector3, a: Vector3, b: Vector3, offset: Vector3, motion: Vector3, radius: float) -> bool:
+	var next := offset + motion
+	return not _point_in_solid(origin + next) and not _touches_surface(a + next, b + next, radius) and _sweep_clear(a + offset, b + offset, motion, radius)
 
 ## Optional gentle relief when real flesh has already intruded. The caller
 ## supplies a fresh assessment and performs this in the normal physics loop.

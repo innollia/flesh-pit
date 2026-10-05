@@ -224,6 +224,7 @@ func _ready() -> void:
     var player_scene: PackedScene = load("res://addons/flesh_dig_kit/player/fdk_first_person_controller.tscn")
     player = player_scene.instantiate()
     player.name = "Player"
+    player.movement_filter = _filter_terrain_motion
     player.position = START_POS
     add_child(player)
     player.set("_yaw", START_YAW)
@@ -857,6 +858,9 @@ func _restore_frame_camera() -> void:
     if danger_show != null:
         danger_show.restore_camera()
     _restore_terrain_eye()
+
+func _filter_terrain_motion(motion: Vector3) -> Vector3:
+    return _body_clearance.constrain_motion(player, terrain, motion)
 
 func _physics_process(delta: float) -> void:
     if not _body_relief_needed or ended or _seated or _settling or is_opening():

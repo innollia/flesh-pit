@@ -29,6 +29,10 @@ var _climb_input: float = 0.0 ## -1 (down) .. 1 (up), from crouch+jump combo or 
 ## he meant was Space lifting the player off an ordinary floor).
 var climb_enabled: bool = false
 
+## Optional host terrain boundary; standalone controllers retain normal physics.
+## Receives the requested per-frame motion, returns a permitted motion.
+var movement_filter: Callable
+
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var camera: Camera3D = $CameraPivot/Camera3D
 @onready var hands_rig: Node3D = $CameraPivot/Camera3D/HandsRig
@@ -167,6 +171,8 @@ func _process_move_and_climb(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 
+	if movement_filter.is_valid() and delta > 0.0:
+		velocity = movement_filter.call(velocity * delta) / delta
 	move_and_slide()
 
 func _process_footstep_bob(delta: float) -> void:
