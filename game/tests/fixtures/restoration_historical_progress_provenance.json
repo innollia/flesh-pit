@@ -1,0 +1,18 @@
+[
+  {
+    "fixture": "restoration_historical_drop_v5.bin.gz",
+    "sha256": "3e798d23effd2ba59e1cf21a53b78af8602377b8edf7290521d4096a9b5a9226",
+    "bytes": 6725192,
+    "archive": "verified-evidence-2002246.zip",
+    "archive_entry": "evidence/checks/run_tissue_tools_tests.gd.save",
+    "provenance": "Actual historical isolated test save from archived prior code; not user normal single slot and not newly generated fixture."
+  },
+  {
+    "fixture": "restoration_historical_pending_v5.bin.gz",
+    "sha256": "4b6fee00e487d006f95981d71c766ab3700be7c4e1e3698353fa94c61a9b8fb1",
+    "bytes": 8611924,
+    "archive": "verified-evidence-2002246.zip",
+    "archive_entry": "evidence/checks/run_terrain_dig_regression_tests.gd.save",
+    "provenance": "Actual historical isolated test save from archived prior code; not user normal single slot and not newly generated fixture."
+  }
+]

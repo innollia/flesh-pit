@@ -27,7 +27,11 @@ var _climb_input: float = 0.0 ## -1 (down) .. 1 (up), from crouch+jump combo or 
 ## flesh (open room floor) it is false, so Space does nothing -- there is
 ## no gravity jump in this kit, only this climb axis (형님 2026-09-30: "점프"
 ## he meant was Space lifting the player off an ordinary floor).
-var climb_enabled: bool = true
+var climb_enabled: bool = false
+
+## Optional host terrain boundary; standalone controllers retain normal physics.
+## Receives the requested per-frame motion, returns a permitted motion.
+var movement_filter: Callable
 
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var camera: Camera3D = $CameraPivot/Camera3D
@@ -38,7 +42,12 @@ func _ready() -> void:
 	FDKInputActions.register_defaults()
 	if mouse_look_enabled:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	_apply_stand_height()
+	if collision_shape != null and collision_shape.shape != null:
+		collision_shape.shape = collision_shape.shape.duplicate()
+	if _is_crouching:
+		_apply_crouch_height()
+	else:
+		_apply_stand_height()
 	if hands_rig != null and hands_rig.has_method("apply_bob"):
 		footstep_bob.connect(hands_rig.apply_bob)
 
@@ -75,23 +84,40 @@ func _process_keyboard_look(delta: float) -> void:
 
 func _process_crouch() -> void:
 	var wants_crouch := Input.is_action_pressed("fdk_crouch")
-	if wants_crouch != _is_crouching:
-		_is_crouching = wants_crouch
-		crouch_changed.emit(_is_crouching)
-		if _is_crouching:
+	if wants_crouch:
+		if not _is_crouching:
+			_is_crouching = true
+			crouch_changed.emit(_is_crouching)
 			_apply_crouch_height()
-		else:
-			_apply_stand_height()
+	else:
+		if _is_crouching:
+			if can_stand():
+				_is_crouching = false
+				crouch_changed.emit(_is_crouching)
+				_apply_stand_height()
+
+## Returns true if there is enough vertical clearance above the crouched player to stand up.
+func can_stand() -> bool:
+	if not _is_crouching:
+		return true
+	if not is_inside_tree() or collision_shape == null:
+		return true
+	var delta_h := config.stand_height - config.crouch_height
+	if delta_h <= 0.0:
+		return true
+	return not test_move(global_transform, Vector3(0.0, delta_h, 0.0))
 
 func _apply_stand_height() -> void:
-	if collision_shape.shape is CapsuleShape3D:
+	if collision_shape != null and collision_shape.shape is CapsuleShape3D:
 		(collision_shape.shape as CapsuleShape3D).height = config.stand_height
+		collision_shape.position.y = 0.0
 	_pivot_base_y = eye_pivot_y(false)
 	camera_pivot.position.y = _pivot_base_y
 
 func _apply_crouch_height() -> void:
-	if collision_shape.shape is CapsuleShape3D:
+	if collision_shape != null and collision_shape.shape is CapsuleShape3D:
 		(collision_shape.shape as CapsuleShape3D).height = config.crouch_height
+		collision_shape.position.y = - (config.stand_height - config.crouch_height) * 0.5
 	_pivot_base_y = eye_pivot_y(true)
 	camera_pivot.position.y = _pivot_base_y
 
@@ -99,7 +125,16 @@ func _apply_crouch_height() -> void:
 ## scaled down with the capsule when crouching.
 func eye_pivot_y(crouched: bool) -> float:
 	var h := config.crouch_height if crouched else config.stand_height
-	return h * 0.5 - (config.stand_height - config.eye_height) * h / config.stand_height
+	var feet_y := -config.stand_height * 0.5
+	var eye_above_feet := h * (config.eye_height / config.stand_height)
+	return feet_y + eye_above_feet
+
+## Returns feet position in world space.
+func get_feet_position() -> Vector3:
+	var offset := 0.0
+	if collision_shape != null and collision_shape.shape is CapsuleShape3D:
+		offset = collision_shape.position.y - (collision_shape.shape as CapsuleShape3D).height * 0.5
+	return global_transform * Vector3(0.0, offset, 0.0)
 
 func _process_move_and_climb(delta: float) -> void:
 	var input_dir := Vector2.ZERO
@@ -118,12 +153,8 @@ func _process_move_and_climb(delta: float) -> void:
 	var right: Vector3 = global_transform.basis.x
 	var horizontal: Vector3 = (forward * -input_dir.y + right * input_dir.x) * speed
 
-	# Climb mode: digging straight up/down through flesh. Jump = up, crouch
-	# while already crouched-and-holding-eat = down; kept simple and exposed
-	# via a single _climb_input axis so a game can rebind it freely.
-	# climb_enabled (set by the game, per frame) gates the "up" half only:
-	# outside flesh there is no jump to allow, and gating both halves would
-	# also block climbing back down out of flesh once already inside it.
+	# Climb mode: digging straight up/down through flesh. Jump = up (when climb_enabled),
+	# crouch + eat = down (excavation descent input). Ctrl alone is purely posture.
 	_climb_input = 0.0
 	if Input.is_action_pressed("fdk_jump") and climb_enabled:
 		_climb_input += 1.0
@@ -132,7 +163,16 @@ func _process_move_and_climb(delta: float) -> void:
 
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
-	velocity.y = _climb_input * config.climb_speed
+
+	if _climb_input != 0.0:
+		velocity.y = _climb_input * config.climb_speed
+	elif not is_on_floor():
+		velocity.y = -config.climb_speed
+	else:
+		velocity.y = 0.0
+
+	if movement_filter.is_valid() and delta > 0.0:
+		velocity = movement_filter.call(velocity * delta) / delta
 	move_and_slide()
 
 func _process_footstep_bob(delta: float) -> void:

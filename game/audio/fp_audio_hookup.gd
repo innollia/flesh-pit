@@ -13,7 +13,6 @@ var main: Node
 var _door_open := false
 var _lid_open := false
 var _coin_active := false
-var _settling := false
 var _in_room := true
 var _vent_open := false
 var _barrier_count := 0
@@ -58,6 +57,9 @@ func _wire() -> void:
 	_in_room = _player_in_room()
 	director.set_surface("tile" if _in_room else "flesh")
 	director.set_bed("restroom" if _in_room else director.body_bed_for_shell(), 0.0)
+	var toilet = main.get("toilet")
+	if toilet != null and toilet.has_signal("lever_pulled"):
+		toilet.connect("lever_pulled", func(_teeth, _hairs): director.play("toilet_flush", _toilet_pos()))
 	# stage-5 events that already exist as signals on main or its children
 	if main.has_signal("died"):
 		main.connect("died", func(_cause): play_event("death"))
@@ -119,9 +121,9 @@ func _process(_delta: float) -> void:
 				_door_open = d
 				var dp = restroom.get("door_pivot")
 				director.play("door_open" if d else "door_close", dp.global_position if dp != null else null)
-		var lid = restroom.get("_lid_target")
+		var lid = main.get("tank_lid")
 		if lid != null:
-			var lo := float(lid) != 0.0
+			var lo: bool = not lid.on_tank
 			if lo and not _lid_open:
 				director.play("tank_lid", _toilet_pos())
 			_lid_open = lo
@@ -131,11 +133,6 @@ func _process(_delta: float) -> void:
 		if active and not _coin_active:
 			director.play("coin_drop", _toilet_pos())
 		_coin_active = active
-	if main.has_method("is_settling"):
-		var s: bool = main.is_settling()
-		if _settling and not s:
-			director.play("toilet_flush", _toilet_pos())
-		_settling = s
 
 	# vent opening (FPVent.is_open flips) and barriers placed / straining
 	var vent = main.get("vent")

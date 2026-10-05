@@ -122,35 +122,44 @@ func run() -> void:
     check(far_hit.is_empty(), "look_hit rejects targets beyond reach")
 
     # --- Test 5: Stable physics fastpath preserves nearer patch ---
-    m.terrain.fill_box_uniform(AABB(center - Vector3.ONE * 4, Vector3.ONE * 8), 1.0, 0)
-    m.terrain.carve_sphere(center, 2.0)
-    m.terrain.remesh_all()
-    m.player.global_position = center - Vector3.UP * m.player.eye_pivot_y(false)
-    m.player.velocity = Vector3.ZERO
-    eye = m.player.camera.global_position
-    aim(Vector3.FORWARD)
-    await physics_frame
-    await physics_frame
-    for i in range(3):
-        m._look_hit()
+    # Keep normal descent live. Both physics phases aim through the actual
+    # new cavity rather than a world-height cavity that the eye can miss.
+    for phase in [3, 4]:
+        m.terrain.fill_box_uniform(AABB(center - Vector3.ONE * 4, Vector3.ONE * 8), 1.0, 0)
+        m.terrain.carve_sphere(center, 2.0)
+        m.terrain.remesh_all()
+        m.player.global_position = center - Vector3.UP * m.player.eye_pivot_y(false)
+        m.player.velocity = Vector3.ZERO
+        eye = m.player.camera.global_position
+        aim(Vector3.FORWARD)
         await physics_frame
+        await physics_frame
+        for i in range(phase):
+            m._look_hit()
+            await physics_frame
 
-    var stable_physics_hit: Dictionary = m._look_hit()
-    check(not stable_physics_hit.is_empty() and stable_physics_hit.collider.has_meta("fdk_terrain_chunk"), "stable physics terrain face detected")
-    var stable_dist: float = eye.distance_to(stable_physics_hit.position)
-    check(stable_dist > 1.8, "stable rear physics face is beyond 1.8m (actual: %.2f)" % stable_dist)
+        eye = m.player.camera.global_position
+        var stable_physics_hit: Dictionary = m._look_hit()
+        check(not stable_physics_hit.is_empty() and stable_physics_hit.collider.has_meta("fdk_terrain_chunk"), "stable physics terrain face detected")
+        var stable_dist: float = eye.distance_to(stable_physics_hit.position)
+        check(stable_dist > 1.8, "stable rear physics face is beyond 1.8m (actual: %.2f)" % stable_dist)
 
-    # Introduce a nearer solid region and dig to create a surface patch at ~1.0m
-    var tear_pt := center + Vector3.FORWARD * 1.0
-    m.terrain.fill_box_uniform(AABB(tear_pt - Vector3.ONE * 1.5, Vector3.ONE * 3.0), 1.0, 0)
-    m.terrain.dig_at(tear_pt, 1.0)
-    check(m.terrain._surface_patch != null and not m.terrain._surface_patch.faces.is_empty(), "nearer surface patch created")
+        # Introduce a nearer solid region and dig to create a surface patch at ~1.0m
+        var tear_pt := eye + Vector3.FORWARD * 1.25
+        # The nearer slab must not fill the eye/body itself: otherwise the
+        # correct nearest hit can be an actual internal solid-cell face.
+        var nearer_slab := AABB(tear_pt - Vector3.ONE * 1.5, Vector3(3.0, 3.0, 2.5))
+        check(not nearer_slab.has_point(eye), "nearer patch fixture leaves actual ray origin outside added mass")
+        m.terrain.fill_box_uniform(nearer_slab, 1.0, 0)
+        m.terrain.dig_at(tear_pt, 1.0)
+        check(m.terrain._surface_patch != null and not m.terrain._surface_patch.faces.is_empty(), "nearer surface patch created")
 
-    var nearer_patch_hit: Dictionary = m._look_hit()
-    check(not nearer_patch_hit.is_empty(), "look_hit finds hit with nearer patch")
-    check(nearer_patch_hit.get("fdk_surface_patch", false) == true, "stable physics fastpath preserves nearer patch over rear physics face")
-    check(eye.distance_to(nearer_patch_hit.position) < stable_dist - 0.3, "nearer patch hit is closer than rear physics face")
-    m.terrain._clear_surface_patch()
+        var nearer_patch_hit: Dictionary = m._look_hit()
+        print("NEAR_PHASE phase=",phase," eye=",eye," target=",tear_pt," hit=",nearer_patch_hit)
+        check(not nearer_patch_hit.is_empty(), "look_hit finds hit with nearer patch")
+        check(nearer_patch_hit.get("fdk_surface_patch", false) == true, "stable physics fastpath preserves nearer patch over rear physics face")
+        check(eye.distance_to(nearer_patch_hit.position) < stable_dist - 0.3, "nearer patch hit is closer than rear physics face")
+        m.terrain._clear_surface_patch()
 
     # --- Summary ---
     print("%d passed, %d failed" % [passed, failed])

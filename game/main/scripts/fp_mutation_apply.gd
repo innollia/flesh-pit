@@ -113,8 +113,6 @@ func _step_health(delta: float) -> void:
 		h = minf(100.0, h + (h - _last_health) * (p.health_regen_factor() - 1.0))
 	m.hazard.health = h
 	_last_health = h
-	if p.restroom_glare_factor() > 1.0 and m._flash > 0.0:
-		m._flash = minf(1.0, m._flash + delta * 0.4) # decays at half speed
 
 ## Everything a mutation does on its own over time (tests call this).
 func step_timed(delta: float) -> void:
@@ -397,7 +395,7 @@ func alien_tear() -> bool:
 		return false
 	m.terrain.dig_at(at, 1.0)
 	m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
-	m.progression.on_flesh_eaten(m.shell_at(at))
+	m.progression.on_flesh_eaten(m.shell_at(at), m.stomach_config.flesh_per_cell)
 	alien_tears += 1
 	alien_hand_tore.emit()
 	return true
@@ -406,7 +404,8 @@ func alien_tear() -> bool:
 func gulp() -> void:
 	m.stomach.add_flesh(m.carried_flesh)
 	for s in m.carried_units.keys():
-		m.progression.on_flesh_eaten(int(s), int(m.carried_units[s]))
+		var flesh_units: float = float(m.carried_units[s]) * m.stomach_config.flesh_per_cell
+		m.progression.on_flesh_eaten(int(s), flesh_units)
 	m.carried_flesh = 0.0
 	m.carried_units.clear()
 	_gulp_t = -1.0
@@ -432,7 +431,7 @@ func _on_torn(world_pos: Vector3) -> void:
 			m.carried_units[sh] = int(m.carried_units.get(sh, 0)) + 1
 		else:
 			m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
-			m.progression.on_flesh_eaten(m.shell_at(at))
+			m.progression.on_flesh_eaten(m.shell_at(at), m.stomach_config.flesh_per_cell)
 	_extra_tearing = false
 
 ## T7: standing still stops regrowth within 1.5 m (main adds these blockers).

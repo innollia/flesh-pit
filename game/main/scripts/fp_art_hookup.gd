@@ -147,6 +147,7 @@ func _on_torn(_p: Vector3) -> void:
 func _process(_delta: float) -> void:
 	if m == null:
 		return
+	_sync_belt_posture(_delta)
 	var prog: FPProgression = m.progression
 	knife.visible = prog.hands.holds("knife")
 	if knife.visible and _rig != null:
@@ -280,3 +281,21 @@ func _sync_barriers() -> void:
 		if int(b.get_meta("art_stage")) != st:
 			b.set_meta("art_stage", st)
 			art.call("set_stage", st)
+
+func _sync_belt_posture(_delta: float) -> void:
+	if belt == null or not is_instance_valid(belt) or m == null or not is_instance_valid(m.player):
+		return
+	var pl: Node3D = m.player
+	var pivot: Node3D = pl.get_node_or_null("CameraPivot")
+	if pivot == null:
+		return
+
+	var crouch := 1.0 if bool(pl.get("_is_crouching")) else 0.0
+	if pl.get("_pivot_base_y") != null:
+		crouch = clampf((0.70 - float(pl.get("_pivot_base_y"))) / 0.80, 0.0, 1.0)
+
+	# The waist follows capsule posture, never the head's pitch/bob or its
+	# terrain correction. The head moves when looking down; holsters remain
+	# fixed to the body during WASD instead of acquiring their own velocity.
+	belt.position = Vector3(0.0, 0.05 - 0.48 * crouch, 0.02)
+	belt.rotation = Vector3.ZERO

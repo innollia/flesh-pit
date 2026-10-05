@@ -1,9 +1,8 @@
 extends Node3D
 
-## flesh-pit main scene: the white restroom, the three flesh shells around
-## it, and the full loop (design-core): dig/eat -> stomach -> vomit at the
-## toilet or a rest point -> flush -> teeth in the tank + hairs on the arm ->
-## trade at the vent, mutate at the mirror -> dig farther -> break out.
+## 화장실과 세 겹의 살점, 전체 진행을 연결한다.
+## 실제 굴착·먹기 -> 위장과 즉시 털 성장 -> 변기로 토하기 -> 물내림과 이빨 정산 ->
+## 환풍구 거래·거울 변이 -> 더 깊이 굴착 -> 바깥으로 탈출.
 ## Game rules live here and in fp_*.gd; nothing in addons/ refers back.
 ## Visuals of the new systems are placeholder shapes only.
 
@@ -112,6 +111,8 @@ var hand_actions: FPHandActions
 var belt_swap: FPBeltSwap
 ## Situational hand / body motions (fp_hand_motions.gd).
 var hand_motions: FPHandMotions
+var _body_clearance := FPBodyClearance.new()
+var _body_relief_needed := false
 var mutation_apply: FPMutationApply
 var rest_points: Array[Vector3] = []
 var _world_density_cache: Dictionary = {}
@@ -143,6 +144,7 @@ var _terrain_eye_pose := Vector3.ZERO
 ## Bounded query metadata only; no contacts or poses survive a shape change.
 var _terrain_query_shapes: Dictionary = {}
 var _settling: bool = false
+var _settle_entry_frame: int = -1
 var _settle_amount: float = 0.0
 var _mirror_open: bool = false
 ## Sitting on the toilet (F at the bowl while standing).
@@ -164,7 +166,7 @@ var _crush_t: float = 0.0
 var _hazards: Array = []
 var _nerve_cool: Dictionary = {}
 var _canary_t: float = 0.0
-var _was_inside: bool = true
+var glare_controller := FPGlareController.new()
 var _flash: float = 0.0
 var _stream_queue: Array[Vector3i] = []
 var _last_stream_chunk: Vector3i = Vector3i(99999, 0, 0)
@@ -222,6 +224,7 @@ func _ready() -> void:
     var player_scene: PackedScene = load("res://addons/flesh_dig_kit/player/fdk_first_person_controller.tscn")
     player = player_scene.instantiate()
     player.name = "Player"
+    player.movement_filter = _filter_terrain_motion
     player.position = START_POS
     add_child(player)
     player.set("_yaw", START_YAW)
@@ -321,7 +324,7 @@ func _ready() -> void:
     # Capture the neutral animation base before a terrain correction can
     # be mistaken for a permanent offset by the first hand motion.
     hand_motions._save_cams()
-    get_tree().process_frame.connect(_restore_terrain_eye)
+    get_tree().process_frame.connect(_restore_frame_camera)
     RenderingServer.frame_pre_draw.connect(_guard_terrain_eye)
     mutation_apply = FPMutationApply.new()
     mutation_apply.name = "MutationApply"
@@ -517,15 +520,58 @@ func _stream_world() -> void:
         terrain.get_or_create_chunk(_stream_queue.pop_front())
 
 func _add_nerve(n: FDKNerveStalk) -> void:
+    if not is_instance_valid(n) or n.is_queued_for_deletion():
+        return
+    n.remove_meta("pending_add")
+    if not n.update_anchor():
+        nerves.erase(n)
+        n.free()
+        return
     add_child(n)
 
+func _update_nerve_anchors() -> void:
+    var surviving: Array[FDKNerveStalk] = []
+    for n in nerves:
+        if not is_instance_valid(n) or n.is_queued_for_deletion():
+            continue
+        if n.update_anchor():
+            surviving.append(n)
+        elif n.is_inside_tree():
+            n.queue_free()
+        elif not n.has_meta("pending_add"):
+            n.free()
+    nerves = surviving
+
 func _spawn_nerve(at: Vector3, normal: Vector3) -> FDKNerveStalk:
+    if excavated_cells < 8 or restroom.contains(at):
+        return null
     var n := FDKNerveStalk.new()
     n.length = randf_range(0.35, 0.65)
     n.terrain = terrain
+    n.place(at, normal)
+    # 삼각형 접점과 연속 밀도 경계의 작은 차이를 현재 살점에서 해결한다.
+    # 먼 고체로 이동하지 않고 기존 기반 탐침 .15m 안의 첫 iso 교차만 찾는다.
+    var iso: float = terrain_config.iso_level
+    if n.sample_density(at) < iso and n.sample_density(n.base_probe) >= iso:
+        var axis := normal.normalized()
+        var outside := at
+        for step in range(1, 17):
+            var inside := at - axis * (0.15 * float(step) / 16.0)
+            if n.sample_density(inside) >= iso:
+                for iteration in range(12):
+                    var middle := outside.lerp(inside, 0.5)
+                    if n.sample_density(middle) >= iso:
+                        inside = middle
+                    else:
+                        outside = middle
+                n.place(inside, normal)
+                break
+            outside = inside
+    if not n.is_anchored():
+        n.free()
+        return null
     n.set_meta("pending_add", true)
     call_deferred("_add_nerve", n)
-    n.place(at, normal)
     n.disturbed.connect(_on_nerve_disturbed)
     nerves.append(n)
     return n
@@ -554,15 +600,24 @@ func _setup_environment() -> void:
         sun.light_energy = 0.12
         sun.light_color = Color(0.96, 0.97, 1.0)
 
-func _update_atmosphere(delta: float) -> void:
+func _is_dark_atmosphere(p: Vector3) -> bool:
+    var inside := restroom.contains(p)
+    var door_center := restroom.global_position + Vector3(0.0, 1.0, FPRestroom.HALF.z)
+    return FPGlareController.is_dark_at(inside, p.distance_to(door_center), restroom.door_open_amount(), terrain.depth_at(p))
+
+func _reset_glare() -> void:
+    glare_controller.reset(true)
+    _flash = 0.0
+    if environment != null:
+        environment.tonemap_exposure = 1.0
+
+func _update_atmosphere(delta: float, immediate: bool = false) -> void:
     var inside := restroom.contains(player.global_position)
-    # coming back from the flesh, the fluorescent tube blinds for a moment
-    if inside and not _was_inside:
-        _flash = 1.0
-    _was_inside = inside
-    _flash = maxf(0.0, _flash - delta * 0.8)
+    var glare_factor: float = progression.restroom_glare_factor() if progression != null else 1.0
+    glare_controller.step(inside, 0.0 if immediate else delta, _is_dark_atmosphere(player.global_position), glare_factor)
+    _flash = glare_controller.flash
     environment.tonemap_exposure = 1.0 + 2.5 * _flash
-    var k := 1.0 - exp(-delta * 3.0)
+    var k := 1.0 if immediate else 1.0 - exp(-delta * 3.0)
     var depth_tone := clampf(terrain.depth_at(player.global_position) / terrain_config.depth_tone_distance, 0.0, 1.0)
     environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
     environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
@@ -573,7 +628,7 @@ func _update_atmosphere(delta: float) -> void:
         environment.fog_light_color = Color(0.22, 0.03, 0.05).lerp(Color(0.1, 0.01, 0.07), depth_tone)
 
 func apply_atmosphere_now() -> void:
-    _update_atmosphere(100.0)
+    _update_atmosphere(0.0, true)
 
 ## 0..1 loudness of the ending melody inside the flesh (louder outward).
 func melody_level() -> float:
@@ -750,13 +805,11 @@ func is_opening() -> bool:
 func _process(delta: float) -> void:
     if player == null or chewer == null:
         return
-    _restore_terrain_eye()
+    _restore_frame_camera()
     _update_atmosphere(delta)
     _update_restroom_front()
     _update_hands_room_layer()
     player.climb_enabled = can_climb_at(player.global_position)
-    mirror_view.sync(restroom.contains(player.global_position) and not _seated and not _settling, has_canary)
-    mirror_view_right.sync(restroom.contains(player.global_position) and not _seated and not _settling, has_canary)
     stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
     vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
     opening_view.hints.vomit_hint = not _settling and stomach.fill_ratio() >= 1.0
@@ -765,7 +818,7 @@ func _process(delta: float) -> void:
     vent.tick(delta)
     hand_motions.check_cancel()
     hand_motions.tick(delta)
-    _guard_terrain_eye()
+    _guard_terrain_eye(false, false)
     _vent_watch(delta)
     _update_tank_teeth()
     if ended:
@@ -776,10 +829,7 @@ func _process(delta: float) -> void:
         return
     if _settling:
         chewer.stop()
-        if Input.is_action_just_pressed("fp_interact"):
-            flush() # the lever, pressed by hand
-        elif Input.is_action_just_pressed("ui_cancel"):
-            leave_settlement() # stand up without flushing: nothing settles
+        FPInteractions.handle_settling_input(self, _settle_entry_frame)
         return
     if keybind_menu != null and keybind_menu.is_open():
         chewer.stop()
@@ -799,8 +849,33 @@ func _process(delta: float) -> void:
     _handle_actions()
     hand_actions.tick(delta)
     step_world(delta)
-    _guard_terrain_eye()
+    _guard_terrain_eye(false)
     tick_autosave(delta)
+
+# Start of a new frame, before hand/mutation camera writers. Do not use this
+# combined restore inside _guard_terrain_eye: that would remove the effect.
+func _restore_frame_camera() -> void:
+    if danger_show != null:
+        danger_show.restore_camera()
+    _restore_terrain_eye()
+
+func _filter_terrain_motion(motion: Vector3) -> Vector3:
+    return _body_clearance.constrain_motion(player, terrain, motion)
+
+func _physics_process(delta: float) -> void:
+    if not _body_relief_needed or ended or _seated or _settling or is_opening():
+        return
+    if not is_instance_valid(player) or not is_instance_valid(terrain):
+        return
+    if restroom.contains(player.global_position) or FPWorldFeatures.in_container(player.global_position, rest_points):
+        _body_relief_needed = false
+        return
+    # Never reuse the process-loop verdict: growth and publication may have
+    # changed meanwhile. Ordinary movement/collision remains authoritative.
+    var current: Dictionary = _body_clearance.assess(player, terrain)
+    _body_relief_needed = bool(current.overlap) and not bool(current.trapped)
+    if _body_relief_needed:
+        _body_clearance.relieve(player, current, delta)
 
 func _restore_terrain_eye() -> void:
     if is_instance_valid(player) and is_instance_valid(player.camera):
@@ -810,7 +885,13 @@ func _restore_terrain_eye() -> void:
             player.camera.position -= _terrain_eye_delta
     _terrain_eye_delta = Vector3.ZERO
 
-func _guard_terrain_eye() -> void:
+func _guard_terrain_eye(update_nerves: bool = true, sync_mirrors: bool = true) -> void:
+    if update_nerves:
+        _update_nerve_anchors()
+    # Also reached by production frame_pre_draw, after late child mutation
+    # writes. Recompose without advancing shake time, then constrain the eye.
+    if danger_show != null:
+        danger_show.apply_camera()
     if not is_instance_valid(player) or not is_instance_valid(player.camera) or not is_instance_valid(terrain):
         return
     _restore_terrain_eye()
@@ -821,6 +902,14 @@ func _guard_terrain_eye() -> void:
     # Terrain can publish after the main tick. Flush the corrected camera
     # transform so the renderer does not retain the previous frame's view.
     player.camera.force_update_transform()
+    # The aim guard does not update mirrors; they consume the final pose.
+    if not sync_mirrors:
+        return
+    var mirrors_active: bool = restroom.contains(player.global_position) and not _seated and not _settling
+    if mirror_view != null:
+        mirror_view.sync(mirrors_active, has_canary)
+    if mirror_view_right != null:
+        mirror_view_right.sync(mirrors_active, has_canary)
 
 func _exit_tree() -> void:
     if RenderingServer.frame_pre_draw.is_connected(_guard_terrain_eye):
@@ -1132,7 +1221,9 @@ func _interact() -> void:
             restroom.mirror_art.call("toggle_cabinet")
             vent.notice("mirror")
         "canary": begin_canary_pull()
-        "tank_teeth": put_teeth_back()
+        "tank_teeth":
+            if progression.teeth_in_hand > 0: put_teeth_back()
+            else: scoop_teeth()
         "lever": pull_lever()
         "vent": use_vent()
         "sink": wash_hands()
@@ -1144,11 +1235,15 @@ func _interact() -> void:
         "tumor": pick_up_tumor()
 
 func _pick() -> void:
-    if _interaction_aim(FPRestroom.VENT_CENTER, 12.0, 2.0) and vent.is_open:
+    var target := interact_target()
+    if target == "lever":
+        pull_lever()
+    elif target == "tank_teeth":
+        if progression.teeth_in_hand > 0: put_teeth_back()
+        else: scoop_teeth()
+    elif target == "vent" and vent.is_open:
         if not vent.offers.is_empty(): take_vent_offer()
         else: reach_into_vent()
-    elif _interaction_aim(toilet_point(), 12.0, 1.35) and restroom._lid_target != 0.0:
-        scoop_teeth()
 
 func mirror_point() -> Vector3:
     return restroom.mirror_art.to_global(Vector3(-0.6, 1.65, 0.24))
@@ -1198,12 +1293,15 @@ func start_settlement() -> void:
     if toilet.throw_tumors(progression) > 0:
         progression.refresh_hands(carry_mode)
     _settling = true
+    _settle_entry_frame = Engine.get_process_frames()
+    FPInteractions.begin_settlement(self)
+    player.velocity = Vector3.ZERO
+    player.set_physics_process(false)
     settle_camera.current = true
-    restroom.set_tank_open(false)
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
-## Pressing the lever settles: teeth in the tank, hairs on the arm, and the
-## flush sets the vent being off.
+## 레버 물내림은 이빨을 탱크에 정산하고 환풍구 존재의 반응을 시작한다.
+## 털은 실제 먹을 때 이미 자라므로 물내림에서는 다시 지급하지 않는다.
 ## The lever is just a thing on the toilet: it can be pressed at any time,
 ## sitting or standing, full bowl or empty. Settles whatever is in the bowl.
 func pull_lever() -> Dictionary:
@@ -1215,10 +1313,7 @@ func pull_lever() -> Dictionary:
     vent.on_tumors_settled(tumor_kinds)
     flushed.emit(got["teeth"], got["hairs"])
     if _settling:
-        _settling = false
-        player.camera.current = true
-        if player.mouse_look_enabled:
-            Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+        leave_settlement()
     return got
 
 func flush() -> Dictionary:
@@ -1239,6 +1334,11 @@ func leave_settlement() -> void:
     if not _settling:
         return
     _settling = false
+    _settle_entry_frame = -1
+    if hand_motions.kind == "vomit_toilet":
+        hand_motions._finish()
+    stand_up()
+    player.set_physics_process(true)
     player.camera.current = true
     if player.mouse_look_enabled:
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -1342,6 +1442,7 @@ func _setup_front_menus() -> void:
         _begin_opening()
 
 func show_title() -> void:
+    _reset_glare()
     mirror_view.sync(false, has_canary)
     mirror_view_right.sync(false, has_canary)
     title_screen.has_save = has_save_file()
@@ -1360,6 +1461,7 @@ func _leave_title() -> void:
 
 ## Title "새로 시작": the save (if any) is dropped, the opening plays.
 func new_game() -> void:
+    _reset_glare()
     if has_save_file():
         DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
     _leave_title()
@@ -1540,7 +1642,7 @@ func _update_tank_teeth() -> void:
         restroom.tank_art.call("set_handfuls", shown)
 
 func scoop_teeth() -> int:
-    if restroom._lid_target == 0.0:
+    if tank_lid == null or tank_lid.on_tank:
         return 0
     var n := progression.scoop_handful()
     if n > 0:
@@ -1776,7 +1878,8 @@ func _step_canary_pull(delta: float) -> void:
     canary_pull_t += delta
     var k := clampf(canary_pull_t / CANARY_PULL_TIME, 0.0, 1.0)
     var down := sin(k * PI) # 0 -> 1 (prone) -> 0
-    player.camera_pivot.position.y = lerpf(_pull_eye_y, 0.18, down)
+    var low_eye_y: float = player.get_feet_position().y - player.global_position.y + 0.18
+    player.camera_pivot.position.y = lerpf(_pull_eye_y, low_eye_y, down)
     var a := _aim_pitch_at(canary_hole_point())
     player.camera_pivot.rotation.x = lerpf(player.camera_pivot.rotation.x, a, down * 0.5)
     hands_rig.set_carry(down * 0.6) # both hands reach forward into the hole
@@ -1793,43 +1896,26 @@ func _aim_pitch_at(p: Vector3) -> float:
 
 # --- W32 interaction affordance: a ring round the aim dot, no words ---------
 ## What fp_interact would do right now ("" = nothing but digging).
-func _interaction_aim(point: Vector3, degrees: float, reach: float) -> bool:
-    if not _looking_at(point, degrees, reach):
-        return false
-    var eye := player.camera.global_position
-    var q := PhysicsRayQueryParameters3D.create(eye, point)
-    q.exclude = [player.get_rid()]
-    var hit := get_world_3d().direct_space_state.intersect_ray(q)
-    # The target may sit inside its own authored fixture collider.
-    return hit.is_empty() or eye.distance_to(hit.position) >= eye.distance_to(point) - 0.30
+func _interaction_aim(point: Vector3, degrees: float, reach: float, target_name: String = "") -> bool:
+    if target_name == "" and tank_lid != null:
+        if point.is_equal_approx(restroom.tank_art.to_global(Vector3(0, 0.34, 0))):
+            target_name = "tank_teeth"
+        elif point.is_equal_approx(tank_lid.lid.global_position):
+            target_name = "tank_lid"
+    return _looking_at(point, degrees, reach) and FPInteractions.check_aim(self, point, target_name)
 
 func interact_target() -> String:
     if tank_lid != null and tank_lid.held:
         return "tank_lid"
     if belt_swap != null and belt_swap.can_act():
         return "belt"
-    var candidates: Array = [
-        ["mirror", mirror_point(), 18.0, 1.3],
-        ["sink", sink_point(), 12.0, 1.25],
-        ["lever", lever_point(), 8.0, 1.25],
-        ["toilet", toilet_point(), 12.0, 1.35],
-        ["vent", FPRestroom.VENT_CENTER, 12.0, 2.0],
-        ["door", Vector3(0, 1, FPRestroom.HALF.z), 30.0, 1.6]]
-    if not has_canary:
-        candidates.append(["canary", canary_hole_point(), 10.0, 1.25])
-    if tank_lid != null and tank_lid.can_pick():
-        candidates.append(["tank_lid", tank_lid.lid.global_position, 8.0, 1.25])
-    if progression.teeth_in_hand > 0 and restroom._lid_target != 0.0:
-        candidates.append(["tank_teeth", restroom.tank_art.to_global(Vector3(0, 0.3, 0)), 10.0, 1.25])
-    var tumor := _nearest_tumor(1.25)
-    if tumor != null:
-        candidates.append(["tumor", tumor.global_position, 10.0, 1.25])
+    var candidates: Array = FPInteractions.get_candidates(self)
     var best := ""
     var best_dot := -1.0
     var ray: Array = player.get_look_ray()
     for candidate in candidates:
         var point: Vector3 = candidate[1]
-        if _interaction_aim(point, candidate[2], candidate[3]):
+        if _interaction_aim(point, candidate[2], candidate[3], candidate[0]):
             var dot: float = (point - ray[0]).normalized().dot(ray[1])
             if dot > best_dot:
                 best_dot = dot
@@ -1969,7 +2055,7 @@ func use_spray(deep: bool = false) -> int:
     var tier := progression.pick_spray_tier(deep)
     if tier < 0:
         return -1
-    if vent.is_open and _interaction_aim(FPRestroom.VENT_CENTER, 12.0, 2.0):
+    if vent.is_open and _interaction_aim(FPRestroom.VENT_CENTER, 12.0, 2.0, "vent"):
         vent.notice("spray") # sprayed at the vent being
     var hit := _look_hit()
     if hit.is_empty():
@@ -1995,7 +2081,7 @@ func _nearest_tumor(dist: float) -> Node3D:
 
 func pick_up_tumor() -> bool:
     var t := _nearest_tumor(1.2)
-    if t == null or not _interaction_aim(t.global_position, 10.0, 1.25) or not progression.pick_up_tumor(String(t.get_meta("kind")), carried_flesh > 0.0):
+    if t == null or not _interaction_aim(t.global_position, 10.0, 1.25, "tumor") or not progression.pick_up_tumor(String(t.get_meta("kind")), carried_flesh > 0.0):
         return false
     t.visible = false
     taken_tumor_spots.append(int(t.get_meta("spot")))
@@ -2006,7 +2092,7 @@ func eat_tumor() -> bool:
         progression.refresh_hands(carry_mode)
         return true
     var t := _nearest_tumor(1.2)
-    if t == null or not _interaction_aim(t.global_position, 10.0, 1.25):
+    if t == null or not _interaction_aim(t.global_position, 10.0, 1.25, "tumor"):
         return false
     progression.eat_tumor_kind(String(t.get_meta("kind")))
     t.visible = false
@@ -2081,17 +2167,16 @@ func _step_hazards(delta: float) -> void:
     elif hazard.health <= 0.0:
         die("tissue")
 
-## Boxed in: flesh has closed in on all six sides just outside the body.
+## Current capsule volume and reachable collision-respecting escape path.
 func is_trapped() -> bool:
-    var p := player.global_position
-    for d in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK, Vector3.UP, Vector3.DOWN]:
-        if terrain.density_at(p + d * (BODY_PROTECT_RADIUS + progression.body_radius())) < CRUSH_BLOCK:
-            return false
-    return true
+    var current: Dictionary = _body_clearance.assess(player, terrain)
+    _body_relief_needed = bool(current.overlap) and not bool(current.trapped)
+    return bool(current.trapped)
 
 ## Death: stomach contents and carried consumables drop here; only this
 ## spot is marked. The player wakes in the restroom. Never a wipe.
 func die(cause: String) -> void:
+    _reset_glare()
     var at := player.global_position
     var payload := progression.take_death_payload(stomach.fill)
     stomach.fill = 0.0
@@ -2157,17 +2242,23 @@ func _on_cell_torn(world_pos: Vector3) -> void:
         carried_flesh += stomach_config.flesh_per_cell
         carried_units[shell] = int(carried_units.get(shell, 0)) + 1
     else:
-        progression.on_flesh_eaten(shell)
+        progression.on_flesh_eaten(shell, stomach_config.flesh_per_cell)
+    _update_nerve_anchors()
     var near := _nearest_nerve(world_pos, 0.7)
     if near != null:
         _disturb_nerve(near, clampf(0.5 * _regen_scale(world_pos), 0.0, 1.0))
     var chance := 0.8 if shell < 2 else 0.55
     if excavated_cells >= 8 and FDKLowPoly.hash3(int(world_pos.x * 2.0), int(world_pos.y * 2.0), int(world_pos.z * 2.0)) > chance:
         var dir := Vector3(1, 0, 0) if FDKLowPoly.hash3(int(world_pos.z * 2.0), 1, 2) > 0.5 else Vector3(-1, 0, 0)
-        var q := PhysicsRayQueryParameters3D.create(world_pos, world_pos + dir * 1.5)
-        var hit := get_world_3d().direct_space_state.intersect_ray(q)
-        if hit and hit.collider.has_meta("fdk_terrain_chunk"):
-            _spawn_nerve(hit.position, hit.normal)
+        var hit: Dictionary = terrain.solid_contact_ray(world_pos, world_pos + dir * 1.5)
+        var published: Dictionary = _published_terrain_contact(world_pos, dir, 1.5)
+        if not published.is_empty() and published.collider.has_meta("fdk_terrain_chunk"):
+            if hit.is_empty() or world_pos.distance_to(published.position) < world_pos.distance_to(hit.position):
+                hit = published
+        if not hit.is_empty():
+            # Current continuous density validates the root even when a
+            # published collider is stale while excavation is pending.
+            _spawn_nerve(hit.position, terrain._eye_surface_outward(hit))
 
 # --- save/load ------------------------------------------------------------------------
 
@@ -2199,6 +2290,10 @@ func serialize() -> Dictionary:
     }
 
 func deserialize(data: Dictionary) -> void:
+    _restore_frame_camera()
+    _terrain_eye_delta = Vector3.ZERO
+    _terrain_eye_pose = Vector3.ZERO
+    _reset_glare()
     var v := int(data.get("version", 1))
     if data.has("terrain"):
         terrain.deserialize(data["terrain"])

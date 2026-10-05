@@ -49,6 +49,10 @@ var main: Node
 var bruise_mat: ShaderMaterial
 var _base_fov: float = -1.0
 var _t: float = 0.0
+var _applied_offset := Vector2.ZERO
+var _written_offset := Vector2(INF, INF)
+var _written_fov := -1.0
+var _camera: Camera3D
 
 func setup(p_main: Node) -> void:
 	main = p_main
@@ -88,11 +92,44 @@ func tick(delta: float) -> void:
 		return
 	_t += delta
 	bruise_mat.set_shader_parameter("amount", bruise_amount())
+	apply_camera()
+
+## Remove only this effect before the next frame's camera writers. An
+## external absolute write is respected instead of subtracting a stale
+## contribution from its new base. Calling this or apply_camera twice is safe.
+func restore_camera() -> void:
+	if not is_instance_valid(_camera): return
+	if is_equal_approx(_camera.h_offset, _written_offset.x):
+		_camera.h_offset -= _applied_offset.x
+	if is_equal_approx(_camera.v_offset, _written_offset.y):
+		_camera.v_offset -= _applied_offset.y
+	if is_equal_approx(_camera.fov, _written_fov) and _base_fov >= 0.0:
+		_camera.fov = _base_fov
+	_applied_offset = Vector2.ZERO
+	_written_offset = Vector2(INF, INF)
+	_written_fov = -1.0
+
+## Compose after hand/mutation camera writers, then constrain the terrain
+## eye and sync mirrors. Production frame_pre_draw repeats this composition
+## without advancing time, after a mutation's later child _process write.
+## Shake lives in camera offsets; it never replaces the head/vomit pose.
+func apply_camera(base_fov: float = -1.0) -> void:
+	if main == null or not is_instance_valid(main.player) or not is_instance_valid(main.player.camera): return
+	restore_camera()
 	var cam: Camera3D = main.player.camera
-	if _base_fov < 0.0:
+	_camera = cam
+	if base_fov >= 0.0:
+		_base_fov = base_fov
+	else:
+		# Restore removes our previous squeeze only when no other writer has
+		# changed it. Thus a live mutation FOV or a 66-degree toilet pose is
+		# the new base, while repeated predraw composition cannot compound.
 		_base_fov = cam.fov
 	var c := clampf(float(main.call("crush_progress")), 0.0, 1.0)
 	cam.fov = _base_fov * (1.0 - 0.22 * c)
-	cam.h_offset = sin(_t * 31.0) * 0.006 * c
-	cam.v_offset = sin(_t * 23.0 + 1.3) * 0.005 * c
+	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * c, sin(_t * 23.0 + 1.3) * 0.005 * c)
+	cam.h_offset += _applied_offset.x
+	cam.v_offset += _applied_offset.y
+	_written_offset = Vector2(cam.h_offset, cam.v_offset)
+	_written_fov = cam.fov
 	# (hands stay in view so the bruises read; the squeeze is the camera's)
