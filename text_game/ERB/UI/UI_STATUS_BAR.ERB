@@ -1,0 +1,68 @@
+; UI_STATUS_BAR.ERB - Status Gauge and Tunnel State Display
+
+@PRINT_STATUS_BAR
+#DIM SQUEEZE_RATE
+#DIM MIN_CLEAR
+#DIMS SHELL_NAME
+#DIMS TISSUE_NAME
+
+CALL CALC_PRESSURE_AND_CRUSH, 0
+SQUEEZE_RATE = RESULT:0
+MIN_CLEAR = RESULT:1
+
+; 껍질 및 조직 명칭
+IF PLAYER_POS_SEG < CORE_SEGS
+    SHELL_NAME = 핵 (Core)
+ELSEIF PLAYER_POS_SEG < MANTLE_SEGS
+    SHELL_NAME = 맨틀 (Mantle)
+ELSE
+    SHELL_NAME = 지표면 (Surface)
+ENDIF
+
+SELECTCASE SEG_TISSUE:PLAYER_POS_SEG
+    CASE TISSUE_COMPRESSIVE
+        TISSUE_NAME = 압축 조직 (물렁함)
+    CASE TISSUE_CONTRACTILE
+        TISSUE_NAME = 수축 조직 (주기 수축)
+    CASE TISSUE_NERVE
+        TISSUE_NAME = 신경 조직 (전기 충전)
+    CASE TISSUE_MEMBRANE
+        TISSUE_NAME = 질긴 막
+    CASE TISSUE_DISSOLVED
+        TISSUE_NAME = 영구 용해된 살
+    CASEELSE
+        TISSUE_NAME = 살점
+ENDSELECT
+
+DRAWLINE
+PRINTL ================================================================================
+PRINTFORML [위치] 깊이 {PLAYER_POS_SEG * 5 / 10}.{PLAYER_POS_SEG * 5 % 10}m (%SHELL_NAME% - %TISSUE_NAME%)    [경과 시간] {GAME_SECONDS / 60, 2}분 {GAME_SECONDS % 60, 2}초
+PRINTFORM [위장] {STOMACH_FILL / 100, 3}/{GET_STOMACH_CAPACITY() / 100, 3} 
+IF STOMACH_FILL > GET_STOMACH_CAPACITY()
+    PRINTFORM (과식: {(STOMACH_FILL - GET_STOMACH_CAPACITY()) / 100}/{GET_OVERFILL_CAPACITY() / 100}) 
+ENDIF
+PRINTFORML [체력] {PLAYER_HP, 3}/100   [장비] 우: %EQUIPPED_RIGHT != "" ? EQUIPPED_RIGHT # "맨손"% / 좌: %EQUIPPED_LEFT != "" ? EQUIPPED_LEFT # "빈손"%
+PRINTFORM [통로 상태] 전방 밀도: {SEG_DENSITY:(PLAYER_POS_SEG + 1) / 10}%% | 후방 최소 여유: {MIN_CLEAR / 10}%% 
+IF SQUEEZE_RATE >= 800
+    PRINTFORML [압박: 치명적 끼임! ({CRUSH_ACCUMULATED_MS / 100}%%)]
+ELSEIF SQUEEZE_RATE >= 500
+    PRINTL [압박: 심한 비좁음 (이동 감속 50%)]
+ELSE
+    PRINTL [압박: 원활]
+ENDIF
+
+IF HAS_CANARY
+    PRINTFORM [카나리아] 
+    IF MIN_CLEAR < 200
+        PRINTL 날카롭게 비명을 지르고 있다! 귀환로가 거의 막혔다!
+    ELSEIF MIN_CLEAR < 500
+        PRINTL 불안하게 파닥거리며 낮게 운다. 통로가 좁아지고 있다.
+    ELSE
+        PRINTL 조용히 눈을 깜빡이며 안정을 유지하고 있다.
+    ENDIF
+ELSE
+    PRINTL [카나리아] 없음 (화장실 구멍에서 데려오지 않음)
+ENDIF
+PRINTFORML [보유 털] 공통: {HAIR_COMMON} | 핵(분홍): {HAIR_CORE} | 맨틀(보라): {HAIR_MANTLE} | 지표면(노랑): {HAIR_SURFACE}
+PRINTL ================================================================================
+RETURN

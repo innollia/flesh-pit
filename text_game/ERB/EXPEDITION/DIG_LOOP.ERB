@@ -1,0 +1,115 @@
+; DIG_LOOP.ERB - Main In-Tunnel Digging & Exploration Command Loop
+
+@DIG_LOOP
+#DIM TARGET_SEG
+#DIM CHEW_ESTIMATE_MS
+#DIM SQUEEZE_RATE
+#DIM MIN_CLEAR
+
+$LOOP_START
+
+CALL PRINT_STATUS_BAR
+
+; 현장 서술 텍스트 출력
+TARGET_SEG = PLAYER_POS_SEG + 1
+
+IF SEG_DENSITY:TARGET_SEG >= 500
+    PRINTL 축축하고 검붉은 살점 벽이 앞을 가로막고 있다.
+    PRINTL 벽면 깊은 곳에서 거대한 인간 구체의 심장 박동 같은 낮은 울림이 전해져온다.
+ELSE
+    PRINTL 파헤쳐진 좁은 살점 구멍 사이로 미지근한 체온의 공기가 흘러나온다.
+    PRINTL 벽면의 짓이겨진 살 조직이 서서히 꿈틀거리며 빈 공간을 메우려 들고 있다.
+ENDIF
+
+IF SEG_TUMOR:PLAYER_POS_SEG > 0 && SEG_DENSITY:PLAYER_POS_SEG < 500
+    PRINTFORML [종양] 발치에 파내어진 기괴한 형태의 종양 덩어리가 뒹굴고 있다!
+ENDIF
+
+DRAWLINE
+; 행동 선택지
+IF SEG_DENSITY:TARGET_SEG > 0
+    CHEW_ESTIMATE_MS = CALC_CHEW_DURATION_MS(TARGET_SEG)
+    PRINTFORML [1] 앞의 살점을 뜯어 먹으며 파낸다 (예상 시간: {CHEW_ESTIMATE_MS / 1000}.{CHEW_ESTIMATE_MS % 1000 / 100}초)
+ENDIF
+
+IF SEG_DENSITY:TARGET_SEG < 500
+    PRINTL [2] 뚫린 통로를 통해 앞으로 1걸음 전진한다
+ENDIF
+
+IF PLAYER_POS_SEG > 0
+    PRINTL [3] 뒤쪽 통로를 통해 1걸음 후퇴한다
+ELSE
+    PRINTL [3] 안전한 화장실 안으로 돌아간다
+ENDIF
+
+IF SEG_TUMOR:PLAYER_POS_SEG > 0 && SEG_DENSITY:PLAYER_POS_SEG < 500
+    PRINTL [4] 바닥의 종양을 통째로 집어 든다 (가방/손)
+    PRINTL [5] 바닥의 종양을 그 자리에서 씹어 삼킨다 (배의 혹 생성)
+ENDIF
+
+PRINTL [6] 소지품 및 도구 사용 (방벽, 스프레이, 믹서기)
+PRINTL [7] 자세 변경 (서기 / 웅크리기)
+PRINTL [8] 그 자리에 서서 주변을 살피며 잠시 대기한다 (1.0초 경과)
+INPUT
+
+IF RESULT == 1 && SEG_DENSITY:TARGET_SEG > 0
+    CALL TEAR_AND_EAT, TARGET_SEG
+ELSEIF RESULT == 2 && SEG_DENSITY:TARGET_SEG < 500
+    CALL MOVE_FORWARD
+ELSEIF RESULT == 3
+    IF PLAYER_POS_SEG == 0
+        PRINTW 화장실 문을 열고 하얀 타일 방 안으로 들어왔다.
+        CALL RESTROOM_MAIN
+        RETURN
+    ELSE
+        CALL MOVE_BACKWARD
+    ENDIF
+ELSEIF RESULT == 4 && SEG_TUMOR:PLAYER_POS_SEG > 0 && SEG_DENSITY:PLAYER_POS_SEG < 500
+    CALL PICK_UP_TUMOR_ITEM
+ELSEIF RESULT == 5 && SEG_TUMOR:PLAYER_POS_SEG > 0 && SEG_DENSITY:PLAYER_POS_SEG < 500
+    CALL EAT_TUMOR_ITEM
+ELSEIF RESULT == 6
+    CALL USE_ITEM_MENU
+ELSEIF RESULT == 7
+    IS_CROUCHING = !IS_CROUCHING
+    PRINTFORMW 자세를 %IS_CROUCHING ? "웅크린 자세" # "선 자세"%로 바꾸었다.
+ELSEIF RESULT == 8
+    PRINTL 숨을 고르며 가만히 서 있었다...
+    CALL APPLY_WORLD_REGEN, 1000
+    CALL CALC_PRESSURE_AND_CRUSH, 1000
+ENDIF
+
+GOTO LOOP_START
+
+@PICK_UP_TUMOR_ITEM
+#DIM TKIND
+TKIND = SEG_TUMOR:PLAYER_POS_SEG
+
+IF CARRIED_TUMORS:0 != 0 && (CARRIED_TUMORS:1 != 0 || !HAS_TUMOR_BAG)
+    PRINTW 더 이상 종양을 들 수 없다! 가방이 없으면 한 손에 하나만 들 수 있다.
+    RETURN
+ENDIF
+
+IF CARRIED_TUMORS:0 == 0
+    CARRIED_TUMORS:0 = TKIND
+ELSE
+    CARRIED_TUMORS:1 = TKIND
+ENDIF
+
+SEG_TUMOR:PLAYER_POS_SEG = 0
+PRINTFORML 기괴하게 박동하는 종양을 집어 들었다! (현재 {CARRIED_TUMORS:1 != 0 ? 2 # 1}개 운반 중)
+PRINTW 화장실 변기에 던져 넣으면 막대한 이빨로 정산할 수 있습니다.
+RETURN
+
+@EAT_TUMOR_ITEM
+#DIM TKIND
+TKIND = SEG_TUMOR:PLAYER_POS_SEG
+SEG_TUMOR:PLAYER_POS_SEG = 0
+
+PRINTL 
+PRINTL 콰직-! 꿈틀거리는 종양 덩어리를 통째로 입안에 쑤셔 넣고 거칠게 씹어 삼켰다!
+PRINTL 목구멍을 타고 내려간 종양의 독기가 배 한가운데에서 불룩한 혹을 밀어 올렸다!
+TUMOR_POINTS += 1
+TUMORS_EATEN_COUNT += 1
+PRINTW (거울 변이 화면에서 배의 혹을 쥐어 터뜨려 종양 변이를 획득할 수 있습니다)
+RETURN

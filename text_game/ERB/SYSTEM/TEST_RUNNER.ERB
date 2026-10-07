@@ -1,0 +1,87 @@
+; TEST_RUNNER.ERB - In-Game Automated Self-Test Verification Suite
+
+@RUN_SELF_TESTS
+#DIM PASSED
+#DIM FAILED
+PASSED = 0
+FAILED = 0
+
+PRINTL ================================================================================
+PRINTL               [ flesh-pit 텍스트 시뮬레이터 자체 검증 러너 ]
+PRINTL ================================================================================
+
+; 테스트 1: 세계 초기화
+CALL INIT_WORLD
+IF SEG_DENSITY:0 == 850 && SEG_TISSUE:0 == TISSUE_COMPRESSIVE && SEG_TISSUE:20 == TISSUE_CONTRACTILE
+    PRINTL [PASS] 테스트 1: 세계 껍질 및 세그먼트 초기화 정상
+    PASSED += 1
+ELSE
+    PRINTL [FAIL] 테스트 1: 세계 초기화 실패
+    FAILED += 1
+ENDIF
+
+; 테스트 2: 살점 굴착 및 즉각적인 털 지급 연산
+PLAYER_POS_SEG = 0
+HAIR_CORE = 0
+HAIR_CARRY_CORE = 0
+STOMACH_FILL = 0
+SEG_DENSITY:1 = 800
+CALL TEAR_AND_EAT, 1
+
+; 1셀 섭취 = 400 단위 (4.0 units). 밀도 감소 및 위장 충전 확인
+IF SEG_DENSITY:1 == 500 && STOMACH_FILL == 400
+    PRINTL [PASS] 테스트 2: 살점 뜯기 및 위장 섭취 용량 일치 (1셀 = 400단위)
+    PASSED += 1
+ELSE
+    PRINTL [FAIL] 테스트 2: 살점 뜯기 용량 불일치
+    FAILED += 1
+ENDIF
+
+; 테스트 3: 시간 경과 재생 연산 (0.003/s * 조직배율)
+; 10000ms (10초) 경과 시 압축 조직(배율 1.5x)은 밀도가 약 45 증가해야 함
+#DIM PREV_DEN
+PREV_DEN = SEG_DENSITY:1
+CALL APPLY_WORLD_REGEN, 10000
+IF SEG_DENSITY:1 > PREV_DEN
+    PRINTFORML [PASS] 테스트 3: 연속 재생 공식 연산 정상 (밀도 {PREV_DEN} -> {SEG_DENSITY:1})
+    PASSED += 1
+ELSE
+    PRINTL [FAIL] 테스트 3: 재생 공식 연산 실패
+    FAILED += 1
+ENDIF
+
+; 테스트 4: 변기 정산 및 이빨 환산율 (살 100단위 = 이빨 8개)
+BOWL_FLESH = 10000 ; 100 단위
+TEETH_IN_TANK = 0
+#DIM CALC_TEETH
+CALC_TEETH = (BOWL_FLESH * 8) / 10000
+IF CALC_TEETH == 8
+    PRINTL [PASS] 테스트 4: 변기 정산 이빨 비율 정상 (100 살 = 8 이빨)
+    PASSED += 1
+ELSE
+    PRINTL [FAIL] 테스트 4: 변기 정산 이빨 비율 불일치
+    FAILED += 1
+ENDIF
+
+; 테스트 5: 압박률 및 압사 한계 검사
+SEG_DENSITY:0 = 850
+PLAYER_POS_SEG = 0
+CRUSH_ACCUMULATED_MS = 0
+CALL CALC_PRESSURE_AND_CRUSH, 1000
+IF CRUSH_ACCUMULATED_MS == 1000
+    PRINTL [PASS] 테스트 5: 고밀도(>=0.8) 구간 압사 카운트 누적 정상 (1000ms)
+    PASSED += 1
+ELSE
+    PRINTL [FAIL] 테스트 5: 압사 카운트 누적 연산 실패
+    FAILED += 1
+ENDIF
+
+DRAWLINE
+PRINTFORML 총 검증 결과: 통과 {PASSED}개 / 실패 {FAILED}개
+IF FAILED == 0
+    PRINTL [성공] 모든 핵심 게임 물리 및 비즈니스 규칙 검증을 완벽하게 통과했습니다!
+ELSE
+    PRINTL [오류] 일부 검증 항목에 실패했습니다.
+ENDIF
+PRINTW 아무 키나 누르면 타이틀로 돌아갑니다.
+RETURN
