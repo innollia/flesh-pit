@@ -1,0 +1,97 @@
+; TOILET_FLUSH.ERB - Vomiting Flesh into Bowl, Flushing Lever, and Teeth Settlement
+
+@TOILET_MENU
+PRINTL 
+PRINTL [변기 앞] 깨끗한 도자기 변기다.
+PRINTFORML 변기 안에는 게워낸 살점 {BOWL_FLESH / 100}단위가 담겨 있다.
+PRINTL [1] 위장에 든 살점을 변기에 게워낸다(토하기)
+PRINTL [2] 변기 레버를 눌러 물을 내린다 (이빨 정산)
+PRINTL [0] 뒤로 가기
+INPUT
+
+IF RESULT == 1
+    IF STOMACH_FILL <= 0
+        PRINTW 위장이 비어 있어 토해낼 살점이 없다.
+    ELSE
+        BOWL_FLESH += STOMACH_FILL
+        PRINTFORML 목구멍을 쥐어짜며 위장에 차 있던 살점 {STOMACH_FILL / 100}단위를 전부 변기에 게워냈다.
+        STOMACH_FILL = 0
+        PRINTW 위장이 가벼워졌다.
+    ENDIF
+ELSEIF RESULT == 2
+    IF BOWL_FLESH <= 0
+        PRINTL 레버를 누르자 쏴아아- 하는 맑은 물소리만 울려 퍼졌다.
+        PRINTW 정산할 살점이 없어 이빨은 나오지 않았다.
+    ELSE
+        #DIM TEETH_GAIN
+        ; 살 1단위당 0.08개 이빨 (BOWL_FLESH는 1/100 단위이므로 / 100 * 8 / 100)
+        TEETH_GAIN = (BOWL_FLESH * 8) / 10000
+        IF TEETH_GAIN < 1
+            TEETH_GAIN = 1
+        ENDIF
+        TEETH_IN_TANK += TEETH_GAIN
+        BOWL_FLESH = 0
+        PRINTL 
+        PRINTL 철컥, 변기 레버를 누르자 시원한 물살이 변기 안의 살점을 삼켜버렸다!
+        PRINTFORML 달그락- 달그락-! 물탱크 안쪽에서 이빨 {TEETH_GAIN}개가 차오르는 맑은 소리가 났다.
+        PRINTW (주의: 변기 물내림 정산 시 털은 지급되지 않으며, 이빨만 물탱크에 누적됩니다)
+        
+        ; 첫 물내림 이벤트 트리거 (환풍구 존재 첫 반응)
+        IF !FIRST_FLUSH_DONE
+            FIRST_FLUSH_DONE = 1
+            VENT_FRANTIC_TIMER = 20
+            PRINTL 
+            PRINTL "......어? 어어? 나 똑똑히 들었다? 거기 누구 있어? 있지? 있잖아!"
+            PRINTW 천장 환풍구 너머 어둠 속에서 누군가의 신경질적인 목소리가 터져 나왔다!
+        ENDIF
+    ENDIF
+ELSEIF RESULT == 0
+    RETURN
+ENDIF
+RESTART
+
+@TANK_MENU
+PRINTL 
+PRINTL [물탱크] 변기 뒤편의 도자기 물탱크다.
+IF TANK_LID_OPEN
+    PRINTL 무거운 뚜껑이 열려 있어 내부가 훤히 들여다보인다.
+    PRINTFORML 안에는 누렇고 하얀 이빨 {TEETH_IN_TANK}개가 달그락거리며 쌓여 있다.
+    PRINTFORML [손에 쥔 이빨] {TEETH_IN_HAND}개
+    PRINTL [1] 이빨 한 줌(4개)을 퍼낸다
+    PRINTL [2] 손에 쥔 이빨을 물탱크에 도로 넣는다
+    PRINTL [3] 물탱크 뚜껑을 닫는다
+ELSE
+    PRINTL 물탱크 뚜껑이 단단히 덮여 있다.
+    PRINTL [1] 물탱크 뚜껑을 연다
+ENDIF
+PRINTL [0] 뒤로 가기
+INPUT
+
+IF RESULT == 1 && !TANK_LID_OPEN
+    TANK_LID_OPEN = 1
+    PRINTW 달칵, 물탱크 뚜껑을 들어 올렸다.
+ELSEIF RESULT == 1 && TANK_LID_OPEN
+    IF TEETH_IN_TANK <= 0
+        PRINTW 물탱크에 퍼낼 수 있는 이빨이 없다.
+    ELSE
+        #DIM SCOOP
+        SCOOP = MIN(4, TEETH_IN_TANK)
+        TEETH_IN_TANK -= SCOOP
+        TEETH_IN_HAND += SCOOP
+        PRINTFORML 차가운 이빨 {SCOOP}개를 손바닥 한가득 움켜쥐었다.
+    ENDIF
+ELSEIF RESULT == 2 && TANK_LID_OPEN
+    IF TEETH_IN_HAND <= 0
+        PRINTW 손에 쥐고 있는 이빨이 없다.
+    ELSE
+        TEETH_IN_TANK += TEETH_IN_HAND
+        PRINTFORML 손에 쥐고 있던 이빨 {TEETH_IN_HAND}개를 물탱크 안으로 도로 쏟아 넣었다.
+        TEETH_IN_HAND = 0
+    ENDIF
+ELSEIF RESULT == 3 && TANK_LID_OPEN
+    TANK_LID_OPEN = 0
+    PRINTW 물탱크 뚜껑을 조심스럽게 덮어 닫았다.
+ELSEIF RESULT == 0
+    RETURN
+ENDIF
+RESTART

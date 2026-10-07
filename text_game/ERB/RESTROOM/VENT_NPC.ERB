@@ -1,0 +1,196 @@
+; VENT_NPC.ERB - Vent Grate Shop and Vent Being Dialogue System (vent_lines.json)
+
+@VENT_NPC_INTERACT
+PRINTL 
+PRINTL [환풍구 앞] 변기 맞은편 벽 높은 곳의 사각 배기 환풍구다.
+IF VENT_IS_OPEN
+    PRINTL 환풍구 쇠창살이 비스듬히 열려 있고, 깊은 어둠 속에서 두 개의 번뜩이는 눈동자가 당신을 내려다보고 있다.
+    PRINTFORML [환풍구에 올려둔 이빨] {VENT_TEETH_PLACED}개  [손에 쥔 이빨] {TEETH_IN_HAND}개
+    
+    ; 현재 제안 물품이 있는 경우
+    IF VENT_OFFER_IDS:0 != "" || VENT_OFFER_IDS:1 != "" || VENT_OFFER_IDS:2 != ""
+        PRINTL 
+        PRINTL 어둠 속에서 삐쩍 마른 손이 나와 물건을 내밀고 있다:
+        IF VENT_OFFER_IDS:0 != ""
+            PRINTFORML [1] %GET_ITEM_NAME(VENT_OFFER_IDS:0)% 집어 들기
+        ENDIF
+        IF VENT_OFFER_IDS:1 != ""
+            PRINTFORML [2] %GET_ITEM_NAME(VENT_OFFER_IDS:1)% 집어 들기
+        ENDIF
+        IF VENT_OFFER_IDS:2 != ""
+            PRINTFORML [3] %GET_ITEM_NAME(VENT_OFFER_IDS:2)% 집어 들기
+        ENDIF
+    ENDIF
+    
+    PRINTL [4] 손에 쥔 이빨을 환풍구 선반에 올린다 (흥정)
+    PRINTL [5] 다른 물건을 올려본다 (살점, 카나리아 등)
+    PRINTL [6] 환풍구를 닫는다
+    PRINTL [0] 뒤로 가기
+    INPUT
+    
+    IF RESULT >= 1 && RESULT <= 3
+        CALL ACCEPT_VENT_OFFER, RESULT - 1
+    ELSEIF RESULT == 4
+        CALL PLACE_TEETH_AT_VENT
+    ELSEIF RESULT == 5
+        CALL OFFER_STRANGE_ITEMS
+    ELSEIF RESULT == 6
+        VENT_IS_OPEN = 0
+        PRINTW 쇠창살을 탁 소리 나게 닫았다.
+    ELSEIF RESULT == 0
+        RETURN
+    ENDIF
+ELSE
+    PRINTL 쇠창살 환풍구가 닫혀 있다.
+    PRINTL [1] 환풍구 쇠창살을 연다
+    PRINTL [0] 뒤로 가기
+    INPUT
+    IF RESULT == 1
+        VENT_IS_OPEN = 1
+        PRINTL 끼이익- 쇠창살을 젖히자 어둠 속에서 번뜩이는 두 눈이 모습을 드러냈다!
+        IF !FIRST_FLUSH_DONE
+            PRINTW "......뭘 봐?! 언제부터 열려 있었어!"
+        ELSE
+            IF TEETH_IN_HAND > 0
+                PRINTW "왔다 왔다 왔다. 물통. 알지? 이제 알지? 손 보여줘. 빈손 아니지?"
+            ELSE
+                PRINTW "없어? 없으면 왜 열어. 닫아. 가서 가져와. 빨리."
+            ENDIF
+        ENDIF
+    ENDIF
+ENDIF
+RESTART
+
+@PLACE_TEETH_AT_VENT
+IF TEETH_IN_HAND <= 0
+    PRINTW 손에 쥐고 있는 이빨이 없다! 먼저 물탱크에서 이빨을 꺼내와야 한다.
+    RETURN
+ENDIF
+
+VENT_TEETH_PLACED += TEETH_IN_HAND
+TEETH_IN_HAND = 0
+PRINTFORML 환풍구 선반 위에 이빨을 올려두었다. (총 {VENT_TEETH_PLACED}개)
+
+; 벨트 지급 (첫 거래)
+IF !HAS_BELT
+    HAS_BELT = 1
+    PRINTL 
+    PRINTL "좋아! 봉을 줬으니 이건 덤으로 주지."
+    PRINTW 어둠 속에서 둥근 작업용 허리띠(벨트) 하나가 툭 떨어졌다.
+ENDIF
+
+; 올려둔 수량에 따른 반응 및 물건 제안
+IF VENT_TEETH_PLACED < 4
+    PRINTL 
+    PRINTL "......이거? 이걸로? 음. 그럼 이런 거밖에 없어."
+    VENT_OFFER_IDS:0 = "junk"
+    VENT_OFFER_IDS:1 = ""
+    VENT_OFFER_IDS:2 = ""
+ELSEIF VENT_TEETH_PLACED >= 4 && VENT_TEETH_PLACED < 12
+    PRINTL 
+    PRINTL "좋아. 공평해. 골라."
+    VENT_OFFER_IDS:0 = "knife"
+    VENT_OFFER_IDS:1 = "barrier"
+    VENT_OFFER_IDS:2 = "spray_cheap"
+ELSEIF VENT_TEETH_PLACED >= 12 && VENT_TEETH_PLACED < 24
+    PRINTL 
+    PRINTL "어어. 어어어. 이렇게나? 잠깐, 잠깐만. 아껴둔 거다."
+    VENT_OFFER_IDS:0 = "blender"
+    VENT_OFFER_IDS:1 = "spray_deep"
+    VENT_OFFER_IDS:2 = "tumor_bag"
+ELSE
+    PRINTL 
+    PRINTL "큭 켘!"
+    PRINTW 과도하게 많은 이빨에 존재가 기괴하게 폭소하며 물건들을 마구 쏟아냈다!
+    VENT_OFFER_IDS:0 = "big_saw"
+    VENT_OFFER_IDS:1 = "canary_feed"
+    VENT_OFFER_IDS:2 = "barrier"
+ENDIF
+RETURN
+
+@ACCEPT_VENT_OFFER, PICK_IDX
+#DIM PICK_IDX
+#DIMS PICK_ID
+PICK_ID = %VENT_OFFER_IDS:PICK_IDX%
+
+IF PICK_ID == ""
+    RETURN
+ENDIF
+
+PRINTFORML 손을 뻗어 %GET_ITEM_NAME(PICK_ID)%을(를) 집어 들었다!
+PRINTL 당신이 물건을 집자마자, 어둠 속의 손이 남은 물건들과 이빨을 전부 낚아채 어둠 속으로 끌고 들어갔다.
+PRINTW "그거. 그래 그거. 봉은 이미 내 거지만."
+
+IF PICK_ID == "knife"
+    OWN_KNIFE = 1
+    EQUIPPED_RIGHT = "knife"
+    PRINTL [장착] 오른손에 질긴 막을 벨 수 있는 '칼'을 쥐었다.
+ELSEIF PICK_ID == "blender"
+    OWN_BLENDER = 1
+    EQUIPPED_LEFT = "blender"
+    BLENDER_CHARGE = 100
+    PRINTL [장착] 왼손에 살점을 갈아 마실 수 있는 주방용 '믹서기'를 들었다.
+ELSEIF PICK_ID == "big_saw"
+    OWN_BIG_SAW = 1
+    EQUIPPED_RIGHT = "big_saw"
+    PRINTL [장착] 한 번에 6셀의 살점을 베어내는 육중한 '대형 톱'을 양손에 쥐었다.
+ELSEIF PICK_ID == "barrier"
+    ITEM_BARRIERS = MIN(3, ITEM_BARRIERS + 1)
+    PRINTFORML [소지] 산업용 확장 '방벽'을 허리띠에 챙겼다. (현재 {ITEM_BARRIERS}개)
+ELSEIF PICK_ID == "spray_cheap"
+    ITEM_SPRAY_CHEAP += 6
+    PRINTL [소지] 살점을 영구 용해하는 '싸구려 스프레이'를 챙겼다.
+ELSEIF PICK_ID == "spray_deep"
+    ITEM_SPRAY_DEEP += 6
+    PRINTL [소지] 살점을 깊이 녹이는 '고급 스프레이'를 챙겼다.
+ELSEIF PICK_ID == "canary_feed"
+    ITEM_CANARY_FEED = MIN(3, ITEM_CANARY_FEED + 1)
+    PRINTFORML [소지] 카나리아의 경고 민감도를 높이는 '먹이'를 챙겼다. (현재 {ITEM_CANARY_FEED}개)
+ELSEIF PICK_ID == "tumor_bag"
+    HAS_TUMOR_BAG = 1
+    PRINTL [소지] 종양을 온전하게 담아올 수 있는 '농구공 가방'을 어깨에 멨다.
+ELSE
+    PRINTL 쓸모없는 낡은 볼트와 고철 조각을 받았다...
+ENDIF
+
+VENT_TEETH_PLACED = 0
+VARSET VENT_OFFER_IDS, ""
+RETURN
+
+@GET_ITEM_NAME, ITEM_ID
+#FUNCTIONS
+#DIMS ITEM_ID
+SELECTCASE ITEM_ID
+    CASE "knife"
+        RETURNF "날카로운 칼"
+    CASE "blender"
+        RETURNF "주방용 믹서기"
+    CASE "big_saw"
+        RETURNF "대형 공업용 톱"
+    CASE "barrier"
+        RETURNF "확장 방벽"
+    CASE "spray_cheap"
+        RETURNF "표면 용해 스프레이"
+    CASE "spray_deep"
+        RETURNF "심층 용해 스프레이"
+    CASE "canary_feed"
+        RETURNF "카나리아 먹이"
+    CASE "tumor_bag"
+        RETURNF "종양 보관 가방"
+    CASEELSE
+        RETURNF "잡동사니 고철"
+ENDSELECT
+
+@OFFER_STRANGE_ITEMS
+PRINTL [1] 카나리아를 들이밀어 본다
+PRINTL [2] 피 묻은 손을 불쑥 집어넣는다
+PRINTL [0] 그만둔다
+INPUT
+IF RESULT == 1 && HAS_CANARY
+    PRINTL "......"
+    PRINTL (짹-)
+    PRINTW "......귀엽네. 가져가. 나 새 못 키워."
+ELSEIF RESULT == 2
+    PRINTW "손 넣지 마. 여긴 내 방이야."
+ENDIF
+RETURN
