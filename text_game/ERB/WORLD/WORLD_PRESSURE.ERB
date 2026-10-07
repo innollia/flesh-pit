@@ -1,0 +1,90 @@
+; WORLD_PRESSURE.ERB - Calculate Passage Clearance, Squeeze Penalty, and Crush Danger
+; RESULT:0 = 현재 위치의 압박률 (0 ~ 1000, 500 = 0.5)
+; RESULT:1 = 복귀 경로(화장실까지) 최소 통로 여유도 (0 ~ 1000)
+
+@CALC_PRESSURE_AND_CRUSH, ELAPSED_MS
+#DIM ELAPSED_MS
+#DIM CHECK_SEG
+#DIM SQUEEZE_RATE ; 0 ~ 1000
+#DIM MIN_CLEARANCE
+#DIM CURRENT_CLEARANCE
+#DIM MAX_CRUSH_MS
+
+MIN_CLEARANCE = 1000
+SQUEEZE_RATE = SEG_DENSITY:PLAYER_POS_SEG
+
+; 1. 귀환로(0번 세그먼트까지) 최저 여유도 추적
+FOR CHECK_SEG, 0, PLAYER_POS_SEG + 1
+    CURRENT_CLEARANCE = 1000 - SEG_DENSITY:CHECK_SEG
+    IF CURRENT_CLEARANCE < MIN_CLEARANCE
+        MIN_CLEARANCE = CURRENT_CLEARANCE
+    ENDIF
+NEXT
+
+; M05 변이(접히는 어깨): 판정 반경 15% 감소 -> 압박률 15% 경감
+IF MUT_M:5
+    SQUEEZE_RATE = SQUEEZE_RATE * 85 / 100
+ENDIF
+; T4 변이(부푼 몸통): 판정 반경 30% 증가 -> 압박률 30% 증가
+IF MUT_T:4
+    SQUEEZE_RATE = SQUEEZE_RATE * 130 / 100
+ENDIF
+
+; 2. 압사 판정 (CRUSH_BLOCK = 800 이상)
+MAX_CRUSH_MS = 6000
+; M06 변이(긴 숨): 압사 시간 +3초 (9000ms)
+IF MUT_M:6
+    MAX_CRUSH_MS += 3000
+ENDIF
+
+IF SQUEEZE_RATE >= 800
+    CRUSH_ACCUMULATED_MS += ELAPSED_MS
+    PRINTL 
+    PRINTL [위험!] 재생된 살점이 온몸을 무겁게 짓누르며 으깨려 든다! 숨이 막혀온다!
+    PRINTFORML [압사 진행] {CRUSH_ACCUMULATED_MS / 100}%% / 100%%
+    
+    IF CRUSH_ACCUMULATED_MS >= MAX_CRUSH_MS
+        ; M29 변이(휴면): 압사 시 30초 뒤 화장실에서 부활
+        IF MUT_M:29
+            PRINTL 
+            PRINTL [휴면] 온몸이 쪼그라들며 가사 상태로 접어들었다...
+            PRINTW 잠시 후, 축축한 화장실 바닥에서 거친 숨을 내쉬며 깨어났다.
+            CALL ON_PLAYER_DEATH, 1
+            RETURN 0, 0
+        ELSE
+            PRINTL 
+            PRINTL [사망] 사방에서 밀려든 고체 살점에 온몸의 뼈가 으스러져 압사했다...
+            CALL ON_PLAYER_DEATH, 0
+            RETURN 0, 0
+        ENDIF
+    ENDIF
+ELSE
+    ; 끼임에서 벗어나면 누적 압사 시간이 2배 속도로 빠르게 감소
+    IF CRUSH_ACCUMULATED_MS > 0
+        CRUSH_ACCUMULATED_MS = MAX(0, CRUSH_ACCUMULATED_MS - (ELAPSED_MS * 2))
+    ENDIF
+ENDIF
+
+; 반환: 현재 세그먼트 압박률, 귀환로 최소 여유 공간
+RETURN SQUEEZE_RATE, MIN_CLEARANCE
+
+; 플레이어 사망 처리
+@ON_PLAYER_DEATH, IS_DORMANT
+#DIM IS_DORMANT
+; 위장 속 살과 들고 있던 소모품을 떨어뜨리고 화장실로 강제 복귀
+STOMACH_FILL = 0
+FLESH_IN_HAND = 0
+ITEM_BARRIERS = 0
+ITEM_SPRAY_CHEAP = 0
+ITEM_SPRAY_DEEP = 0
+TEETH_IN_HAND = 0
+PLAYER_POS_SEG = 0
+CRUSH_ACCUMULATED_MS = 0
+PLAYER_HP = 100
+HAS_CANARY = 0
+
+PRINTL 
+PRINTL 소지하던 살점과 도구들이 살구덩이 속 깊은 곳으로 흩어졌다...
+PRINTW 상처투성이가 된 채 화장실 변기 옆으로 돌아왔다.
+CALL RESTROOM_MAIN
+RETURN

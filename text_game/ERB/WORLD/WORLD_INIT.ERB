@@ -1,0 +1,44 @@
+; WORLD_INIT.ERB - Initialize 60 Segments across 3 Shells
+
+@INIT_WORLD
+#DIM SEG_IDX
+
+FOR SEG_IDX, 0, SEG_COUNT
+    ; 기본 밀도: 850 (고체 살점, 1000 기준)
+    SEG_DENSITY:SEG_IDX = 850
+    SEG_BARRIER_HP:SEG_IDX = 0
+    SEG_TUMOR:SEG_IDX = 0
+    
+    ; 껍질 및 조직 할당
+    IF SEG_IDX < CORE_SEGS
+        ; 핵 (0 ~ 9m): 압축 조직 (진분홍 털)
+        SEG_TISSUE:SEG_IDX = TISSUE_COMPRESSIVE
+    ELSEIF SEG_IDX < MANTLE_SEGS
+        ; 맨틀 (9 ~ 18m): 수축 조직 (보라 털)
+        SEG_TISSUE:SEG_IDX = TISSUE_CONTRACTILE
+    ELSEIF SEG_IDX < SURFACE_SEGS
+        ; 지표면 (18 ~ 27m): 신경 조직 (노랑 털)
+        SEG_TISSUE:SEG_IDX = TISSUE_NERVE
+    ELSE
+        ; 껍질 외곽 막 (27m 이상)
+        SEG_TISSUE:SEG_IDX = TISSUE_MEMBRANE
+    ENDIF
+
+    ; 껍질 경계 막 배치 (각 껍질 끝 부분 0.9m = 약 2개 세그먼트)
+    IF SEG_IDX == (CORE_SEGS - 1) || SEG_IDX == (MANTLE_SEGS - 1)
+        SEG_TISSUE:SEG_IDX = TISSUE_MEMBRANE
+        SEG_DENSITY:SEG_IDX = 1000
+    ENDIF
+NEXT
+
+; 화장실 문 바로 앞(세그먼트 0)은 살 벽이 문틀까지 닿아 있음
+SEG_DENSITY:0 = 850
+
+; 초기 종양 배치 (각 껍질별 1개씩 무작위 위치)
+SEG_TUMOR:5 = 1  ; 핵 기형종 (core_knot)
+SEG_TUMOR:12 = 2 ; 핵 물혹 (core_bulb)
+SEG_TUMOR:25 = 3 ; 맨틀 똬리 근종 (mantle_coil)
+SEG_TUMOR:32 = 4 ; 맨틀 쌍둥이 주머니 (mantle_sac)
+SEG_TUMOR:42 = 5 ; 지표면 별 신경종 (surface_star)
+SEG_TUMOR:50 = 6 ; 지표면 귀 덩어리 (surface_ear)
+RETURN

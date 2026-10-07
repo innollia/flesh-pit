@@ -1,0 +1,87 @@
+; WORLD_REGEN.ERB - Continuous Flesh Regeneration and Contraction Physics
+; ARGS:0 = 경과 시간(초 단위, 1/1000초 정밀도: 1000 = 1.0초)
+
+@APPLY_WORLD_REGEN, ELAPSED_MS
+#DIM ELAPSED_MS
+#DIM SEG_IDX
+#DIM REGEN_AMOUNT
+#DIM TISSUE_TYPE
+#DIM REGEN_MULT ; 100 기준 (100 = 1.0x, 150 = 1.5x)
+#DIM PRESSURE
+
+; 총 누적 게임 시간 추가
+GAME_SECONDS += (ELAPSED_MS / 1000)
+
+FOR SEG_IDX, 0, SEG_COUNT
+    TISSUE_TYPE = SEG_TISSUE:SEG_IDX
+
+    ; 1. 영구 용해된 살점이나 막은 재생하지 않음
+    IF TISSUE_TYPE == TISSUE_DISSOLVED || TISSUE_TYPE == TISSUE_MEMBRANE
+        CONTINUE
+    ENDIF
+
+    ; 2. 방벽이 설치되어 있는 경우: 재생 차단 및 방벽 내구도 감쇠
+    IF SEG_BARRIER_HP:SEG_IDX > 0
+        ; 방벽 압력(BARRIER_PRESSURE)은 결손 밀도와 깊이에 비례
+        PRESSURE = (1000 - SEG_DENSITY:SEG_IDX) * (SEG_IDX + 10) / 20
+        SEG_BARRIER_HP:SEG_IDX -= (PRESSURE * ELAPSED_MS / 1000)
+        IF SEG_BARRIER_HP:SEG_IDX <= 0
+            SEG_BARRIER_HP:SEG_IDX = 0
+            ; 방벽 파손 알림
+            IF SEG_IDX == PLAYER_POS_SEG
+                PRINTL [경고] 버티지 못한 방벽이 '뽀잉' 하고 튕겨 나가며 산산조각 났다!
+            ENDIF
+        ELSE
+            ; 방벽이 막고 있으면 해당 세그먼트 재생 정지
+            CONTINUE
+        ENDIF
+    ENDIF
+
+    ; 3. 플레이어 몸 주변 보호 (BODY_PROTECT_RADIUS = 0.9m -> 현재 세그먼트 보호)
+    ; 단, 수축 조직 및 신경 수축은 보호 반경을 무시함
+    IF SEG_IDX == PLAYER_POS_SEG && TISSUE_TYPE != TISSUE_CONTRACTILE
+        ; T7 변이(부채 갈비: 멈춰 서 있는 동안 반경 1.5m 재생 정지)가 있는 경우 완전 정지
+        IF MUT_T:7
+            CONTINUE
+        ENDIF
+        ; 기본 재생 보호: 플레이어가 있는 칸은 재생이 400(0.4) 이상으로 차지 않음
+        IF SEG_DENSITY:SEG_IDX >= 400
+            CONTINUE
+        ENDIF
+    ENDIF
+
+    ; 4. 조직별 재생 배율 (0.003/s = 초당 3 밀도)
+    ; 압축: 1.5x (초당 4.5), 수축: 1.0x (초당 3), 신경: 0.8x (초당 2.4)
+    IF TISSUE_TYPE == TISSUE_COMPRESSIVE
+        REGEN_MULT = 150
+    ELSEIF TISSUE_TYPE == TISSUE_CONTRACTILE
+        REGEN_MULT = 100
+    ELSEIF TISSUE_TYPE == TISSUE_NERVE
+        REGEN_MULT = 80
+    ELSE
+        REGEN_MULT = 100
+    ENDIF
+
+    ; 주변에 녹은 살이 있으면 재생 가속 (x2.0)
+    IF SEG_IDX > 0 && SEG_TISSUE:(SEG_IDX - 1) == TISSUE_DISSOLVED
+        REGEN_MULT *= 2
+    ELSEIF SEG_IDX < (SEG_COUNT - 1) && SEG_TISSUE:(SEG_IDX + 1) == TISSUE_DISSOLVED
+        REGEN_MULT *= 2
+    ENDIF
+
+    ; 재생 공식: 3 * REGEN_MULT / 100 * ELAPSED_MS / 1000
+    REGEN_AMOUNT = (3 * REGEN_MULT * ELAPSED_MS) / 100000
+    IF REGEN_AMOUNT < 1 && ELAPSED_MS >= 200
+        REGEN_AMOUNT = 1
+    ENDIF
+
+    SEG_DENSITY:SEG_IDX = MIN(850, SEG_DENSITY:SEG_IDX + REGEN_AMOUNT)
+
+    ; 5. 맨틀 수축 조직의 주기적 수축 (8초 주기, 3초 동안 밀도 +300 파도)
+    IF TISSUE_TYPE == TISSUE_CONTRACTILE
+        IF (GAME_SECONDS % 8) < 3 && SEG_DENSITY:SEG_IDX < 800
+            SEG_DENSITY:SEG_IDX = MIN(850, SEG_DENSITY:SEG_IDX + 20)
+        ENDIF
+    ENDIF
+NEXT
+RETURN
