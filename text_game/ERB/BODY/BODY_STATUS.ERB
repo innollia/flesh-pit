@@ -1,0 +1,119 @@
+; BODY_STATUS.ERB - Calculate Stomach Capacity, Overfill Penalty, and Chewing/Movement Speeds
+
+; 위장 최대 용량 (기본 10000 = 100.0)
+@GET_STOMACH_CAPACITY
+#FUNCTION
+#DIM CAP
+CAP = 10000
+; M01 변이(늘어난 위): 용량 +20.0
+IF MUT_M:1
+    CAP += 2000
+ENDIF
+; T4 변이(부푼 몸통): 용량 2배
+IF MUT_T:4
+    CAP *= 2
+ENDIF
+RETURNF CAP
+
+; 과식 한도 (기본 6000 = 60.0)
+@GET_OVERFILL_CAPACITY
+#FUNCTION
+#DIM OCAP
+OCAP = 6000
+; M30 변이(목주머니): 과식 용량 +40.0
+IF MUT_M:30
+    OCAP += 4000
+ENDIF
+RETURNF OCAP
+
+; 과식으로 인한 씹기 시간 배율 (100 = 1.0x ~ 최대 300 = 3.0x)
+@GET_OVERFILL_CHEW_MULT
+#FUNCTION
+#DIM CAP
+#DIM OCAP
+#DIM OVERFILL
+#DIM MAX_MULT
+CAP = GET_STOMACH_CAPACITY()
+OCAP = GET_OVERFILL_CAPACITY()
+
+IF STOMACH_FILL <= CAP
+    RETURNF 100
+ENDIF
+
+OVERFILL = STOMACH_FILL - CAP
+; M02 변이(넓은 목구멍): 최대 과식 배율이 3.0x에서 2.4x(240)로 완화
+MAX_MULT = 300
+IF MUT_M:2
+    MAX_MULT = 240
+ENDIF
+
+; 선형 증가
+RETURNF 100 + ((MAX_MULT - 100) * OVERFILL / OCAP)
+
+; 조직별 기본 씹기 시간 계산 (밀리초)
+@CALC_CHEW_DURATION_MS, TARGET_SEG
+#FUNCTION
+#DIM TARGET_SEG
+#DIM TISSUE_TYPE
+#DIM BASE_MS
+#DIM HARDNESS ; 100 = 1.0x
+#DIM TOOL_MULT; 100 = 1.0x
+#DIM OVEREAT_MULT
+
+TISSUE_TYPE = SEG_TISSUE:TARGET_SEG
+BASE_MS = 600 ; 기본 0.6초
+
+; 조직 경도: 압축 1.0, 신경 1.2, 수축 1.4, 막 2.0
+IF TISSUE_TYPE == TISSUE_COMPRESSIVE
+    HARDNESS = 100
+    ; M08 변이(물갈퀴): 압축 조직 경도 x0.7
+    IF MUT_M:8
+        HARDNESS = 70
+    ENDIF
+ELSEIF TISSUE_TYPE == TISSUE_CONTRACTILE
+    HARDNESS = 140
+    ; M18 변이(두더지 앞발): 수축 조직 경도 x0.6
+    IF MUT_M:18
+        HARDNESS = 84
+    ENDIF
+ELSEIF TISSUE_TYPE == TISSUE_NERVE
+    HARDNESS = 120
+ELSEIF TISSUE_TYPE == TISSUE_MEMBRANE
+    HARDNESS = 200
+    ; T6 변이(세로 턱): 막 경도 2.0 -> 1.0
+    IF MUT_T:6
+        HARDNESS = 100
+    ENDIF
+    ; M09 변이(두꺼운 손톱): 맨손으로 막 씹기 가능하지만 씹기 시간 x3
+    IF MUT_M:9 && EQUIPPED_RIGHT != "knife" && EQUIPPED_RIGHT != "big_saw" && !MUT_T:6
+        HARDNESS = 600
+    ENDIF
+ELSE
+    HARDNESS = 100
+ENDIF
+
+; M12 변이(부푼 팔뚝): 경도 1.0 초과분의 50% 감쇄
+IF HARDNESS > 100 && MUT_M:12
+    HARDNESS = 100 + ((HARDNESS - 100) / 2)
+ENDIF
+
+; 도구 배율
+TOOL_MULT = 100
+IF EQUIPPED_RIGHT == "knife"
+    TOOL_MULT = 62 ; 약 1.6배 빠름 (100 / 1.6)
+ELSEIF EQUIPPED_RIGHT == "big_saw"
+    TOOL_MULT = 38 ; 약 2.6배 빠름
+ENDIF
+
+; M04 변이(불거진 턱): 기본 씹기 시간 x0.85
+IF MUT_M:4
+    BASE_MS = BASE_MS * 85 / 100
+ENDIF
+; T3 변이(손바닥 입): 기본 씹기 시간 x0.4
+IF MUT_T:3
+    BASE_MS = BASE_MS * 40 / 100
+ENDIF
+
+OVEREAT_MULT = GET_OVERFILL_CHEW_MULT()
+
+RETURNF (BASE_MS * HARDNESS / 100 * TOOL_MULT / 100 * OVEREAT_MULT / 100)

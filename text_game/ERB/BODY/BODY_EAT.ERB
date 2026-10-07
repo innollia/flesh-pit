@@ -1,0 +1,114 @@
+; BODY_EAT.ERB - Tear Flesh, Ingest to Stomach, and Immediately Grant Hairs
+
+@TEAR_AND_EAT, TARGET_SEG
+#DIM TARGET_SEG
+#DIM CHEW_MS
+#DIM CELLS_TO_TEAR
+#DIM TISSUE_TYPE
+#DIM EATEN_FLESH_UNITS ; 1/100 scale (1 cell = 400 = 4.0 units)
+#DIM SHELL_MULT
+#DIM WEIGHTED_FLESH
+
+TISSUE_TYPE = SEG_TISSUE:TARGET_SEG
+
+; 1. 막 검사: 칼이나 전용 변이가 없으면 뜯을 수 없음
+IF TISSUE_TYPE == TISSUE_MEMBRANE
+    IF EQUIPPED_RIGHT != "knife" && EQUIPPED_RIGHT != "big_saw" && !MUT_M:9 && !MUT_T:6
+        PRINTL [불가] 질긴 막은 맨손으로 잡히지 않는다! 날카로운 칼이나 강력한 변이가 필요하다.
+        RETURN 0
+    ENDIF
+ENDIF
+
+; 2. 용해된 살 검사: 먹을 수 없음
+IF TISSUE_TYPE == TISSUE_DISSOLVED
+    PRINTL [불가] 화학 약품에 영구적으로 용해되어 썩어버린 살점은 먹을 수 없다.
+    RETURN 0
+ENDIF
+
+; 3. 위장 용량 초과 검사 (용량 + 과식 한계 초과 시 섭취 불가)
+IF STOMACH_FILL >= (GET_STOMACH_CAPACITY() + GET_OVERFILL_CAPACITY())
+    PRINTL [한계] 위장과 목구멍까지 살점이 가득 차올라 더 이상 삼킬 수 없다! 토해내야 한다!
+    RETURN 0
+ENDIF
+
+; 4. 씹는 시간 계산
+CHEW_MS = CALC_CHEW_DURATION_MS(TARGET_SEG)
+
+; 대형 톱: 한 번에 6셀 분량 절단, 그 외는 1셀 (변이 M07, M14로 추가)
+CELLS_TO_TEAR = 1
+IF EQUIPPED_RIGHT == "big_saw"
+    CELLS_TO_TEAR = 6
+    CHEW_MS = CHEW_MS * 150 / 100 ; 톱질 시간 배율 x1.5
+ELSE
+    IF MUT_M:7
+        CELLS_TO_TEAR += 1
+    ENDIF
+    IF MUT_M:14
+        CELLS_TO_TEAR += 1
+    ENDIF
+ENDIF
+
+; 셀당 4.0 살 단위 (400)
+EATEN_FLESH_UNITS = CELLS_TO_TEAR * 400
+
+; 밀도 제거: 1셀 = 300 밀도 제거
+SEG_DENSITY:TARGET_SEG = MAX(0, SEG_DENSITY:TARGET_SEG - (CELLS_TO_TEAR * 300))
+HANDS_BLOODY = 1
+
+; 5. 위장에 저장 (믹서기 들기 모드가 아닌 경우 바로 위장으로)
+STOMACH_FILL += EATEN_FLESH_UNITS
+
+; 6. 즉시 털 성장 연산 (R17/04-economy.md 규칙)
+; 껍질 배율: 핵(0~17) x1, 맨틀(18~35) x2, 지표면(36~53) x3
+IF TARGET_SEG < CORE_SEGS
+    SHELL_MULT = 1
+ELSEIF TARGET_SEG < MANTLE_SEGS
+    SHELL_MULT = 2
+ELSE
+    SHELL_MULT = 3
+ENDIF
+
+WEIGHTED_FLESH = EATEN_FLESH_UNITS * SHELL_MULT ; 1/100 scale
+
+; 바이옴 털: 가중 섭취 50단위(5000)마다 1가닥
+IF TARGET_SEG < CORE_SEGS
+    HAIR_CARRY_CORE += WEIGHTED_FLESH
+    IF HAIR_CARRY_CORE >= 5000
+        HAIR_CORE += (HAIR_CARRY_CORE / 5000)
+        HAIR_CARRY_CORE = (HAIR_CARRY_CORE % 5000)
+        PRINTL [변이 징후] 섭취한 살점의 기운으로 오른팔에 진분홍빛 털이 즉시 돋아났다!
+    ENDIF
+ELSEIF TARGET_SEG < MANTLE_SEGS
+    HAIR_CARRY_MANTLE += WEIGHTED_FLESH
+    IF HAIR_CARRY_MANTLE >= 5000
+        HAIR_MANTLE += (HAIR_CARRY_MANTLE / 5000)
+        HAIR_CARRY_MANTLE = (HAIR_CARRY_MANTLE % 5000)
+        PRINTL [변이 징후] 섭취한 살점의 기운으로 오른팔에 멍 같은 보랏빛 털이 즉시 돋아났다!
+    ENDIF
+ELSE
+    HAIR_CARRY_SURFACE += WEIGHTED_FLESH
+    IF HAIR_CARRY_SURFACE >= 5000
+        HAIR_SURFACE += (HAIR_CARRY_SURFACE / 5000)
+        HAIR_CARRY_SURFACE = (HAIR_CARRY_SURFACE % 5000)
+        PRINTL [변이 징후] 섭취한 살점의 기운으로 오른팔에 샛노란 신경털이 즉시 돋아났다!
+    ENDIF
+ENDIF
+
+; 공통 털: 가중 섭취 150단위(15000)마다 1가닥
+HAIR_CARRY_COMMON += WEIGHTED_FLESH
+IF HAIR_CARRY_COMMON >= 15000
+    HAIR_COMMON += (HAIR_CARRY_COMMON / 15000)
+    HAIR_CARRY_COMMON = (HAIR_CARRY_COMMON % 15000)
+    PRINTL [변이 징후] 오른팔에 검고 뻣뻣한 공통 털이 돋아났다!
+ENDIF
+
+; 7. 경과 시간 및 세계 재생 반영
+CALL APPLY_WORLD_REGEN, CHEW_MS
+
+; 8. 종양이 드러났는지 확인
+IF SEG_TUMOR:TARGET_SEG > 0 && SEG_DENSITY:TARGET_SEG < 500
+    PRINTL 
+    PRINTL [발견!] 파낸 살점 벽 깊은 곳에서 꿈틀거리는 종양 덩어리가 드러났다!
+ENDIF
+
+RETURN 1

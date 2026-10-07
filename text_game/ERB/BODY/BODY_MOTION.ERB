@@ -1,0 +1,115 @@
+; BODY_MOTION.ERB - Player Movement, Backward Retreat, and Exploration Steps
+
+@MOVE_FORWARD
+#DIM MOVE_MS
+#DIM SQUEEZE_RATE
+#DIM MIN_CLEAR
+
+; 앞 세그먼트가 고체(밀도 500 이상)면 바로 이동할 수 없음 (먼저 파내야 함)
+IF SEG_DENSITY:(PLAYER_POS_SEG + 1) >= 500
+    PRINTL [길 막힘] 앞쪽이 두꺼운 고체 살점으로 꽉 막혀 있다. 살을 뜯어 파내야 한다.
+    RETURN 0
+ENDIF
+
+; 이동 시간 계산 (0.5m당 기본 170ms)
+MOVE_MS = 170
+IF IS_CROUCHING
+    MOVE_MS = 330 ; 웅크리기 1.5 m/s
+ENDIF
+
+; 압박 감속 체크 (압박률 0.5 이상이면 이동 속도 절반 -> 시간 2배)
+CALL CALC_PRESSURE_AND_CRUSH, 0
+SQUEEZE_RATE = RESULT:0
+IF SQUEEZE_RATE >= 500
+    ; M19 변이(연동 기기): 압박 감속을 뒤집어 오히려 속도 x1.3 빨라짐
+    IF MUT_M:19
+        MOVE_MS = MOVE_MS * 77 / 100
+    ; M20 변이(과유연 관절): 압박 감속 무시
+    ELSEIF MUT_M:20
+        ; 유지
+    ELSE
+        MOVE_MS *= 2
+        PRINTL [비좁음] 좁아진 통로에 어깨와 몸이 끼여 앞으로 나아가기 무겁고 버겁다...
+    ENDIF
+ENDIF
+
+; 전진
+PLAYER_POS_SEG += 1
+PRINTFORML 축축한 살점 통로를 비집고 깊이 {PLAYER_POS_SEG * 5 / 10}.{PLAYER_POS_SEG * 5 % 10}m 지점으로 전진했다.
+
+; 외곽 돌파 엔딩 검사 (27m = 세그먼트 54 이상 돌파)
+IF PLAYER_POS_SEG >= SURFACE_SEGS
+    CALL TRIGGER_ENDING
+    RETURN 1
+ENDIF
+
+; 세계 재생 및 압사 검사
+CALL APPLY_WORLD_REGEN, MOVE_MS
+CALL CALC_PRESSURE_AND_CRUSH, MOVE_MS
+
+RETURN 1
+
+@MOVE_BACKWARD
+#DIM MOVE_MS
+#DIM SQUEEZE_RATE
+
+; 이미 화장실 입구(0)인 경우
+IF PLAYER_POS_SEG == 0
+    PRINTL 화장실 문턱 앞에 서 있다. [화장실로 들어가기] 커맨드로 복귀할 수 있다.
+    RETURN 0
+ENDIF
+
+MOVE_MS = 170
+IF IS_CROUCHING
+    MOVE_MS = 330
+ENDIF
+
+; 후방 세그먼트 밀도 확인
+IF SEG_DENSITY:(PLAYER_POS_SEG - 1) >= 800
+    PRINTL [비상!] 뒤쪽 통로가 살점 재생으로 꽉 막혀버렸다! 후퇴하려면 뒤돌아 살을 뜯어야 한다!
+    RETURN 0
+ENDIF
+
+CALL CALC_PRESSURE_AND_CRUSH, 0
+SQUEEZE_RATE = RESULT:0
+IF SQUEEZE_RATE >= 500
+    IF MUT_M:19
+        MOVE_MS = MOVE_MS * 77 / 100
+    ELSEIF MUT_M:20
+        ; 유지
+    ELSE
+        MOVE_MS *= 2
+        PRINTL [비좁음] 좁아진 뒤쪽 통로를 온몸으로 비비며 겨우 후퇴한다...
+    ENDIF
+ENDIF
+
+PLAYER_POS_SEG -= 1
+PRINTFORML 좁아진 통로를 거슬러 깊이 {PLAYER_POS_SEG * 5 / 10}.{PLAYER_POS_SEG * 5 % 10}m 지점으로 후퇴했다.
+
+CALL APPLY_WORLD_REGEN, MOVE_MS
+CALL CALC_PRESSURE_AND_CRUSH, MOVE_MS
+
+RETURN 1
+
+@TRIGGER_ENDING
+DRAWLINE
+PRINTL ================================================================================
+PRINTL                            [ 엔 딩 : 길 바 닥 ]
+PRINTL ================================================================================
+PRINTL 
+PRINTL 마지막 살점 껍질을 찢고 뚫어내는 순간,
+PRINTL 눈부신 한낮의 햇빛과 함께 평화로운 허밍 콧노래 소리가 귓가에 쏟아져 들어왔다.
+PRINTL 
+PRINTL 콰르릉- 쿵!
+PRINTL 
+PRINTL 당신은 축축한 살덩이에서 튕겨져 나와 아스팔트 도시 길바닥 위로 굴러떨어졌다.
+PRINTL 고개를 들자, 거대한 인간 구체가 수천만 명의 몸뚱이를 삐걱이며
+PRINTL 빌딩 숲 사이를 무심하고 조용하게 굴러가고 있다.
+PRINTL 
+PRINTL 길을 지나가던 행인들은 길바닥에 떨어진 당신을 잠깐 흘겨볼 뿐,
+PRINTL 아무 일도 없었다는 듯 커피를 든 채 발걸음을 재촉한다.
+PRINTL 
+PRINTL 당신은 마침내 살구덩이에서 빠져나왔다.
+DRAWLINE
+PRINTW 엔딩에 도달했습니다. 플레이해 주셔서 감사합니다.
+QUIT
