@@ -1,0 +1,67 @@
+; TOOL_USE.ERB - Use Items (Barriers, Sprays, Blender) in Tunnels
+
+@USE_ITEM_MENU
+PRINTL 
+PRINTL [소지품 및 도구 사용]
+PRINTFORML [1] 확장 방벽 설치하기 (소지: {ITEM_BARRIERS}개)
+PRINTFORML [2] 표면 용해 스프레이 분사 (잔여: {ITEM_SPRAY_CHEAP}회)
+PRINTFORML [3] 심층 용해 스프레이 분사 (잔여: {ITEM_SPRAY_DEEP}회)
+IF OWN_BLENDER
+    PRINTFORML [4] 믹서기로 살점 갈아 마시기 (충전량: {BLENDER_CHARGE}%% / 손에 든 살: {FLESH_IN_HAND / 100})
+ENDIF
+IF HAS_CANARY && ITEM_CANARY_FEED > 0
+    PRINTFORML [5] 카나리아에게 먹이 주기 (소지: {ITEM_CANARY_FEED}개)
+ENDIF
+PRINTL [0] 뒤로 가기
+INPUT
+
+IF RESULT == 1
+    IF ITEM_BARRIERS <= 0
+        PRINTW 설치할 방벽이 없다.
+    ELSEIF SEG_BARRIER_HP:PLAYER_POS_SEG > 0
+        PRINTW 이 세그먼트에는 이미 방벽이 설치되어 버티고 있다.
+    ELSE
+        ITEM_BARRIERS -= 1
+        SEG_BARRIER_HP:PLAYER_POS_SEG = 12000 ; 내구도 12.0
+        PRINTL 
+        PRINTL 철컹-! 공업용 확장 방벽을 꺼내 통로 양쪽 살점 벽면에 단단히 고정했다.
+        PRINTW 방벽이 사방으로 펼쳐지며 이 구역의 살점 재생을 물리적으로 틀어막았다.
+    ENDIF
+ELSEIF RESULT == 2
+    IF ITEM_SPRAY_CHEAP <= 0
+        PRINTW 사용할 수 있는 싸구려 스프레이가 없다.
+    ELSE
+        ITEM_SPRAY_CHEAP -= 1
+        ; 앞 세그먼트 겉면 영구 용해
+        SEG_TISSUE:(PLAYER_POS_SEG + 1) = TISSUE_DISSOLVED
+        SEG_DENSITY:(PLAYER_POS_SEG + 1) = 0
+        PRINTL 
+        PRINTL 쉭---! 싸구려 화학 스프레이를 앞쪽 살점 벽에 분사했다.
+        PRINTL 지글거리는 역한 냄새와 함께 표면 살점이 녹아내려 영구적으로 죽어버렸다.
+        PRINTW (주의: 녹아내린 살점은 먹을 수 없으며, 주변 살점의 재생을 가속합니다)
+    ENDIF
+ELSEIF RESULT == 3
+    IF ITEM_SPRAY_DEEP <= 0
+        PRINTW 사용할 수 있는 고급 스프레이가 없다.
+    ELSE
+        ITEM_SPRAY_DEEP -= 1
+        SEG_TISSUE:(PLAYER_POS_SEG + 1) = TISSUE_DISSOLVED
+        SEG_DENSITY:(PLAYER_POS_SEG + 1) = 0
+        IF (PLAYER_POS_SEG + 2) < SEG_COUNT
+            SEG_TISSUE:(PLAYER_POS_SEG + 2) = TISSUE_DISSOLVED
+            SEG_DENSITY:(PLAYER_POS_SEG + 2) = 0
+        ENDIF
+        PRINTL 
+        PRINTL 치이이익---! 고농축 화학 약품이 살점 깊은 곳까지 스며들며 2개 세그먼트를 뚫어버렸다!
+        PRINTW 거대한 공간이 텅 비었지만, 주변 살점들이 자극을 받아 부들부들 떨기 시작했다.
+    ENDIF
+ELSEIF RESULT == 4 && OWN_BLENDER
+    CALL USE_BLENDER
+ELSEIF RESULT == 5 && HAS_CANARY && ITEM_CANARY_FEED > 0
+    ITEM_CANARY_FEED -= 1
+    CANARY_FEED_TIMER = 120
+    PRINTL 
+    PRINTL 팬티 허리춤의 카나리아에게 특제 먹이를 건넸다.
+    PRINTW 카나리아가 먹이를 쪼아먹고 눈을 초롱초롱 빛내며 더욱 민감하게 주변을 경계한다!
+ENDIF
+RETURN

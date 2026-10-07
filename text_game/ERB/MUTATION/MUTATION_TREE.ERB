@@ -1,0 +1,145 @@
+; MUTATION_TREE.ERB - Tab Mirror Mutation Screen, Hair Points, and 30 Body Mutations
+
+@SINK_AND_MIRROR_MENU
+PRINTL 
+PRINTL [세면대와 거울 앞]
+PRINTL 깨끗한 스테인리스 세면대와 그 위에 걸린 직사각형 거울이다.
+PRINTL 거울에는 팬티 한 장만 걸친 당신의 창백하고 거친 몸뚱이가 비치고 있다.
+PRINTFORML [보유 털] 공통: {HAIR_COMMON}가닥 | 핵(진분홍): {HAIR_CORE}가닥 | 맨틀(보라): {HAIR_MANTLE}가닥 | 지표면(노랑): {HAIR_SURFACE}가닥
+IF TUMOR_POINTS > 0
+    PRINTFORML [종양 혹] 배에 볼록 솟아오른 기괴한 혹이 {TUMOR_POINTS}개 꿈틀거리고 있다!
+ENDIF
+PRINTL [1] 수도꼭지를 틀어 손을 씻는다 (묻은 피 제거)
+PRINTL [2] 전신 거울을 보며 신체 변이 확인 및 구매 (Tab 변이 화면)
+IF TUMOR_POINTS > 0
+    PRINTL [3] 배의 종양 혹을 강하게 쥐어 터뜨린다 (종양 변이 발현)
+ENDIF
+PRINTL [0] 뒤로 가기
+INPUT
+
+IF RESULT == 1
+    HANDS_BLOODY = 0
+    PRINTL 솨아아- 차가운 물에 양손의 비린 핏자국을 깨끗하게 씻어냈다.
+    PRINTW 깨끗해진 손을 보며 마음이 한결 가라앉았다.
+ELSEIF RESULT == 2
+    CALL MUTATION_SHOP_MENU
+ELSEIF RESULT == 3 && TUMOR_POINTS > 0
+    CALL BURST_TUMOR_BUMP
+ELSEIF RESULT == 0
+    RETURN
+ENDIF
+RESTART
+
+@MUTATION_SHOP_MENU
+DRAWLINE
+PRINTL ================================================================================
+PRINTL                      [ 전 신  변 이  화 면 (Tab) ]
+PRINTL ================================================================================
+PRINTL 왼팔을 손목시계를 보듯 들어 올리자, 팔뚝 위에 작은 전신 인형이 서 있다.
+PRINTFORML [자원] 공통 털: {HAIR_COMMON} | 핵(압축): {HAIR_CORE} | 맨틀(수축): {HAIR_MANTLE} | 지표면(신경): {HAIR_SURFACE}
+DRAWLINE
+PRINTL --- [공통 가지 (공통 털 12가닥 소모)] ---
+CALL PRINT_MUT_ITEM, 1, "M01", "늘어난 위", "위장 용량 +20.0", 12, "공통"
+CALL PRINT_MUT_ITEM, 2, "M02", "넓은 목구멍", "과식 씹기 시간 배율 완화 (3.0 -> 2.4)", 12, "공통"
+CALL PRINT_MUT_ITEM, 4, "M04", "불거진 턱", "기본 씹기 시간 단축 (x0.85)", 12, "공통"
+CALL PRINT_MUT_ITEM, 5, "M05", "접히는 어깨", "몸 판정 반경 감소 (압박률 경감 x0.85)", 12, "공통"
+CALL PRINT_MUT_ITEM, 6, "M06", "긴 숨", "압사 한계 시간 연장 (+3초)", 12, "공통"
+
+PRINTL --- [압축 가지 (핵 털 5가닥 소모)] ---
+CALL PRINT_MUT_ITEM, 7, "M07", "넓은 손바닥", "한 번에 뜯는 셀 수 +1", 5, "핵"
+CALL PRINT_MUT_ITEM, 8, "M08", "물갈퀴", "압축 조직 씹기 경도 대폭 감소 (x0.7)", 5, "핵"
+CALL PRINT_MUT_ITEM, 9, "M09", "두꺼운 손톱", "칼 없이 맨손으로 질긴 막 뜯기 가능", 5, "핵"
+CALL PRINT_MUT_ITEM, 10, "M10", "긴 마디", "손가락 마디 증가 (도달 거리 +0.4m)", 5, "핵"
+CALL PRINT_MUT_ITEM, 12, "M12", "부푼 팔뚝", "단단한 조직의 경도 초과분 50% 감쇄", 5, "핵"
+
+PRINTL --- [수축 가지 (맨틀 털 10가닥 소모)] ---
+CALL PRINT_MUT_ITEM, 14, "M14", "근육 과다", "뜯기 수량 +1, 이동 속도 10% 감속", 10, "맨틀"
+CALL PRINT_MUT_ITEM, 18, "M18", "두더지 앞발", "수축 조직 씹기 경도 대폭 감소 (x0.6)", 10, "맨틀"
+CALL PRINT_MUT_ITEM, 19, "M19", "연동 기기", "비좁은 통로(압박 0.5 이상)에서 오히려 가속 (x1.3)", 10, "맨틀"
+CALL PRINT_MUT_ITEM, 20, "M20", "과유연 관절", "비좁은 통로에서의 감속 완전 무시", 10, "맨틀"
+
+PRINTL --- [신경 가지 (지표면 털 15가닥 소모)] ---
+CALL PRINT_MUT_ITEM, 21, "M21", "발전 근육", "믹서기가 왼손에서 스스로 초당 5%씩 충전됨", 15, "지표면"
+CALL PRINT_MUT_ITEM, 26, "M26", "도롱뇽 재생", "체력 자연 회복 속도 3배 증가", 15, "지표면"
+
+PRINTL --- [조합 가지 (두 바이옴 털 중 하나 소모)] ---
+CALL PRINT_MUT_ITEM, 29, "M29", "휴면", "압사당해도 죽지 않고 30초 뒤 화장실에서 부활", 15, "맨틀"
+CALL PRINT_MUT_ITEM, 30, "M30", "목주머니", "위장 과식 한도 +40.0 대폭 증가", 15, "핵"
+
+PRINTL [0] 닫기
+INPUT
+
+IF RESULT == 0
+    RETURN
+ELSEIF RESULT >= 1 && RESULT <= 30
+    CALL TRY_BUY_MUTATION, RESULT
+ENDIF
+RESTART
+
+@PRINT_MUT_ITEM, MUT_NUM, CODE, MNAME, DESC, COST, POOL
+#DIM MUT_NUM
+#DIMS CODE
+#DIMS MNAME
+#DIMS DESC
+#DIM COST
+#DIMS POOL
+
+IF MUT_M:MUT_NUM
+    PRINTFORML   [{MUT_NUM, 2}] %CODE% %MNAME, 12% : %DESC% [습득 완료]
+ELSE
+    PRINTFORML   [{MUT_NUM, 2}] %CODE% %MNAME, 12% : %DESC% (비용: %POOL% 털 {COST}가닥)
+ENDIF
+RETURN
+
+@TRY_BUY_MUTATION, MUT_NUM
+#DIM MUT_NUM
+IF MUT_M:MUT_NUM
+    PRINTW 이미 습득하여 몸에 새겨진 변이입니다.
+    RETURN
+ENDIF
+
+; 비용 및 풀 검사
+IF MUT_NUM == 1 || MUT_NUM == 2 || MUT_NUM == 4 || MUT_NUM == 5 || MUT_NUM == 6
+    IF HAIR_COMMON < 12
+        PRINTW 공통 털이 부족합니다! (필요: 12가닥)
+        RETURN
+    ENDIF
+    HAIR_COMMON -= 12
+ELSEIF MUT_NUM >= 7 && MUT_NUM <= 12
+    IF HAIR_CORE < 5
+        PRINTW 핵(진분홍) 털이 부족합니다! (필요: 5가닥)
+        RETURN
+    ENDIF
+    HAIR_CORE -= 5
+ELSEIF MUT_NUM >= 14 && MUT_NUM <= 20
+    IF HAIR_MANTLE < 10
+        PRINTW 맨틀(보라) 털이 부족합니다! (필요: 10가닥)
+        RETURN
+    ENDIF
+    HAIR_MANTLE -= 10
+ELSEIF MUT_NUM >= 21 && MUT_NUM <= 26
+    IF HAIR_SURFACE < 15
+        PRINTW 지표면(노랑) 털이 부족합니다! (필요: 15가닥)
+        RETURN
+    ENDIF
+    HAIR_SURFACE -= 15
+ELSEIF MUT_NUM == 29
+    IF HAIR_MANTLE < 15
+        PRINTW 맨틀(보라) 털이 부족합니다! (필요: 15가닥)
+        RETURN
+    ENDIF
+    HAIR_MANTLE -= 15
+ELSEIF MUT_NUM == 30
+    IF HAIR_CORE < 15
+        PRINTW 핵(진분홍) 털이 부족합니다! (필요: 15가닥)
+        RETURN
+    ENDIF
+    HAIR_CORE -= 15
+ENDIF
+
+MUT_M:MUT_NUM = 1
+PRINTL 
+PRINTL 쩌적-! 팔뚝의 털이 빠져나가며 신체 구조가 영구적으로 변이했다!
+PRINTFORML 인형의 형상이 바뀌고 실제 당신의 몸에 변이가 반영되었다!
+PRINTW 
+RETURN

@@ -1,0 +1,47 @@
+; BLENDER.ERB - Kitchen Blender Logic: Nerve Charging, Blending Flesh, and Drinking 60%
+
+@USE_BLENDER
+#DIM BLEND_UNITS
+#DIM INGESTED
+
+PRINTL 
+PRINTL [믹서기 조작]
+PRINTFORML 현재 충전량: {BLENDER_CHARGE}%% (1회 갈기 비용: 10%%)
+PRINTFORML 손에 든 살더미: {FLESH_IN_HAND / 100} / 40.0 단위
+
+IF SEG_TISSUE:PLAYER_POS_SEG == TISSUE_NERVE
+    PRINTL [1] 노란 신경 다발에 플러그를 꽂아 충전한다 (수축 자극 위험!)
+ENDIF
+PRINTL [2] 손에 든 살점을 갈아서 단숨에 마신다 (부피 60%로 압축)
+PRINTL [0] 그만둔다
+INPUT
+
+IF RESULT == 1 && SEG_TISSUE:PLAYER_POS_SEG == TISSUE_NERVE
+    PRINTL 
+    PRINTL 찌릿-! 믹서기 전원 플러그를 꿈틀거리는 노란 신경 다발에 깊숙이 찔러 넣었다!
+    BLENDER_CHARGE = 100
+    PRINTL 믹서기 배터리 게이지에 파란 불이 가득 들어찼다!
+    PRINTL 그러나 자극받은 신경 다발이 요동치며 사방의 살벽을 거세게 수축시켰다!
+    SEG_DENSITY:PLAYER_POS_SEG = MIN(850, SEG_DENSITY:PLAYER_POS_SEG + 300)
+    PRINTW [경고] 주변 살점이 조여들며 통로가 급격히 좁아졌다!
+ELSEIF RESULT == 2
+    IF BLENDER_CHARGE < 10
+        PRINTW 배터리가 부족하다! 신경 조직(지표면 껍질)에서 충전하거나 변이(M21)가 필요하다.
+    ELSEIF FLESH_IN_HAND <= 0
+        PRINTW 믹서기에 넣고 갈아 마실 살점 더미가 손에 없다.
+    ELSE
+        BLENDER_CHARGE -= 10
+        BLEND_UNITS = FLESH_IN_HAND
+        FLESH_IN_HAND = 0
+        ; 간 살은 위장에서 60%만 차지함 (blend_ratio = 0.6)
+        INGESTED = (BLEND_UNITS * 60) / 100
+        STOMACH_FILL += INGESTED
+        
+        PRINTL 
+        PRINTL 위이이잉---! 믹서기 칼날이 거칠게 회전하며 붉은 살점을 곱게 갈아냈다!
+        PRINTL 고개를 뒤로 젖히고 걸쭉하게 갈린 살점을 꿀꺽꿀꺽 들이켰다.
+        PRINTFORML 갈린 살점은 압축되어 위장에 단 {INGESTED / 100}단위의 부피만을 차지했다!
+        PRINTW (과식 부담 없이 훨씬 많은 양의 살점을 몸속에 채워 넣을 수 있습니다)
+    ENDIF
+ENDIF
+RETURN

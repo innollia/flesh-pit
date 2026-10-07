@@ -1,0 +1,63 @@
+; TUMOR_MUTATION.ERB - Belly Bumps and 7 Tumor Mutations (T1 ~ T7)
+
+@BURST_TUMOR_BUMP
+#DIM CANDIDATES, 8
+#DIM CAND_COUNT
+#DIM PICK_IDX
+#DIM PICK_T
+
+IF TUMOR_POINTS <= 0
+    PRINTW 배에 터뜨릴 수 있는 종양 혹이 없다.
+    RETURN
+ENDIF
+
+CAND_COUNT = 0
+VARSET CANDIDATES, 0
+
+; 아직 습득하지 않은 종양 변이(T1 ~ T7) 탐색
+FOR PICK_IDX, 1, 8
+    IF !MUT_T:PICK_IDX
+        CANDIDATES:CAND_COUNT = PICK_IDX
+        CAND_COUNT += 1
+    ENDIF
+NEXT
+
+IF CAND_COUNT == 0
+    PRINTW 이미 몸에 7개의 종양 변이가 모두 발현하여 더 이상 혹이 자라나지 않는다!
+    TUMOR_POINTS = 0
+    RETURN
+ENDIF
+
+; 1개 무작위 선택
+PICK_T = CANDIDATES:(RAND:CAND_COUNT)
+TUMOR_POINTS -= 1
+MUT_T:PICK_T = 1
+
+PRINTL 
+PRINTL 뿌직-! 배에 솟아오른 기괴한 혹을 손가락으로 으깨듯 강하게 쥐어 눌렀다!
+PRINTL 살갗 아래에서 혹이 터지며 검붉은 액체와 함께 강력한 종양 변이가 몸 전체로 퍼져나갔다!
+PRINTL 
+SELECTCASE PICK_T
+    CASE 1
+        PRINTL [종양 변이 획득 : T1 반향정위(박쥐)]
+        PRINTW 혀를 딸깍 차는 것만으로 살벽의 두께, 재생 속도, 위험 구역의 위치를 꿰뚫어 본다!
+    CASE 2
+        PRINTL [종양 변이 획득 : T2 세 번째 팔]
+        PRINTW 가슴 한가운데에서 세 번째 팔이 돋아나 믹서기를 항상 들고 다닐 수 있게 되었다!
+    CASE 3
+        PRINTL [종양 변이 획득 : T3 손바닥 입]
+        PRINTW 오른손바닥에 거대한 입이 생겨 살점을 씹는 속도가 비약적으로 단축된다! (기본 시간 x0.4)
+    CASE 4
+        PRINTL [종양 변이 획득 : T4 부푼 몸통]
+        PRINTW 몸통이 풍선처럼 부풀어 올라 위장 용량이 2배로 증가하지만, 통로 압박 판정이 커진다!
+    CASE 5
+        PRINTL [종양 변이 획득 : T5 어안]
+        PRINTW 양쪽 눈이 관자놀이 쪽으로 이동하여 200도의 광활한 시야를 확보한다!
+    CASE 6
+        PRINTL [종양 변이 획득 : T6 세로 턱]
+        PRINTW 턱이 세로로 쩍 갈라져 칼 없이도 맨손으로 질긴 막을 순식간에 찢어발긴다!
+    CASE 7
+        PRINTL [종양 변이 획득 : T7 부채 갈비]
+        PRINTW 갈비뼈가 부채처럼 펼쳐져, 가만히 서 있는 동안 주변 살점의 재생이 멈춘다!
+ENDSELECT
+RETURN
