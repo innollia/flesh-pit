@@ -1,0 +1,76 @@
+; VARIABLES.ERH - Global Variables and Constants for flesh-pit Simulator
+
+; --- World & Segment Constants ---
+#DEFINE SEG_COUNT 60
+#DEFINE CELL_SIZE 500 ; 0.5m in millimeters
+#DEFINE CORE_SEGS 18   ; 0 ~ 9m (18 segments * 0.5m)
+#DEFINE MANTLE_SEGS 36 ; 9 ~ 18m (36 segments * 0.5m)
+#DEFINE SURFACE_SEGS 54; 18 ~ 27m (54 segments * 0.5m)
+
+; Tissues
+#DEFINE TISSUE_COMPRESSIVE 0
+#DEFINE TISSUE_CONTRACTILE 1
+#DEFINE TISSUE_NERVE 2
+#DEFINE TISSUE_MEMBRANE 3
+#DEFINE TISSUE_DISSOLVED 4
+
+; World Arrays (0 ~ 59)
+#DIM GLOBAL SAVEDATA SEG_DENSITY, 60      ; Density in 1/1000 (0 ~ 1000, >= 500 is solid)
+#DIM GLOBAL SAVEDATA SEG_TISSUE, 60       ; Tissue ID
+#DIM GLOBAL SAVEDATA SEG_BARRIER_HP, 60   ; Barrier HP (12000 max = 12.0)
+#DIM GLOBAL SAVEDATA SEG_TUMOR, 60        ; 0: None, 1~6: Tumor Kind
+
+; --- Player Position & State ---
+#DIM GLOBAL SAVEDATA PLAYER_POS_SEG       ; Current segment index (0 = Restroom door)
+#DIM GLOBAL SAVEDATA GAME_SECONDS         ; Total elapsed seconds
+#DIM GLOBAL SAVEDATA PLAYER_HP            ; 0 ~ 100
+#DIM GLOBAL SAVEDATA STOMACH_FILL         ; Flesh units in stomach (1/100 scale: 10000 = 100.0)
+#DIM GLOBAL SAVEDATA FLESH_IN_HAND        ; Carried flesh pile units (1/100 scale)
+#DIM GLOBAL SAVEDATA CRUSH_ACCUMULATED_MS ; Milliseconds in crush block (>= 6000 leads to crush death)
+#DIM GLOBAL SAVEDATA IS_CROUCHING         ; 0: Standing, 1: Crouching
+
+; --- Currency & Progression ---
+#DIM GLOBAL SAVEDATA TEETH_IN_TANK        ; Teeth in toilet tank
+#DIM GLOBAL SAVEDATA TEETH_IN_HAND        ; Scooped teeth in hand
+#DIM GLOBAL SAVEDATA HAIR_COMMON          ; Common hair count
+#DIM GLOBAL SAVEDATA HAIR_CORE            ; Core biome hair (pink)
+#DIM GLOBAL SAVEDATA HAIR_MANTLE          ; Mantle biome hair (purple)
+#DIM GLOBAL SAVEDATA HAIR_SURFACE         ; Surface biome hair (yellow)
+#DIM GLOBAL SAVEDATA HAIR_CARRY_COMMON    ; Fractional hair carry (weighted units * 100)
+#DIM GLOBAL SAVEDATA HAIR_CARRY_CORE
+#DIM GLOBAL SAVEDATA HAIR_CARRY_MANTLE
+#DIM GLOBAL SAVEDATA HAIR_CARRY_SURFACE
+#DIM GLOBAL SAVEDATA TUMOR_POINTS         ; Belly bumps (points for tumor mutations)
+#DIM GLOBAL SAVEDATA TUMORS_EATEN_COUNT
+
+; --- Equipment & Inventory ---
+#DIMS GLOBAL SAVEDATA EQUIPPED_RIGHT      ; Right hand tool ("" bare, "knife", "big_saw")
+#DIMS GLOBAL SAVEDATA EQUIPPED_LEFT       ; Left hand tool ("" bare, "blender")
+#DIM GLOBAL SAVEDATA OWN_KNIFE
+#DIM GLOBAL SAVEDATA OWN_BLENDER
+#DIM GLOBAL SAVEDATA BLENDER_CHARGE       ; 0 ~ 100
+#DIM GLOBAL SAVEDATA OWN_BIG_SAW
+#DIM GLOBAL SAVEDATA ITEM_BARRIERS        ; 0 ~ 3
+#DIM GLOBAL SAVEDATA ITEM_SPRAY_CHEAP     ; charges (6 per can)
+#DIM GLOBAL SAVEDATA ITEM_SPRAY_DEEP      ; charges (6 per can)
+#DIM GLOBAL SAVEDATA ITEM_CANARY_FEED     ; 0 ~ 3
+#DIM GLOBAL SAVEDATA HAS_TUMOR_BAG        ; 0: 1 tumor in hand, 1: 2 capacity bag
+#DIM GLOBAL SAVEDATA HAS_BELT             ; Received after first vent trade
+#DIM GLOBAL SAVEDATA HAS_CANARY           ; 1: Tucked in waistband
+#DIM GLOBAL SAVEDATA CANARY_FEED_TIMER    ; Seconds of canary alertness boost left
+#DIM GLOBAL SAVEDATA CARRIED_TUMORS, 2    ; Carried tumor kinds
+
+; --- Restroom Hub States ---
+#DIM GLOBAL SAVEDATA TANK_LID_OPEN        ; 0: Closed, 1: Open
+#DIM GLOBAL SAVEDATA BOWL_FLESH           ; Flesh currently vomited in toilet bowl
+#DIM GLOBAL SAVEDATA VENT_IS_OPEN         ; 0: Closed, 1: Open
+#DIM GLOBAL SAVEDATA VENT_FRANTIC_TIMER   ; Remaining seconds in frantic state
+#DIM GLOBAL SAVEDATA VENT_TEETH_PLACED    ; Teeth placed on vent
+#DIMS GLOBAL SAVEDATA VENT_OFFER_IDS, 3   ; Current 3 offered item IDs
+#DIM GLOBAL SAVEDATA FIRST_FLUSH_DONE     ; Has flushed at least once
+#DIM GLOBAL SAVEDATA HANDS_BLOODY         ; Blood on hands (1 if eaten/dug, 0 if washed)
+#DIM GLOBAL SAVEDATA TUMOR_CODEX, 7       ; 1 if settled to toilet and crayon drawing received
+
+; --- Mutations (1 if owned) ---
+#DIM GLOBAL SAVEDATA MUT_M, 31            ; M01 ~ M30 (index 1~30)
+#DIM GLOBAL SAVEDATA MUT_T, 8             ; T1 ~ T7 (index 1~7)

@@ -1,0 +1,84 @@
+; SYSTEM.ERB - Title, Initialization, and Entry Points
+
+@SYSTEM_TITLE
+DRAWLINE
+PRINTL ================================================================================
+PRINTL        구르는 인간 구체와 살구덩이 (flesh-pit) - 텍스트 시뮬레이터
+PRINTL ================================================================================
+PRINTL  구체 한가운데 화장실에서 시작해, 다시 자라는 살을 먹으며 바깥으로 파고 나가
+PRINTL  도시 길바닥으로 떨어지는 1인칭 살점 굴착 시뮬레이터.
+DRAWLINE
+PRINTL [0] 새로운 원정 시작 (처음부터)
+PRINTL [1] 이어하기 (저장 데이터 로드)
+PRINTL [9] 시스템 로직 자가 진단 (단위 테스트 실행)
+INPUT
+
+IF RESULT == 0
+    CALL INIT_NEW_GAME
+    CALL RESTROOM_MAIN
+ELSEIF RESULT == 1
+    LOADGAME
+ELSEIF RESULT == 9
+    CALL RUN_SELF_TESTS
+    RESTART
+ELSE
+    RESTART
+ENDIF
+
+@INIT_NEW_GAME
+PLAYER_POS_SEG = 0
+GAME_SECONDS = 0
+PLAYER_HP = 100
+STOMACH_FILL = 0
+FLESH_IN_HAND = 0
+CRUSH_ACCUMULATED_MS = 0
+IS_CROUCHING = 0
+
+TEETH_IN_TANK = 0
+TEETH_IN_HAND = 0
+HAIR_COMMON = 0
+HAIR_CORE = 0
+HAIR_MANTLE = 0
+HAIR_SURFACE = 0
+HAIR_CARRY_COMMON = 0
+HAIR_CARRY_CORE = 0
+HAIR_CARRY_MANTLE = 0
+HAIR_CARRY_SURFACE = 0
+TUMOR_POINTS = 0
+TUMORS_EATEN_COUNT = 0
+
+EQUIPPED_RIGHT = 
+EQUIPPED_LEFT = 
+OWN_KNIFE = 0
+OWN_BLENDER = 0
+BLENDER_CHARGE = 0
+OWN_BIG_SAW = 0
+ITEM_BARRIERS = 0
+ITEM_SPRAY_CHEAP = 0
+ITEM_SPRAY_DEEP = 0
+ITEM_CANARY_FEED = 0
+HAS_TUMOR_BAG = 0
+HAS_BELT = 0
+HAS_CANARY = 0
+CANARY_FEED_TIMER = 0
+
+TANK_LID_OPEN = 0
+BOWL_FLESH = 0
+VENT_IS_OPEN = 0
+VENT_FRANTIC_TIMER = 0
+VENT_TEETH_PLACED = 0
+FIRST_FLUSH_DONE = 0
+HANDS_BLOODY = 0
+
+VARSET CARRIED_TUMORS, 0
+VARSET TUMOR_CODEX, 0
+VARSET MUT_M, 0
+VARSET MUT_T, 0
+VARSET VENT_OFFER_IDS, ""
+
+CALL INIT_WORLD
+PRINTL 
+PRINTL 검은 화면 속에서 물 내리는 소리가 울려 퍼진다...
+PRINTL 변기에서 일어나며 눈을 떴다. 깨끗하고 하얀 타일로 둘러싸인 화장실이다.
+PRINTW 세면대 아래 구석 구멍에서 날카로운 카나리아의 새소리가 들려온다.
+RETURN
