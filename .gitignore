@@ -1,1 +1,10 @@
 .dryforge/
+.env
+.kiro/
+__pycache__/
+*.pyc
+bot.py
+hack.py
+INVESTIGATION_REPORT.md
+game/tools/_barrier_probe2.gd
+game/tools/_barrier_probe2.gd.uid

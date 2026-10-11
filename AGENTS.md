@@ -17,6 +17,7 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │   ├── engineering-notes.md → 면 방향·갱신·조준·복원에서 확인한 함정
 │   ├── operations.md → 실행과 격리 검사 절차
 │   ├── contracts.md → 키트 호출·신호·저장 소비자 계약
+│   ├── whiteboard/ → 기획·시스템 화이트보드 (Excalidraw & 캔버스 동기화)
 │   └── tracking/
 │       ├── status.md → 구현·검증 상태와 남은 게임 검증
 │       ├── findings.md → 현재 범위 밖의 확인된 문제
