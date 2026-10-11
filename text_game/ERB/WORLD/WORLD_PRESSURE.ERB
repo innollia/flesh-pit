@@ -1,4 +1,4 @@
-; WORLD_PRESSURE.ERB - Calculate Passage Clearance, Squeeze Penalty, and Crush Danger
+﻿; WORLD_PRESSURE.ERB - Calculate Passage Clearance, Squeeze Penalty, and Crush Danger
 ; RESULT:0 = 현재 위치의 압박률 (0 ~ 1000, 500 = 0.5)
 ; RESULT:1 = 복귀 경로(화장실까지) 최소 통로 여유도 (0 ~ 1000)
 
@@ -41,7 +41,7 @@ IF SQUEEZE_RATE >= 800
     CRUSH_ACCUMULATED_MS += ELAPSED_MS
     PRINTL 
     PRINTL [위험!] 재생된 살점이 온몸을 무겁게 짓누르며 으깨려 든다! 숨이 막혀온다!
-    PRINTFORML [압사 진행] {CRUSH_ACCUMULATED_MS / 100}%% / 100%%
+    PRINTFORML [압사 진행] {CRUSH_ACCUMULATED_MS / 100}\% / 100\%
     
     IF CRUSH_ACCUMULATED_MS >= MAX_CRUSH_MS
         ; M29 변이(휴면): 압사 시 30초 뒤 화장실에서 부활
@@ -82,6 +82,7 @@ PLAYER_POS_SEG = 0
 CRUSH_ACCUMULATED_MS = 0
 PLAYER_HP = 100
 HAS_CANARY = 0
+LAST_CHECKED_CLEAR = -1
 
 PRINTL 
 PRINTL 소지하던 살점과 도구들이 살구덩이 속 깊은 곳으로 흩어졌다...

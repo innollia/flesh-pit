@@ -1,8 +1,10 @@
-; TEST_RUNNER.ERB - In-Game Automated Self-Test Verification Suite
+﻿; TEST_RUNNER.ERB - In-Game Automated Self-Test Verification Suite
 
 @RUN_SELF_TESTS
 #DIM PASSED
 #DIM FAILED
+#DIM PREV_DEN
+#DIM CALC_TEETH
 PASSED = 0
 FAILED = 0
 
@@ -12,8 +14,8 @@ PRINTL =========================================================================
 
 ; 테스트 1: 세계 초기화
 CALL INIT_WORLD
-IF SEG_DENSITY:0 == 850 && SEG_TISSUE:0 == TISSUE_COMPRESSIVE && SEG_TISSUE:20 == TISSUE_CONTRACTILE
-    PRINTL [PASS] 테스트 1: 세계 껍질 및 세그먼트 초기화 정상
+IF SEG_DENSITY:0 == 0 && SEG_TISSUE:0 == TISSUE_COMPRESSIVE && SEG_TISSUE:20 == TISSUE_CONTRACTILE
+    PRINTL [PASS] 테스트 1: 세계 껍질 및 세그먼트 초기화 정상 (문턱 0m 안전 공간)
     PASSED += 1
 ELSE
     PRINTL [FAIL] 테스트 1: 세계 초기화 실패
@@ -39,7 +41,6 @@ ENDIF
 
 ; 테스트 3: 시간 경과 재생 연산 (0.003/s * 조직배율)
 ; 10000ms (10초) 경과 시 압축 조직(배율 1.5x)은 밀도가 약 45 증가해야 함
-#DIM PREV_DEN
 PREV_DEN = SEG_DENSITY:1
 CALL APPLY_WORLD_REGEN, 10000
 IF SEG_DENSITY:1 > PREV_DEN
@@ -53,7 +54,6 @@ ENDIF
 ; 테스트 4: 변기 정산 및 이빨 환산율 (살 100단위 = 이빨 8개)
 BOWL_FLESH = 10000 ; 100 단위
 TEETH_IN_TANK = 0
-#DIM CALC_TEETH
 CALC_TEETH = (BOWL_FLESH * 8) / 10000
 IF CALC_TEETH == 8
     PRINTL [PASS] 테스트 4: 변기 정산 이빨 비율 정상 (100 살 = 8 이빨)

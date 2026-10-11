@@ -1,4 +1,4 @@
-; WORLD_REGEN.ERB - Continuous Flesh Regeneration and Contraction Physics
+﻿; WORLD_REGEN.ERB - Continuous Flesh Regeneration and Contraction Physics
 ; ARGS:0 = 경과 시간(초 단위, 1/1000초 정밀도: 1000 = 1.0초)
 
 @APPLY_WORLD_REGEN, ELAPSED_MS
@@ -14,6 +14,11 @@ GAME_SECONDS += (ELAPSED_MS / 1000)
 
 FOR SEG_IDX, 0, SEG_COUNT
     TISSUE_TYPE = SEG_TISSUE:SEG_IDX
+
+    ; 0. 화장실 문턱 통로(세그먼트 0)는 안전 통로로 살점이 자라지 않음
+    IF SEG_IDX == 0
+        CONTINUE
+    ENDIF
 
     ; 1. 영구 용해된 살점이나 막은 재생하지 않음
     IF TISSUE_TYPE == TISSUE_DISSOLVED || TISSUE_TYPE == TISSUE_MEMBRANE

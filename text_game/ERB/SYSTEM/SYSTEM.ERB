@@ -1,12 +1,9 @@
-; SYSTEM.ERB - Title, Initialization, and Entry Points
-
-@SYSTEM_TITLE
+﻿@SYSTEM_TITLE
 DRAWLINE
 PRINTL ================================================================================
-PRINTL        구르는 인간 구체와 살구덩이 (flesh-pit) - 텍스트 시뮬레이터
+PRINTL                구르는 인간 구체와 살구덩이
 PRINTL ================================================================================
-PRINTL  구체 한가운데 화장실에서 시작해, 다시 자라는 살을 먹으며 바깥으로 파고 나가
-PRINTL  도시 길바닥으로 떨어지는 1인칭 살점 굴착 시뮬레이터.
+PRINTL  화장실에서 출발해 다시 자라는 살을 파먹으며 바깥으로 나아간다.
 DRAWLINE
 PRINTL [0] 새로운 원정 시작 (처음부터)
 PRINTL [1] 이어하기 (저장 데이터 로드)
@@ -14,16 +11,28 @@ PRINTL [9] 시스템 로직 자가 진단 (단위 테스트 실행)
 INPUT
 
 IF RESULT == 0
-    CALL INIT_NEW_GAME
-    CALL RESTROOM_MAIN
+    RESETDATA
+    BEGIN FIRST
 ELSEIF RESULT == 1
-    LOADGAME
+    CALL TITLE_LOADGAME
 ELSEIF RESULT == 9
     CALL RUN_SELF_TESTS
     RESTART
 ELSE
     RESTART
 ENDIF
+
+@EVENTFIRST
+CALL INIT_NEW_GAME
+CALL RESTROOM_MAIN
+
+@TITLE_LOADGAME
+LOADGAME
+RESTART
+
+@EVENTLOAD
+PRINTW 데이터를 정상적으로 불러왔습니다.
+CALL RESTROOM_MAIN
 
 @INIT_NEW_GAME
 PLAYER_POS_SEG = 0
@@ -33,6 +42,7 @@ STOMACH_FILL = 0
 FLESH_IN_HAND = 0
 CRUSH_ACCUMULATED_MS = 0
 IS_CROUCHING = 0
+LAST_CHECKED_CLEAR = -1
 
 TEETH_IN_TANK = 0
 TEETH_IN_HAND = 0

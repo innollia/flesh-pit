@@ -1,11 +1,12 @@
-; TOILET_FLUSH.ERB - Vomiting Flesh into Bowl, Flushing Lever, and Teeth Settlement
+﻿; TOILET_FLUSH.ERB - Vomiting Flesh into Bowl, Flushing Lever, and Teeth Settlement
 
 @TOILET_MENU
+#DIM TEETH_GAIN
 PRINTL 
 PRINTL [변기 앞] 깨끗한 도자기 변기다.
 PRINTFORML 변기 안에는 게워낸 살점 {BOWL_FLESH / 100}단위가 담겨 있다.
-PRINTL [1] 위장에 든 살점을 변기에 게워낸다(토하기)
-PRINTL [2] 변기 레버를 눌러 물을 내린다 (이빨 정산)
+PRINTL [1] 위장에 든 살점을 변기에 게워낸다
+PRINTL [2] 변기 레버를 눌러 물을 내린다
 PRINTL [0] 뒤로 가기
 INPUT
 
@@ -23,7 +24,6 @@ ELSEIF RESULT == 2
         PRINTL 레버를 누르자 쏴아아- 하는 맑은 물소리만 울려 퍼졌다.
         PRINTW 정산할 살점이 없어 이빨은 나오지 않았다.
     ELSE
-        #DIM TEETH_GAIN
         ; 살 1단위당 0.08개 이빨 (BOWL_FLESH는 1/100 단위이므로 / 100 * 8 / 100)
         TEETH_GAIN = (BOWL_FLESH * 8) / 10000
         IF TEETH_GAIN < 1
@@ -51,6 +51,7 @@ ENDIF
 RESTART
 
 @TANK_MENU
+#DIM SCOOP
 PRINTL 
 PRINTL [물탱크] 변기 뒤편의 도자기 물탱크다.
 IF TANK_LID_OPEN
@@ -74,7 +75,6 @@ ELSEIF RESULT == 1 && TANK_LID_OPEN
     IF TEETH_IN_TANK <= 0
         PRINTW 물탱크에 퍼낼 수 있는 이빨이 없다.
     ELSE
-        #DIM SCOOP
         SCOOP = MIN(4, TEETH_IN_TANK)
         TEETH_IN_TANK -= SCOOP
         TEETH_IN_HAND += SCOOP

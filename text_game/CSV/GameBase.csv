@@ -1,4 +1,10 @@
-; GameBase.csv - Game metadata
+﻿タイトル,살구덩이(flesh-pit) 텍스트 시뮬레이터
+作者,flesh-pit
+バージョン,100
+追加バージョン,0
+初期資金,0
+最大資金,999999999
+デフォルトキャラ,0
 이름,살구덩이(flesh-pit) 텍스트 시뮬레이터
 작성자,flesh-pit
 버전,100

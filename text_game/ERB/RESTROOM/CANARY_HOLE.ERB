@@ -1,4 +1,4 @@
-; CANARY_HOLE.ERB - Inspect Canary Hole, Tuck Bird into Waistband
+﻿; CANARY_HOLE.ERB - Inspect Canary Hole, Tuck Bird into Waistband
 
 @CANARY_HOLE_INTERACT
 PRINTL 
@@ -20,11 +20,15 @@ ELSE
     PRINTL [0] 돌아가기
     INPUT
     IF RESULT == 1
-        HAS_CANARY = 1
         PRINTL 
-        PRINTL 바닥에 엎드려 팔을 뻗어 작고 따뜻한 카나리아를 부드럽게 쥐었다.
-        PRINTL 새장은 없다. 새를 팬티 허리춤 앞쪽에 가볍게 끼워 넣었다.
-        PRINTW 고무줄 사이에 몸통이 포근하게 끼이고 머리만 쏙 밖으로 나왔다.
+        PRINTL 바닥에 엎드려 어두운 구멍 안으로 오른팔을 천천히 밀어 넣었다... (5.6초 소요)
+        PRINTL 손가락 끝에 작고 부드러운 온기와 파닥거리는 날갯짓이 닿는다.
+        PRINTL 조심스럽게 한 마리를 감싸 쥐어 밖으로 꺼냈다.
+        PRINTL 
+        PRINTL 새장은 없다. 팬티 허리춤 고무줄을 살짝 당겨 새를 끼워 넣었다.
+        PRINTL 고무줄 사이에 몸통이 포근하게 고정되고 노란 머리만 쏙 밖을 내다본다.
+        HAS_CANARY = 1
+        PRINTW (카나리아를 허리춤에 끼웠습니다. 복귀 통로가 좁아지면 울음소리로 알립니다)
     ENDIF
 ENDIF
 RETURN

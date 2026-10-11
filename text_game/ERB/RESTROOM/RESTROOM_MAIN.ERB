@@ -1,26 +1,49 @@
-; RESTROOM_MAIN.ERB - Restroom Safe Hub Hub Interaction Menu
+﻿; RESTROOM_MAIN.ERB - Restroom Safe Hub Hub Interaction Menu
 
 @RESTROOM_MAIN
 DRAWLINE
 PRINTL ================================================================================
-PRINTL               [ 안 전 지 대 : 깨 끗 한  화 장 실 ]
-PRINTL ================================================================================
-PRINTL 하얗고 깨끗한 직사각형 타일 벽, 천장의 형광등이 차갑고 고요하게 빛난다.
-PRINTL 살점의 비린내와 악취가 전혀 닿지 않는 완벽하게 안전한 휴식처다.
-PRINTFORML [물탱크 속 이빨] {TEETH_IN_TANK}개  [손에 쥔 이빨] {TEETH_IN_HAND}개
-PRINTFORML [위장 속 살점] {STOMACH_FILL / 100} / {GET_STOMACH_CAPACITY() / 100}  [변기 속 게워낸 살] {BOWL_FLESH / 100}
-IF HAS_CANARY
-    PRINTL [허리춤] 생기 넘치게 눈을 깜빡이는 카나리아 한 마리가 끼워져 있다.
+IF GAME_LANG == 1
+    PRINTL               [ SAFE ZONE : CLEAN RESTROOM ]
+    PRINTL ================================================================================
+    PRINTL White, clean rectangular tiles. Cold fluorescent lights glow quietly overhead.
+    PRINTL A tranquil haven completely insulated from the metallic stench of the flesh.
+    PRINTFORML [Teeth in Tank] {TEETH_IN_TANK}  [Teeth in Hand] {TEETH_IN_HAND}
+    PRINTFORML [Stomach Flesh] {STOMACH_FILL / 100} / {GET_STOMACH_CAPACITY() / 100}  [Vomited in Bowl] {BOWL_FLESH / 100}
+    IF HAS_CANARY
+        PRINTL [Waistband] A vibrant yellow canary is snugly tucked in your waistband.
+    ELSE
+        PRINTL [Waistband] Empty.
+    ENDIF
+    DRAWLINE
+    PRINTL [1] Approach toilet
+    PRINTL [2] Check water tank lid
+    PRINTL [3] Approach sink and mirror
+    PRINTL [4] Inspect dark hole under sink
+    PRINTL [5] Look up at exhaust vent
+    PRINTL [8] Toggle Language (현재: English -> 한국어)
+    PRINTL [9] Open flesh door and begin digging expedition
 ELSE
-    PRINTL [허리춤] 비어 있음.
+    PRINTL               [ 안 전 지 대 : 깨 끗 한  화 장 실 ]
+    PRINTL ================================================================================
+    PRINTL 하얗고 깨끗한 직사각형 타일 벽, 천장의 형광등이 차갑고 고요하게 빛난다.
+    PRINTL 살점의 비린내와 악취가 전혀 닿지 않는 완벽하게 안전한 휴식처다.
+    PRINTFORML [물탱크 속 이빨] {TEETH_IN_TANK}개  [손에 쥔 이빨] {TEETH_IN_HAND}개
+    PRINTFORML [위장 속 살점] {STOMACH_FILL / 100} / {GET_STOMACH_CAPACITY() / 100}  [변기 속 게워낸 살] {BOWL_FLESH / 100}
+    IF HAS_CANARY
+        PRINTL [허리춤] 생기 넘치게 눈을 깜빡이는 카나리아 한 마리가 끼워져 있다.
+    ELSE
+        PRINTL [허리춤] 비어 있음.
+    ENDIF
+    DRAWLINE
+    PRINTL [1] 변기로 다가가기
+    PRINTL [2] 물탱크 뚜껑 확인
+    PRINTL [3] 세면대 다가가기
+    PRINTL [4] 세면대 아래 어두운 구석 살피기
+    PRINTL [5] 환풍구 올려다보기
+    PRINTL [8] 언어 전환 (현재: 한국어 -> English)
+    PRINTL [9] 살점 문을 열고 굴착 원정 시작하기
 ENDIF
-DRAWLINE
-PRINTL [1] 변기로 다가가기 (토하기 / 물 내리기 정산)
-PRINTL [2] 물탱크 뚜껑 확인 (이빨 꺼내기 / 넣기)
-PRINTL [3] 세면대와 거울 (손 씻기 / 변이 상태 확인)
-PRINTL [4] 세면대 아래 어두운 구석 살피기 (카나리아 구멍)
-PRINTL [5] 환풍구 올려다보기 (천장 쇠창살 너머 존재와 거래)
-PRINTL [9] 살점 문을 열고 굴착 원정 시작하기
 INPUT
 
 IF RESULT == 1
@@ -33,11 +56,21 @@ ELSEIF RESULT == 4
     CALL CANARY_HOLE_INTERACT
 ELSEIF RESULT == 5
     CALL VENT_NPC_INTERACT
+ELSEIF RESULT == 8
+    GAME_LANG = (GAME_LANG == 1 ? 0 # 1)
+    PRINTFORMW %GAME_LANG == 1 ? "Language switched to English." # "언어가 한국어로 변경되었습니다."%
+    RESTART
 ELSEIF RESULT == 9
     PRINTL 
-    PRINTL 화장실 문을 천천히 밀어 열었다.
-    PRINTL 문틀 바로 앞까지 붉고 축축한 살점 벽이 숨을 쉬듯 가로막고 있다.
-    PRINTW 살점을 향해 오른손을 뻗는다...
+    IF GAME_LANG == 1
+        PRINTL Slowly pushed open the restroom door.
+        PRINTL A moist, crimson wall of flesh stands blocking the doorframe like a living lung.
+        PRINTW Reaching out right hand toward the flesh...
+    ELSE
+        PRINTL 화장실 문을 천천히 밀어 열었다.
+        PRINTL 문틀 바로 앞까지 붉고 축축한 살점 벽이 숨을 쉬듯 가로막고 있다.
+        PRINTW 살점을 향해 오른손을 뻗는다...
+    ENDIF
     PLAYER_POS_SEG = 0
     CALL DIG_LOOP
 ELSE

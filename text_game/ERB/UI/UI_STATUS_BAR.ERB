@@ -1,4 +1,4 @@
-; UI_STATUS_BAR.ERB - Status Gauge and Tunnel State Display
+﻿; UI_STATUS_BAR.ERB - Status Gauge and Tunnel State Display
 
 @PRINT_STATUS_BAR
 #DIM SQUEEZE_RATE
@@ -12,11 +12,11 @@ MIN_CLEAR = RESULT:1
 
 ; 껍질 및 조직 명칭
 IF PLAYER_POS_SEG < CORE_SEGS
-    SHELL_NAME = 핵 (Core)
+    SHELL_NAME = %GAME_LANG == 1 ? "Core" # "핵"%
 ELSEIF PLAYER_POS_SEG < MANTLE_SEGS
-    SHELL_NAME = 맨틀 (Mantle)
+    SHELL_NAME = %GAME_LANG == 1 ? "Mantle" # "맨틀"%
 ELSE
-    SHELL_NAME = 지표면 (Surface)
+    SHELL_NAME = %GAME_LANG == 1 ? "Surface" # "지표면"%
 ENDIF
 
 SELECTCASE SEG_TISSUE:PLAYER_POS_SEG
@@ -41,27 +41,26 @@ PRINTFORM [위장] {STOMACH_FILL / 100, 3}/{GET_STOMACH_CAPACITY() / 100, 3}
 IF STOMACH_FILL > GET_STOMACH_CAPACITY()
     PRINTFORM (과식: {(STOMACH_FILL - GET_STOMACH_CAPACITY()) / 100}/{GET_OVERFILL_CAPACITY() / 100}) 
 ENDIF
-PRINTFORML [체력] {PLAYER_HP, 3}/100   [장비] 우: %EQUIPPED_RIGHT != "" ? EQUIPPED_RIGHT # "맨손"% / 좌: %EQUIPPED_LEFT != "" ? EQUIPPED_LEFT # "빈손"%
-PRINTFORM [통로 상태] 전방 밀도: {SEG_DENSITY:(PLAYER_POS_SEG + 1) / 10}%% | 후방 최소 여유: {MIN_CLEAR / 10}%% 
+PRINTFORM [통로 상태] 전방 밀도: {SEG_DENSITY:(PLAYER_POS_SEG + 1) / 10}\% 
 IF SQUEEZE_RATE >= 800
-    PRINTFORML [압박: 치명적 끼임! ({CRUSH_ACCUMULATED_MS / 100}%%)]
+    PRINTFORML | [압박: 치명적 끼임! ({CRUSH_ACCUMULATED_MS / 100}\%)]
 ELSEIF SQUEEZE_RATE >= 500
-    PRINTL [압박: 심한 비좁음 (이동 감속 50%)]
+    PRINTL | [압박: 심한 비좁음 (이동 감속 50%)]
 ELSE
-    PRINTL [압박: 원활]
+    PRINTL | [압박: 원활]
 ENDIF
 
 IF HAS_CANARY
     PRINTFORM [카나리아] 
-    IF MIN_CLEAR < 200
+    IF MIN_CLEAR < (CANARY_FEED_TIMER > 0 ? 350 # 200)
         PRINTL 날카롭게 비명을 지르고 있다! 귀환로가 거의 막혔다!
-    ELSEIF MIN_CLEAR < 500
+    ELSEIF MIN_CLEAR < (CANARY_FEED_TIMER > 0 ? 650 # 500)
         PRINTL 불안하게 파닥거리며 낮게 운다. 통로가 좁아지고 있다.
     ELSE
         PRINTL 조용히 눈을 깜빡이며 안정을 유지하고 있다.
     ENDIF
 ELSE
-    PRINTL [카나리아] 없음 (화장실 구멍에서 데려오지 않음)
+    PRINTL [카나리아] 없음
 ENDIF
 PRINTFORML [보유 털] 공통: {HAIR_COMMON} | 핵(분홍): {HAIR_CORE} | 맨틀(보라): {HAIR_MANTLE} | 지표면(노랑): {HAIR_SURFACE}
 PRINTL ================================================================================

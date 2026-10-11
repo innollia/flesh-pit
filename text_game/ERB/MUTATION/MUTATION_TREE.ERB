@@ -1,4 +1,4 @@
-; MUTATION_TREE.ERB - Tab Mirror Mutation Screen, Hair Points, and 30 Body Mutations
+﻿; MUTATION_TREE.ERB - Tab Mirror Mutation Screen, Hair Points, and 30 Body Mutations
 
 @SINK_AND_MIRROR_MENU
 PRINTL 
@@ -9,10 +9,10 @@ PRINTFORML [보유 털] 공통: {HAIR_COMMON}가닥 | 핵(진분홍): {HAIR_CORE
 IF TUMOR_POINTS > 0
     PRINTFORML [종양 혹] 배에 볼록 솟아오른 기괴한 혹이 {TUMOR_POINTS}개 꿈틀거리고 있다!
 ENDIF
-PRINTL [1] 수도꼭지를 틀어 손을 씻는다 (묻은 피 제거)
-PRINTL [2] 전신 거울을 보며 신체 변이 확인 및 구매 (Tab 변이 화면)
+PRINTL [1] 수도꼭지를 틀어 손을 씻는다
+PRINTL [2] 전신 거울 보기
 IF TUMOR_POINTS > 0
-    PRINTL [3] 배의 종양 혹을 강하게 쥐어 터뜨린다 (종양 변이 발현)
+    PRINTL [3] 배의 종양 혹을 강하게 쥐어 터뜨린다
 ENDIF
 PRINTL [0] 뒤로 가기
 INPUT
@@ -33,7 +33,7 @@ RESTART
 @MUTATION_SHOP_MENU
 DRAWLINE
 PRINTL ================================================================================
-PRINTL                      [ 전 신  변 이  화 면 (Tab) ]
+PRINTL                      [ 전 신  변 이  화 면 ]
 PRINTL ================================================================================
 PRINTL 왼팔을 손목시계를 보듯 들어 올리자, 팔뚝 위에 작은 전신 인형이 서 있다.
 PRINTFORML [자원] 공통 털: {HAIR_COMMON} | 핵(압축): {HAIR_CORE} | 맨틀(수축): {HAIR_MANTLE} | 지표면(신경): {HAIR_SURFACE}

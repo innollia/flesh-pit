@@ -1,4 +1,4 @@
-; TOOL_USE.ERB - Use Items (Barriers, Sprays, Blender) in Tunnels
+﻿; TOOL_USE.ERB - Use Items (Barriers, Sprays, Blender) in Tunnels
 
 @USE_ITEM_MENU
 PRINTL 
@@ -7,7 +7,7 @@ PRINTFORML [1] 확장 방벽 설치하기 (소지: {ITEM_BARRIERS}개)
 PRINTFORML [2] 표면 용해 스프레이 분사 (잔여: {ITEM_SPRAY_CHEAP}회)
 PRINTFORML [3] 심층 용해 스프레이 분사 (잔여: {ITEM_SPRAY_DEEP}회)
 IF OWN_BLENDER
-    PRINTFORML [4] 믹서기로 살점 갈아 마시기 (충전량: {BLENDER_CHARGE}%% / 손에 든 살: {FLESH_IN_HAND / 100})
+    PRINTFORML [4] 믹서기로 살점 갈아 마시기 (충전량: {BLENDER_CHARGE}\% / 손에 든 살: {FLESH_IN_HAND / 100})
 ENDIF
 IF HAS_CANARY && ITEM_CANARY_FEED > 0
     PRINTFORML [5] 카나리아에게 먹이 주기 (소지: {ITEM_CANARY_FEED}개)

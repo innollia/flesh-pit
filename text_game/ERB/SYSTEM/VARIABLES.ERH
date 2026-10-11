@@ -1,4 +1,4 @@
-; VARIABLES.ERH - Global Variables and Constants for flesh-pit Simulator
+﻿; VARIABLES.ERH - Global Variables and Constants for flesh-pit Simulator
 
 ; --- World & Segment Constants ---
 #DEFINE SEG_COUNT 60
@@ -28,6 +28,7 @@
 #DIM GLOBAL SAVEDATA FLESH_IN_HAND        ; Carried flesh pile units (1/100 scale)
 #DIM GLOBAL SAVEDATA CRUSH_ACCUMULATED_MS ; Milliseconds in crush block (>= 6000 leads to crush death)
 #DIM GLOBAL SAVEDATA IS_CROUCHING         ; 0: Standing, 1: Crouching
+#DIM GLOBAL SAVEDATA LAST_CHECKED_CLEAR   ; Last manually inspected return route clearance (0 ~ 1000, -1 = unknown)
 
 ; --- Currency & Progression ---
 #DIM GLOBAL SAVEDATA TEETH_IN_TANK        ; Teeth in toilet tank
@@ -74,3 +75,7 @@
 ; --- Mutations (1 if owned) ---
 #DIM GLOBAL SAVEDATA MUT_M, 31            ; M01 ~ M30 (index 1~30)
 #DIM GLOBAL SAVEDATA MUT_T, 8             ; T1 ~ T7 (index 1~7)
+
+; --- Language Setting (0: Korean, 1: English) ---
+#DIM GLOBAL SAVEDATA GAME_LANG
+

@@ -47,9 +47,10 @@ IF SEG_TUMOR:PLAYER_POS_SEG > 0 && SEG_DENSITY:PLAYER_POS_SEG < 500
     PRINTL [5] 바닥의 종양을 그 자리에서 씹어 삼킨다 (배의 혹 생성)
 ENDIF
 
-PRINTL [6] 소지품 및 도구 사용 (방벽, 스프레이, 믹서기)
-PRINTL [7] 자세 변경 (서기 / 웅크리기)
-PRINTL [8] 그 자리에 서서 주변을 살피며 잠시 대기한다 (1.0초 경과)
+PRINTL [6] 도구
+PRINTL [7] 자세 변경
+PRINTL [8] 대기
+PRINTL [9] 뒤돌아보기
 INPUT
 
 IF RESULT == 1 && SEG_DENSITY:TARGET_SEG > 0
@@ -59,7 +60,7 @@ ELSEIF RESULT == 2 && SEG_DENSITY:TARGET_SEG < 500
 ELSEIF RESULT == 3
     IF PLAYER_POS_SEG == 0
         PRINTW 화장실 문을 열고 하얀 타일 방 안으로 들어왔다.
-        CALL RESTROOM_MAIN
+        LAST_CHECKED_CLEAR = -1
         RETURN
     ELSE
         CALL MOVE_BACKWARD
@@ -77,6 +78,20 @@ ELSEIF RESULT == 8
     PRINTL 숨을 고르며 가만히 서 있었다...
     CALL APPLY_WORLD_REGEN, 1000
     CALL CALC_PRESSURE_AND_CRUSH, 1000
+ELSEIF RESULT == 9
+    PRINTL 뒤쪽으로 고개를 돌려 파온 통로를 살폈다...
+    CALL APPLY_WORLD_REGEN, 1000
+    CALL CALC_PRESSURE_AND_CRUSH, 1000
+    LAST_CHECKED_CLEAR = RESULT:1
+    IF LAST_CHECKED_CLEAR >= 500
+        PRINTW 파온 살점 통로 너머로 화장실 문의 하얀 불빛이 희미하게 새어 들어온다. 통로는 아직 충분히 넓다.
+    ELSEIF LAST_CHECKED_CLEAR >= 200
+        PRINTW 뒤쪽 살점이 부풀어 올라 통로가 좁아져 있다. 기어가지 않으면 통과하기 어렵겠다.
+    ELSEIF LAST_CHECKED_CLEAR > 0
+        PRINTW 뒤쪽 살벽이 거의 맞닿아 틈새만 남았다. 곧 완전히 닫힐 것 같다!
+    ELSE
+        PRINTW 뒤쪽 통로가 완전히 메워져 막혀버렸다! 화장실로 돌아갈 길이 없다!
+    ENDIF
 ENDIF
 
 GOTO LOOP_START

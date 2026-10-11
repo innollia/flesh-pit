@@ -1,4 +1,4 @@
-; VENT_NPC.ERB - Vent Grate Shop and Vent Being Dialogue System (vent_lines.json)
+﻿; VENT_NPC.ERB - Vent Grate Shop and Vent Being Dialogue System (vent_lines.json)
 
 @VENT_NPC_INTERACT
 PRINTL 
@@ -22,8 +22,8 @@ IF VENT_IS_OPEN
         ENDIF
     ENDIF
     
-    PRINTL [4] 손에 쥔 이빨을 환풍구 선반에 올린다 (흥정)
-    PRINTL [5] 다른 물건을 올려본다 (살점, 카나리아 등)
+    PRINTL [4] 손에 쥔 이빨을 환풍구 선반에 올린다
+    PRINTL [5] 다른 물건을 올려본다
     PRINTL [6] 환풍구를 닫는다
     PRINTL [0] 뒤로 가기
     INPUT
@@ -90,7 +90,7 @@ ELSEIF VENT_TEETH_PLACED >= 4 && VENT_TEETH_PLACED < 12
     PRINTL 
     PRINTL "좋아. 공평해. 골라."
     VENT_OFFER_IDS:0 = "knife"
-    VENT_OFFER_IDS:1 = "barrier"
+    VENT_OFFER_IDS:1 = "canary_feed"
     VENT_OFFER_IDS:2 = "spray_cheap"
 ELSEIF VENT_TEETH_PLACED >= 12 && VENT_TEETH_PLACED < 24
     PRINTL 
@@ -186,10 +186,14 @@ PRINTL [1] 카나리아를 들이밀어 본다
 PRINTL [2] 피 묻은 손을 불쑥 집어넣는다
 PRINTL [0] 그만둔다
 INPUT
-IF RESULT == 1 && HAS_CANARY
-    PRINTL "......"
-    PRINTL (짹-)
-    PRINTW "......귀엽네. 가져가. 나 새 못 키워."
+IF RESULT == 1
+    IF HAS_CANARY
+        PRINTL "......"
+        PRINTL (짹-)
+        PRINTW "......귀엽네. 가져가. 나 새 못 키워."
+    ELSE
+        PRINTW "새가 없잖아. 빈손이네. 뭘 들이미는 거야."
+    ENDIF
 ELSEIF RESULT == 2
     PRINTW "손 넣지 마. 여긴 내 방이야."
 ENDIF

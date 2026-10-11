@@ -1,4 +1,4 @@
-; WORLD_INIT.ERB - Initialize 60 Segments across 3 Shells
+﻿; WORLD_INIT.ERB - Initialize 60 Segments across 3 Shells
 
 @INIT_WORLD
 #DIM SEG_IDX
@@ -31,8 +31,8 @@ FOR SEG_IDX, 0, SEG_COUNT
     ENDIF
 NEXT
 
-; 화장실 문 바로 앞(세그먼트 0)은 살 벽이 문틀까지 닿아 있음
-SEG_DENSITY:0 = 850
+; 화장실 문턱(세그먼트 0)은 열린 문틀 통로로 안전하게 개방되어 있음 (밀도 0)
+SEG_DENSITY:0 = 0
 
 ; 초기 종양 배치 (각 껍질별 1개씩 무작위 위치)
 SEG_TUMOR:5 = 1  ; 핵 기형종 (core_knot)
