@@ -117,6 +117,7 @@ func on_cell_torn(world_pos: Vector3) -> int:
 		if m.terrain.density_at(p) < 0.5 or not FDKTissueRules.can_grab(m.terrain.tissue_at(p), "big_saw"):
 			continue
 		m.terrain.dig_at(p, 1.0)
+		m.terrain.queue_visible_tear(p)
 		m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
 		m.progression.on_flesh_eaten(m.shell_at(p), m.stomach_config.flesh_per_cell)
 		extra += 1

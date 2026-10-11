@@ -58,9 +58,67 @@ var _surface_patch_state: Array = []
 var _surface_patch_required_epoch: int = 0
 var _surface_patch_is_aggregate: bool = false
 var _surface_patch_tiles: Dictionary = {}
+var _visible_tear_corners: Dictionary = {}
+var _visible_tear_readers: Dictionary = {}
+var _reading_visible_tear := false
+
+## Player-facing tears must not wait behind an older regeneration batch.
+## Keep the surrounding published surface unchanged; replace only the
+## actually removed corners, on every mesh that reads those corners.
+func queue_visible_tear(world_pos: Vector3) -> void:
+    if _surface_patch != null and not _surface_patch.faces.is_empty():
+        return # Buried tears already have their immediate real-density patch.
+    var cell := Vector3i(floori(world_pos.x / config.cell_size), floori(world_pos.y / config.cell_size), floori(world_pos.z / config.cell_size))
+    var s := config.chunk_size
+    for z in range(2):
+        for y in range(2):
+            for x in range(2):
+                var g := cell + Vector3i(x, y, z)
+                _visible_tear_corners[g] = corner_density_global(g)
+                var provider := Vector3i(_floordiv(g.x, s), _floordiv(g.y, s), _floordiv(g.z, s))
+                for dz in range(-1, 2):
+                    for dy in range(-1, 2):
+                        for dx in range(-1, 2):
+                            var cc := provider + Vector3i(dx, dy, dz)
+                            var local := g - cc * s
+                            if local.x >= -1 and local.y >= -1 and local.z >= -1 and local.x <= s and local.y <= s and local.z <= s and _chunks.has(cc):
+                                _visible_tear_readers[cc] = _chunks[cc]
+
+func _publish_visible_tears() -> void:
+    if _visible_tear_readers.is_empty():
+        return
+    var previous_epoch := _mesh_snapshot_epoch
+    var previous_reading := _reading_mesh_snapshot
+    var saved: Array = []
+    _mesh_snapshot_epoch = _dig_epoch
+    _reading_mesh_snapshot = false
+    _reading_visible_tear = true
+    for chunk in _visible_tear_readers.values():
+        # This preview must neither overwrite nor restart the frozen work.
+        saved.append([chunk, chunk._staged_mesh, chunk._staged_faces, chunk._staged_density, chunk._staged_force_collision, chunk._staged_shape, chunk._staged_edit_epoch])
+        chunk.remesh(true, true)
+    _reading_visible_tear = false
+    # All readers use the same published corners + actual tear delta and
+    # swap together, retaining closed seams and matching physical faces.
+    for state in saved:
+        var chunk: FDKChunk = state[0]
+        chunk.publish_staged_mesh()
+        chunk._staged_mesh = state[1]
+        chunk._staged_faces = state[2]
+        chunk._staged_density = state[3]
+        chunk._staged_force_collision = state[4]
+        chunk._staged_shape = state[5]
+        chunk._staged_edit_epoch = state[6]
+        chunk._dirty = true # The normal batch still catches up with regrowth.
+    _mesh_snapshot_epoch = previous_epoch
+    _reading_mesh_snapshot = previous_reading
+    _visible_tear_readers.clear()
+    _visible_tear_corners.clear()
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_PREDELETE:
+        _visible_tear_readers.clear()
+        _visible_tear_corners.clear()
         _clear_surface_patch()
 
 func get_surface_patch_required_epoch() -> int:
@@ -444,6 +502,7 @@ var _guard_pos: Vector3 = Vector3.ZERO
 var _guard_radius: float = -1.0
 
 func _process(delta: float) -> void:
+    _publish_visible_tears()
     _refresh_or_clear_surface_patch()
     var done := 0
     var start := Time.get_ticks_usec()
@@ -463,8 +522,23 @@ func _process(delta: float) -> void:
         var group_id: int = _mesh_group_for[chunk.chunk_coord]
         _mesh_group_remaining[group_id] -= 1
         if _mesh_group_remaining[group_id] == 0:
+            var superseded := false
             for ready in _mesh_groups[group_id]:
-                ready.publish_staged_mesh()
+                if ready._surface_edit_epoch > _mesh_snapshot_epoch:
+                    superseded = true
+                    break
+            for ready in _mesh_groups[group_id]:
+                if superseded:
+                    # Finish the older batch without resurrecting a tear.
+                    # Retire the entire connected group, not individual faces.
+                    ready._dirty = true
+                    ready._staged_mesh = null
+                    ready._staged_faces = PackedVector3Array()
+                    ready._staged_density = PackedFloat32Array()
+                    ready._staged_shape = null
+                    ready._staged_edit_epoch = 0
+                else:
+                    ready.publish_staged_mesh()
             _refresh_or_clear_surface_patch()
         _mesh_batch_cursor += 1
         done += 1
@@ -646,6 +720,8 @@ func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
 
 ## Remeshes every dirty chunk now (used at start-up and by capture tools).
 func remesh_all() -> void:
+    _visible_tear_readers.clear()
+    _visible_tear_corners.clear()
     for chunk in _mesh_batch:
         chunk._dirty = true
     _mesh_batch.clear()
@@ -718,6 +794,13 @@ func corner_density_global(g: Vector3i) -> float:
     var s := config.chunk_size
     var cc := Vector3i(_floordiv(g.x, s), _floordiv(g.y, s), _floordiv(g.z, s))
     var chunk: FDKChunk = _chunks.get(cc, null)
+    if _reading_visible_tear:
+        if _visible_tear_corners.has(g):
+            return float(_visible_tear_corners[g])
+        if chunk != null and not chunk._surface_density.is_empty():
+            var local := g - cc * s
+            return chunk.get_published_corner_density(local.x, local.y, local.z)
+        return float(density_sampler.call(Vector3(g) * config.cell_size)) if density_sampler.is_valid() else 1.0
     if _reading_mesh_snapshot and _mesh_snapshot.has(cc):
         var l := g - cc * s
         var values: PackedFloat32Array = _mesh_snapshot[cc]
@@ -1191,6 +1274,8 @@ func serialize() -> Dictionary:
     return {"version": 1, "chunks": chunks_data}
 
 func deserialize(data: Dictionary) -> void:
+    _visible_tear_readers.clear()
+    _visible_tear_corners.clear()
     _clear_surface_patch()
     var chunks_data: Array = data.get("chunks", [])
     for entry in chunks_data:

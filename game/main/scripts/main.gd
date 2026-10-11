@@ -2240,6 +2240,7 @@ func _on_cell_torn(world_pos: Vector3) -> void:
     _chew_target = Vector3.INF
     _chew_contact = Vector3.INF
     tissue_tools.on_cell_torn(world_pos)
+    terrain.queue_visible_tear(world_pos)
     if carry_mode:
         carried_flesh += stomach_config.flesh_per_cell
         carried_units[shell] = int(carried_units.get(shell, 0)) + 1

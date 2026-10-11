@@ -517,6 +517,7 @@ func _build_padded(s: int) -> PackedFloat32Array:
     var base := chunk_coord * s
     var source := _density
     var snapshot: bool = field != null and field._reading_mesh_snapshot
+    var visible_tear: bool = field != null and field._reading_visible_tear
     if snapshot:
         source = field._mesh_snapshot[chunk_coord]
     for z in range(-1, s + 1):
@@ -527,7 +528,9 @@ func _build_padded(s: int) -> PackedFloat32Array:
             var inside_yz := y >= 0 and z >= 0 and y < owned_limit and z < owned_limit
             for x in range(-1, s + 1):
                 var v: float
-                if inside_yz and x >= 0 and x < owned_limit:
+                if visible_tear:
+                    v = field.corner_density_global(base + Vector3i(x, y, z))
+                elif inside_yz and x >= 0 and x < owned_limit:
                     v = source[x + y * n + z * n * n]
                     if _has_contract and not snapshot:
                         v += _contract[x + y * n + z * n * n]
