@@ -24,7 +24,7 @@ godot_console --path game --resolution 640x360 --fixed-fps 60 --script res://tes
 godot_console --path game --resolution 640x360 --fixed-fps 60 --script res://tests/capture_terrain_main_solid.gd
 ```
 
-FP_AUDIO_LOG=1은 소리 이벤트 로그만 켠다. FP_TERRAIN_EVIDENCE는 이를 지원하는 성능·캡처 프로그램의 출력 경로이며 플레이 데이터 경로가 아니다. 엔진이 검사 시작 전에 멈추면 시간 초과를 실패로 기록하고 원인을 확인해 같은 검사를 다시 실행한다. 사용자의 editor 프로세스를 종료하지 않는다.
+FP_AUDIO_LOG=1은 소리 이벤트 로그만 켠다. FP_PLAY_LOG=<CSV 경로>는 보상 척도용 플레이 기록을 남긴다(docs/spec/09-reward-scale.md 10.2). 원정 시간을 재려면 이 기록으로 몇 번 원정한 뒤 `python -X utf8 tools/economy/reward_scale.py --log <CSV 경로>`로 읽는다. 기록은 저장 슬롯과 설정을 바꾸지 않는다. 기록 장치 자체는 `run_play_log_tests.gd`로 검사한다. FP_TERRAIN_EVIDENCE는 이를 지원하는 성능·캡처 프로그램의 출력 경로이며 플레이 데이터 경로가 아니다. 엔진이 검사 시작 전에 멈추면 시간 초과를 실패로 기록하고 원인을 확인해 같은 검사를 다시 실행한다. 사용자의 editor 프로세스를 종료하지 않는다.
 
 개발 실행 외의 배포 대상과 export preset은 이번 검증으로 확정하지 않았다. 배포 작업은 별도 대상과 결과물 확인이 필요하다.
 

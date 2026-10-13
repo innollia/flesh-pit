@@ -52,6 +52,10 @@ func chew_time_multiplier() -> float:
 func is_overfull() -> bool:
 	return fill > config.capacity
 
+## The stomach clock's end: at capacity + overfill nothing more goes down.
+func is_full() -> bool:
+	return fill >= config.capacity + config.overfill_capacity
+
 func serialize() -> Dictionary:
 	return {"version": 1, "fill": fill}
 

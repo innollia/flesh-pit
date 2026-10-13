@@ -28,6 +28,14 @@ const ROOM_CLEAR_HALF := Vector3(FPRestroom.HALF.x + 1.55, FPRestroom.HALF.y + 1
 const BOUNDARY_BAND := 0.9
 const BLEND_ZONE := 1.8
 const TUMORS_PER_SHELL := 4
+## One more tumor in the mantle and the surface (docs/spec/09-reward-scale.md
+## D10/D18: 14 >= 6 codex kinds + 7 tumor mutations, and an encounter every
+## 2~6 expeditions per shell). They come after the original 12 so saved
+## spot indices keep pointing at the same tumors.
+const EXTRA_TUMORS := [0, 1, 1]
+
+static func tumors_in_shell(s: int) -> int:
+	return TUMORS_PER_SHELL + int(EXTRA_TUMORS[s])
 const TUMOR_DEPTH := [6.8, 15.5, 24.0]
 
 static func shell_of_depth(depth: float) -> int:
@@ -201,6 +209,12 @@ static func tumor_spots(center: Vector3) -> Array:
 		var dirs := _dirs(TUMORS_PER_SHELL, float(s) * 0.61 + 0.2)
 		for i in range(dirs.size()):
 			out.append({"pos": center + dirs[i] * TUMOR_DEPTH[s], "kind": kinds[i % 2], "shell": s})
+	for s in range(SHELL_COUNT):
+		var dirs := _dirs(TUMORS_PER_SHELL, float(s) * 0.61 + 0.2)
+		for e in range(int(EXTRA_TUMORS[s])):
+			# halfway between two of the shell's tumors, so it is a new direction
+			var d: Vector3 = (dirs[e % dirs.size()] + dirs[(e + 1) % dirs.size()]).normalized()
+			out.append({"pos": center + d * TUMOR_DEPTH[s], "kind": FPProgression.TUMOR_KINDS[s * 2 + 1], "shell": s})
 	return out
 
 static func in_container(p: Vector3, rests: Array[Vector3]) -> bool:

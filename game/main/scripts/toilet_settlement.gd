@@ -56,8 +56,10 @@ func press_lever(prog: FPProgression) -> Dictionary:
     var tumor_n := 0
     for kind in bowl_tumors:
         prog.tumors._codex[kind] = true
-        prog.teeth += FPProgression.TUMOR_TOOTH_PAYOUT
-        tumor_teeth += FPProgression.TUMOR_TOOTH_PAYOUT
+        # the teratoma has a few teeth of its own inside (03-restroom.md 9)
+        var pay: int = FPProgression.TUMOR_TOOTH_PAYOUT + int(FPProgression.TUMOR_TEETH_BONUS.get(kind, 0))
+        prog.teeth += pay
+        tumor_teeth += pay
         tumor_n += 1
     bowl_tumors.clear()
     var got := prog.settle(bowl_flesh)

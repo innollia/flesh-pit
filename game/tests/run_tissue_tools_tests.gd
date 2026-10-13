@@ -398,7 +398,7 @@ func _main_tests(m) -> void:
 	m.progression.hands.set_item("", 0)
 	m.carry_mode = true
 	m.carried_flesh = 20.0
-	m.carried_units = {1: 4}
+	m.carried_units = {1: 20.0}
 	var f0: float = m.stomach.fill
 	var pitch0: float = m.player.camera_pivot.rotation.x
 	_assert(tools.start_blend() and tools.charge_lights() == 9, "W25 one blend uses 10 charge (one lamp)")
@@ -424,8 +424,19 @@ func _main_tests(m) -> void:
 	m.terrain.dig_at(wall, 1.0)
 	var n := tools.on_cell_torn(wall)
 	_assert(n == 6, "W26 one saw stroke tears 6 cells (got %d)" % n)
-	_assert(is_equal_approx(m.stomach.fill - f1, 5.0 * m.stomach_config.flesh_per_cell), "W26 sawn flesh goes straight to the stomach")
+	# neighbouring cells share corners, so one stroke removes less than 6 whole cells
+	var sawn: float = m.stomach.fill - f1
+	_assert(sawn > 2.0 * m.stomach_config.flesh_per_cell and sawn <= 5.0 * m.stomach_config.flesh_per_cell + 0.001, "W26 sawn flesh goes straight to the stomach (%.1f units for 5 extra cells)" % sawn)
 	_assert(m.place_barrier() == null and tools.spray(false) == -1, "W26 no barrier or spray while sawing")
+	# eaten flesh never exceeds the density a tear removed: a cell that only
+	# partly grew back pays only what grew back (CLAUDE.md, reward scale B12)
+	_assert(is_equal_approx(m.stomach_config.units_for_removed(8.0), 4.0) and is_equal_approx(m.stomach_config.units_for_removed(4.0), 4.0) and is_equal_approx(m.stomach_config.units_for_removed(0.6), 0.6), "a whole cell pays 4, a partly regrown one its share")
+	var regrow := Vector3(3.25, 1.25, 8.75)
+	m.terrain.dig_at(regrow, 1.0)
+	m.terrain.fill_box_uniform(AABB(Vector3(2.99, 0.99, 8.49), Vector3(0.02, 0.02, 0.02)), 0.6, R.COMPRESSIVE)
+	var corner_sum: float = m.terrain.cell_corner_sum(regrow)
+	var paid: float = m.eat_cell_at(regrow)
+	_assert(m.terrain.density_at(regrow) < 0.5 and paid <= corner_sum + 0.001 and paid < 1.0 and paid > 0.0, "W26 a regrowing cell pays only what grew back (%.2f of %.2f corner density)" % [paid, corner_sum])
 	m.equip_tool("")
 	# W28 death drop in the game
 	prog.barriers = 2

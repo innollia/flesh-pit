@@ -119,24 +119,24 @@ func _test_fractional_units_and_mixed_biome_carry() -> void:
 ## Earned mutations, unspent hairs, and carry fractions are preserved on outdoor vomiting.
 func _test_immediate_mutation_consumption_and_preservation() -> void:
 	var prog := FPProgression.new()
-	# Eat 250 core units -> 5 core hairs, 1 common hair (100 common carry)
-	prog.on_flesh_eaten(0, 250.0)
-	_assert(prog.hairs("core") == 5, "buy test: 5 core hairs earned")
-	_assert(prog.can_buy_mutation("M07"), "buy test: compressive mutation M07 (cost 5) is affordable")
+	# Eat 300 core units -> 6 core hairs, 2 common hairs (0 common carry)
+	prog.on_flesh_eaten(0, 300.0)
+	_assert(prog.hairs("core") == 6, "buy test: 6 core hairs earned")
+	_assert(prog.can_buy_mutation("M07"), "buy test: compressive mutation M07 (cost 6) is affordable")
 
 	# Purchase M07 immediately
 	var bought := prog.buy_mutation("M07")
 	_assert(bought and prog.has_mutation("M07"), "buy test: M07 purchased immediately")
-	_assert(prog.hairs("core") == 0, "buy test: 5 core hairs consumed, 0 remaining")
-	_assert(prog.hairs(FPProgression.COMMON) == 1, "buy test: 1 common hair remained unspent")
-	_assert(is_equal_approx(prog.hair_carry[FPProgression.COMMON], 100.0), "buy test: common carry remainder preserved")
+	_assert(prog.hairs("core") == 0, "buy test: 6 core hairs consumed, 0 remaining")
+	_assert(prog.hairs(FPProgression.COMMON) == 2, "buy test: 2 common hairs remained unspent")
+	_assert(is_equal_approx(prog.hair_carry[FPProgression.COMMON], 0.0), "buy test: common carry remainder preserved")
 
 	# Outdoor vomiting (discard_stomach) must preserve purchased mutations and remaining points
 	prog.discard_stomach()
 	_assert(prog.has_mutation("M07"), "preservation: purchased mutation M07 preserved after discard_stomach")
-	_assert(prog.hairs("core") == 0 and prog.hairs(FPProgression.COMMON) == 1,
+	_assert(prog.hairs("core") == 0 and prog.hairs(FPProgression.COMMON) == 2,
 		"preservation: remaining hairs preserved after discard_stomach")
-	_assert(is_equal_approx(prog.hair_carry[FPProgression.COMMON], 100.0),
+	_assert(is_equal_approx(prog.hair_carry[FPProgression.COMMON], 0.0),
 		"preservation: fractional carry preserved after discard_stomach")
 
 ## 4. settle() awards teeth based on vomited flesh, but hair gain is strictly 0.

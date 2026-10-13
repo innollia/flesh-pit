@@ -358,7 +358,7 @@ func run() -> void:
 	await frames(3)
 	# 공유 섭취 소비자는 실제 운반 살 단위를 소비하고 동일 내용을 다시 지급하지 않는다.
 	m.carried_flesh = 300.0
-	m.carried_units = {0: 75}
+	m.carried_units = {0: 300.0}
 	var before: int = m.progression.total_hairs()
 	m.mutation_apply.gulp()
 	check(m.progression.total_hairs() - before == 8, "운반 핵 300단위 섭취는 즉시 6+2가닥을 지급한다")
@@ -366,7 +366,7 @@ func run() -> void:
 	check(m.progression.total_hairs() - before == 8, "빈 운반 내용 재섭취는 털을 중복 지급하지 않는다")
 	before = m.progression.total_hairs()
 	m.tissue_tools._blend_amount = 300.0
-	m.tissue_tools._blend_units = {0: 75}
+	m.tissue_tools._blend_units = {0: 300.0}
 	m.tissue_tools.finish_drink()
 	check(m.progression.total_hairs() - before == 4, "믹서 300단위는 실제 마신 60퍼센트에 해당하는 3+1가닥만 지급한다")
 	check(m.nerves.is_empty(), "초기 문 개방에는 신경이 생성되지 않는다")

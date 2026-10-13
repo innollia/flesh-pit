@@ -17,6 +17,12 @@ var _in_room := true
 var _vent_open := false
 var _barrier_count := 0
 var _hooked_barriers: Array = []
+## Recently torn spots (newest last): the creak comes from one that is
+## really growing back, never from nowhere.
+var _torn: Array[Vector3] = []
+const TORN_KEEP := 48
+const CREAK_RANGE := 8.0
+var _chirp_cool := 0.0
 ## Every play_event name so far, in order (tests and the run log read it).
 var played_events: Array[String] = []
 
@@ -30,6 +36,7 @@ const EVENT_SOUNDS := {
 	"scissors": "scissors_snip", "saw": "saw_stroke", "death": "player_death",
 	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
 	"echo_click": "echo_click",
+	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
 }
 
 func _ready() -> void:
@@ -47,6 +54,8 @@ func _wire() -> void:
 	director.terrain = main.get("terrain")
 	if chewer is FDKChewer:
 		director.connect_chewer(chewer)
+		chewer.cell_torn.connect(_remember_torn)
+		director.creak_source = _regrowing_spot
 	if stomach is FDKStomach:
 		director.connect_stomach(stomach)
 		stomach.vomited.connect(_on_vomited)
@@ -79,6 +88,18 @@ func _wire() -> void:
 	var ma = main.get("mutation_apply")
 	if ma != null and ma.has_signal("tumor_eaten"):
 		ma.connect("tumor_eaten", on_tumor_eaten)
+	# canary: chirps as the way back narrows, cries at something wrong
+	_hook("canary_chirp", func(u): _on_canary_chirp(float(u)))
+	_hook("canary_cry", func(frightened): play_event("canary_wrong" if frightened else "canary_warn"))
+	# the opening: water still running in the bowl
+	_hook("opening_flush", func(): director.play("toilet_flush", _toilet_pos()))
+	# a contractile wall about to squeeze creaks first, where it is
+	var tf = main.get("terrain")
+	if tf != null and tf.has_signal("contraction_warning"):
+		tf.connect("contraction_warning", func(pos): director.play("regen_creak", pos))
+	# teeth rattling down into the tank
+	if toilet != null and toilet.has_signal("tank_rattle_started"):
+		toilet.connect("tank_rattle_started", func(_d, _tumor): director.play("coin_drop", _toilet_pos()))
 	# T1: every echolocation pulse starts with the tongue click
 	if ma != null and ma.has_signal("echo_click"):
 		ma.connect("echo_click", func(): play_event("echo_click"))
@@ -91,6 +112,33 @@ func _wire() -> void:
 	# look-down belt swap: the steel ring clinks (reuses the coin clink)
 	_hook("belt_swapped", func(_from, _to): play_event("coin_drop"))
 	_hook("belt_refused", func(): play_event("ui_click"))
+
+func _remember_torn(pos: Vector3) -> void:
+	_torn.append(pos)
+	if _torn.size() > TORN_KEEP:
+		_torn.pop_front()
+
+## A torn spot near the listener whose flesh is coming back, or null.
+func _regrowing_spot() -> Variant:
+	var t = main.get("terrain")
+	var player = main.get("player")
+	if t == null or player == null:
+		return null
+	var p: Vector3 = (player as Node3D).global_position
+	for i in range(_torn.size() - 1, -1, -1):
+		var at: Vector3 = _torn[i]
+		if at.distance_to(p) > CREAK_RANGE:
+			continue
+		var d: float = t.density_at(at)
+		if d > 0.15 and d < 0.95:
+			return at
+	return null
+
+func _on_canary_chirp(urgency: float) -> void:
+	if _chirp_cool > 0.0:
+		return
+	_chirp_cool = 2.5
+	play_event("canary_warn" if urgency > 0.6 else "canary_chirp")
 
 func _hook(sig: String, cb: Callable) -> void:
 	if main.has_signal(sig):
@@ -114,10 +162,11 @@ func _process(_delta: float) -> void:
 		director.set_shell(int((player as Node3D).global_position.distance_to(center) / thick))
 	elif director.shell < 0:
 		director.set_shell(0)
-	# mutation stage from points (same 0..400 scale the hands use)
-	var pts = main.get("mutation_points")
-	if pts != null:
-		director.set_mutation_stage(int(clampf(float(pts) / 400.0, 0.0, 0.999) * 3.0))
+	# mutation stage from how much of the body has changed (0..1, as the hands)
+	var prog = main.get("progression")
+	if prog != null and prog.has_method("mutation_amount"):
+		director.set_mutation_stage(int(clampf(float(prog.mutation_amount()), 0.0, 0.999) * 3.0))
+	_chirp_cool = maxf(0.0, _chirp_cool - _delta)
 	if restroom != null:
 		if restroom.has_method("is_door_open"):
 			var d: bool = restroom.is_door_open()

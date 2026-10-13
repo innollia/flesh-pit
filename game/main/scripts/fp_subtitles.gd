@@ -90,11 +90,28 @@ static func line_text(line_id: String) -> String:
 		return String(_data[line_id])
 	return String(LINES.get(line_id, ""))
 
+## Lines that arrive while one is still up wait their turn instead of
+## replacing it (one main signal at a time); at most QUEUE_MAX wait.
+const QUEUE_MAX := 3
+var _queue: Array = []
+
 func show_text(text: String, seconds: float = -1.0) -> void:
+	if text != "" and is_showing() and text != current_text:
+		if not _queue.has(text):
+			_queue.append([text, seconds])
+			if _queue.size() > QUEUE_MAX:
+				_queue.pop_front()
+		return
+	_show(text, seconds)
+
+func _show(text: String, seconds: float) -> void:
 	current_text = text
 	label.text = text
 	band.visible = text != ""
 	_left = seconds if seconds > 0.0 else maxf(MIN_TIME, text.length() * PER_CHAR)
+
+func queued() -> int:
+	return _queue.size()
 
 func is_showing() -> bool:
 	return band.visible and _left > 0.0
@@ -103,6 +120,9 @@ func _process(delta: float) -> void:
 	if not band.visible:
 		return
 	_left -= delta
+	if _left <= 0.0 and not _queue.is_empty():
+		var next: Array = _queue.pop_front()
+		_show(String(next[0]), float(next[1]))
 	var target := 1.0 if _left > 0.0 else 0.0
 	band.modulate.a = move_toward(band.modulate.a, target, delta / FADE)
 	if _left <= 0.0 and band.modulate.a <= 0.0:
@@ -111,5 +131,6 @@ func _process(delta: float) -> void:
 
 ## Capture helper: show at full opacity right away.
 func show_now(text: String) -> void:
-	show_text(text, 30.0)
+	_queue.clear()
+	_show(text, 30.0)
 	band.modulate.a = 1.0

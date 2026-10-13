@@ -40,6 +40,10 @@ var bank: FDKSoundBank
 var terrain: Node = null
 var stomach: FDKStomach = null
 var listener: Node3D = null
+## Optional: returns a world position where flesh is really regrowing near
+## the listener, or null. When set, the life creak plays only from such a
+## spot (a creak always means real regrowth); unset keeps the old random bed.
+var creak_source: Callable
 var surface: String = "flesh"
 var mutation_stage: int = 0
 var current_bed: String = ""
@@ -234,10 +238,15 @@ func advance(delta: float) -> void:
 		if _life_timer <= 0.0:
 			_life_timer = bank.rng.randf_range(life_interval.x, life_interval.y)
 			var pos: Variant = null
-			if listener != null and listener.is_inside_tree():
-				var dir := Vector3(bank.rng.randf_range(-1, 1), bank.rng.randf_range(-0.5, 0.5), bank.rng.randf_range(-1, 1)).normalized()
-				pos = listener.global_position + dir * bank.rng.randf_range(2.5, 6.0)
-			play("regen_creak", pos)
+			if creak_source.is_valid():
+				pos = creak_source.call()
+				if pos != null:
+					play("regen_creak", pos)
+			else:
+				if listener != null and listener.is_inside_tree():
+					var dir := Vector3(bank.rng.randf_range(-1, 1), bank.rng.randf_range(-0.5, 0.5), bank.rng.randf_range(-1, 1)).normalized()
+					pos = listener.global_position + dir * bank.rng.randf_range(2.5, 6.0)
+				play("regen_creak", pos)
 
 # --- signal handlers -----------------------------------------------------------
 

@@ -134,6 +134,7 @@ var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
 
 var carried_flesh: float = 0.0
+## Flesh in the hands per shell, in flesh units (not cells).
 var carried_units: Dictionary = {}
 var carry_mode: bool = false
 var blender_charge: float = 0.0
@@ -347,6 +348,12 @@ func _ready() -> void:
 	mutation_apply.name = "MutationApply"
 	add_child(mutation_apply)
 	mutation_apply.setup(self)
+	# timed reward-event log for the reward scale, only when FP_PLAY_LOG is set
+	if FPPlayLog.wanted() != "":
+		var play_log := FPPlayLog.new()
+		play_log.name = "PlayLog"
+		add_child(play_log)
+		play_log.setup(self, FPPlayLog.wanted())
 
 	_setup_environment()
 	_build_ui()
@@ -983,6 +990,10 @@ func _chew_step(delta: float) -> void:
 	if tank_lid.held:
 		chewer.stop()
 		return
+	if carry_mode and carried_flesh >= progression.carry_capacity():
+		# the hands are full: they push on the flesh, nothing more comes away
+		chewer.stop()
+		return
 	if hands_rig.state == FDKHandsRig.HandState.TEAR:
 		terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 		return
@@ -1009,6 +1020,26 @@ func _chew_step(delta: float) -> void:
 	else:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
+
+## Tear out the cell at p and return the flesh units that came away (never
+## more than its corners actually lost, see FDKStomachConfig). Publishes the
+## hole at the first tear render. Used by the extra cells of the big saw and
+## mutations; the chewer measures its own cell the same way.
+func eat_cell_at(p: Vector3) -> float:
+	var before: float = terrain.cell_corner_sum(p)
+	terrain.dig_at(p, 1.0)
+	terrain.queue_visible_tear(p)
+	return stomach_config.units_for_removed(before - terrain.cell_corner_sum(p))
+
+## Torn flesh that goes to the hands instead of the stomach.
+func add_carried(shell: int, units: float) -> void:
+	carried_flesh += units
+	carried_units[shell] = float(carried_units.get(shell, 0.0)) + units
+
+## Torn flesh that goes straight down: stomach and the hair it grows.
+func swallow_torn(shell: int, units: float) -> void:
+	stomach.add_flesh(units)
+	progression.on_flesh_eaten(shell, units)
 
 ## Everything that moves on its own each frame (tests drive it directly).
 func step_world(delta: float) -> void:
@@ -1308,6 +1339,7 @@ func request_vomit() -> void:
 	else:
 		hand_motions.play_vomit(false, stomach.fill_ratio())
 		stomach.vomit()
+		mutation_apply.take_cud_credit() # lost with the rest
 		progression.discard_stomach()
 
 func start_settlement() -> void:
@@ -1315,7 +1347,7 @@ func start_settlement() -> void:
 		return
 	if stomach.fill > 0.0:
 		hand_motions.play_vomit(true, stomach.fill_ratio())
-	toilet.vomit_into(stomach.vomit())
+	toilet.vomit_into(stomach.vomit() + mutation_apply.take_cud_credit())
 	if toilet.throw_tumors(progression) > 0:
 		progression.refresh_hands(carry_mode)
 	_settling = true
@@ -1335,11 +1367,16 @@ func pull_lever() -> Dictionary:
 		toilet.tank_node = restroom.tank_art
 	var tumor_kinds := toilet.bowl_tumors.duplicate()
 	var got := toilet.press_lever(progression)
-	vent.on_flush()
+	var settled: bool = int(got["teeth"]) > 0 or not tumor_kinds.is_empty()
+	# an empty bowl flushed again does not restart the being's calling
+	if settled or not vent._first_flush_heard:
+		vent.on_flush()
 	vent.on_tumors_settled(tumor_kinds)
 	flushed.emit(got["teeth"], got["hairs"])
 	if _settling:
 		leave_settlement()
+	if settled:
+		save_to_disk() # a settlement is a checkpoint worth keeping
 	return got
 
 func flush() -> Dictionary:
@@ -1654,7 +1691,7 @@ func reset_keybinds() -> void:
 	_register_keybinds()
 
 func settle_at_rest_point() -> Dictionary:
-	var got := progression.settle(stomach.vomit())
+	var got := progression.settle(stomach.vomit() + mutation_apply.take_cud_credit())
 	flushed.emit(got["teeth"], got["hairs"])
 	return got
 
@@ -1841,6 +1878,11 @@ func _on_drawing_dropped(kind: String) -> void:
 ## W06: tell the vent being what the player does in the room.
 func _vent_watch(delta: float) -> void:
 	vent.shell = progression.deepest_shell
+	if player != null and not restroom.contains(player.global_position):
+		progression.max_depth = maxf(progression.max_depth, player.global_position.distance_to(RESTROOM_CENTER))
+	# right before the outermost shell the being gives everything away
+	# (docs/content/vent-lines.md 마지막 거래)
+	vent.final_trade = progression.max_depth >= OUTER_RADIUS - FPProgression.FINAL_TRADE_MARGIN
 	vent.player_state["blood"] = hand_blood
 	vent.player_state["hairs"] = progression.total_hairs()
 	vent.player_state["extra_arm"] = ("extra_arm" in progression.tumor_mutations or "T2" in progression.tumor_mutations)
@@ -2378,11 +2420,13 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 	_chew_contact = Vector3.INF
 	tissue_tools.on_cell_torn(world_pos)
 	terrain.queue_visible_tear(world_pos)
-	if carry_mode:
-		carried_flesh += stomach_config.flesh_per_cell
-		carried_units[shell] = int(carried_units.get(shell, 0)) + 1
+	# the chewer already put chewer.last_units in the stomach unless carrying
+	if carry_mode and progression.equipped() == "big_saw":
+		swallow_torn(shell, chewer.last_units) # a saw stroke cannot be held (06-tools.md)
+	elif carry_mode:
+		add_carried(shell, chewer.last_units)
 	else:
-		progression.on_flesh_eaten(shell, stomach_config.flesh_per_cell)
+		progression.on_flesh_eaten(shell, chewer.last_units)
 	_update_nerve_anchors()
 	var near := _nearest_nerve(world_pos, 0.7)
 	if near != null:
@@ -2416,6 +2460,7 @@ func serialize() -> Dictionary:
 		"hazard": hazard.serialize(),
 		"carried_flesh": carried_flesh,
 		"carried_units": carried_units.duplicate(),
+		"carried_units_are_flesh": true,
 		"carry_mode": carry_mode,
 		"blender_charge": blender_charge,
 		"has_canary": has_canary,
@@ -2483,6 +2528,10 @@ func deserialize(data: Dictionary) -> void:
 		hazard.deserialize(data["hazard"])
 	carried_flesh = float(data.get("carried_flesh", 0.0))
 	carried_units = (data.get("carried_units", {}) as Dictionary).duplicate()
+	if not bool(data.get("carried_units_are_flesh", false)):
+		# older saves counted cells in the hands
+		for k in carried_units.keys():
+			carried_units[k] = float(carried_units[k]) * stomach_config.flesh_per_cell
 	carry_mode = bool(data.get("carry_mode", false))
 	chewer.stomach = null if carry_mode else stomach
 	blender_charge = float(data.get("blender_charge", 0.0))

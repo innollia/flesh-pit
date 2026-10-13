@@ -32,6 +32,9 @@ var climb_enabled: bool = false
 ## Optional host terrain boundary; standalone controllers retain normal physics.
 ## Receives the requested per-frame motion, returns a permitted motion.
 var movement_filter: Callable
+## Multiplies walking/crouching speed only (e.g. being pressed by flesh);
+## the view bob keeps reading config.walk_speed, so it never speeds up.
+var move_speed_scale: float = 1.0
 
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var camera: Camera3D = $CameraPivot/Camera3D
@@ -150,7 +153,7 @@ func _process_move_and_climb(delta: float) -> void:
 		input_dir.x += 1.0
 	input_dir = input_dir.normalized()
 
-	var speed: float = config.crouch_speed if _is_crouching else config.walk_speed
+	var speed: float = (config.crouch_speed if _is_crouching else config.walk_speed) * move_speed_scale
 	var forward: Vector3 = -global_transform.basis.z
 	var right: Vector3 = global_transform.basis.x
 	var horizontal: Vector3 = (forward * -input_dir.y + right * input_dir.x) * speed

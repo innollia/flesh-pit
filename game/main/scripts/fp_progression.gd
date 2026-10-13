@@ -52,6 +52,8 @@ const MAX_CANARY_FEED := 3
 ## Tumor kinds: two per shell. Throwing each one intact fills the codex.
 const TUMOR_KINDS: Array[String] = ["core_knot", "core_bulb", "mantle_coil", "mantle_sac", "surface_star", "surface_ear"]
 const TUMOR_TOOTH_PAYOUT := 24 ## "a large pile of teeth" = 3 expeditions
+## core_knot (a teratoma with teeth inside) pays a little extra.
+const TUMOR_TEETH_BONUS := {"core_knot": 4}
 const TUMOR_EAT_POINTS := 1
 const TUMOR_MUTATION_COST := 1
 ## Tumor mutations (docs/spec/05-mutations.md 4), granted at random at the
@@ -64,7 +66,9 @@ const PARTS: Array[String] = ["face", "neck", "chest", "belly", "right_hand", "l
 
 ## 04-economy.md 2: hairs per mutation by branch (branch -> pool -> cost).
 const BRANCH_POOL := {"common": COMMON, "compressive": BIOME_CORE, "contractile": BIOME_MANTLE, "nerve": BIOME_SURFACE}
-const POOL_COST := {COMMON: 12, BIOME_CORE: 5, BIOME_MANTLE: 10, BIOME_SURFACE: 15}
+## Core 6 = 3 expeditions of core flesh per compressive mutation (2026-10-14,
+## docs/spec/09-reward-scale.md: biome mutation 2~3 E, core shell 18 E).
+const POOL_COST := {COMMON: 12, BIOME_CORE: 6, BIOME_MANTLE: 10, BIOME_SURFACE: 15}
 ## Combination: either biome, at 1.5x that biome's value.
 const COMBO_FACTOR := 1.5
 
@@ -106,6 +110,10 @@ var has_bag: bool = false
 var has_belt: bool = false
 var tumor_mutations: Array[String] = []
 var deepest_shell: int = 0
+## Farthest the player has been from the restroom centre (m). Within
+## FINAL_TRADE_MARGIN of the outer shell the vent offers its last trade.
+var max_depth: float = 0.0
+const FINAL_TRADE_MARGIN := 3.0
 var tumors_eaten: int = 0
 ## 구형 저장의 미지급 가중 살 단위를 읽는 호환 필드다.
 ## COMMON과 바이옴별 값은 이미 껍질 배율이 적용됐으며 한 번만 이전한다.
@@ -450,8 +458,10 @@ func owns(id: String) -> bool:
 	return tools.owns(id)
 
 ## Hands are busy with a flesh pile or a tumor carried without the bag.
+## A hand is taken by the flesh pile (M28 boneless arm / T2 third arm keep
+## the pile out of the way) or by a tumor without a bag.
 func one_hand_busy(carrying_flesh: bool) -> bool:
-	return carrying_flesh or tumor_in_hand()
+	return (carrying_flesh and not two_hand_tools_while_carrying()) or tumor_in_hand()
 
 func tumor_in_hand() -> bool:
 	return tumors.carried_count() > (1 if has_bag else 0)
@@ -759,6 +769,7 @@ func serialize() -> Dictionary:
 		"has_bag": has_bag,
 		"has_belt": has_belt,
 		"deepest_shell": deepest_shell,
+		"max_depth": max_depth,
 		"pending_hairs": pending_hairs.duplicate(true),
 		"hair_carry": hair_carry.duplicate(true),
 		"junk_taken": junk_taken,
@@ -781,6 +792,7 @@ func deserialize(d: Dictionary) -> void:
 	canary_feed = int(d.get("canary_feed", 0))
 	has_bag = bool(d.get("has_bag", false))
 	deepest_shell = int(d.get("deepest_shell", 0))
+	max_depth = float(d.get("max_depth", 0.0))
 	_clear_pending()
 	hair_carry = {COMMON: 0.0}
 	for b in BIOMES:

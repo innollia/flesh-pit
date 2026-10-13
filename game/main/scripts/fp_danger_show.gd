@@ -85,6 +85,10 @@ func bruise_amount() -> float:
 	var hz = main.get("hazard")
 	if hz == null:
 		return 0.0
+	# M17 no pain: half the harm, and the hands no longer bruise (05-mutations.md)
+	var prog = main.get("progression")
+	if prog != null and prog.has_mutation("M17"):
+		return 0.0
 	return clampf(1.0 - float(hz.get("health")) / 100.0, 0.0, 1.0)
 
 func tick(delta: float) -> void:

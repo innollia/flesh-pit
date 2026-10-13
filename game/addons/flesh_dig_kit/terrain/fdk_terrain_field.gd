@@ -790,6 +790,17 @@ func _floordiv(a: int, b: int) -> int:
     return int(floor(float(a) / float(b)))
 
 ## Density at a global corner coordinate (chunk_coord * chunk_size + local).
+## Sum of the 8 corner densities of the cell containing world_pos. Eating
+## measures what a tear actually removed with this (before - after dig_at).
+func cell_corner_sum(world_pos: Vector3) -> float:
+    var cell := Vector3i(floori(world_pos.x / config.cell_size), floori(world_pos.y / config.cell_size), floori(world_pos.z / config.cell_size))
+    var total := 0.0
+    for z in range(2):
+        for y in range(2):
+            for x in range(2):
+                total += corner_density_global(cell + Vector3i(x, y, z))
+    return total
+
 func corner_density_global(g: Vector3i) -> float:
     var s := config.chunk_size
     var cc := Vector3i(_floordiv(g.x, s), _floordiv(g.y, s), _floordiv(g.z, s))

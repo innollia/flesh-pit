@@ -128,6 +128,14 @@ func _item_mesh(kind: String, seed: int) -> ArrayMesh:
         "knife":
             K.tube(st, I, [Vector3(-0.06, 0, 0), Vector3(0.0, 0, 0)], [0.012], 6, [Color(0.38, 0.22, 0.12)], true)
             K.tube(st, I, [Vector3(0.0, 0, 0), Vector3(0.1, 0.0, 0)], [0.015, 0.001], 3, [Color(0.85, 0.86, 0.88)], true)
+        "canary_feed":
+            # a small paper bag of seed, folded at the top
+            K.rbox(st, I, Vector3(0.035, 0.05, 0.025), 0.006, Color(0.82, 0.74, 0.55), Color(0.7, 0.6, 0.42))
+            K.rbox(st, K.T(Vector3(0, 0.055, 0)), Vector3(0.036, 0.008, 0.012), 0.003, Color(0.75, 0.66, 0.46))
+        "tumor_bag":
+            # a deflated basketball-like sack with a drawstring
+            K.blob(st, I, Vector3.ZERO, Vector3(0.06, 0.045, 0.06), 0.25, 31, Color(0.62, 0.32, 0.18), Color(0.45, 0.22, 0.12))
+            K.tube(st, I, [Vector3(-0.03, 0.045, 0), Vector3(0, 0.07, 0), Vector3(0.03, 0.045, 0)], [0.004], 3, [Color(0.2, 0.15, 0.1)], false)
         "blender_box", "saw_box":
             K.rbox(st, I, Vector3(0.07, 0.05, 0.06), 0.01, Color(0.68, 0.55, 0.38), Color(0.55, 0.42, 0.28))
             K.tube(st, I, [Vector3(-0.071, 0.051, 0), Vector3(0.071, 0.051, 0)], [0.004], 3, [Color(0.3, 0.1, 0.08)], false)

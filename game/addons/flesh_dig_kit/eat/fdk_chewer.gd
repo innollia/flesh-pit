@@ -28,6 +28,8 @@ var _chewing: bool = false
 var _target_chunk_coord: Vector3i
 var _target_local_cell: Vector3i
 var _elapsed: float = 0.0
+## Flesh units the last tear actually removed (read on cell_torn).
+var last_units: float = 0.0
 
 ## Begins or continues chewing at world_pos. Resets progress if the target
 ## cell changed since the last call. Emits grab_started when a chew begins
@@ -37,6 +39,9 @@ func try_start(world_pos: Vector3) -> void:
 		return
 	if terrain.density_at(world_pos) < terrain.config.iso_level or (terrain.has_method("is_edible_at") and not terrain.is_edible_at(world_pos)):
 		stop()
+		return
+	if stomach != null and stomach.is_full():
+		stop() # the stomach clock has run out: nothing more goes down
 		return
 	var result := terrain.world_to_cell(world_pos)
 	var chunk_coord: Vector3i = result[0]
@@ -77,8 +82,11 @@ func process_chew(delta: float) -> void:
 		if terrain.density_at(world_pos) < terrain.config.iso_level:
 			stop()
 			return
+		var before: float = terrain.cell_corner_sum(world_pos) if terrain.has_method("cell_corner_sum") else 4.0
 		terrain.dig_at(world_pos, 1.0) # updates shared border corners in neighbour chunks too
+		var after: float = terrain.cell_corner_sum(world_pos) if terrain.has_method("cell_corner_sum") else 0.0
+		last_units = config.units_for_removed(before - after)
 		cell_torn.emit(world_pos)
 		if stomach != null:
-			stomach.add_flesh(config.flesh_per_cell)
+			stomach.add_flesh(last_units)
 		_elapsed = 0.0

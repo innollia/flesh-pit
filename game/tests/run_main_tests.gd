@@ -201,8 +201,8 @@ func _run_systems() -> void:
     prog.mutation_tree.add_points("mantle", 10)
     _assert(prog.buy_mutation("M15"), "a biome mutation is bought with no prerequisite (10 mantle hairs)")
     _assert(not prog.can_buy_mutation("M07"), "compressive mutations need core hairs")
-    prog.mutation_tree.add_points("core", 8)
-    _assert(prog.buy_mutation("M28") and prog.hairs("core") == 0, "combination paid from one contributing pool at 1.5x (core 8)")
+    prog.mutation_tree.add_points("core", 9)
+    _assert(prog.buy_mutation("M28") and prog.hairs("core") == 0, "combination paid from one contributing pool at 1.5x (core 9)")
     m.open_mirror()
     m.mirror.show_part("face")
     _assert(m.mirror.visible and m.mirror.listed_ids().has("M04") and m.mirror.listed_ids().has("M15"), "focusing the face lists face mutations")
@@ -219,6 +219,7 @@ func _run_systems() -> void:
     m.toggle_carry()
     m._on_cell_torn(Vector3(0, 1, 3))
     _assert(m.carried_flesh > 0.0 and prog.equipped() == "", "carrying a pile drops the two-handed saw")
+    prog.mutation_tree._purchased.erase("M28") # the boneless arm would free the hands
     _assert(not m.equip_tool("big_saw") and m.equip_tool("knife"), "while carrying only one-handed tools work")
     m.hands_rig.set_carry(clampf(m.carried_flesh / 40.0, 0.0, 1.0))
     for i in range(8):
@@ -332,7 +333,7 @@ func _run_death(m, prog: FPProgression) -> void:
     m.request_vomit()
     _assert(not m.is_settling() and prog.teeth > t0 and prog.pending_hair_total() == 0, "vomiting at a rest point settles on the spot")
     # --- tumors: 12, eat for tumor points or carry one per bag to the toilet
-    _assert(m.tumor_nodes.size() == 12, "12 tumors in the world")
+    _assert(m.tumor_nodes.size() == 14, "14 tumors in the world (4 core, 5 mantle, 5 surface)")
     var tn: Node3D = m.tumor_nodes[0]
     m.player.global_position = tn.global_position - Vector3(0, 0.6, 0.7)
     m.player.camera.look_at(tn.global_position, Vector3.UP)
@@ -351,8 +352,12 @@ func _run_death(m, prog: FPProgression) -> void:
     m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
     var tt: int = prog.teeth
     m.start_settlement()
+    var thrown: Array = m.toilet.bowl_tumors.duplicate()
+    var expect_teeth := 0
+    for k in thrown:
+        expect_teeth += FPProgression.TUMOR_TOOTH_PAYOUT + int(FPProgression.TUMOR_TEETH_BONUS.get(k, 0))
     m.flush()
-    _assert(prog.teeth == tt + 2 * FPProgression.TUMOR_TOOTH_PAYOUT and prog.tumors.codex_count() == 2, "tumors thrown in the toilet pay teeth and fill the codex")
+    _assert(thrown.size() == 2 and prog.teeth == tt + expect_teeth and prog.tumors.codex_count() == 2, "tumors thrown in the toilet pay teeth and fill the codex")
     m.player.global_position = t3.global_position - Vector3(0, 0.6, 0.7)
     m.player.camera.look_at(t3.global_position, Vector3.UP)
     _assert(m.eat_tumor() and prog.tumors.tumor_points == 1, "eating a tumor gives tumor-only points")

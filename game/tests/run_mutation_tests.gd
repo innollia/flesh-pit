@@ -69,8 +69,8 @@ func _run_params() -> void:
 		_assert(base.mutation_info.has(id), "spec mutation %s defined" % id)
 	_assert(not base.mutation_info.has("M11") and not base.mutation_info.has("thick_skin"), "deleted M11 and the old placeholder list are gone")
 	# costs by branch (04-economy.md 2)
-	_assert(base.cost_in("M01", "common") == 12 and base.cost_in("M07", "core") == 5 and base.cost_in("M14", "mantle") == 10 and base.cost_in("M21", "surface") == 15, "branch costs 12 / 5 / 10 / 15")
-	_assert(base.cost_in("M28", "core") == 8 and base.cost_in("M28", "mantle") == 15 and base.cost_in("M28", "surface") == -1, "combination costs 1.5x of either biome")
+	_assert(base.cost_in("M01", "common") == 12 and base.cost_in("M07", "core") == 6 and base.cost_in("M14", "mantle") == 10 and base.cost_in("M21", "surface") == 15, "branch costs 12 / 6 / 10 / 15")
+	_assert(base.cost_in("M28", "core") == 9 and base.cost_in("M28", "mantle") == 15 and base.cost_in("M28", "surface") == -1, "combination costs 1.5x of either biome")
 	# one parameter check per mutation (W30)
 	_assert(is_equal_approx(_with("M01").capacity(), 120.0), "M01 capacity +20")
 	_assert(is_equal_approx(_with("M02").overfill_chew_multiplier(), 2.4), "M02 overfill chew 3.0 -> 2.4")
@@ -161,6 +161,69 @@ func _run_params() -> void:
 	m.mutation_apply.apply_now()
 	_assert(not eye.is_active() and m.player.camera.cull_mask == mask0, "without T5 the normal view is back")
 	m.mutation_apply.apply_now()
+	# effects that used to be computed but never applied (reward scale D15)
+	var cap := m.player.collision_shape.shape as CapsuleShape3D
+	prog.mutation_tree._purchased["M05"] = true
+	m.mutation_apply.apply_now()
+	_assert(is_equal_approx(cap.radius if m.player.collision_shape.shape == cap else (m.player.collision_shape.shape as CapsuleShape3D).radius, FPProgression.BASE_BODY_RADIUS * 0.85), "M05 the real body capsule folds to x0.85")
+	prog.mutation_tree._purchased.erase("M05")
+	prog.tumor_mutations.append("T4")
+	m.mutation_apply.apply_now()
+	_assert(is_equal_approx((m.player.collision_shape.shape as CapsuleShape3D).radius, FPProgression.BASE_BODY_RADIUS * 1.3), "T4 the real body capsule swells to x1.3")
+	prog.tumor_mutations.erase("T4")
+	m.mutation_apply.apply_now()
+	_assert(is_equal_approx(prog.squeeze_speed_factor(1.0), 0.5), "squeezed by flesh: half speed")
+	prog.mutation_tree._purchased["M19"] = true
+	_assert(is_equal_approx(prog.squeeze_speed_factor(1.0), 1.3), "M19 a squeeze pushes the body on at x1.3")
+	prog.mutation_tree._purchased.erase("M19")
+	prog.mutation_tree._purchased["M13"] = true
+	_assert(is_equal_approx(prog.carry_capacity(), FPProgression.BASE_CARRY * 1.5), "M13 the hands hold x1.5")
+	prog.mutation_tree._purchased.erase("M13")
+	prog.mutation_tree._purchased["M28"] = true
+	_assert(not prog.one_hand_busy(true), "M28 a pile in the boneless arm leaves the hands free for two-handed tools")
+	prog.mutation_tree._purchased.erase("M28")
+	_assert(prog.one_hand_busy(true), "without M28 / T2 a pile takes a hand")
+	# M16: what the cud stomach shrinks away still settles for teeth
+	prog.mutation_tree._purchased["M16"] = true
+	m.stomach.fill = 100.0
+	m.mutation_apply.cud_credit = 0.0
+	m.mutation_apply.step_timed(61.0)
+	_assert(is_equal_approx(m.stomach.fill + m.mutation_apply.cud_credit, 100.0), "M16 shrinks the stomach but keeps the settle value (%.1f + %.1f)" % [m.stomach.fill, m.mutation_apply.cud_credit])
+	_assert(is_equal_approx(m.mutation_apply.take_cud_credit(), 10.0) and m.mutation_apply.cud_credit == 0.0, "M16 the credit is taken once at settlement")
+	prog.mutation_tree._purchased.erase("M16")
+	m.stomach.fill = 0.0
+	# M17: half the harm, and no bruises on the hands
+	m.hazard.health = 40.0
+	_assert(m.danger_show.bruise_amount() > 0.5, "hurt hands bruise")
+	prog.mutation_tree._purchased["M17"] = true
+	_assert(m.danger_show.bruise_amount() == 0.0, "M17 no pain: the hands no longer bruise")
+	prog.mutation_tree._purchased.erase("M17")
+	m.hazard.health = 100.0
+	# the stomach clock ends: at capacity + overfill nothing more goes down
+	m.stomach.fill = m.stomach_config.capacity + m.stomach_config.overfill_capacity
+	_assert(m.stomach.is_full(), "the stomach is full at capacity + overfill")
+	m.chewer.try_start(m.player.global_position + Vector3(0, 0, 5))
+	_assert(not m.chewer.is_chewing(), "a full stomach takes no more flesh")
+	m.stomach.fill = 0.0
+	m.mutation_apply.apply_now()
+	# subtitles: a line that arrives while one is up waits instead of replacing it
+	var sub: FPSubtitles = m.subtitles
+	sub.show_text("첫 줄")
+	sub.show_text("둘째 줄")
+	_assert(sub.current_text == "첫 줄" and sub.queued() == 1, "a second line waits its turn")
+	sub._process(30.0)
+	_assert(sub.current_text == "둘째 줄" and sub.queued() == 0, "then it shows")
+	sub.show_now("")
+	# the last trade opens only right before the outermost shell
+	prog.max_depth = 5.0
+	m._vent_watch(0.1)
+	_assert(not m.vent.final_trade, "no last trade in the inner shells")
+	prog.max_depth = m.OUTER_RADIUS - 1.0
+	m._vent_watch(0.1)
+	_assert(m.vent.final_trade, "the being offers its last trade right before the outermost shell")
+	_assert(is_equal_approx(FPProgression.new().max_depth, 0.0) and prog.serialize().has("max_depth"), "the farthest depth is saved")
+	prog.max_depth = 0.0
+	m.vent.final_trade = false
 
 ## Queued for the first tear render (or already covered by the buried patch).
 func _tear_queued(m, at: Vector3) -> bool:
@@ -331,7 +394,7 @@ func _run_mirror() -> void:
 	var before := prog.purchased_mutations().size()
 	_assert(mir.buy_current() == "" and mir.body.is_red("face") and prog.purchased_mutations().size() == before, "a part without enough hairs blinks red")
 	# keyboard only: move to the right hand, pick M10, buy it
-	prog.mutation_tree.add_points("core", 5)
+	prog.mutation_tree.add_points("core", 6)
 	var guard := 0
 	while mir.current_part() != "right_hand" and guard < 20:
 		_key(m, "ui_right")

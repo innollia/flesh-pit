@@ -19,6 +19,12 @@ extends Resource
 ## how far into the overfill band the player currently is (0..1).
 @export var overfill_chew_multiplier: float = 3.0
 
-## Flesh units gained per fully torn cell (a design constant, independent of
-## the cell's world-space volume so tuning capacity/dig_rate stays simple).
+## Flesh units for one torn cell of solid flesh. A tear never pays more than
+## the density it actually removed: if its corners lost less than 4 full
+## corners' worth (a cell only partly grown back), it pays that share.
+## Corners are shared with neighbouring cells, so a cell is "whole" at 4.
 @export var flesh_per_cell: float = 4.0
+
+## Flesh units for a tear whose 8 corners lost `removed` density in total.
+func units_for_removed(removed: float) -> float:
+    return flesh_per_cell * clampf(removed / 4.0, 0.0, 1.0)

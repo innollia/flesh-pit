@@ -54,7 +54,7 @@ func _process(_delta: float) -> bool:
 			if not d.bank.has(String(events[ev])) or d.last_played != String(events[ev]):
 				all_ok = false
 				print("  missing event sound: ", ev)
-		_ok(all_ok and events.size() == 15, "all 15 event sounds (stage 5 + the T1 tongue click) load and play (%d)" % events.size())
+		_ok(all_ok and events.size() == 18, "all 18 event sounds (stage 5, the T1 tongue click, the canary) load and play (%d)" % events.size())
 		_main.emit_signal("died", "test")
 		_ok(d.last_played == "player_death", "main.died plays the death sound (%s)" % d.last_played)
 		var mirror = _main.get("mirror")
@@ -74,6 +74,13 @@ func _process(_delta: float) -> bool:
 		_ok(d.last_played == "tumor_eat", "mutation_apply.tumor_eaten plays tumor_eat (%s)" % d.last_played)
 		_main.mutation_apply.echo_click.emit()
 		_ok(d.last_played == "echo_click", "mutation_apply.echo_click plays the T1 tongue click (%s)" % d.last_played)
+		_main.canary_cry.emit(true)
+		_ok(d.last_played == "canary_wrong", "a frightened canary cries (%s)" % d.last_played)
+		_main.terrain.contraction_warning.emit(Vector3(0, 1, 4))
+		_ok(d.last_played == "regen_creak", "a wall about to squeeze creaks first (%s)" % d.last_played)
+		_main.toilet.tank_rattle_started.emit(0.5, false)
+		_ok(d.last_played == "coin_drop", "teeth rattle down into the tank (%s)" % d.last_played)
+		_ok(_hook.call("_regrowing_spot") == null, "no creak without flesh really growing back nearby")
 		_main.flush()
 		_ok(_hook.get("played_events").has("settle_tick"), "the lever's flush ticks the settle sound")
 		_main.vomit_button.pressed.emit()

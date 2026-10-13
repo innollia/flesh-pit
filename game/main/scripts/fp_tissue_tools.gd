@@ -116,10 +116,7 @@ func on_cell_torn(world_pos: Vector3) -> int:
 		var p: Vector3 = world_pos + off * cs
 		if m.terrain.density_at(p) < 0.5 or not FDKTissueRules.can_grab(m.terrain.tissue_at(p), "big_saw"):
 			continue
-		m.terrain.dig_at(p, 1.0)
-		m.terrain.queue_visible_tear(p)
-		m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
-		m.progression.on_flesh_eaten(m.shell_at(p), m.stomach_config.flesh_per_cell)
+		m.swallow_torn(m.shell_at(p), m.eat_cell_at(p))
 		extra += 1
 	return 1 + extra
 
@@ -223,7 +220,7 @@ func step_blend(delta: float) -> void:
 func finish_drink() -> void:
 	m.stomach.add_flesh(_blend_amount * BLEND_RATIO)
 	for s in _blend_units.keys():
-		var flesh_units: float = float(_blend_units[s]) * m.stomach_config.flesh_per_cell * BLEND_RATIO
+		var flesh_units: float = float(_blend_units[s]) * BLEND_RATIO
 		m.progression.on_flesh_eaten(int(s), flesh_units)
 	_blend_amount = 0.0
 	_blend_units.clear()

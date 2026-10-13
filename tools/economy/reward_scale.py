@@ -534,9 +534,10 @@ def _after(repo: Repo, rel: str, start: str, n: int) -> str | None:
 def evidence_flags(repo: Repo) -> dict[str, Flag]:
     F: dict[str, Flag] = {}
 
-    ok = (_count(repo, P_MAIN, "if progression.teeth_in_hand > 0: put_teeth_back()") >= 2
-          and _has(repo, P_MAIN, "progression.teeth_in_hand = 0 # the being keeps the whole handful"))
-    F["F_CAP"] = Flag("F_CAP", ok, [P_MAIN])
+    # teeth move one at a time and the vent sums one trade (2026-10-13)
+    ok = (_has(repo, P_MAIN, "func place_tooth_at_vent() -> bool:")
+          and _has(repo, P_VENT, "return place_teeth(trade_paid, prog)"))
+    F["F_TRADE_SUM"] = Flag("F_TRADE_SUM", ok, [P_MAIN, P_VENT])
 
     ok = (_has(repo, P_CHEWER, "terrain.density_at(world_pos) < terrain.config.iso_level")
           and _has(repo, P_CHEWER, "stomach.add_flesh(config.flesh_per_cell)")
@@ -584,6 +585,21 @@ def evidence_flags(repo: Repo) -> dict[str, Flag]:
     t = repo.text(P_SUBS)
     ok = t is not None and "label.text = text" in t and not re.search(r"queue(?!_free)", t)
     F["F_SUB_OVERWRITE"] = Flag("F_SUB_OVERWRITE", ok, [P_SUBS])
+
+    # fixes made on 2026-10-14 (each row reads its fix first)
+    F["F_T6_FIXED"] = Flag("F_T6_FIXED", _has(repo, P_APPLY, 'if t == FPProgression.TISSUE_MEMBRANE and p.has_mutation("T6"):')
+                           and _has(repo, P_APPLY, "d = 1.0 # fp_tissue_tools already chews membrane"), [P_APPLY])
+    F["F_STOMACH_END"] = Flag("F_STOMACH_END", _has(repo, P_STOMACH, "func is_full() -> bool:")
+                              and _has(repo, P_CHEWER, "stomach.is_full()")
+                              and _has(repo, P_MAIN, "carried_flesh >= progression.carry_capacity()"), [P_STOMACH, P_CHEWER, P_MAIN])
+    F["F_DROPS_KEPT"] = Flag("F_DROPS_KEPT", _has(repo, P_MAIN, "death_drops.append(death_drop)"), [P_MAIN])
+    F["F_PAY_REMOVED"] = Flag("F_PAY_REMOVED", _has(repo, P_CHEWER, "last_units = config.units_for_removed(before - after)")
+                              and _has(repo, P_MAIN, "return stomach_config.units_for_removed("), [P_CHEWER, P_MAIN])
+    F["F_CREAK_REAL"] = Flag("F_CREAK_REAL", _has(repo, P_DIRECTOR, "pos = creak_source.call()")
+                             and _has(repo, P_HOOK, "director.creak_source = _regrowing_spot"), [P_DIRECTOR, P_HOOK])
+    F["F_SUB_QUEUE"] = Flag("F_SUB_QUEUE", _has(repo, P_SUBS, "_queue.append([text, seconds])"), [P_SUBS])
+    F["F_CUD_CREDIT"] = Flag("F_CUD_CREDIT", _has(repo, P_APPLY, "cud_credit += m.stomach.fill * FPProgression.CUD_SHRINK")
+                             and _has(repo, P_MAIN, "stomach.vomit() + mutation_apply.take_cud_credit()"), [P_APPLY, P_MAIN])
 
     # 이 계산기가 더한 근거 플래그
     ok = (_has(repo, P_HOOK, 'director.play("toilet_flush"') and _has(repo, P_HOOK, '_hook("settle_ticked"')
@@ -681,7 +697,9 @@ UNWIRED = {
 
 
 def unwired_counts(repo: Repo) -> dict[str, int]:
-    files = [r for r in repo.gd_files("game/main/scripts") if not r.endswith("/fp_progression.gd")]
+    # calls inside fp_progression count too (one_hand_busy uses
+    # two_hand_tools_while_carrying); only the definition lines are skipped
+    files = list(repo.gd_files("game/main/scripts"))
     files += repo.gd_files("game/audio")
     out = {}
     for fn in UNWIRED:
@@ -1036,7 +1054,7 @@ class Model:
         worst = (stomach + float(self.V["progression.MAX_BARRIERS"]) * float(pu["barrier"])
                  + float(self.V["progression.MAX_CANARY_FEED"]) * float(pu["canary_feed"])
                  + float(self.V["spray_can.MAX_CARRIED"]) * float(pu["spray_deep"])
-                 + float(self.V["progression.HANDFUL_TEETH"]) / self.exp_teeth
+                 + float(self.A.get("death_teeth_in_hand", 4)) / self.exp_teeth
                  + 2.0 * float(self.V["progression.TUMOR_TOOTH_PAYOUT"]) / self.exp_teeth)
         return {"stomach": stomach, "typical": typical, "worst": worst}
 
@@ -1322,18 +1340,23 @@ def build_rows(cx: Context) -> list[Row]:
         ["world_features.BOUNDARY_BAND", "terrain_config.cell_size", "tissue_rules.KNIFE_SPEED"])
 
     t6_spec = M.tau * 1.0
-    if cx.flag_ok("F_T6_DOUBLE"):
-        t6_code = M.tau * 1.0 * (1.0 / M.H[3])
-        v = IN if abs(t6_code - t6_spec) < EPS else UNDET
-        a_from = cx.at(P_APPLY, "var b: float = float(FPProgression.TISSUE_HARDNESS")
-        a_to = cx.at(P_APPLY, "m.stomach_config.base_chew_time = base").split(":")[-1]
-        memo = (f"이중 적용: {fn(M.tau)} × {fn(1.0)} ÷ {fn(M.H[3])} = {S(t6_code)}({a_from}~{a_to}). "
-                f"T6에서 progression.hardness(막)은 1.0인데 기준 경도 d는 {fn(M.H[3])}로 남고, 키트 쪽 split_jaw 경도도 1.0이다.")
-        cur = f"코드 {S(t6_code)}"
+    if cx.flag_ok("F_T6_FIXED"):
+        add("A07", g, "T6 막", f"코드 {S(t6_spec)}", f"명세 {S(t6_spec)}", "코드 = 명세 (05-mutations.md:83)", IN,
+            f"T6이면 기준 경도 d도 1.0이라 이중 적용이 없다({cx.at(P_APPLY, 'd = 1.0 # fp_tissue_tools already chews membrane')}).",
+            ["progression.BASE_CHEW_TIME", "progression.TISSUE_HARDNESS"], ["F_T6_FIXED"])
     else:
-        v, memo, cur = UNDET, cx.flags["F_T6_DOUBLE"].recheck_memo(), "재확인"
-    add("A07", g, "T6 막", cur, f"명세 {S(t6_spec)}", "코드 = 명세 (05-mutations.md:83)", v, memo,
-        ["progression.BASE_CHEW_TIME", "progression.TISSUE_HARDNESS"], ["F_T6_DOUBLE"])
+        if cx.flag_ok("F_T6_DOUBLE"):
+            t6_code = M.tau * 1.0 * (1.0 / M.H[3])
+            v = IN if abs(t6_code - t6_spec) < EPS else UNDET
+            a_from = cx.at(P_APPLY, "var b: float = float(FPProgression.TISSUE_HARDNESS")
+            a_to = cx.at(P_APPLY, "m.stomach_config.base_chew_time = base").split(":")[-1]
+            memo = (f"이중 적용: {fn(M.tau)} × {fn(1.0)} ÷ {fn(M.H[3])} = {S(t6_code)}({a_from}~{a_to}). "
+                    f"T6에서 progression.hardness(막)은 1.0인데 기준 경도 d는 {fn(M.H[3])}로 남고, 키트 쪽 split_jaw 경도도 1.0이다.")
+            cur = f"코드 {S(t6_code)}"
+        else:
+            v, memo, cur = UNDET, cx.flags["F_T6_DOUBLE"].recheck_memo(), "재확인"
+        add("A07", g, "T6 막", cur, f"명세 {S(t6_spec)}", "코드 = 명세 (05-mutations.md:83)", v, memo,
+            ["progression.BASE_CHEW_TIME", "progression.TISSUE_HARDNESS"], ["F_T6_DOUBLE"])
 
     cps = [M.cells_per_strand(k) for k in range(3)]
     add("A08", g, "바이옴 털 셀/가닥", " / ".join(f"{fn(x)} c" for x in cps), "P_W ÷ (4 × m_k)", "3~15 c",
@@ -1418,7 +1441,13 @@ def build_rows(cx: Context) -> list[Row]:
         ["hazard_check.hazard_dps", "hazard_check.hazard_radius", "main.HAZARD_TIME", "main.HEALTH_REGEN",
          "main.nerve_cooldown", "progression.M17_DAMAGE_FACTOR"])
 
-    if cx.flag_ok("F_NO_STOMACH_END"):
+    if cx.flag_ok("F_STOMACH_END"):
+        add("B04", g, "위장 시계의 끝", f"{fn(fmax)} u에서 멈춤", f"{fn(fmax)} u까지 한계 비용 ×1→×{fn(M.Om)}, 그다음 먹기 멈춤",
+            "한계 비용 단조 증가 + 정해진 끝", IN,
+            f"용량 + 과식에 닿으면 씹기가 시작되지 않는다({cx.at(P_CHEWER, 'stomach.is_full()')}). "
+            f"들기 모드는 들기 용량에서 멈춘다({cx.at(P_MAIN, 'carried_flesh >= progression.carry_capacity()')}).",
+            ["progression.BASE_OVERFILL", "progression.BASE_OVERFILL_CHEW"], ["F_STOMACH_END"])
+    elif cx.flag_ok("F_NO_STOMACH_END"):
         add("B04", g, "위장 시계의 끝", "끝 없음", f"{fn(fmax)} u 뒤 한계 비용 ×{fn(M.Om)} 고정",
             "한계 비용 단조 증가 + 정해진 끝", UNDET,
             f"{fn(fmax)} u가 넘으면 한계 비용이 ×{fn(M.Om)}에서 평평하고 먹기에 상한이 없다"
@@ -1513,25 +1542,35 @@ def build_rows(cx: Context) -> list[Row]:
         ["progression.PRICE_UNITS", "progression.MAX_BARRIERS", "progression.MAX_CANARY_FEED",
          "spray_can.MAX_CARRIED", "progression.TUMOR_TOOTH_PAYOUT"])
 
-    def rule_row(id_, label, flag, cur, band_txt, verdict, memo, inputs=()):
-        if cx.flag_ok(flag):
+    def rule_row(id_, label, flag, cur, band_txt, verdict, memo, inputs=(), fixed=None):
+        if fixed is not None and cx.flag_ok(fixed[0]):
+            add(id_, g, label, fixed[1], "규칙 검사", band_txt, IN, fixed[2], inputs, [fixed[0]])
+        elif cx.flag_ok(flag):
             add(id_, g, label, cur, "규칙 검사", band_txt, verdict, memo, inputs, [flag])
         else:
             add(id_, g, label, "재확인", "규칙 검사", band_txt, UNDET, cx.flags[flag].recheck_memo(), inputs, [flag])
 
     rule_row("B11", "두 번째 죽음", "F_DROP_OVERWRITE", "되찾기 전 죽으면 첫 드롭을 덮어씀", "영구 손실 0 (N8)", VIOL,
-             f"종양은 다시 생기지 않는다({cx.at(P_DROP, 'items = dropped_items.duplicate(true)')}). 07-danger-navigation.md:34.")
+             f"종양은 다시 생기지 않는다({cx.at(P_DROP, 'items = dropped_items.duplicate(true)')}). 07-danger-navigation.md:34.",
+             fixed=("F_DROPS_KEPT", "죽을 때마다 시체가 따로 남음",
+                    f"시체 목록에 쌓이고 덮어쓰지 않는다({cx.at(P_MAIN, 'death_drops.append(death_drop)')})."))
     rule_row("B12", "먹은 양과 제거 (재생 셀 지급)", "F_REGEN_PAY", f"재생 중인 셀이 {fn(M.fpc)} u를 다 줌",
              "먹은 u = 제거한 밀도 (N9)", UNDET,
              f"모서리 하나가 0.5 이상이면 셀이 {fn(M.fpc)} u를 다 준다({cx.at(P_CHEWER, 'stomach.add_flesh(config.flesh_per_cell)')}, "
              f"{cx.at(P_FIELD, 'm = maxf(m, corner_density_global(')}). 문 앞 통로가 {fn(round(inner_min))}~{fn(round(tc['core_open']))} s마다 "
              "다시 찬다. N9에 걸리는지 사용자 판정을 기다리며, CLAUDE.md에 따라 사용자에게 바로 알릴 항목이다. "
-             "V_T ≤ 0(F22)은 가정 대역이라 이 판정에 쓰지 않는다.", ["stomach_config.flesh_per_cell"])
+             "V_T ≤ 0(F22)은 가정 대역이라 이 판정에 쓰지 않는다.", ["stomach_config.flesh_per_cell"],
+             fixed=("F_PAY_REMOVED", f"제거한 밀도만큼(최대 {fn(M.fpc)} u)",
+                    f"뜯을 때 줄어든 꼭짓점 밀도가 꼭짓점 4개 분량보다 적으면 그 비율만 준다({cx.at(P_CHEWER, 'last_units = config.units_for_removed(before - after)')}). "
+                    "먹은 u는 제거한 밀도를 넘지 않는다."))
     lo_i, hi_i = V["audio_director.life_interval"]
     creak_at = cx.at(P_DIRECTOR, 'play("regen_creak", pos)')
     rule_row("B13", "위협 신호 정직성", "F_CREAK_RANDOM", f"regen_creak {fn(lo_i)}~{fn(hi_i)} s 무작위", "신호 = 실제 상태 (N7)", VIOL,
              f"regen_creak은 재생 상태와 무관한 무작위 타이머로 난다({creak_at}).",
-             ["audio_director.life_interval"])
+             ["audio_director.life_interval"],
+             fixed=("F_CREAK_REAL", "실제로 차오르는 자리에서만",
+                    f"삐걱 소리는 근처에서 다시 차오르는 뜯긴 자리에서만 난다({cx.at(P_HOOK, 'director.creak_source = _regrowing_spot')}). "
+                    "수축 직전 벽도 그 자리에서 삐걱인다."))
 
     cues = list(SPEC_CUES)
     unc = [c for c in cues if cx.cons.get(c, 0) == 0]
@@ -1544,9 +1583,12 @@ def build_rows(cx: Context) -> list[Row]:
     cd = M.cud()
     add("B15", g, "M16 되새김 위", f"유지 {' / '.join(f2(x) for x in cd['keep'])} (1/2/3틱)",
         f"가득 찬 위 이빨 {' / '.join(str(x) for x in cd['teeth'])} · 채워 넣으면 {cd['topup_teeth']} + 털",
-        "정산 보상 그대로 (05-mutations.md:46)", UNDET if cd["teeth"][0] != cd["topup_teeth"] else IN,
+        "정산 보상 그대로 (05-mutations.md:46)",
+        IN if cx.flag_ok("F_CUD_CREDIT") else (UNDET if cd["teeth"][0] != cd["topup_teeth"] else IN),
         f"{fn(float(V['progression.CUD_PERIOD']))} s마다 −{fn(100 * float(V['progression.CUD_SHRINK']))}%"
-        f"({cx.src('progression.CUD_SHRINK')}). 채워 넣으면 시간을 털로 바꾼다. 명세와 코드가 다르다.",
+        f"({cx.src('progression.CUD_SHRINK')}). "
+        + (f"줄어든 양은 크레딧으로 쌓여 정산 때 더해진다({cx.at(P_APPLY, 'cud_credit += m.stomach.fill * FPProgression.CUD_SHRINK')}). 채워 넣으면 공간을 털로 바꾼다."
+           if cx.flag_ok("F_CUD_CREDIT") else "채워 넣으면 시간을 털로 바꾼다. 명세와 코드가 다르다."),
         ["progression.CUD_PERIOD", "progression.CUD_SHRINK"])
 
     # 7.4 L2 원정 ------------------------------------------------------------
@@ -1679,7 +1721,11 @@ def build_rows(cx: Context) -> list[Row]:
         f"({cx.at(P_VENT, 'LONG_AWAY * LONG_ABSENT_MULT')}).",
         ["vent_rules.LONG_AWAY", "vent_rules.LONG_ABSENT_MULT"])
 
-    if cx.flag_ok("F_SUB_OVERWRITE"):
+    if cx.flag_ok("F_SUB_QUEUE"):
+        add("C14", g, "자막 겹침", "대기열(최대 3줄)", "규칙 검사", "0.3 s 창에 주 신호 1개 (N13)", IN,
+            f"앞 줄이 떠 있는 동안 온 줄은 기다렸다가 이어서 나온다({cx.at(P_SUBS, '_queue.append([text, seconds])')}).",
+            [], ["F_SUB_QUEUE"])
+    elif cx.flag_ok("F_SUB_OVERWRITE"):
         add("C14", g, "자막 겹침", "새 줄이 앞 줄을 덮어씀", "규칙 검사", "0.3 s 창에 주 신호 1개 (N13)", VIOL,
             f"place_teeth는 2~3줄, 종양 레버는 물 내림과 그림 대사를 한 프레임에 낸다. 대기열이 없다({cx.at(P_SUBS, 'label.text = text')}).",
             [], ["F_SUB_OVERWRITE"])
@@ -1736,21 +1782,16 @@ def build_rows(cx: Context) -> list[Row]:
         combine([(ITEM_KO[i], judge(M.price(i) / M.exp_teeth, 0.5, 1.0)) for i in cons4])[1],
         f"가격 = max(1, round(값 × 8))({cx.at(P_PROG, 'func price_for')}).", ["progression.PRICE_UNITS"])
 
-    hand = int(V["progression.HANDFUL_TEETH"])
-    big = sorted([i for i in pu if M.price(i) > hand], key=lambda i: M.price(i))
-    if cx.flag_ok("F_CAP"):
-        v = UNDET if big else IN
-        memo = (f"한 거래에 이빨 {hand}개까지만 올라간다({cx.at(P_MAIN, 'if progression.teeth_in_hand > 0: put_teeth_back()')}, "
-                f"{cx.at(P_MAIN, 'the being keeps the whole handful').split(':')[-1]}). 도달 불가. 칼이 없으면 맨틀 수축 조직을 뜯지 못한다"
-                f"({cx.src('tissue_rules.KNIFE_SPEED').split(':')[0]}:{(cx.repo.find_line(P_RULES, 'muscle needs a blade') if cx.repo else '') or ''}). "
-                "10-first-ten-minutes.md:32.")
-        if not cx.flag_ok("F_KNIFE_GATE"):
-            memo += " " + cx.flags["F_KNIFE_GATE"].recheck_memo()
+    big = sorted([i for i in pu if M.price(i) >= 8], key=lambda i: M.price(i))
+    if cx.flag_ok("F_TRADE_SUM"):
+        v = IN
+        memo = (f"이빨을 하나씩 집고 올리며 환풍구가 한 거래의 합계로 감정한다({cx.at(P_MAIN, 'func place_tooth_at_vent() -> bool:')}, "
+                f"{cx.at(P_VENT, 'return place_teeth(trade_paid, prog)')}). 모든 물건에 정상 입력으로 닿는다.")
     else:
-        v, memo = UNDET, cx.flags["F_CAP"].recheck_memo()
+        v, memo = UNDET, cx.flags["F_TRADE_SUM"].recheck_memo()
     add("D06", g, "8이빨 이상 물건", " / ".join(f"{ITEM_KO.get(i, i)} {M.price(i)}" for i in big) + "개",
-        " / ".join(f2(M.price(i) / M.exp_teeth) for i in big) + " E", f"한 거래 상한 {hand}개로 닿음", v, memo,
-        ["progression.PRICE_UNITS", "progression.HANDFUL_TEETH"], ["F_CAP", "F_KNIFE_GATE"])
+        " / ".join(f2(M.price(i) / M.exp_teeth) for i in big) + " E", "한 거래 합계로 닿음", v, memo,
+        ["progression.PRICE_UNITS"], ["F_TRADE_SUM"])
 
     saw_x = M.price("big_saw") / M.exp_teeth
     add("D07", g, "큰 톱 저축", f"{M.price('big_saw')}개", f"{f2(saw_x)} E", "≤ 10 E", judge(saw_x, None, 10),
@@ -1793,28 +1834,22 @@ def build_rows(cx: Context) -> list[Row]:
     add("D11", g, "혹 추첨 G", f"비복원 {nt}장", f2(dr["G"]), "≤ 2", judge(dr["G"], None, 2.0),
         "특정 결과를 노릴 수 없어서 상한값이다.", ["progression.TUMOR_MUTATIONS"])
 
-    offer = [i for i in pu if M.price(i) <= hand and int(V["progression.UNLOCK_SHELL"][i]) == 0]
-    offer.sort(key=lambda i: (-M.price(i), i))
-    offer_list = offer[:1] + offer[1:int(V["progression.VENT_MAX_OFFER"])]
-    if len(offer_list) < int(V["progression.VENT_MAX_OFFER"]):
-        offer_list.append("junk")
     max_offer = int(V["progression.VENT_MAX_OFFER"])
     core_prices = sorted(M.price(i) for i in pu if int(V["progression.UNLOCK_SHELL"][i]) == 0)
-    # 1번 칸을 정한 뒤 남은 후보에서 (max_offer − 1)개를 고르므로, 남은 후보가 max_offer개 이상이어야 구성이 바뀐다
+    # the first slot is the dearest affordable item; the rest are drawn from
+    # what is left, so the mix varies once max_offer or more items remain
     rand_from = core_prices[max_offer] if len(core_prices) > max_offer else None
-    if cx.flag_ok("F_CAP"):
-        v = UNDET if len(offer) <= max_offer - 1 else IN
-        memo = (("제안 구성의 무작위는 남은 후보가 " + str(max_offer) + "개 이상일 때"
-                 + (f"(핵 {rand_from}개)" if rand_from else "") + "부터다. 1번 칸은 결정적으로 낸 값으로 살 최고 해금 물건이다. "
-                 "적게 내면 잡동사니, 거스름돈 없음, 안 집으면 돌려주지 않음은 승인된 흥정이다(03-restroom.md:72-76). "
-                 "한 거래 상한(2장 1번) 때문에 무작위 구간에 닿지 않는다")
-                + f"({cx.at(P_PROG, 'func vent_offer')}).")
+    if cx.flag_ok("F_TRADE_SUM"):
+        v = IN if rand_from is not None else UNDET
+        memo = ("제안 구성의 무작위는 남은 후보가 " + str(max_offer) + "개 이상일 때"
+                + (f"(핵에서 한 거래 {rand_from}개)" if rand_from else "") + "부터다. 1번 칸은 결정적으로 낸 값으로 살 최고 해금 물건이다. "
+                "적게 내면 잡동사니, 거스름돈 없음, 안 집으면 돌려주지 않음은 승인된 흥정이다(03-restroom.md). "
+                f"한 거래 합계로 감정하므로 무작위 구간에 닿는다({cx.at(P_PROG, 'func vent_offer')}).")
     else:
-        v, memo = UNDET, cx.flags["F_CAP"].recheck_memo()
-    add("D12", g, "환풍구 제안 변동", f"한 거래 상한 {hand}개",
-        "제안 [" + ", ".join(ITEM_KO.get(i, i) if i != "junk" else "잡동사니" for i in offer_list) + "] 고정",
-        "1번 칸 = 낸 값으로 살 최고 해금 물건(V5)",
-        v, memo, ["progression.HANDFUL_TEETH", "progression.VENT_MAX_OFFER", "progression.PRICE_UNITS"], ["F_CAP"])
+        v, memo = UNDET, cx.flags["F_TRADE_SUM"].recheck_memo()
+    add("D12", g, "환풍구 제안 변동", f"무작위 시작 {rand_from}개" if rand_from else "무작위 없음",
+        "1번 칸 결정 + 나머지 추첨", "1번 칸 = 낸 값으로 살 최고 해금 물건(V5)",
+        v, memo, ["progression.VENT_MAX_OFFER", "progression.PRICE_UNITS"], ["F_TRADE_SUM"])
 
     td = V["world_features.TUMOR_DEPTH"]
     add("D13", g, "발견 간격", f"{dr['discovery_count']}번", f"{f2(dr['discovery_interval'])} E", "2~6 E",
@@ -2329,7 +2364,7 @@ def metrics_dict(M: Model) -> dict:
 
 FIXED_PARAMS = {
     "progression.SHELL_MULTIPLIER": {"core": 1, "mantle": 2, "surface": 3},
-    "progression.TEETH_PER_FLESH": 0.08, "progression.EXPEDITION_TEETH": 8, "progression.HANDFUL_TEETH": 4,
+    "progression.TEETH_PER_FLESH": 0.08, "progression.EXPEDITION_TEETH": 8,
     "progression.FLESH_PER_BIOME_HAIR": 50.0, "progression.FLESH_PER_COMMON_HAIR": 150.0,
     "progression.PRICE_UNITS": {"barrier": 0.5, "spray_cheap": 1.0, "knife": 2.0, "spray_deep": 3.0, "blender": 5.0,
                                 "big_saw": 10.0, "canary_feed": 0.5, "tumor_bag": 2.0},

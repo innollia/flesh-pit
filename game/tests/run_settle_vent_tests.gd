@@ -268,6 +268,12 @@ func _trade() -> void:
     _assert(int(save.trade_paid) == 16, "W05 teeth paid in an open trade survive a save")
     _assert(v.take("knife", p) and p.tools.owns("knife") and v.trade_paid == 0, "W05 taking the knife ends the trade")
     v.close()
+    # crayon drawings: one per kind; the same kind again pays teeth only
+    var drops := []
+    v.drawing_dropped.connect(func(k): drops.append(k))
+    v.on_tumors_settled(["core_knot", "core_knot", "mantle_coil"])
+    _assert(drops == ["core_knot", "mantle_coil"] and v.drawings.size() == 2, "W05 one crayon drawing per tumor kind (%s)" % [drops])
+    _assert(int(FPProgression.TUMOR_TEETH_BONUS.get("core_knot", 0)) > 0, "W05 the teratoma pays a few extra teeth")
     # 3. few teeth -> junk only
     v.open(4)
     var few := v.place_teeth(1, p)

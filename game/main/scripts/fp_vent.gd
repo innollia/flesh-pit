@@ -158,6 +158,7 @@ var player_state: Dictionary = {}
 const ART_KIND := {
     "spray_cheap": "spray_cheap", "spray_deep": "spray_expensive", "barrier": "barrier",
     "knife": "knife", "blender": "blender_box", "big_saw": "saw_box",
+    "canary_feed": "canary_feed", "tumor_bag": "tumor_bag",
 }
 
 func _ready() -> void:
@@ -613,6 +614,8 @@ func notice(event: String) -> void:
 ## sends the paper down (works with the grate shut, it slides through).
 func on_tumors_settled(kinds: Array) -> void:
     for k in kinds:
+        if drawings.has(String(k)):
+            continue # one crayon drawing per kind; the teeth still came
         var first := drawings.is_empty()
         drawings.append(String(k))
         _say(_ev("그림_처음", "drawing.drop") if first else _ev("그림_또", "drawing.again"))

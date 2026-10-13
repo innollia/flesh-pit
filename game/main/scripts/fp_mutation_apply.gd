@@ -39,6 +39,11 @@ var alien_since_tear := -1.0 ## s since the last alien tear, -1 = none
 var _extra_tearing := false
 var codex: Node3D ## crayon tumor drawings on the restroom wall
 var fisheye: FPFisheyeView ## T5
+## M16: flesh the cud stomach shrank away still settles for teeth
+## (05-mutations.md: the reward stays); taken at the toilet or a rest point.
+var cud_credit := 0.0
+## Current squeeze speed factor (M19/M20 change it), applied to move speeds.
+var _squeeze_factor := 1.0
 var echo_view: FPEchoView ## T1
 var _codex_n := -1
 
@@ -63,6 +68,22 @@ func setup(main: Node3D) -> void:
 	echo_view.set_kind_colors(ECHO_COLORS)
 	apply_now()
 
+## Move speeds: base x mutation factor (M14, T7). The squeeze factor (M19,
+## M20) scales walking through the controller, never climbing or the bob.
+func _apply_speeds() -> void:
+	var c: Resource = m.player.config
+	var f: float = m.progression.walk_speed_factor()
+	for k in _base_speed.keys():
+		c.set(k, float(_base_speed[k]) * f)
+	if "move_speed_scale" in m.player:
+		m.player.move_speed_scale = _squeeze_factor
+
+## The cud credit, once (settling or losing the stomach).
+func take_cud_credit() -> float:
+	var c := cud_credit
+	cud_credit = 0.0
+	return c
+
 ## Recompute every static parameter (call after buying or loading).
 func apply_now() -> void:
 	var p: FPProgression = m.progression
@@ -71,10 +92,15 @@ func apply_now() -> void:
 	sc.overfill_capacity = p.overfill_capacity()
 	sc.overfill_chew_multiplier = p.overfill_chew_multiplier()
 	sc.base_chew_time = p.base_chew_time()
-	var c: Resource = m.player.config
-	var f := p.walk_speed_factor()
-	for k in _base_speed.keys():
-		c.set(k, float(_base_speed[k]) * f)
+	_apply_speeds()
+	# M05 folded shoulders x0.85, T4 swollen torso x1.3: the real capsule
+	var cap := m.player.collision_shape.shape as CapsuleShape3D
+	if cap != null:
+		if not m.player.collision_shape.has_meta("own_shape"):
+			cap = cap.duplicate()
+			m.player.collision_shape.shape = cap
+			m.player.collision_shape.set_meta("own_shape", true)
+		cap.radius = p.body_radius()
 	if m.player_lamp != null:
 		m.player_lamp.omni_range = 9.0 * p.light_range_factor()
 	if m.player.camera != null:
@@ -122,6 +148,8 @@ func _step_hardness() -> void:
 			d *= 0.7
 		if t == FPProgression.TISSUE_MEMBRANE and bare and p.has_mutation("M09") and not p.has_mutation("T6"):
 			d *= 3.0
+		if t == FPProgression.TISSUE_MEMBRANE and p.has_mutation("T6"):
+			d = 1.0 # fp_tissue_tools already chews membrane at 1.0 with the split jaw
 		base *= p.hardness(t, bare) / d
 	m.stomach_config.base_chew_time = base
 
@@ -140,11 +168,19 @@ func step_timed(delta: float) -> void:
 	var p: FPProgression = m.progression
 	var still: bool = (m.player.velocity as Vector3).length() < 0.05
 	_still_t = _still_t + delta if still else 0.0
+	# boxed in by flesh (the crush clock runs): half speed, M20 none, M19 a
+	# x1.3 push (01-body-eating.md). Merely brushing a wall does not count.
+	var squeezed: bool = m.crush_progress() > 0.0
+	var sq: float = p.squeeze_speed_factor(1.0 if squeezed else 0.0)
+	if not is_equal_approx(sq, _squeeze_factor):
+		_squeeze_factor = sq
+		_apply_speeds()
 	# M16: the cud stomach shrinks the flesh inside every 60 s
 	if p.has_mutation("M16") and m.stomach.fill > 0.0:
 		_cud_t += delta
 		while _cud_t >= FPProgression.CUD_PERIOD:
 			_cud_t -= FPProgression.CUD_PERIOD
+			cud_credit += m.stomach.fill * FPProgression.CUD_SHRINK
 			m.stomach.fill *= 1.0 - FPProgression.CUD_SHRINK
 			m.stomach.fill_changed.emit(m.stomach.fill, m.stomach_config.capacity, m.stomach_config.overfill_capacity)
 	# M21: the blender charges itself only while the hand holds it (owning
@@ -168,7 +204,7 @@ func step_timed(delta: float) -> void:
 		_alien_t = 0.0
 		alien_reach = 0.0
 	# M15: holding the flesh pile, a 3 s gulp swallows it whole (no packing)
-	if p.can_lift_without_blender() and m.carried_flesh > 0.0 and Input.is_action_pressed("fdk_eat") and not p.owns("blender"):
+	if p.can_lift_without_blender() and m.carried_flesh > 0.0 and Input.is_action_pressed("fdk_eat") and not p.hands.holds("blender"):
 		_gulp_t = maxf(0.0, _gulp_t) + delta
 		if _gulp_t >= FPProgression.GULP_TIME:
 			gulp()
@@ -399,10 +435,7 @@ func alien_tear() -> bool:
 	var at := _alien_target()
 	if at == Vector3.INF:
 		return false
-	m.terrain.dig_at(at, 1.0)
-	m.terrain.queue_visible_tear(at)
-	m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
-	m.progression.on_flesh_eaten(m.shell_at(at), m.stomach_config.flesh_per_cell)
+	m.swallow_torn(m.shell_at(at), m.eat_cell_at(at))
 	alien_tears += 1
 	alien_since_tear = 0.0
 	alien_hand_tore.emit()
@@ -412,8 +445,7 @@ func alien_tear() -> bool:
 func gulp() -> void:
 	m.stomach.add_flesh(m.carried_flesh)
 	for s in m.carried_units.keys():
-		var flesh_units: float = float(m.carried_units[s]) * m.stomach_config.flesh_per_cell
-		m.progression.on_flesh_eaten(int(s), flesh_units)
+		m.progression.on_flesh_eaten(int(s), float(m.carried_units[s]))
 	m.carried_flesh = 0.0
 	m.carried_units.clear()
 	_gulp_t = -1.0
@@ -432,15 +464,11 @@ func _on_torn(world_pos: Vector3) -> void:
 		var at: Vector3 = world_pos + dir * m.terrain_config.cell_size * float(i + 1)
 		if m.terrain.density_at(at) < 0.5 or not m.terrain.is_edible_at(at):
 			break
-		m.terrain.dig_at(at, 1.0)
-		m.terrain.queue_visible_tear(at)
+		var units: float = m.eat_cell_at(at)
 		if m.carry_mode:
-			m.carried_flesh += m.stomach_config.flesh_per_cell
-			var sh: int = m.shell_at(at)
-			m.carried_units[sh] = int(m.carried_units.get(sh, 0)) + 1
+			m.add_carried(m.shell_at(at), units)
 		else:
-			m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
-			m.progression.on_flesh_eaten(m.shell_at(at), m.stomach_config.flesh_per_cell)
+			m.swallow_torn(m.shell_at(at), units)
 	_extra_tearing = false
 
 ## T7: standing still stops regrowth within 1.5 m (main adds these blockers).
