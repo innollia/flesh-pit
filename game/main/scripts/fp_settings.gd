@@ -15,6 +15,10 @@ const FOV_MIN := 60.0
 const FOV_MAX := 100.0
 const SENS_MIN := 0.2
 const SENS_MAX := 3.0
+## Camera meta: the settings FOV last applied by apply_look. Mutations
+## (FPMutationApply) restore the camera to it and the T5 fisheye
+## (FPFisheyeView) scales against it, so a menu FOV survives purchases/loads.
+const BASE_FOV_META := &"fp_settings_fov"
 
 static func defaults() -> Dictionary:
     return {
@@ -115,6 +119,13 @@ static func apply_look(s: Dictionary, player: Node) -> void:
     var cam = player.get("camera")
     if cam is Camera3D:
         (cam as Camera3D).fov = float(s["fov"])
+        (cam as Camera3D).set_meta(BASE_FOV_META, float(s["fov"]))
+
+## The player's settings FOV for cam (default FOV before apply_look ran).
+static func base_fov(cam: Camera3D) -> float:
+    if cam != null and is_instance_valid(cam) and cam.has_meta(BASE_FOV_META):
+        return float(cam.get_meta(BASE_FOV_META))
+    return float(defaults()["fov"])
 
 static func apply_window(s: Dictionary) -> void:
     if DisplayServer.get_name() == "headless":

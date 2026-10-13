@@ -18,6 +18,8 @@ func _ready() -> void:
     for z in [0.04, 0.0]:
         K.lathe(st, K.T(Vector3(0.008, 0.0, z), Vector3(0, 0, -90)), [Vector2(0.0, 0.0), Vector2(0.004, 0.0), Vector2(0.003, 0.002), Vector2(0.0, 0.002)], 6, [steel])
     K.lathe(st, K.T(Vector3(0, 0.001, -0.04), Vector3(90, 0, 0)), [Vector2(0.0, -0.006), Vector2(0.014, -0.006), Vector2(0.015, 0.004), Vector2(0.0, 0.006)], 6, [steel])
+    # steel butt cap closing the handle end
+    K.lathe(st, K.T(Vector3(0, 0, 0.06), Vector3(-90, 0, 0)), [Vector2(0.0, -0.002), Vector2(0.012, -0.002), Vector2(0.011, 0.006), Vector2(0.0, 0.008)], 6, [steel])
     # blade: spine at y=+0.012, edge at y=-0.02..0, tapering to a point
     var n := 6
     for i in range(n):

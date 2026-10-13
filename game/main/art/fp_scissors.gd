@@ -25,8 +25,27 @@ func _half(parent: Node3D, s: float) -> void:
     var edge := Color(0.95, 0.96, 0.98)
     var handle := Color(0.55, 0.1, 0.08)
     # blade: long tapered wedge along -Z on one side of the pivot line
-    var pts := [Vector3(s * 0.004, 0, 0.01), Vector3(s * 0.006, 0, -0.04), Vector3(s * 0.005, 0, -0.1), Vector3(s * 0.001, 0, -0.15)]
-    K.tube(st, Transform3D.IDENTITY, pts, [0.009, 0.008, 0.005, 0.0015], 4, [steel, steel, edge], true, 1.0)
+    # flat blade plate: inner sharpened edge on the pivot line, curved spine
+    # on side s, tapering to a point (reads as a blade, not a rod)
+    var n := 8
+    var hy := 0.0014
+    for i in range(n):
+        var t0 := float(i) / n
+        var t1 := float(i + 1) / n
+        var z0 := lerpf(0.012, -0.16, t0)
+        var z1 := lerpf(0.012, -0.16, t1)
+        var w0 := 0.017 * (1.0 - pow(t0, 1.4)) + 0.0008
+        var w1 := 0.017 * (1.0 - pow(t1, 1.4)) + 0.0008
+        var ex0 := -s * 0.0015
+        var ex1 := -s * 0.0015
+        K.quad(st, Transform3D.IDENTITY, Vector3(s * 0.004, hy, z0), Vector3(s * 0.004, hy, z1), Vector3(s * w1, hy, z1), Vector3(s * w0, hy, z0), Vector3.UP, steel)
+        K.quad(st, Transform3D.IDENTITY, Vector3(s * 0.004, -hy, z0), Vector3(s * 0.004, -hy, z1), Vector3(s * w1, -hy, z1), Vector3(s * w0, -hy, z0), Vector3.DOWN, steel)
+        K.quad(st, Transform3D.IDENTITY, Vector3(s * w0, hy, z0), Vector3(s * w1, hy, z1), Vector3(s * w1, -hy, z1), Vector3(s * w0, -hy, z0), Vector3(s, 0, 0), steel)
+        # bevelled cutting edge
+        K.quad(st, Transform3D.IDENTITY, Vector3(s * 0.004, hy, z0), Vector3(s * 0.004, hy, z1), Vector3(ex1, 0, z1), Vector3(ex0, 0, z0), Vector3(-s, 0.6, 0), edge)
+        K.quad(st, Transform3D.IDENTITY, Vector3(s * 0.004, -hy, z0), Vector3(s * 0.004, -hy, z1), Vector3(ex1, 0, z1), Vector3(ex0, 0, z0), Vector3(-s, -0.6, 0), edge)
+    # round tang plate around the pivot joins blade, shank and screw
+    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -hy), Vector2(0.014, -hy), Vector2(0.014, hy), Vector2(0.0, hy)], 10, [steel])
     # handle loop behind the pivot (+Z), bent outward to side s
     var loop: Array = []
     for i in range(9):

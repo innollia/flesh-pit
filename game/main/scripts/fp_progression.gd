@@ -13,7 +13,6 @@ const BIOME_MANTLE := "mantle"
 const BIOME_SURFACE := "surface"
 const BIOMES: Array[String] = [BIOME_CORE, BIOME_MANTLE, BIOME_SURFACE]
 const COMMON := FDKMutationTree.COMMON
-const TUMOR_POOL := "tumor"
 
 ## docs/spec/04-economy.md: shell multiplier core x1, mantle x2, surface x3.
 const SHELL_MULTIPLIER := {BIOME_CORE: 1, BIOME_MANTLE: 2, BIOME_SURFACE: 3}
@@ -65,8 +64,7 @@ const TUMOR_MUTATIONS: Array[String] = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"
 ## body part). "tumor" is the bump on the belly, handled separately.
 const PARTS: Array[String] = ["face", "neck", "chest", "belly", "right_hand", "left_hand", "arms", "whole"]
 
-## 04-economy.md 2: hairs per mutation by branch.
-const BRANCH_COST := {"common": 12, "compressive": 5, "contractile": 10, "nerve": 15}
+## 04-economy.md 2: hairs per mutation by branch (branch -> pool -> cost).
 const BRANCH_POOL := {"common": COMMON, "compressive": BIOME_CORE, "contractile": BIOME_MANTLE, "nerve": BIOME_SURFACE}
 const POOL_COST := {COMMON: 12, BIOME_CORE: 5, BIOME_MANTLE: 10, BIOME_SURFACE: 15}
 ## Combination: either biome, at 1.5x that biome's value.
@@ -182,16 +180,6 @@ func _define_mutations() -> void:
 	_def("M29", "휴면", "combination", "whole", "온몸", "", [BIOME_MANTLE, BIOME_SURFACE] as Array[String])
 	_def("M30", "목주머니", "combination", "neck", "목", "", [BIOME_SURFACE, BIOME_CORE] as Array[String])
 
-const TUMOR_INFO := {
-	"T1": {"name": "반향정위", "part": "face"},
-	"T2": {"name": "세 번째 팔", "part": "chest"},
-	"T3": {"name": "손바닥 입", "part": "right_hand"},
-	"T4": {"name": "부푼 몸통", "part": "belly"},
-	"T5": {"name": "어안", "part": "face"},
-	"T6": {"name": "세로 턱", "part": "face"},
-	"T7": {"name": "부채 갈비", "part": "chest"},
-}
-
 func mutation_count() -> int:
 	return mutation_info.size()
 
@@ -260,14 +248,6 @@ func all_mutations() -> Array[String]:
 ## 0..1 overall bodily change, for the hands rig and footstep weight.
 func mutation_amount() -> float:
 	return clampf((purchased_mutations().size() + tumor_mutations.size() * 2) / float(mutation_count()), 0.0, 1.0)
-
-func hand_mutation_count(hand: String) -> int:
-	var n := 0
-	for id in purchased_mutations():
-		var h: String = mutation_info[id]["hand"]
-		if h == hand or h == "both":
-			n += 1
-	return n
 
 # --- mutation effects (parameter names from CONTEXT.md / 01-body-eating.md) ---
 
@@ -529,23 +509,6 @@ func refresh_hands(carrying_flesh: bool) -> void:
 func one_handed_action_allowed() -> bool:
 	return not hands.holds("big_saw") and not tools.is_two_handed(tools.equipped)
 
-## Chew-speed multiplier for the equipped tool.
-func dig_multiplier() -> float:
-	match tools.equipped:
-		"knife": return 1.6
-		"big_saw": return 2.6
-		_: return 1.0
-
-## Tough tissue (mantle contractile fibers) needs a blade: bare hands cannot
-## tear it (docs/spec/04-economy.md, knife = "cuts tough flesh bare hands cannot tear").
-func can_tear(tough: bool) -> bool:
-	if not tough:
-		return true
-	return tools.equipped == "knife" or tools.equipped == "big_saw"
-
-## Blender packs flesh: stomach fill per flesh unit drunk.
-const BLENDER_PACKING := 0.7
-
 # --- consumables --------------------------------------------------------------
 
 func use_barrier() -> bool:
@@ -673,16 +636,6 @@ func eat_tumor_kind(kind: String) -> void:
 ## Bumps currently on the belly, waiting to be pressed at the mirror.
 func belly_bumps() -> int:
 	return tumors.tumor_points
-
-## Throw every carried tumor into the toilet: teeth + codex entries.
-func throw_tumors_in_toilet() -> int:
-	var got := 0
-	for kind in tumors._carried.duplicate():
-		var pay := tumors.throw_in_toilet(kind, TUMOR_TOOTH_PAYOUT)
-		if pay > 0:
-			teeth += pay
-			got += pay
-	return got
 
 func codex_complete() -> bool:
 	for k in TUMOR_KINDS:

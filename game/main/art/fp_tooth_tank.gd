@@ -33,12 +33,21 @@ func _ready() -> void:
     K.rbox(st, K.T(Vector3(W - wall, H * 0.5, 0)), Vector3(wall, H * 0.5, D - 0.004), 0.01, white, shade)
     K.rbox(st, K.T(Vector3(-W + wall, H * 0.5, 0)), Vector3(wall, H * 0.5, D - 0.004), 0.01, white, shade)
     K.rbox(st, K.T(Vector3(0, 0.01, 0)), Vector3(W, 0.01, D), 0.006, shade)
+    # recessed foot plinth so the tank does not read as a box set on the floor
+    K.rbox(st, K.T(Vector3(0, 0.012, 0)), Vector3(W + 0.008, 0.012, D + 0.008), 0.008, shade, white)
+    # thick rolled rim around the tank mouth (ceramic is never knife-thin)
+    K.rbox(st, K.T(Vector3(0, H - 0.01, D - wall)), Vector3(W + 0.004, 0.01, wall + 0.004), 0.008, white, shade)
+    K.rbox(st, K.T(Vector3(0, H - 0.01, -D + wall)), Vector3(W + 0.004, 0.01, wall + 0.004), 0.008, white, shade)
+    K.rbox(st, K.T(Vector3(W - wall, H - 0.01, 0)), Vector3(wall + 0.004, 0.01, D), 0.008, white, shade)
+    K.rbox(st, K.T(Vector3(-W + wall, H - 0.01, 0)), Vector3(wall + 0.004, 0.01, D), 0.008, white, shade)
+    # moulded seam band around the body
+    K.rbox(st, K.T(Vector3(0, H * 0.32, 0)), Vector3(W + 0.003, 0.006, D + 0.003), 0.004, shade)
     # raised inner shelf just under the water line: the teeth pile on it, so
     # they sit high enough to be seen over the front wall from a standing eye
     K.rbox(st, K.T(Vector3(0, SHELF - 0.008, 0)), Vector3(W - wall * 2.0, 0.008, D - wall * 2.0), 0.004, shade)
     # flush lever on the front-left
     K.lathe(st, K.T(Vector3(-W + 0.05, H - 0.05, D + 0.002), Vector3(90, 0, 0)), [Vector2(0.0, -0.012), Vector2(0.018, -0.012), Vector2(0.018, 0.0), Vector2(0.0, 0.002)], 8, [Color(0.85, 0.86, 0.88)])
-    K.tube(st, Transform3D.IDENTITY, [Vector3(-W + 0.05, H - 0.05, D + 0.012), Vector3(-W + 0.1, H - 0.052, D + 0.02), Vector3(-W + 0.12, H - 0.06, D + 0.022)], [0.006, 0.006, 0.008], 5, [Color(0.8, 0.82, 0.84)])
+    K.tube(st, Transform3D.IDENTITY, [Vector3(-W + 0.05, H - 0.05, D + 0.003), Vector3(-W + 0.1, H - 0.052, D + 0.02), Vector3(-W + 0.12, H - 0.06, D + 0.022)], [0.006, 0.006, 0.008], 5, [Color(0.8, 0.82, 0.84)])
     K.add_mesh(self, "Tank", K.finish(st, 5.0), ceramic)
     # water: dark, right under the shelf the teeth lie on, so the ivory
     # teeth read against it from a standing eye
@@ -56,6 +65,8 @@ func _ready() -> void:
     st = K.begin()
     K.rbox(st, K.T(Vector3.ZERO), Vector3(W + 0.012, 0.014, D + 0.012), 0.012, white, shade)
     K.rbox(st, K.T(Vector3(0, 0.02, 0)), Vector3(W - 0.02, 0.008, D - 0.02), 0.008, white)
+    # seating lip under the lid so it drops into the tank mouth instead of floating on it
+    K.rbox(st, K.T(Vector3(0, -0.018, 0)), Vector3(W - wall * 2.0 - 0.006, 0.006, D - wall * 2.0 - 0.006), 0.004, shade)
     K.add_mesh(_lid, "Lid", K.finish(st, 5.0), ceramic)
     # teeth
     _teeth = MultiMeshInstance3D.new()

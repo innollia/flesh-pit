@@ -63,6 +63,10 @@ func _rebuild() -> void:
         tips.append(tip)
         K.lathe(st, Transform3D(Basis(Quaternion(Vector3.UP, d)), d * reach * 0.5), [Vector2(0.0, -0.04), Vector2(0.042, -0.04), Vector2(0.044, 0.04), Vector2(0.0, 0.04)], 6, [black])
         var sink: float = [0.0, 0.0, 0.05, 0.09][_stage]
+        # telescoping outer sleeve over the inner half so the strut reads as a ram
+        K.tube(st, Transform3D.IDENTITY, pts.slice(0, 4), [0.046, 0.046, 0.044, 0.044], 8, [black, yellow])
+        # extended inner rod keeps the sinking pad attached (pad floated off the tip before)
+        K.tube(st, Transform3D.IDENTITY, [tip - d * 0.04, tip + d * (sink + 0.01)], [0.02, 0.02], 6, [steel])
         K.lathe(st, Transform3D(Basis(Quaternion(Vector3.DOWN, d)), tip + d * sink), [Vector2(0.0, -0.02), Vector2(0.11, -0.02), Vector2(0.1, 0.02), Vector2(0.04, 0.05), Vector2(0.0, 0.05)], 8, [dirty, steel, steel])
     # hub
     K.lathe(st, K.T(Vector3.ZERO, Vector3(90, 0, 0)), [Vector2(0.0, -0.06), Vector2(0.08, -0.06), Vector2(0.09, 0.0), Vector2(0.08, 0.06), Vector2(0.0, 0.07)], 8, [yellow, black, yellow])

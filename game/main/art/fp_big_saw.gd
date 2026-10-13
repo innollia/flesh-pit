@@ -34,6 +34,14 @@ func _ready() -> void:
             K.tri(st, Transform3D.IDENTITY, Vector3(ta, -dm + 0.004, 0), Vector3(tb, -dm + 0.004, 0), Vector3((ta + tb) * 0.5, -dm - 0.018, set_z), Vector3(0, 0, 1), bright)
             K.tri(st, Transform3D.IDENTITY, Vector3(ta, -dm + 0.004, 0), Vector3(tb, -dm + 0.004, 0), Vector3((ta + tb) * 0.5, -dm - 0.018, set_z), Vector3(0, 0, -1), bright)
     K.quad(st, Transform3D.IDENTITY, Vector3(-L, 0.03, -0.0015), Vector3(L, 0.03, -0.0015), Vector3(L, 0.03, 0.0015), Vector3(-L, 0.03, 0.0015), Vector3.UP, steel)
+    # closed blade ends (no open slit at the handles) + a riveted back spine
+    var dend := 0.05 + 0.06 * cos(PI * 0.5)
+    for sx in [-1, 1]:
+        K.quad(st, Transform3D.IDENTITY, Vector3(sx * L, 0.03, -0.0015), Vector3(sx * L, 0.03, 0.0015), Vector3(sx * L, -dend, 0.0008), Vector3(sx * L, -dend, -0.0008), Vector3(sx, 0, 0), steel)
+    K.rbox(st, K.T(Vector3(0, 0.034, 0)), Vector3(L + 0.004, 0.006, 0.0035), 0.0015, steel.darkened(0.25))
+    for r in range(9):
+        var rx := lerpf(-L * 0.9, L * 0.9, float(r) / 8.0)
+        K.lathe(st, K.T(Vector3(rx, 0.034, 0), Vector3(90, 0, 0)), [Vector2(0.0, -0.0045), Vector2(0.0035, -0.0045), Vector2(0.0035, 0.0045), Vector2(0.0, 0.0045)], 6, [bright])
     K.add_mesh(self, "Blade", K.finish(st, 8.0), K.mat("tex_chrome_128.png", 0.3, true))
     st = K.begin()
     var wood := Color(0.66, 0.44, 0.24)
@@ -41,6 +49,9 @@ func _ready() -> void:
         var base := Vector3(sx * (L + 0.01), 0.0, 0)
         K.tube(st, Transform3D.IDENTITY, [base + Vector3(0, -0.04, 0), base + Vector3(sx * 0.01, 0.05, 0), base + Vector3(sx * 0.02, 0.17, 0), base + Vector3(sx * 0.018, 0.2, 0)], [0.017, 0.02, 0.019, 0.015], 7, [wood])
         K.lathe(st, K.T(base + Vector3(0, 0.0, 0.004), Vector3(90, 0, 0)), [Vector2(0.0, -0.012), Vector2(0.008, -0.012), Vector2(0.008, 0.012), Vector2(0.0, 0.012)], 6, [Color(0.3, 0.3, 0.3)])
+        for fy in [-0.035, 0.04]:
+            K.lathe(st, K.T(base + Vector3(sx * (0.0 if fy < 0.0 else 0.005), fy, 0)), [Vector2(0.0, -0.007), Vector2(0.023, -0.007), Vector2(0.024, 0.0), Vector2(0.023, 0.007), Vector2(0.0, 0.007)], 8, [Color(0.72, 0.55, 0.22)])
+        K.lathe(st, K.T(base + Vector3(sx * 0.018, 0.205, 0)), [Vector2(0.0, -0.006), Vector2(0.017, -0.006), Vector2(0.013, 0.008), Vector2(0.0, 0.01)], 8, [wood.darkened(0.3)])
     K.add_mesh(self, "Grips", K.finish(st, 8.0), K.mat("tex_fixture_64.png", 0.2, true))
 
 func set_stroke(s: float) -> void:

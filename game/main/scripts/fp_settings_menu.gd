@@ -170,7 +170,10 @@ func _build() -> void:
     var col := VBoxContainer.new()
     col.custom_minimum_size.x = 620
     col.add_theme_constant_override("separation", 10)
-    col.add_theme_font_override("font", load("res://main/art/fonts/BlackHanSans-Regular.ttf"))
+    # Theme (not a local override) so every row label/button inherits the title font.
+    var font_theme := Theme.new()
+    font_theme.default_font = load("res://main/art/fonts/BlackHanSans-Regular.ttf")
+    col.theme = font_theme
     center.add_child(col)
     var title := FPMenuKit.label("설정", 26)
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

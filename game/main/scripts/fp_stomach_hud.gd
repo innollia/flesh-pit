@@ -27,9 +27,13 @@ func _draw() -> void:
 	var ratio: float = main.stomach.fill_ratio()
 	var color := Color(0.9, 0.67, 0.54) if ratio < 1.0 else Color(1.0, 0.35, 0.27)
 	var font := ThemeDB.fallback_font
-	draw_string(font, origin - Vector2(0, 12), "위장  %d%%" % roundi(ratio * 100.0), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1, 0.94, 0.88))
+	var fill_text := "위장  %d%%" % roundi(ratio * 100.0)
+	draw_string_outline(font, origin - Vector2(0, 12), fill_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, 4, Color(0, 0, 0, 0.85))
+	draw_string(font, origin - Vector2(0, 12), fill_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1, 0.94, 0.88))
 	draw_rect(Rect2(origin, Vector2(180, 9)), Color(0.1, 0.025, 0.025, 0.85))
 	draw_rect(Rect2(origin, Vector2(180 * clampf(ratio, 0, 1), 9)), color)
 	if ratio >= 1.0:
 		var key := FPKeybindMenu.key_of("fp_vomit")
-		draw_string(font, origin + Vector2(194, 9), "%s  토하기" % ("V" if key == "" else key), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, color)
+		var vomit_text := "%s  토하기" % ("V" if key == "" else key)
+		draw_string_outline(font, origin + Vector2(194, 9), vomit_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 4, Color(0, 0, 0, 0.85))
+		draw_string(font, origin + Vector2(194, 9), vomit_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, color)

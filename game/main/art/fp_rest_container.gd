@@ -59,7 +59,23 @@ func _ready() -> void:
     var growth := [Vector3(L, H, Wd), Vector3(L, H, -Wd), Vector3(-L, H, -Wd), Vector3(-L, 0.2, Wd), Vector3(0.3, H + 0.05, -Wd), Vector3(-0.9, H + 0.05, 0.2), Vector3(L, 0.4, -0.6)]
     for i in range(growth.size()):
         var r := 0.25 + K.h(i, 2) * 0.25
-        K.blob(st, Transform3D.IDENTITY, growth[i], Vector3(r, r * 0.7, r), 0.4, 90 + i, fa, fb)
+        var gp: Vector3 = growth[i]
+        K.blob(st, Transform3D.IDENTITY, gp, Vector3(r, r * 0.7, r), 0.4, 90 + i, fa, fb)
+        # lumpy satellite tumours fused into the main mass (no lone spheres)
+        for j in range(4):
+            var off := Vector3(K.h(i, j, 31) - 0.5, (K.h(i, j, 32) - 0.5) * 0.6, K.h(i, j, 33) - 0.5).normalized() * r * 0.75
+            var sr := r * (0.35 + K.h(i, j, 34) * 0.3)
+            K.blob(st, Transform3D.IDENTITY, gp + off, Vector3(sr, sr * 0.8, sr), 0.45, 200 + i * 7 + j, fb, fa)
+        # veiny tendrils creeping down the wall from each mass
+        for j in range(3):
+            var ang := K.h(i, j, 41) * TAU
+            var side := Vector3(cos(ang), 0, sin(ang)) * r * 0.6
+            var drop := 0.35 + K.h(i, j, 42) * 0.55
+            var pts: Array = []
+            for k in range(5):
+                var t := float(k) / 4.0
+                pts.append(gp + side * (1.0 + t * 0.6) + Vector3(sin(t * 4.0 + j) * 0.05, -drop * t, cos(t * 3.0 + i) * 0.05))
+            K.tube(st, Transform3D.IDENTITY, pts, [0.035, 0.028, 0.02, 0.013, 0.006], 5, [fa, fb.darkened(0.2)])
     K.add_mesh(self, "Overgrowth", K.finish(st, 3.0), K.mat("tex_flesh_128.png", 0.7, true))
     # door (on the +Z wall, hinge at x=0.1)
     _door = K.pivot(self, "DoorHinge", Vector3(0.62, 0, Wd + 0.02))

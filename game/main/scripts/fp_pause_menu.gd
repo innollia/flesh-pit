@@ -20,6 +20,10 @@ func _ready() -> void:
     root = FPMenuKit.make_root(self)
     FPMenuKit.backdrop(root, 0.62)
     var col := FPMenuKit.plate(root)
+    # Same Black Han Sans as the title screen and settings.
+    var font_theme := Theme.new()
+    font_theme.default_font = load("res://main/art/fonts/BlackHanSans-Regular.ttf")
+    col.theme = font_theme
     var title := FPMenuKit.label("정지", 24, FPMenuKit.DIM_INK)
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(title)

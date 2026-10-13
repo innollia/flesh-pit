@@ -34,7 +34,9 @@ static func build_mesh(kind: int) -> ArrayMesh:
             K.blob(st, I, Vector3(R * 0.5, R * 0.35, 0.02), Vector3(R * 0.5, R * 0.45, R * 0.5), 0.4, 58, Color(0.7, 0.45, 0.25), Color(0.5, 0.1, 0.1))
             for i in range(7):
                 var d := Vector3(K.h(i, 7) - 0.5, K.h(i, 8) * 0.8, K.h(i, 9) - 0.5).normalized()
-                var p := d * R * 0.82
+                # root each tooth on the actual ellipsoid surface (was floating/buried)
+                var p := d * 0.93 / sqrt(pow(d.x / R, 2) + pow(d.y / (R * 0.8), 2) + pow(d.z / (R * 0.9), 2))
+                K.blob(st, I, p * 0.97, Vector3(0.016, 0.01, 0.016), 0.3, 120 + i, Color(0.6, 0.2, 0.18), Color(0.7, 0.35, 0.3))
                 K.lathe(st, Transform3D(Basis(Quaternion(Vector3.UP, d)), p), [Vector2(0.0, -0.012), Vector2(0.012, -0.004), Vector2(0.014, 0.008), Vector2(0.008, 0.016), Vector2(0.0, 0.015)], 6, [Color(0.9, 0.84, 0.66)])
             for i in range(30):
                 var d := Vector3(K.h(i, 17) - 0.5, K.h(i, 18) - 0.5, K.h(i, 19) - 0.5).normalized()
@@ -49,7 +51,8 @@ static func build_mesh(kind: int) -> ArrayMesh:
                     var el := lerpf(-1.2, 1.2, t)
                     var az := a0 + sin(t * 5.0 + v) * 0.35
                     var rr := R * 0.9 * (1.0 + 0.04 * sin(t * 9.0))
-                    pts.append(Vector3(cos(az) * cos(el) * rr * 0.97, sin(el) * rr * 1.18, sin(az) * cos(el) * rr * 0.97))
+                    # hug the sac surface (was floating off the ellipsoid)
+                    pts.append(Vector3(cos(az) * cos(el) * rr * 0.94, sin(el) * rr * 1.16, sin(az) * cos(el) * rr * 0.94))
                 K.tube(st, I, pts, [0.004, 0.007, 0.006, 0.008, 0.006, 0.007, 0.005, 0.003], 4, [Color(0.9, 0.78, 0.2)])
     return K.finish(st, 7.0)
 
