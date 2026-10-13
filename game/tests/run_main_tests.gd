@@ -168,11 +168,18 @@ func _run() -> void:
 func _run_systems() -> void:
     var m = _m
     var prog: FPProgression = m.progression
-    # --- vent: scoop a handful of 4, place, take one
+    # --- vent: pick teeth one at a time, place, take one
     prog.teeth = 20
     m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
     m.restroom.set_tank_open(true, true)
-    _assert(m.scoop_teeth() == 4 and prog.teeth == 16 and prog.teeth_in_hand == 4, "one handful from the tank is 4 teeth")
+    m.tank_lid.pick() # the loose lid comes off the tank by hand
+    m.tank_lid.drop()
+    _assert(m.scoop_teeth() == 1 and prog.teeth == 19 and prog.teeth_in_hand == 1, "one press picks one tooth from the tank")
+    for i in range(3):
+        m.scoop_teeth()
+    _assert(prog.teeth == 16 and prog.teeth_in_hand == 4, "teeth stack in the hand one by one")
+    _assert(m.put_tooth_back() == 1 and prog.teeth_in_hand == 3 and prog.teeth == 17, "one tooth goes back into the tank")
+    m.scoop_teeth()
     m.vent.open()
     var offer: Array = m.place_teeth_at_vent()
     _assert(offer.size() >= 1 and "barrier" in offer and prog.teeth_in_hand == 0, "a handful at the vent buys a barrier-sized offer (%s)" % [offer])

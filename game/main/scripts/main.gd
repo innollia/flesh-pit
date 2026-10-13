@@ -177,6 +177,14 @@ var _flash: float = 0.0
 var _stream_queue: Array[Vector3i] = []
 var _last_stream_chunk: Vector3i = Vector3i(99999, 0, 0)
 var _tank_teeth_shown: int = -1
+## Holding the interact / right-hand input at the tank or the vent keeps
+## moving teeth one at a time: the op the press started, the input holding
+## it, and the time to the next tooth.
+const TOOTH_REPEAT_DELAY := 0.35
+const TOOTH_REPEAT_EVERY := 0.07
+var _tooth_op := ""
+var _tooth_action := ""
+var _tooth_rep_t := 0.0
 var _noise: FastNoiseLite
 
 var ps1_post: FDKPs1ScreenPost
@@ -865,6 +873,7 @@ func _process(delta: float) -> void:
 		return
 	_handle_actions()
 	hand_actions.tick(delta)
+	_repeat_tooth_op(delta)
 	step_world(delta)
 	_guard_terrain_eye(false)
 	tick_autosave(delta)
@@ -1241,8 +1250,7 @@ func _interact() -> void:
 			vent.notice("mirror")
 		"canary": begin_canary_pull()
 		"tank_teeth":
-			if progression.teeth_in_hand > 0: put_teeth_back()
-			else: scoop_teeth()
+			_start_tooth_op("take", "fp_interact")
 		"lever": pull_lever()
 		"vent": use_vent()
 		"sink": wash_hands()
@@ -1258,10 +1266,9 @@ func _pick() -> void:
 	if target == "lever":
 		pull_lever()
 	elif target == "tank_teeth":
-		if progression.teeth_in_hand > 0: put_teeth_back()
-		else: scoop_teeth()
+		_start_tooth_op("back" if progression.teeth_in_hand > 0 else "take", "fp_pick")
 	elif target == "vent" and vent.is_open:
-		if progression.teeth_in_hand > 0: place_teeth_at_vent()
+		if progression.teeth_in_hand > 0: _start_tooth_op("place", "fp_pick")
 		elif not vent.offers.is_empty(): take_vent_offer()
 		else: reach_into_vent()
 
@@ -1652,24 +1659,74 @@ func settle_at_rest_point() -> Dictionary:
 	flushed.emit(got["teeth"], got["hairs"])
 	return got
 
-## Tank teeth shown as a pile of real teeth in the tank model (whole
-## handfuls of 4), never a number.
+## Tank teeth shown as a pile of real teeth in the tank model, one per
+## tooth, never a number.
 func _update_tank_teeth() -> void:
-	var shown := int(ceil(progression.teeth / float(FPProgression.HANDFUL_TEETH)))
+	var shown := progression.teeth
 	if shown == _tank_teeth_shown:
 		return
 	_tank_teeth_shown = shown
 	if restroom.tank_art != null:
-		restroom.tank_art.call("set_handfuls", shown)
+		restroom.tank_art.call("set_teeth", shown)
 
+## Pick one tooth out of the open tank.
 func scoop_teeth() -> int:
 	if tank_lid == null or tank_lid.on_tank:
 		return 0
-	var n := progression.scoop_handful()
-	if n > 0:
+	var first := progression.teeth_in_hand == 0
+	var n := progression.take_tooth()
+	if n > 0 and first:
 		vent.notice("grab")
 		hand_motions.play_scoop()
 	return n
+
+## One tooth from the hand back into the tank.
+func put_tooth_back() -> int:
+	var n := progression.put_back_tooth()
+	if n > 0 and progression.teeth_in_hand == 0:
+		vent.notice("put_back")
+	return n
+
+## One tooth from the hand onto the vent lip; the being looks at the pile
+## once the hand stops (FPVent.APPRAISE_DELAY).
+func place_tooth_at_vent() -> bool:
+	if progression.teeth_in_hand <= 0 or not vent.add_tooth(progression):
+		return false
+	var first := vent.pile == 1
+	progression.teeth_in_hand -= 1
+	if first:
+		hand_motions.play_pour(1)
+	return true
+
+func _start_tooth_op(op: String, action: String) -> void:
+	_tooth_op = op
+	_tooth_action = action
+	_tooth_rep_t = TOOTH_REPEAT_DELAY
+	_do_tooth_op(op)
+
+func _do_tooth_op(op: String) -> int:
+	match op:
+		"take": return scoop_teeth()
+		"back": return put_tooth_back()
+		"place": return 1 if place_tooth_at_vent() else 0
+	return 0
+
+## While the input that started a tooth op stays held on the same target,
+## keep going one tooth at a time.
+func _repeat_tooth_op(delta: float) -> void:
+	if _tooth_op == "":
+		return
+	var target := interact_target()
+	var on_target := target == "tank_teeth" if _tooth_op != "place" else (target == "vent" and vent.is_open)
+	if not Input.is_action_pressed(_tooth_action) or not on_target or tank_lid.held:
+		_tooth_op = ""
+		return
+	_tooth_rep_t -= delta
+	while _tooth_rep_t <= 0.0:
+		_tooth_rep_t += TOOTH_REPEAT_EVERY
+		if _do_tooth_op(_tooth_op) == 0:
+			_tooth_op = ""
+			return
 
 func try_pick_tank_item() -> bool:
 	return scoop_teeth() > 0
@@ -1680,19 +1737,23 @@ func use_vent() -> void:
 	if not vent.is_open:
 		vent.open(progression.teeth + progression.teeth_in_hand)
 	elif progression.teeth_in_hand > 0:
-		place_teeth_at_vent()
+		_start_tooth_op("place", "fp_interact")
 	elif vent.offers.is_empty() and progression.tumors.carried_count() > 0:
 		vent.place_weird("tumor") # it will not take it; the tumor stays in hand
 	elif vent.offers.is_empty():
 		vent.close()
 
+## Every tooth in the hand onto the lip at once, looked at right away
+## (tests and quick trades; normal input places them one by one).
 func place_teeth_at_vent() -> Array[String]:
 	var n := progression.teeth_in_hand
-	var ids := vent.place_teeth(n, progression)
-	if not ids.is_empty():
-		hand_motions.play_pour(n)
-		progression.teeth_in_hand = 0 # the being keeps the whole handful
-	return ids
+	if n <= 0 or not vent.is_open:
+		return []
+	for i in range(n):
+		vent.add_tooth(progression)
+	progression.teeth_in_hand = 0 # the being keeps them all
+	hand_motions.play_pour(n)
+	return vent.appraise(progression)
 
 func take_vent_offer(id: String = "") -> bool:
 	if id == "":
@@ -1714,6 +1775,7 @@ func take_vent_offer(id: String = "") -> bool:
 	return vent.take(id, progression)
 
 ## Handful back into the tank: the being sighs.
+## Every tooth in the hand back into the tank.
 func put_teeth_back() -> int:
 	var n := progression.teeth_in_hand
 	if n <= 0:

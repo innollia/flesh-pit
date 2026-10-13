@@ -95,6 +95,7 @@ func _ready() -> void:
     # out a few items ... The player picks one up by hand; the rest are
     # pulled back")
     _offer_root = K.pivot(self, "Offers", Vector3(0, 0.02, 0))
+    _build_pile()
     for i in range(3):
         var slot := K.pivot(_offer_root, "Offer%d" % i, Vector3(-0.12 + i * 0.12, 0.0, 0.0))
         _offers.append(slot)
@@ -180,6 +181,39 @@ func set_eye_mood(frantic: float) -> void:
 
 ## 0 = items still up in the dark duct, 1 = pushed out onto the lip where
 ## the hand can reach them (slid down out of the black, slightly staggered).
+## Teeth the player put on the lip, waiting to be looked at (one per tooth).
+const PILE_MAX := 60
+var _pile: MultiMeshInstance3D
+
+func _build_pile() -> void:
+    _pile = MultiMeshInstance3D.new()
+    _pile.name = "TeethPile"
+    var mm := MultiMesh.new()
+    mm.transform_format = MultiMesh.TRANSFORM_3D
+    var st := K.begin()
+    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -0.004), Vector2(0.0075, -0.003), Vector2(0.009, 0.002), Vector2(0.008, 0.006), Vector2(0.004, 0.0085), Vector2(0.0, 0.007)], 6, [Color(0.9, 0.84, 0.66)])
+    mm.mesh = K.finish(st, 60.0)
+    mm.instance_count = PILE_MAX
+    for i in range(PILE_MAX):
+        # a small heap on the near lip, growing in rings
+        var ring := int(sqrt(float(i)))
+        var a := float(i) * 2.39996
+        var r := 0.012 * float(ring)
+        var pos := Vector3(cos(a) * r, -0.004 - 0.006 * float(ring % 3), SIZE - 0.05 + sin(a) * r * 0.6)
+        mm.set_instance_transform(i, Transform3D(Basis.from_euler(Vector3(K.h(i, 1), K.h(i, 2), K.h(i, 3)) * TAU).scaled(Vector3.ONE * 2.2), pos))
+    mm.visible_instance_count = 0
+    _pile.multimesh = mm
+    _pile.material_override = K.mat("tex_ceramic_64.png", 0.5, false)
+    _pile.custom_aabb = AABB(Vector3(-0.2, -0.1, -0.2), Vector3(0.4, 0.2, 0.6))
+    add_child(_pile)
+
+func set_pile(n: int) -> void:
+    if _pile != null:
+        _pile.multimesh.visible_instance_count = clampi(n, 0, PILE_MAX)
+
+func pile_count() -> int:
+    return _pile.multimesh.visible_instance_count if _pile != null else 0
+
 func set_offer_extend(t: float) -> void:
     var k := clampf(t, 0.0, 1.0)
     _offer_root.visible = k > 0.001

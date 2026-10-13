@@ -95,6 +95,16 @@ static var TAKE: Array[String] = _pool("TAKE", ["pick.take1", "pick.take2", "pic
 
 var is_open: bool = false
 var offers: Array[String] = []
+## Teeth go on the vent lip one at a time (03-restroom.md 7). When the hand
+## stops for APPRAISE_DELAY the being looks at the whole pile; more teeth
+## after an offer pull the offer back and it looks again at the total.
+const APPRAISE_DELAY := 0.9
+## Teeth on the lip not yet looked at.
+var pile: int = 0
+## Teeth this trade has paid so far (kept, no change); reset when an item is taken.
+var trade_paid: int = 0
+var _pile_t: float = 0.0
+var _pile_prog: FPProgression
 ## Deepest shell reached (0 core, 1 mantle, 2 surface); main keeps it set.
 var shell: int = 0
 ## The last trade before the outermost shell (spec 12 마지막 거래).
@@ -208,6 +218,10 @@ func tick(delta: float) -> void:
             _nag_t = 0.0
             _say(_chain[_chain_step])
             _chain_step += 1
+    if is_open and pile > 0:
+        _pile_t += delta
+        if _pile_t >= APPRAISE_DELAY:
+            appraise()
     if is_open:
         _idle_t += delta
         if _idle_t >= IDLE_TIME and not _idle_said and _wants_teeth():
@@ -350,17 +364,21 @@ func _empty_open() -> void:
 
 ## Conversation milestones survive Continue; transient offers do not become payments.
 func serialize_progress() -> Dictionary:
-    return {"met": _met, "first_flush_heard": _first_flush_heard, "paid_ever": _paid_ever}
+    return {"met": _met, "first_flush_heard": _first_flush_heard, "paid_ever": _paid_ever, "trade_paid": trade_paid + pile}
 
 func restore_progress(data: Dictionary, has_trade_belt: bool) -> void:
     _met = bool(data.get("met", has_trade_belt))
     _paid_ever = bool(data.get("paid_ever", has_trade_belt))
     _first_flush_heard = bool(data.get("first_flush_heard", _met or _paid_ever))
+    trade_paid = int(data.get("trade_paid", 0))
+    pile = 0
     _chain.clear()
     _chain_step = 0
     _chain_first = false
 
 func close() -> void:
+    if is_open and pile > 0:
+        appraise() # teeth on the lip are paid even if the grate shuts
     var was_open := is_open
     is_open = false
     _eyes.visible = false
@@ -380,6 +398,37 @@ func close() -> void:
             art.call("set_open", 0.0)
 
 # --- trade --------------------------------------------------------------------
+
+## One tooth onto the lip. Returns false when the grate is shut.
+func add_tooth(prog: FPProgression) -> bool:
+    if not is_open:
+        return false
+    if pile == 0 and not offers.is_empty():
+        # more teeth on top of an offer: it pulls the offer back to look again
+        if art != null:
+            art.call("set_offer_items", [])
+        _clear_offers()
+    pile += 1
+    _pile_t = 0.0
+    _pile_prog = prog
+    _idle_t = 0.0
+    if art != null and art.has_method("set_pile"):
+        art.call("set_pile", pile)
+    return true
+
+## The being looks at everything paid this trade (earlier teeth plus the
+## new pile) and pushes out an offer.
+func appraise(prog: FPProgression = null) -> Array[String]:
+    if prog == null:
+        prog = _pile_prog
+    if pile <= 0 or prog == null:
+        return []
+    trade_paid += pile
+    pile = 0
+    _pile_t = 0.0
+    if art != null and art.has_method("set_pile"):
+        art.call("set_pile", 0)
+    return place_teeth(trade_paid, prog)
 
 ## Player places `placed` teeth. The being keeps them (no change) and
 ## returns what it pushes out. [] only when closed or nothing was placed.
@@ -426,6 +475,11 @@ func take(id: String, prog: FPProgression) -> bool:
     if id not in offers:
         return false
     var ok := prog.grant_item(id)
+    if not ok:
+        # already full (max barriers, sprays ...): it stays on the lip, paid teeth stay credited
+        _say(_ev("적게", "amount.little"))
+        return false
+    trade_paid = 0
     _say(_pick(TAKE))
     if offers.size() > 1:
         _say(_ev("나머지_회수", "pick.withdraw"))

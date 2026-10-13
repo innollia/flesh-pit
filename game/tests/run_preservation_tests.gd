@@ -107,6 +107,7 @@ func run() -> void:
     check(is_equal_approx(m.restroom.door_spill.light_energy, 0.85), "approved dim door light retained")
     check(m.restroom.get_node("RoomLight").shadow_enabled, "fixture shadows restored")
     m.progression.teeth_in_hand = 3
+    m.progression.teeth = 5
     m.tank_lid.pick()
     m.tank_lid.drop()
     var point: Vector3 = m.restroom.tank_art.to_global(Vector3(0,0.3,0))
@@ -115,8 +116,10 @@ func run() -> void:
     m.player.camera.look_at(point, Vector3.UP)
     await physics_frame
     check(m.interact_target() == "tank_teeth", "tank teeth return is reachable through aimed interaction")
+    m._pick()
+    check(m.progression.teeth_in_hand == 2, "actual right-hand input returns one held tooth")
     m._interact()
-    check(m.progression.teeth_in_hand == 0, "actual interact input returns held teeth")
+    check(m.progression.teeth_in_hand == 3, "actual interact input picks one tooth")
     var cavity := Vector3(2.6, 1, 0)
     m.terrain.dig_at(cavity, 1.0)
     var before_density: float = m.terrain.density_at(cavity)

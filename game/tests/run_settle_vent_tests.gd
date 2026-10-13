@@ -241,12 +241,33 @@ func _new_vent() -> FPVent:
 func _trade() -> void:
     var p := FPProgression.new()
     var v := _new_vent()
-    # 1. scoop a handful from the tank (lid must be open: main guards it)
+    # 1. pick teeth one at a time from the tank (lid must be open: main guards it)
     p.teeth = 12
-    _assert(p.scoop_handful() == 4 and p.teeth_in_hand == 4, "W05 one handful is 4 teeth")
-    # 2. several handfuls stack in the hand: that is the haggling
-    p.scoop_handful()
-    _assert(p.teeth_in_hand == 8 and p.teeth == 4, "W05 handfuls stack before placing")
+    _assert(p.take_tooth() == 1 and p.teeth_in_hand == 1, "W05 one pick is one tooth")
+    # 2. teeth stack in the hand: how many to bring is the haggling
+    for i in range(7):
+        p.take_tooth()
+    _assert(p.teeth_in_hand == 8 and p.teeth == 4, "W05 teeth stack before placing")
+    _assert(p.put_back_tooth() == 1 and p.teeth_in_hand == 7 and p.teeth == 5, "W05 one tooth goes back")
+    p.take_tooth()
+    # 2b. teeth go on the lip one at a time; the being looks once the hand
+    # stops, and more teeth on top of an offer make it look again at the total
+    p.deepest_shell = 0
+    v.open(8)
+    for i in range(4):
+        v.add_tooth(p)
+    _assert(v.pile == 4 and v.offers.is_empty(), "W05 teeth wait on the lip while the hand keeps placing")
+    v.tick(FPVent.APPRAISE_DELAY + 0.05)
+    _assert(v.trade_paid == 4 and not v.offers.is_empty() and not ("knife" in v.offers), "W05 the hand stops: it looks at 4 teeth (%s)" % [v.offers])
+    for i in range(12):
+        v.add_tooth(p)
+    _assert(v.offers.is_empty(), "W05 more teeth pull the offer back")
+    v.tick(FPVent.APPRAISE_DELAY + 0.05)
+    _assert(v.trade_paid == 16 and "knife" in v.offers, "W05 16 teeth in one trade reach the knife (%s)" % [v.offers])
+    var save := v.serialize_progress()
+    _assert(int(save.trade_paid) == 16, "W05 teeth paid in an open trade survive a save")
+    _assert(v.take("knife", p) and p.tools.owns("knife") and v.trade_paid == 0, "W05 taking the knife ends the trade")
+    v.close()
     # 3. few teeth -> junk only
     v.open(4)
     var few := v.place_teeth(1, p)

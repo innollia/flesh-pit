@@ -136,6 +136,11 @@ func set_amount(amount: float) -> void:
     var n := int(round(_amount * MAX_TEETH / float(HANDFUL))) * HANDFUL
     _teeth.multimesh.visible_instance_count = mini(n, MAX_TEETH)
 
+## Exactly n teeth (picked and put back one at a time), capped by the tank.
+func set_teeth(n: int) -> void:
+    _amount = clampf(float(n) / float(MAX_TEETH), 0.0, 1.0)
+    _teeth.multimesh.visible_instance_count = clampi(n, 0, MAX_TEETH)
+
 ## Handful-based API: n handfuls = n * 4 teeth.
 func set_handfuls(n: int) -> void:
     set_amount(float(maxi(n, 0) * HANDFUL) / float(MAX_TEETH))

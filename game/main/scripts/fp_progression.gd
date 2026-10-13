@@ -18,11 +18,9 @@ const COMMON := FDKMutationTree.COMMON
 const SHELL_MULTIPLIER := {BIOME_CORE: 1, BIOME_MANTLE: 2, BIOME_SURFACE: 3}
 
 ## Teeth per flesh unit vomited into the toilet. One expedition fills about
-## 100 flesh, so "one expedition's earnings" is about 8 teeth = 2 handfuls.
+## 100 flesh, so "one expedition's earnings" is about 8 teeth.
 const TEETH_PER_FLESH := 0.08
 const EXPEDITION_TEETH := 8
-## One handful scooped from the tank and placed at the vent.
-const HANDFUL_TEETH := 4
 ## 실제 섭취한 살에 껍질 배율을 적용해 털을 즉시 지급한다.
 ## 한 가닥 미만의 잔량은 다음 섭취로 넘긴다.
 const FLESH_PER_BIOME_HAIR := 50.0
@@ -546,12 +544,21 @@ func _maxed(id: String) -> bool:
 		"tumor_bag": return has_bag
 	return false
 
-## Scoop a handful from the open tank. Returns how many were taken.
-func scoop_handful() -> int:
-	var n := mini(HANDFUL_TEETH, teeth)
-	teeth -= n
-	teeth_in_hand += n
-	return n
+## Teeth are picked from the open tank and put back one at a time (holding
+## the input repeats). Each returns how many moved (0 or 1).
+func take_tooth() -> int:
+	if teeth <= 0:
+		return 0
+	teeth -= 1
+	teeth_in_hand += 1
+	return 1
+
+func put_back_tooth() -> int:
+	if teeth_in_hand <= 0:
+		return 0
+	teeth_in_hand -= 1
+	teeth += 1
+	return 1
 
 ## Teeth placed at the vent (03-restroom 7): the being keeps them all, no
 ## change. Few teeth -> junk only. Enough -> one of the dearest affordable
