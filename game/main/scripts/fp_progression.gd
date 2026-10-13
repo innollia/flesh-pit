@@ -695,7 +695,8 @@ func take_death_payload(stomach_fill: float) -> Dictionary:
 	hands.clear()
 	return payload
 
-## Recovering the drop: consumables come back up to their carry caps; the
+## Recovering a drop: consumables come back up to their carry caps and what
+## does not fit stays in `p` (the body keeps it, see payload_empty()); the
 ## stomach flesh returns as fill (caller adds it). Already eaten flesh does
 ## NOT re-award hairs. Legacy payloads with unmigrated pending_hairs are
 ## migrated exactly once into hairs and hair_carry.
@@ -714,16 +715,37 @@ func restore_death_payload(p: Dictionary) -> float:
 					mutation_tree.add_points(k, n)
 		p["migrated_v5_hairs"] = true
 		p["pending_hairs"] = {}
-	barriers = mini(MAX_BARRIERS, barriers + int(p.get("barriers", 0)))
-	canary_feed = mini(MAX_CANARY_FEED, canary_feed + int(p.get("canary_feed", 0)))
+	var b_in := int(p.get("barriers", 0))
+	var b_take := clampi(MAX_BARRIERS - barriers, 0, b_in)
+	barriers += b_take
+	p["barriers"] = b_in - b_take
+	var f_in := int(p.get("canary_feed", 0))
+	var f_take := clampi(MAX_CANARY_FEED - canary_feed, 0, f_in)
+	canary_feed += f_take
+	p["canary_feed"] = f_in - f_take
 	teeth_in_hand += int(p.get("teeth_in_hand", 0))
+	p["teeth_in_hand"] = 0
 	var inv := FDKSprayCan.Inventory.new()
 	inv.deserialize(p.get("sprays", {}))
+	var left := FDKSprayCan.Inventory.new()
 	for c in inv.cans:
-		sprays.add(c)
+		if not sprays.add(c):
+			left.cans.append(c)
+	p["sprays"] = left.serialize()
+	var t_left: Array = []
 	for k in (p.get("tumors", []) as Array):
-		tumors.pick_up(String(k))
-	return float(p.get("stomach_fill", 0.0))
+		if not tumors.pick_up(String(k)):
+			t_left.append(k)
+	p["tumors"] = t_left
+	var fill := float(p.get("stomach_fill", 0.0))
+	p["stomach_fill"] = 0.0
+	return fill
+
+## Nothing left on a body after restore_death_payload().
+static func payload_empty(p: Dictionary) -> bool:
+	var sp := FDKSprayCan.Inventory.new()
+	sp.deserialize(p.get("sprays", {}))
+	return int(p.get("barriers", 0)) <= 0 and int(p.get("canary_feed", 0)) <= 0 and int(p.get("teeth_in_hand", 0)) <= 0 		and sp.cans.is_empty() and (p.get("tumors", []) as Array).is_empty() and float(p.get("stomach_fill", 0.0)) <= 0.0
 
 # --- save ---------------------------------------------------------------------
 

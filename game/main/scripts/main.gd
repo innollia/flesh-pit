@@ -92,7 +92,14 @@ var progression: FPProgression = FPProgression.new()
 var barrier_field: FDKBarrierField
 var canary: FDKCanary
 var hazard: FDKHazardCheck = FDKHazardCheck.new()
+## The newest body left by a death (tests and M29 read it).
 var death_drop: FDKDeathDrop
+## Every body not yet recovered, oldest first. Each death leaves its own;
+## nothing is overwritten (100 deaths without recovery = 100 bodies).
+var death_drops: Array[FDKDeathDrop] = []
+## Marker lamps that actually light (nearest bodies only).
+const DROP_LIT_MARKERS := 8
+var _drop_light_t := 0.0
 ## Session D glue: tissue-aware chewing, saw, blender, spray (fp_tissue_tools.gd).
 var tissue_tools: FPTissueTools
 ## Per-game random rotation of the rest points (saved).
@@ -301,15 +308,7 @@ func _ready() -> void:
 	canary.anomaly_reaction.connect(func(f): canary_cry.emit(f))
 	add_child(canary)
 
-	death_drop = FDKDeathDrop.new()
-	death_drop.name = "DeathDrop"
-	add_child(death_drop)
-	var dm := MeshInstance3D.new()
-	var dsm := SphereMesh.new()
-	dsm.radius = 0.2
-	dsm.height = 0.4
-	dm.mesh = dsm
-	death_drop.add_child(dm)
+	death_drop = _new_death_drop()
 	death_drop.visible = false
 
 	vent = FPVent.new()
@@ -2265,8 +2264,10 @@ func die(cause: String) -> void:
 	has_canary = false
 	canary.reset_trail()
 	blender_charge = 0.0
+	death_drop = _new_death_drop()
 	death_drop.drop(at, payload)
 	death_drop.visible = true
+	death_drops.append(death_drop)
 	hazard.reset()
 	_hazards.clear()
 	_crush_t = 0.0
@@ -2279,20 +2280,82 @@ func die(cause: String) -> void:
 	# even if nothing is saved again before the next crash/close.
 	save_to_disk()
 
-## Moving flesh keeps pushing a buried drop with no cap; the marker stays.
+## A body: the dropped belongings, a curled skin-coloured lump, and its
+## stake marker (FDKDeathDrop). One per death.
+func _new_death_drop() -> FDKDeathDrop:
+	var d := FDKDeathDrop.new()
+	d.name = "DeathDrop%d" % deaths
+	add_child(d)
+	var body := MeshInstance3D.new()
+	body.name = "Body"
+	var cap := CapsuleMesh.new()
+	cap.radius = 0.17
+	cap.height = 1.05
+	cap.radial_segments = 8
+	cap.rings = 3
+	body.mesh = cap
+	body.rotation_degrees = Vector3(0, 0, 90)
+	body.position = Vector3(0, -0.1, 0)
+	var skin := StandardMaterial3D.new()
+	skin.albedo_color = Color(0.78, 0.6, 0.52)
+	skin.roughness = 0.6
+	body.material_override = skin
+	d.add_child(body)
+	return d
+
+## Moving flesh keeps pushing a buried body with no cap; its marker stays.
+## Reaching a body takes back what fits; the rest stays on it.
 func _step_death_drop(delta: float) -> void:
-	if not death_drop.active:
-		return
-	if terrain.density_at(death_drop.current_position) >= 0.5:
-		var away := (death_drop.current_position - RESTROOM_CENTER).normalized()
-		var push := away.cross(Vector3.UP)
-		if push.length() < 0.1:
-			push = Vector3.RIGHT
-		death_drop.carry_along(push.normalized() * 0.04 * delta)
-	var got := death_drop.try_recover(player.global_position)
-	if not got.is_empty():
+	var gone: Array[FDKDeathDrop] = []
+	for d in death_drops:
+		if not d.active:
+			gone.append(d)
+			continue
+		if terrain.density_at(d.current_position) >= 0.5:
+			var away := (d.current_position - RESTROOM_CENTER).normalized()
+			var push := away.cross(Vector3.UP)
+			if push.length() < 0.1:
+				push = Vector3.RIGHT
+			d.carry_along(push.normalized() * 0.04 * delta)
+		var near := player.global_position.distance_to(d.current_position) <= 1.2
+		if d.has_meta("full_until_away"):
+			if not near:
+				d.remove_meta("full_until_away")
+			continue
+		var got := d.try_recover(player.global_position)
+		if got.is_empty():
+			continue
 		stomach.add_flesh(progression.restore_death_payload(got))
-		death_drop.visible = false
+		if FPProgression.payload_empty(got):
+			gone.append(d)
+		else:
+			# hands and belt are full: the rest stays on the body
+			d.drop(d.last_known_position, got)
+			d.current_position = d.position
+			d.set_meta("full_until_away", true)
+	for d in gone:
+		death_drops.erase(d)
+		if d != death_drop:
+			d.queue_free()
+		else:
+			d.visible = false
+	_drop_light_t -= delta
+	if _drop_light_t <= 0.0:
+		_drop_light_t = 0.5
+		_light_nearest_markers()
+
+## Only the nearest few marker lamps cast light; the rest just glow.
+func _light_nearest_markers() -> void:
+	var sorted := death_drops.duplicate()
+	var p := player.global_position
+	sorted.sort_custom(func(a, b): return a.last_known_position.distance_squared_to(p) < b.last_known_position.distance_squared_to(p))
+	for i in range(sorted.size()):
+		var marker: Node3D = sorted[i].marker
+		if marker == null:
+			continue
+		for c in marker.get_children():
+			if c is OmniLight3D:
+				(c as OmniLight3D).visible = i < DROP_LIT_MARKERS
 
 # --- ending ---------------------------------------------------------------------------
 
@@ -2347,6 +2410,8 @@ func serialize() -> Dictionary:
 		"stomach": stomach.serialize(),
 		"progression": progression.serialize(),
 		"barriers": barrier_field.serialize(),
+		# every body still out there, plus the newest one under the old key
+		"death_drops": death_drops.map(func(d): return d.serialize()),
 		"death_drop": death_drop.serialize(),
 		"hazard": hazard.serialize(),
 		"carried_flesh": carried_flesh,
@@ -2390,9 +2455,30 @@ func deserialize(data: Dictionary) -> void:
 		progression.mutation_tree.add_points(FPProgression.COMMON, int(data.get("mutation_points", 0)))
 	if data.has("barriers"):
 		barrier_field.deserialize(data["barriers"])
-	if data.has("death_drop"):
-		death_drop.deserialize(data["death_drop"])
-		death_drop.visible = death_drop.active
+	for d in death_drops:
+		if d != death_drop:
+			d.queue_free()
+	death_drops.clear()
+	if is_instance_valid(death_drop):
+		death_drop.queue_free()
+	# the newest body (old saves had only this one), then every other body
+	var newest: Dictionary = data.get("death_drop", {})
+	death_drop = _new_death_drop()
+	if not newest.is_empty():
+		death_drop.deserialize(newest)
+	death_drop.visible = death_drop.active
+	var drops: Array = data.get("death_drops", [newest] if death_drop.active else [])
+	for dd in drops:
+		if dd == newest and death_drop.active and not death_drops.has(death_drop):
+			death_drops.append(death_drop)
+			continue
+		var d := _new_death_drop()
+		d.deserialize(dd)
+		d.visible = d.active
+		if d.active:
+			death_drops.append(d)
+		else:
+			d.queue_free()
 	if data.has("hazard"):
 		hazard.deserialize(data["hazard"])
 	carried_flesh = float(data.get("carried_flesh", 0.0))

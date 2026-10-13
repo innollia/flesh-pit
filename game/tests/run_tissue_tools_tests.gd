@@ -442,3 +442,36 @@ func _main_tests(m) -> void:
 	m.player.global_position = m.death_drop.current_position
 	m._step_death_drop(0.016)
 	_assert(not m.death_drop.active and prog.barriers == 2, "W28 reaching the drop gets everything back")
+	# every death leaves its own body; none is overwritten
+	# away from the bodies earlier tests left near the door
+	var spots := [Vector3(6.0, 1.0, 7.0), Vector3(9.0, 1.0, 7.0), Vector3(12.0, 1.0, 7.0)]
+	var bodies0: int = m.death_drops.size() # earlier deaths in this file left theirs
+	for i in range(spots.size()):
+		prog.barriers = 1
+		m.player.global_position = spots[i]
+		m.die("crush")
+	_assert(m.death_drops.size() == bodies0 + 3 and prog.barriers == 0, "W28 three deaths leave three more bodies (%d)" % m.death_drops.size())
+	var all_have := true
+	for d in m.death_drops.slice(bodies0):
+		all_have = all_have and d.active and int(d.items.barriers) == 1
+	_assert(all_have, "W28 each body keeps its own belongings")
+	var data: Dictionary = m.serialize()
+	m.deserialize(data)
+	prog = m.progression # loading builds a new progression
+	_assert(m.death_drops.size() == bodies0 + 3 and m.death_drop.active and m.death_drop.last_known_position.is_equal_approx(spots[2]), "W28 all bodies survive save and load")
+	prog.barriers = FPProgression.MAX_BARRIERS
+	var first_body: FDKDeathDrop = m.death_drops[bodies0]
+	m.player.global_position = first_body.current_position
+	m._step_death_drop(0.016)
+	_assert(first_body.active and int(first_body.items.barriers) == 1 and m.death_drops.size() == bodies0 + 3, "W28 a full belt leaves the barrier on the body")
+	prog.barriers = 0
+	m.player.global_position = Vector3(0, 1, 0)
+	m._step_death_drop(0.016)
+	m.player.global_position = first_body.current_position
+	m._step_death_drop(0.016)
+	_assert(not first_body.active and prog.barriers == 1 and m.death_drops.size() == bodies0 + 2, "W28 coming back for it later takes the rest")
+	for d in m.death_drops.duplicate():
+		m.player.global_position = d.current_position
+		m._step_death_drop(0.016)
+	_assert(m.death_drops.is_empty(), "W28 every body can be recovered")
+	prog.barriers = 2
