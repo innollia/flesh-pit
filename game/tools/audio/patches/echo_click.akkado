@@ -1,0 +1,14 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: echo_click -- T1 echolocation: the tongue sucks on the palate, then pops off it (60 ms in), a dry click close to the ears. The CC0 mouth-noise recording carries the identity; this is the suction and the short wet cavity under it.
+ts = clamp(t - 0.06, 0, 10)
+env = clamp(ts / 0.0012, 0, 1) * exp(neg(ts) / 0.01)
+suck = noise(0, 0, SEED2) * clamp(t / 0.05, 0, 1) * clamp((0.061 - t) / 0.004, 0, 1) * 0.12 |> bp(@, 1300 * PITCH, 2.0)
+pop = noise(0, 0, SEED) * env |> bp(@, 2400 * PITCH, 5.0)
+cavity = sine(1750 * PITCH) * clamp(ts / 0.002, 0, 1) * exp(neg(ts) / 0.03) * 0.35
+wet = noise(0, 0, SEED2) * env * 0.4 |> bp(@, 4200 * PITCH, 3.0)
+out((suck + pop + cavity + wet) * 0.3 |> hp(@, 400))

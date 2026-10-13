@@ -2,13 +2,16 @@ extends RefCounted
 
 ## W32: every screen playable with the mouse alone, the keyboard alone, or a
 ## gamepad. Keyboard bindings live in main.gd / FDKInputActions (WASD, arrows
-## look, E eat, R pick, F interact, Q carry, V vomit ...). This adds the rest:
+## look, E left hand, R right hand, F interact, Q carry, V vomit ...). This
+## adds the rest:
 ##
-## Gamepad: left stick move, right stick look, RT eat/tear, LT pick,
-##   A jump, B carry, X interact, Y vomit, LB crouch, RB next tool,
+## Gamepad: left stick move, right stick look, LT left hand (fdk_eat),
+##   RT right hand (fp_pick), A dig up inside flesh (fdk_jump, no restroom
+##   jump), B carry, X interact, Y vomit, L3 (left stick press) crouch,
+##   LB mutation screen (keybinds.json), RB next tool,
 ##   d-pad tools/consumables (main.gd), Start = ui_cancel. Menus use Godot's
 ##   ui_* actions, which already include the d-pad and A/B.
-## Mouse only: move look, LMB eat, RMB pick, MIDDLE hold = walk forward,
+## Mouse only: move look, LMB left hand, RMB right hand, MIDDLE hold = walk forward,
 ##   side button 1 = interact, side button 2 = carry,
 ##   on-screen vomit button. Mirror: click part to buy,
 ##   RMB close (fp_mirror.gd).
@@ -21,7 +24,7 @@ const AXES := [
 	["fdk_eat", JOY_AXIS_TRIGGER_LEFT, 1.0], ["fp_pick", JOY_AXIS_TRIGGER_RIGHT, 1.0],
 ]
 const BUTTONS := [
-	["fdk_jump", JOY_BUTTON_A], ["fdk_crouch", JOY_BUTTON_LEFT_SHOULDER],
+	["fdk_jump", JOY_BUTTON_A], ["fdk_crouch", JOY_BUTTON_LEFT_STICK],
 	["ui_cancel", JOY_BUTTON_START], ["ui_cancel", JOY_BUTTON_B], ["ui_accept", JOY_BUTTON_A],
 	["ui_left", JOY_BUTTON_DPAD_LEFT], ["ui_right", JOY_BUTTON_DPAD_RIGHT],
 	["ui_up", JOY_BUTTON_DPAD_UP], ["ui_down", JOY_BUTTON_DPAD_DOWN],

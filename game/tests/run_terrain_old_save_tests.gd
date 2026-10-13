@@ -47,7 +47,23 @@ func compare_chunks(expected: Dictionary,label: String) -> void:
         check(chunk != null,label+" loaded chunk "+str(c))
         if chunk == null: continue
         var actual := chunk.serialize()
-        check(actual.density == entry.density,label+" exact density "+str(c))
+        # Loading clears only the corners of the ceiling vent's duct space
+        # (main._clear_vent_duct, above the ceiling, out of reach); every
+        # other corner must still come back exactly as saved.
+        var want: PackedFloat32Array = PackedFloat32Array(entry.density)
+        var n: int = m.terrain_config.chunk_size + 1
+        var cleared := 0
+        for z in range(n):
+            for y in range(n):
+                for x in range(n):
+                    var p: Vector3 = chunk.position + Vector3(x, y, z) * m.terrain_config.cell_size
+                    var i: int = chunk._corner_index(x, y, z)
+                    if m.in_vent_duct(p) and want[i] > 0.0:
+                        want[i] = 0.0
+                        cleared += 1
+        check(PackedFloat32Array(actual.density) == want,label+" exact density outside the vent duct "+str(c))
+        if cleared > 0:
+            check(PackedFloat32Array(actual.density) != PackedFloat32Array(entry.density),label+" old flesh cleared from the vent duct "+str(c)+" ("+str(cleared)+" corners)")
         check(actual.tissue == entry.tissue,label+" exact tissue "+str(c))
         check(actual.sealed == entry.sealed,label+" permanent melt mask "+str(c))
         check(actual.boost == entry.boost,label+" spray boost "+str(c))

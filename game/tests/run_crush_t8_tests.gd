@@ -229,11 +229,14 @@ func extra_checks() -> void:
 	m.progression.tumor_mutations.append("T5")
 	m.mutation_apply.apply_now()
 	danger.apply_camera()
-	var live: float = minf(170.0, 75.0 * m.progression.fov() / FPProgression.BASE_FOV)
+	# T5 draws its 200-degree fisheye over the camera's own 75-degree base
+	var live: float = 75.0
 	check(is_equal_approx(cam.fov, live * 0.78), "late mutation FOV write recomposes against live T5 base")
+	var eye: FPFisheyeView = m.mutation_apply.fisheye
+	check(eye.is_active() and is_equal_approx(eye.live_fov(), 200.0 * 0.78), "crush narrows the T5 fisheye by the same 22 percent")
 	m._crush_t = 0.0
 	danger.apply_camera()
-	check(is_equal_approx(cam.fov, live), "escape releases squeeze to live mutation FOV")
+	check(is_equal_approx(cam.fov, live) and is_equal_approx(eye.live_fov(), 200.0), "escape releases squeeze to live mutation FOV")
 	check(Vector2(cam.h_offset, cam.v_offset).is_equal_approx(Vector2(0.02,-0.03)), "escape removes owned shake only")
 	danger.restore_camera()
 	cam.fov = 66.0

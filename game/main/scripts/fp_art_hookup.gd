@@ -18,6 +18,7 @@ const TumorScene := preload("res://main/art/fp_tumor.tscn")
 const MutHandsScene := preload("res://main/art/fp_mutation_hands.tscn")
 const BarrierScene := preload("res://main/art/fp_barrier_stages.tscn")
 const MUT_KINDS := ["T2", "T3", "T4"] ## extra arm, palm mouth, swollen torso
+const K := preload("res://main/art/fp_art_kit.gd")
 
 var m: Node3D
 var knife: Node3D
@@ -34,6 +35,21 @@ var _hair_key := ""
 var _mut_key := "__uninitialized__"
 var _last_carry := 0.0
 var _consumables := [{}, {}]
+## Plugging the blender into a nerve (docs/spec/06-tools.md 2): the jar turns
+## about the handle so its base swings out toward the nerve, and a yellow
+## strand pulled out of the wall runs into the socket under the base.
+## plug_offset is how far the handle moved; the left hand follows it
+## (FPHandMotions.shape_pose).
+const PLUG_TIME := 0.3
+const PLUG_PUSH := 0.1 ## m the handle moves toward the nerve
+const PLUG_TURN := 0.65 ## share of the turn that would aim the base at the nerve
+const NERVE_COLORS := [Color(1.0, 0.93, 0.45), Color(0.9, 0.74, 0.2)] ## paler than FDKNerveStalk
+var plug_k := 0.0
+var plug_offset := Vector3.ZERO
+var nerve_strand: MeshInstance3D
+var _plug_world := Vector3.ZERO
+var _blender_rest := Transform3D.IDENTITY
+var _strand_t := 0.0
 
 func setup(main: Node3D) -> void:
 	m = main
@@ -47,6 +63,17 @@ func setup(main: Node3D) -> void:
 	blender = BlenderScene.instantiate()
 	blender.name = "HeldBlender"
 	blender.scale = Vector3.ONE * 0.55
+	nerve_strand = MeshInstance3D.new()
+	nerve_strand.name = "NerveStrand"
+	# self-lit pale yellow so the strand reads against a veined nerve wall
+	var strand_mat := StandardMaterial3D.new()
+	strand_mat.vertex_color_use_as_albedo = true
+	strand_mat.emission_enabled = true
+	strand_mat.emission = Color(0.55, 0.42, 0.05)
+	strand_mat.roughness = 0.35
+	strand_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	nerve_strand.material_override = strand_mat
+	nerve_strand.visible = false
 	hand_tumor = TumorScene.instantiate()
 	hand_tumor.name = "HeldTumor"
 	hand_tumor.scale = Vector3.ONE * 0.45
@@ -100,6 +127,11 @@ func _attach_to_rig(rig: Node3D) -> void:
 	FDKHandsRig.HOLD_LEFT_POS = Vector3(-0.30, -0.10, -0.38)
 	var hold: Vector3 = FDKHandsRig.HOLD_LEFT_POS
 	_put(blender, rig, hold + Vector3(0.028, 0.01, -0.05) - grip)
+	_blender_rest = blender.transform
+	plug_k = 0.0
+	plug_offset = Vector3.ZERO
+	_put(nerve_strand, rig, Vector3.ZERO)
+	nerve_strand.visible = false
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
@@ -179,6 +211,7 @@ func _process(_delta: float) -> void:
 	if _last_carry > 0.0 and m.carried_flesh <= 0.0 and blender.visible and m.blender_charge < 1.0:
 		blender.call("play_drink")
 	_last_carry = m.carried_flesh
+	_sync_plug(_delta)
 	_sync_hairs(prog)
 	_sync_mutations(prog)
 	var sp := prog.sprays
@@ -256,6 +289,48 @@ func _physics_process(_d: float) -> void:
 	var r2: FDKHandsRig = mut_hands.call("rig")
 	r2.set_mutation(m.progression.mutation_amount())
 	r2.set_carry(clampf(m.carried_flesh / 40.0, 0.0, 1.0) if m.carried_flesh > 0.0 else 0.0)
+
+func _sync_plug(delta: float) -> void:
+	var tt: FPTissueTools = m.tissue_tools
+	var on := tt != null and tt.plugged and blender.visible
+	if not on and plug_k <= 0.0:
+		return
+	if on:
+		_plug_world = tt.plug_point
+	plug_k = move_toward(plug_k, 1.0 if on else 0.0, delta / PLUG_TIME)
+	var e := plug_k * plug_k * (3.0 - 2.0 * plug_k)
+	var rig := blender.get_parent() as Node3D
+	# turn about the handle the hand holds, so the hand stays on it
+	var grip: Vector3 = _blender_rest * (blender.call("hand_grip") as Vector3)
+	var to_nerve := rig.to_local(_plug_world) - grip
+	var d := to_nerve.normalized() if to_nerve.length() > 0.01 else Vector3.FORWARD
+	var turn := Quaternion.IDENTITY.slerp(Quaternion(Vector3.DOWN, d), PLUG_TURN * e)
+	plug_offset = d * PLUG_PUSH * e
+	var b := Basis(turn)
+	blender.transform = Transform3D(b * _blender_rest.basis, grip + plug_offset + b * (_blender_rest.origin - grip))
+	_strand_t += delta
+	_build_strand(rig.to_local(_plug_world), blender.transform * (blender.call("socket_point") as Vector3), e)
+
+## The strand comes out of the wall and reaches the socket as e goes 0 -> 1;
+## it sags a little and swells in a slow pulse while charging.
+func _build_strand(wall: Vector3, socket: Vector3, e: float) -> void:
+	nerve_strand.visible = e > 0.01
+	if not nerve_strand.visible:
+		return
+	var tip := wall.lerp(socket, e)
+	var sag := Vector3(0, -0.04 * e * minf(1.0, wall.distance_to(socket)), 0)
+	var pts := []
+	var radii := []
+	var cols := []
+	for i in range(7):
+		var u := float(i) / 6.0
+		var mid := wall.lerp(tip, 0.5) + sag
+		pts.append(wall.lerp(mid, u).lerp(mid.lerp(tip, u), u))
+		radii.append(lerpf(0.03, 0.012, u) * (1.0 + 0.2 * sin(_strand_t * 9.0 - u * 6.0)))
+		cols.append(NERVE_COLORS[i % 2])
+	var st := K.begin()
+	K.tube(st, Transform3D.IDENTITY, pts, radii, 5, cols, true)
+	nerve_strand.mesh = K.finish(st, 8.0)
 
 func _sync_barriers() -> void:
 	for b in m.barrier_field.get_barriers():

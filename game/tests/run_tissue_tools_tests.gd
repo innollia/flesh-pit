@@ -368,6 +368,34 @@ func _main_tests(m) -> void:
 	_assert(tools.charge_lights() == 10, "W25 a full blender lights 10 lamps")
 	m.art_hookup.blender.call("set_charge_lights", tools.charge_lights())
 	_assert(int(m.art_hookup.blender.call("charge_lights_lit")) == 10, "W25 the lamps on the blender model are lit")
+	# W25 plug motion: the jar turns base-first toward the nerve, a strand out
+	# of the wall reaches the socket under its base, the left hand goes along
+	var ah: FPArtHookup = m.art_hookup
+	_assert(m.equip_hand("blender", 0), "W25 plug: blender in the left hand")
+	ah._process(0.0)
+	var rest: Transform3D = ah.blender.transform
+	var cam: Camera3D = m.player.camera
+	var nerve_at: Vector3 = cam.global_position - cam.global_basis.z * 1.2 - cam.global_basis.y * 0.3
+	var base_rest: float = (ah.blender.global_basis * Vector3.DOWN).normalized().dot((nerve_at - ah.blender.global_position).normalized())
+	tools.hold_override = true
+	tools.plug_in(nerve_at)
+	for i in range(30):
+		ah._process(1.0 / 60.0)
+	var rig := ah.blender.get_parent() as Node3D
+	var base_plugged: float = (ah.blender.global_basis * Vector3.DOWN).normalized().dot((nerve_at - ah.blender.global_position).normalized())
+	_assert(ah.plug_k == 1.0 and ah.nerve_strand.visible and base_plugged > base_rest + 0.2, "W25 plug: the base turns toward the nerve (%.2f -> %.2f)" % [base_rest, base_plugged])
+	var socket: Vector3 = ah.blender.transform * (ah.blender.call("socket_point") as Vector3)
+	var strand_box: AABB = ah.nerve_strand.mesh.get_aabb().grow(0.03)
+	_assert(strand_box.has_point(rig.to_local(nerve_at)) and strand_box.has_point(socket), "W25 plug: the nerve strand runs from the wall into the socket")
+	var hold_pose := {"pos": FDKHandsRig.HOLD_LEFT_POS, "wrist_pitch": 4.0, "wrist_yaw": -8.0, "wrist_roll": 60.0, "f1": 62.0, "f2": 78.0, "f3": 56.0, "t1": 20.0, "t2": 30.0, "t3": 30.0, "t_opp": 36.0}
+	var held: Dictionary = m.hand_motions.shape_pose(ah._rig, -1.0, hold_pose)
+	_assert(absf(ah.plug_offset.length() - FPArtHookup.PLUG_PUSH) < 0.001 and ((held["pos"] as Vector3) - FDKHandsRig.HOLD_LEFT_POS).is_equal_approx(ah.plug_offset), "W25 plug: the left hand moves with the handle")
+	tools.hold_override = false
+	tools.step_charge(0.1, false)
+	for i in range(30):
+		ah._process(1.0 / 60.0)
+	_assert(not tools.plugged and not ah.nerve_strand.visible and ah.plug_offset == Vector3.ZERO and ah.blender.transform.is_equal_approx(rest), "W25 plug: letting go puts the jar back and the strand away")
+	m.progression.hands.set_item("", 0)
 	m.carry_mode = true
 	m.carried_flesh = 20.0
 	m.carried_units = {1: 4}

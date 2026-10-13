@@ -56,6 +56,9 @@ var _spill_n := 0
 var _poured := false
 var _swung := false
 var belt_hook := -1
+## M22: where the alien hand pushes the torn cell (rig space, at the mouth).
+const ALIEN_MOUTH := Vector3(-0.04, -0.16, -0.2)
+var _alien_chunk: MeshInstance3D
 
 func _init(main: Node3D) -> void:
     m = main
@@ -398,6 +401,14 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
         return m.canary_pull.hand_pose(rig, side, p)
     if rig == rim_rig:
         return _rim_pose(side, p)
+    # the blender swung out to a nerve: the gripping hand goes with it
+    var plug: Vector3 = m.art_hookup.plug_offset if m.art_hookup != null else Vector3.ZERO
+    if side < 0.0 and plug != Vector3.ZERO and bool(rig.get("hold_left")):
+        p = p.duplicate()
+        p["pos"] = (p["pos"] as Vector3) + plug
+    var alien := _alien_pose(rig, side, p)
+    if not alien.is_empty():
+        p = alien
     var w := weight()
     if w <= 0.0 or kind == "vomit_toilet":
         return p
@@ -411,6 +422,75 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
         else:
             out[key] = lerpf(float(p[key]), float(q[key]), w)
     return out
+
+## M22: the alien left hand reaches out and grips on its own, trembling,
+## jerks the cell free and pushes it to the mouth; FPMutationApply times it
+## to the real tear. Only the left hand moves, the right keeps its pose.
+func _alien_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
+    var ma: FPMutationApply = m.mutation_apply
+    if ma == null or side > 0.0 or not rig.is_visible_in_tree():
+        return {}
+    var free := not bool(rig.get("hold_left"))
+    var since := ma.alien_since_tear
+    var eating := since >= 0.0 and free
+    _show_alien_chunk(rig, eating, since)
+    if not free or (ma.alien_reach <= 0.0 and not eating):
+        return {}
+    var q := {}
+    var w := 1.0
+    if eating:
+        var tear := FDKHandsRig.TEAR_TIME
+        var k := clampf(since / tear, 0.0, 1.0)
+        var jerk := sin(k * PI) * exp(-k * 2.0)
+        var mouth := seg(since, tear, tear + 0.3)
+        w = 1.0 - seg(since, FPMutationApply.ALIEN_EAT - 0.25, FPMutationApply.ALIEN_EAT)
+        _fingers(q, 0.65) # wrapped round the chunk, not a closed fist
+        q["pos"] = (Vector3(-0.13, -0.11, -0.44) + Vector3(-0.03, -0.07, 0.11) * jerk).lerp(ALIEN_MOUTH, mouth)
+        q["wrist_pitch"] = lerpf(40.0 - 35.0 * jerk, 75.0, mouth)
+        q["wrist_yaw"] = -6.0
+        q["wrist_roll"] = lerpf(14.0 + 18.0 * jerk, 40.0, mouth)
+    else:
+        var r := ma.alien_reach
+        var tm := Time.get_ticks_msec() * 0.001
+        w = seg(r, 0.0, 0.4)
+        _fingers(q, 0.85 * seg(r, 0.3, 1.0))
+        q["pos"] = Vector3(-0.12, -0.1, -0.47) + Vector3(sin(tm * 53.0), cos(tm * 61.0), sin(tm * 47.0)) * (0.002 + 0.008 * r * r)
+        q["wrist_pitch"] = 62.0 - 18.0 * r
+        q["wrist_yaw"] = -6.0
+        q["wrist_roll"] = 12.0
+    var out := p.duplicate()
+    for key in q:
+        if key == "pos":
+            out["pos"] = (p["pos"] as Vector3).lerp(q["pos"], w)
+        else:
+            out[key] = lerpf(float(p[key]), float(q[key]), w)
+    return out
+
+## The torn cell in the alien hand, shrinking as it goes into the mouth.
+func _show_alien_chunk(rig: Node3D, on: bool, since: float) -> void:
+    if not on:
+        if _alien_chunk != null:
+            _alien_chunk.visible = false
+        return
+    var wrist := rig.get_node_or_null("HandLeft/Wrist") as Node3D
+    if wrist == null:
+        return
+    if _alien_chunk == null:
+        # the rig's torn-chunk look, a bit lower so the curled fingers hold it
+        _alien_chunk = _chunk(FLESH, 0.05)
+        _alien_chunk.name = "AlienChunk"
+        _alien_chunk.material_override = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 2.0, false, 0.7, 0.4, 0.18)
+    if _alien_chunk.get_parent() != wrist:
+        if _alien_chunk.get_parent() != null:
+            _alien_chunk.get_parent().remove_child(_alien_chunk)
+        wrist.add_child(_alien_chunk)
+        _alien_chunk.position = Vector3(0, -0.05, -0.095)
+    var forearm := rig.get_node_or_null("HandLeft/Forearm") as VisualInstance3D
+    if forearm != null:
+        _alien_chunk.layers = forearm.layers
+    var tear := FDKHandsRig.TEAR_TIME
+    _alien_chunk.scale = Vector3.ONE * maxf(0.05, 1.0 - seg(since, tear + 0.15, FPMutationApply.ALIEN_EAT - 0.2))
+    _alien_chunk.visible = since < FPMutationApply.ALIEN_EAT - 0.2
 
 static func _fingers(q: Dictionary, curl: float) -> void:
     q["f1"] = lerpf(-10.0, 72.0, curl)

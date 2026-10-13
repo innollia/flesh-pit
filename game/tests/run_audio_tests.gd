@@ -54,7 +54,7 @@ func _process(_delta: float) -> bool:
 			if not d.bank.has(String(events[ev])) or d.last_played != String(events[ev]):
 				all_ok = false
 				print("  missing event sound: ", ev)
-		_ok(all_ok and events.size() == 14, "all 14 stage-5 event sounds load and play (%d)" % events.size())
+		_ok(all_ok and events.size() == 15, "all 15 event sounds (stage 5 + the T1 tongue click) load and play (%d)" % events.size())
 		_main.emit_signal("died", "test")
 		_ok(d.last_played == "player_death", "main.died plays the death sound (%s)" % d.last_played)
 		var mirror = _main.get("mirror")
@@ -72,6 +72,8 @@ func _process(_delta: float) -> bool:
 			_ok(d.last_played == s[2], "main.%s plays %s (%s)" % [s[0], s[2], d.last_played])
 		_main.mutation_apply.tumor_eaten.emit()
 		_ok(d.last_played == "tumor_eat", "mutation_apply.tumor_eaten plays tumor_eat (%s)" % d.last_played)
+		_main.mutation_apply.echo_click.emit()
+		_ok(d.last_played == "echo_click", "mutation_apply.echo_click plays the T1 tongue click (%s)" % d.last_played)
 		_main.flush()
 		_ok(_hook.get("played_events").has("settle_tick"), "the lever's flush ticks the settle sound")
 		_main.vomit_button.pressed.emit()

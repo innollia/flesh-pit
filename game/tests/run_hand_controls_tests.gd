@@ -75,6 +75,15 @@ func _run() -> void:
 	m._register_keybinds()
 	var devices: Array = (load("res://main/scripts/fp_input_modes.gd") as GDScript).call("devices_of", "fdk_eat")
 	check(devices.has("pad") and devices.has("mouse") and devices.has("keyboard"), "rebuilding key bindings preserves trigger and mouse hand controls")
+	var pad_buttons := func(action: String) -> Array:
+		var out := []
+		for e in InputMap.action_get_events(action):
+			if e is InputEventJoypadButton:
+				out.append(e.button_index)
+		return out
+	var crouch_pad: Array = pad_buttons.call("fdk_crouch")
+	var mutate_pad: Array = pad_buttons.call("fp_mutate")
+	check(crouch_pad == [JOY_BUTTON_LEFT_STICK] and mutate_pad == [JOY_BUTTON_LEFT_SHOULDER], "pad: crouch is left stick press, LB opens mutation screen (%s / %s)" % [crouch_pad, mutate_pad])
 	check(m.equip_hand("knife", 1) and m.equip_hand("blender", 0), "independent tools in both hands")
 	check(p.hands.left == "blender" and p.hands.right == "knife", "equipping second hand preserves first")
 	check(not m.equip_hand("blender", 1), "blender stays in left hand")

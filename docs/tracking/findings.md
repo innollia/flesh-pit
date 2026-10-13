@@ -15,3 +15,26 @@
 - 재현 명령: `godot_console --headless --path game --script res://tests/run_audio_tests.gd`.
 - 승인 기준 커밋 `12fc534`와 화장실 구성요소 연결 수정 커밋 `d73c017`에서 각각 174 passed, 0 failed, 프로세스 종료 코드 0이 관찰됐다. 두 실행 모두 deferred `GDScript::route_player` 호출에서 `Cannot convert argument 1 from Object to Object` 오류가 반복됐다.
 - 오류는 화장실 조작·성장 복구와 분리된 오디오 종료 경로에서 재현된다. 현재 로그만으로 인자 변환 문제인지 종료 시 대상 객체 수명 문제인지 원인을 특정할 수 없어 독립된 `FPBusRouter` deferred callback 및 종료 처리 조사 없이는 안전한 수정을 정할 근거가 없다. 함께 관찰된 기존 ObjectDB/resource 경고와 이 변환 오류의 연관성도 확인되지 않았다. 이 fixture 종료 때 오류가 나므로 오디오 종료가 깨끗하다고 주장할 수 없다. 이 단일 fixture 결과만으로 전체 게임의 실제 GUI 점검이나 역사적 저장 파일 호환성 검증이 완료됐다고 볼 수 없다.
+
+## 2026-10-12 변경 전부터 실패하는 검사
+
+- `run_mutation_tests.gd`: 손목 시계(Tab) 자세 4건(왼손목 0.35~0.45m, 팔뚝 방향, 팔꿈치 화면 밖, 팔뚝 위 작은 인형)이 변경 전 코드에서도 같은 항목으로 실패한다. 같은 Tab·팔 B 조건을 보는 `run_preservation_tests.gd` 206항목은 통과하므로, 승인 기준이 바뀐 뒤 갱신되지 않은 검사인지 실제 회귀인지 승인된 자세와 대조해 판정해야 한다. 이번 작업에서는 팔·Tab을 바꾸지 않았다.
+- `run_settle_vent_tests.gd`: 레버 없이 일어서기, 야외 구토 털, NPC 이빨 대사 2건이 변경 전 코드에서도 실패한다. 표준 33개 묶음에는 들어 있지 않다.
+- 격리 사본에서 `run_terrain_density_cache_tests.gd`, `run_preservation_tests.gd`가 엔진 시작 배너 직후 멈춰 180초 시간 초과로 한 번씩 실패했다. 같은 소스의 단독 재실행과 최종 전체 실행은 통과했다. 원인은 특정하지 못했다.
+
+## 사용자 FOV 설정이 변이 적용 때 75도로 덮임 — 2026-10-12 수정
+
+`FPMutationApply.apply_now()`가 변이 목록이 바뀔 때마다 카메라 FOV를 75로 쓰던 문제를 고쳤다. `FPSettings.apply_look`이 적용한 FOV를 카메라 메타(`fp_settings_fov`)로 남기고 `FPSettings.base_fov()`로 읽어, 변이 적용은 그 값으로 되돌리고 T5 어안은 그 값에 대한 비율로 200도를 유지한다. `run_mutation_tests.gd` 162통과/4실패(기존 Tab 자세 4건 그대로), `run_menu_tests.gd` 64/0, `run_crush_t8_tests.gd` 48/0. 실제 게임 창과 `run_restoration_t9_tests.gd`(격리 사본 필요)는 확인하지 않았다. `run_mutation_tests.gd` 158행의 "75도 카메라 유지" 확인은 `user://settings.json`의 FOV가 75가 아니면 실패할 수 있다(검사 가정의 문제이며 저장을 읽기만 한다).
+
+## 2026-10-13 보상 척도 감사에서 확인한 문제
+
+`docs/spec/09-reward-scale.md` 2장과 11장 감사에서 나온 항목이다. 게임 코드는 바꾸지 않았다. 줄 번호는 `dryforge/text-game` 작업 트리 기준이다.
+
+- 원정 길이: 코드 수치로 계산한 원정은 약 45~120초(척도 F10)로 목표 180~300초보다 짧다. 그 길이로 계산하면 회차는 약 0.85~1.35시간이다. 04-economy.md의 "원정 약 60번 × 4분"의 4분을 현재 수치가 뒷받침하지 않는다. 실측(플레이 기록)으로 확인해야 한다.
+- 위장 시계에 끝이 없다: 160 u를 넘으면 씹기가 ×3에서 멈추고 먹기는 계속된다(`fdk_stomach.gd:15-17`). 들기 모드에는 감속도 상한도 없고, 믹서기는 위장 시계를 우회한다(`main.gd:2009, 2257`). `carry_capacity()`는 호출되지 않는다.
+- 핵이 지표면보다 빨리 닫힌다: 승인된 재생 배율(압축 1.5, 신경 0.8)과 압축 조직에만 붙는 이웃 배율(`fdk_chunk.gd:454-456`)로 핵 1셀 통로는 약 74초, 막다른 곳 56초에 닫히고 지표면은 약 123초다. 02-world-tissue.md:13 "안쪽부터 위험이 커진다"와 맞는지는 설계 판단이 필요하다.
+- 위협·정산 신호 미연결: 수축 예고, 카나리아 울음, 물탱크 달그락(`toilet_settlement.gd`의 tank_rattle 신호 소비자 없음), 바깥일수록 커지는 선율, 변이 소리 단계(`fp_audio_hookup.gd:118`이 없는 `mutation_points`를 읽어 늘 0)가 빠져 있다.
+- 재생 삐걱 소리가 실제 재생과 무관하다: regen_creak은 5~12초 무작위 타이머로 난다(`fdk_audio_director.gd:240`).
+- 자막이 겹친다: 대기열이 없어 새 줄이 앞 줄을 덮는다(`fp_subtitles.gd:93-97`). 이빨 올리기는 2~3줄, 종양을 넣은 레버는 물 내림과 그림 대사를 한 프레임에 낸다.
+- 효과 없는 변이: `body_radius`, `carry_capacity`, `squeeze_speed_factor`, `two_hand_tools_while_carrying`을 게임 코드가 호출하지 않아 M05·T4(몸 반경), M13(들기), M19·M20(압박 속도), M28·T2(더미 들고 두 손 도구)는 털을 써도 효과가 없다.
+- 그 밖에 문서와 코드가 다른 수치(칼 배율 1.6과 막 0.75초, 수축 조직의 칼 조건, T6 이중 적용으로 맨손 막 0.3초, M16이 정산 이빨도 줄임, BARRIER_PRESSURE 표기)는 09-reward-scale.md 11장과 감사 표에 위치를 적었다.

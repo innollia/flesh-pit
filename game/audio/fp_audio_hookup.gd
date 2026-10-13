@@ -29,6 +29,7 @@ const EVENT_SOUNDS := {
 	"blender_drink": "blender_drink", "vent_open": "vent_open",
 	"scissors": "scissors_snip", "saw": "saw_stroke", "death": "player_death",
 	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
+	"echo_click": "echo_click",
 }
 
 func _ready() -> void:
@@ -78,6 +79,9 @@ func _wire() -> void:
 	var ma = main.get("mutation_apply")
 	if ma != null and ma.has_signal("tumor_eaten"):
 		ma.connect("tumor_eaten", on_tumor_eaten)
+	# T1: every echolocation pulse starts with the tongue click
+	if ma != null and ma.has_signal("echo_click"):
+		ma.connect("echo_click", func(): play_event("echo_click"))
 	_hook("spray_used", func(pos): on_spray(pos))
 	_hook("blender_drunk", on_blender_drink)
 	_hook("scissors_snipped", on_scissors)

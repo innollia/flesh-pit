@@ -857,6 +857,27 @@
     "hp": 300,
     "lp": 10000
    }
+  },
+  {
+   "id": "echo_click",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -22,
+   "spatial": false,
+   "stage": 6,
+   "bed": [
+    "body_a",
+    "body_b"
+   ],
+   "real_layer": {
+    "sample": "chew2/fs0352.wav",
+    "offset_s": 0.312,
+    "dur_s": 0.2,
+    "gain_db": 6.0,
+    "pitch": 1.0,
+    "hp": 600,
+    "lp": 9000
+   }
   }
  ],
  "beds": {

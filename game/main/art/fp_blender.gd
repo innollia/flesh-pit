@@ -28,12 +28,9 @@ func _ready() -> void:
     K.lathe(st, K.T(Vector3(0, 0.06, 0.074), Vector3(90, 0, 0)), [Vector2(0.0, -0.01), Vector2(0.018, -0.01), Vector2(0.016, 0.004), Vector2(0.0, 0.006)], 8, [Color(0.7, 0.12, 0.1)])
     for sx in [-1, 1]:
         K.rbox(st, K.T(Vector3(sx * 0.035, 0.035, 0.068), Vector3(0, sx * 20, 0)), Vector3(0.01, 0.006, 0.006), 0.003, Color(0.9, 0.9, 0.88))
-    # power cord out of the back, ending in a two-prong plug (it is charged
-    # by plugging it into nerve-dense tissue, docs/spec/06-tools.md)
-    K.tube(st, Transform3D.IDENTITY, [Vector3(0, 0.02, -0.075), Vector3(0.0, 0.01, -0.12), Vector3(0.04, 0.005, -0.17), Vector3(0.09, 0.012, -0.19), Vector3(0.12, 0.02, -0.17)], [0.005], 4, [dark], false)
-    K.rbox(st, K.T(Vector3(0.13, 0.022, -0.16), Vector3(0, -50, 0)), Vector3(0.012, 0.01, 0.018), 0.004, Color(0.15, 0.15, 0.15))
-    for sx in [-1, 1]:
-        K.rbox(st, K.T(Vector3(0.13, 0.022, -0.16), Vector3(0, -50, 0)) * K.T(Vector3(sx * 0.005, 0, 0.026)), Vector3(0.0015, 0.004, 0.009), 0.0005, Color(0.85, 0.75, 0.4))
+    # socket under the base: it is charged by pushing a nerve strand into
+    # it (docs/spec/06-tools.md 2); the strand itself is FPArtHookup's
+    K.lathe(st, K.T(Vector3(0, -0.004, 0)), [Vector2(0.0, -0.006), Vector2(0.022, -0.006), Vector2(0.03, 0.0), Vector2(0.03, 0.004)], 8, [Color(0.05, 0.04, 0.04), dark, dark])
     K.add_mesh(self, "Base", K.finish(st, 6.0), K.mat("tex_fixture_128.png", 0.2, false))
     _jar = K.pivot(self, "Jar", Vector3(0, 0.115, 0))
     st = K.begin()
@@ -51,6 +48,13 @@ func _ready() -> void:
     jm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
     jm.cull_mode = BaseMaterial3D.CULL_DISABLED
     K.add_mesh(_jar, "Glass", K.finish(st, 5.0), jm)
+    # opaque threaded collar + jar floor: the jar now visibly seats on the
+    # motor base instead of floating as an open glass cone
+    st = K.begin()
+    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -0.002), Vector2(0.066, -0.002), Vector2(0.068, 0.006), Vector2(0.064, 0.012), Vector2(0.068, 0.018), Vector2(0.064, 0.024), Vector2(0.052, 0.022), Vector2(0.0, 0.022)], 10, [dark, dark, Color(0.35, 0.34, 0.32), dark, Color(0.35, 0.34, 0.32), dark, dark])
+    # lid rim + raised pour cap so the top reads as a lid
+    K.lathe(st, K.T(Vector3(0, 0.2, 0)), [Vector2(0.0, 0.03), Vector2(0.024, 0.03), Vector2(0.024, 0.05), Vector2(0.018, 0.056), Vector2(0.0, 0.056)], 8, [Color(0.3, 0.3, 0.3), Color(0.7, 0.12, 0.1), Color(0.7, 0.12, 0.1)])
+    K.add_mesh(_jar, "Collar", K.finish(st, 6.0), K.mat("tex_fixture_128.png", 0.2, false))
     _blade = K.pivot(_jar, "Blade", Vector3(0, 0.03, 0))
     st = K.begin()
     for i in range(4):
@@ -133,6 +137,10 @@ func play_drink() -> void:
 
 func hand_grip() -> Vector3:
     return Vector3(0.11, 0.23, 0.0)
+
+## Where a nerve strand enters (centre of the socket under the base).
+func socket_point() -> Vector3:
+    return Vector3(0, -0.008, 0)
 
 func _process(delta: float) -> void:
     _time += delta

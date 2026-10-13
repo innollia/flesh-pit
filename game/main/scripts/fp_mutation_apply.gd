@@ -6,8 +6,9 @@ extends Node
 ## config, the player config, the lamp and camera, and runs the few
 ## mutations that act on their own (M16 cud stomach, M21 self-charging
 ## blender, M22 alien hand, M15 gulp, M17/M26 health, M24 glare, M29
-## dormancy, T1 echo clicks, T7 rib fan). Add as a child of main and call
-## setup(main). main.gd reads reach/crush time/body radius from progression.
+## dormancy, T1 echo clicks, T5 fisheye view, T7 rib fan). Add as a child
+## of main and call setup(main). main.gd reads reach/crush time/body radius
+## from progression.
 
 ## sound hooks (game/audio_HOOKUP.md)
 signal tumor_eaten
@@ -28,8 +29,17 @@ var _dormant_t := -1.0
 var _still_t := 0.0
 var _key := ""
 var alien_tears := 0 ## cells the alien hand tore (tests)
+## M22 timing for the alien left-hand pose (FPHandMotions): the hand reaches
+## and grips for ALIEN_REACH s before the real tear, then jerks the cell
+## free and pushes it to the mouth for ALIEN_EAT s after it.
+const ALIEN_REACH := 0.5
+const ALIEN_EAT := 0.8
+var alien_reach := 0.0 ## 0..1 while reaching for the next cell
+var alien_since_tear := -1.0 ## s since the last alien tear, -1 = none
 var _extra_tearing := false
 var codex: Node3D ## crayon tumor drawings on the restroom wall
+var fisheye: FPFisheyeView ## T5
+var echo_view: FPEchoView ## T1
 var _codex_n := -1
 
 func setup(main: Node3D) -> void:
@@ -45,6 +55,12 @@ func setup(main: Node3D) -> void:
 	codex.position = Vector3(FPRestroom.HALF.x - 0.002, 1.72, 0.25)
 	codex.rotation.y = -PI * 0.5
 	m.restroom.add_child(codex)
+	fisheye = FPFisheyeView.new()
+	m.add_child(fisheye)
+	fisheye.setup(m.player.camera)
+	echo_view = FPEchoView.new()
+	m.add_child(echo_view)
+	echo_view.set_kind_colors(ECHO_COLORS)
 	apply_now()
 
 ## Recompute every static parameter (call after buying or loading).
@@ -62,7 +78,12 @@ func apply_now() -> void:
 	if m.player_lamp != null:
 		m.player_lamp.omni_range = 9.0 * p.light_range_factor()
 	if m.player.camera != null:
-		m.player.camera.fov = minf(170.0, 75.0 * p.fov() / FPProgression.BASE_FOV) if p.has_mutation("T5") else 75.0
+		# T5 bends the picture into a 200-degree fisheye (FPFisheyeView); the
+		# camera itself keeps the player's settings FOV that aim and the hands use
+		m.player.camera.fov = FPSettings.base_fov(m.player.camera)
+	if fisheye != null:
+		fisheye.source = m.player.camera
+		fisheye.set_active(p.has_mutation("T5"), p.fov())
 	_key = ",".join(p.all_mutations())
 	if m.stomach_view != null and m.stomach_view.has_method("set_forms"):
 		m.stomach_view.set_forms(p.all_mutations())
@@ -126,17 +147,26 @@ func step_timed(delta: float) -> void:
 			_cud_t -= FPProgression.CUD_PERIOD
 			m.stomach.fill *= 1.0 - FPProgression.CUD_SHRINK
 			m.stomach.fill_changed.emit(m.stomach.fill, m.stomach_config.capacity, m.stomach_config.overfill_capacity)
-	# M21: the blender in the left hand charges itself
-	if p.blender_self_charge() > 0.0 and p.owns("blender"):
+	# M21: the blender charges itself only while the hand holds it (owning
+	# one on the belt or in the bag charges nothing)
+	if p.blender_self_charge() > 0.0 and p.hands.holds("blender"):
 		m.blender_charge = minf(1.0, m.blender_charge + p.blender_self_charge() / 100.0 * delta)
 	# M22: standing still, the left hand tears a cell in reach every 2 s
+	if alien_since_tear >= 0.0:
+		alien_since_tear += delta
+		if alien_since_tear >= ALIEN_EAT:
+			alien_since_tear = -1.0
 	if p.has_mutation("M22") and still and not m.restroom.contains(m.player.global_position):
 		_alien_t += delta
+		var lead_in := _alien_t - (FPProgression.ALIEN_HAND_PERIOD - ALIEN_REACH)
+		alien_reach = clampf(lead_in / ALIEN_REACH, 0.0, 1.0) if lead_in > 0.0 and _alien_target() != Vector3.INF else 0.0
 		if _alien_t >= FPProgression.ALIEN_HAND_PERIOD:
 			_alien_t = 0.0
+			alien_reach = 0.0
 			alien_tear()
 	else:
 		_alien_t = 0.0
+		alien_reach = 0.0
 	# M15: holding the flesh pile, a 3 s gulp swallows it whole (no packing)
 	if p.can_lift_without_blender() and m.carried_flesh > 0.0 and Input.is_action_pressed("fdk_eat") and not p.owns("blender"):
 		_gulp_t = maxf(0.0, _gulp_t) + delta
@@ -144,18 +174,17 @@ func step_timed(delta: float) -> void:
 			gulp()
 	else:
 		_gulp_t = -1.0
-	# T1: each click lights outlines and marks thin / regrowing / squeezing /
-	# nerve / tumor spots through the flesh (echo_pulse)
-	if p.has_mutation("T1") and m.player_lamp != null:
+	# T1: each tongue click sends a pulse out from the body. The view goes dark
+	# like a lidar and the pulse draws its line over the walls (FPEchoView);
+	# it also sorts thin / regrowing / squeezing / nerve / tumor spots
+	# (echo_pulse) that tint those lines
+	if p.has_mutation("T1"):
 		_echo_t += delta
-		var k := fposmod(_echo_t, 1.2) / 1.2
+		var k := fposmod(_echo_t, FPEchoView.PERIOD) / FPEchoView.PERIOD
 		if k < _click_phase:
 			echo_click.emit()
 			echo_pulse(false)
 		_click_phase = k
-		m.player_lamp.light_color = Color(0.7, 0.85, 1.0)
-		m.player_lamp.light_energy = 3.5 * exp(-k * 6.0)
-		m.environment.ambient_light_energy = 0.02
 	elif m.player_lamp != null:
 		m.player_lamp.light_color = Color(1.0, 0.8, 0.72)
 	_step_echo_marks(delta)
@@ -185,7 +214,6 @@ const ECHO_SQUEEZE_LEAD := 2.5 ## s: "about to squeeze" window
 signal echo_pulsed(counts: Dictionary)
 var echo_marks: Array = [] ## [{pos, kind}] from the last pulse (tests)
 var echo_counts: Dictionary = {}
-var _echo_mm: MultiMeshInstance3D
 var _echo_age := 99.0
 
 ## Offsets inside the pulse sphere, nearest first (built once).
@@ -216,6 +244,8 @@ func echo_pulse(immediate: bool = true) -> Dictionary:
 	_echo_time = m.terrain.contract_time
 	_echo_age = 0.0
 	echo_marks.clear()
+	if echo_view != null:
+		echo_view.pulse(_echo_origin)
 	_echo_scan = 0
 	var tn = m.get("tumor_nodes")
 	if tn is Array:
@@ -269,50 +299,21 @@ static func _squeeze_in(p: Vector3, time: float) -> float:
 		return 0.0
 	return FDKTissueRules.CONTRACT_PERIOD - c
 
+## The pulse's sorted spots go to the lidar picture (FPEchoView).
 func _draw_echo() -> void:
-	if _echo_mm == null:
-		_echo_mm = MultiMeshInstance3D.new()
-		_echo_mm.name = "EchoMarks"
-		_echo_mm.top_level = true
-		_echo_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		var sm := SphereMesh.new()
-		sm.radius = 0.06
-		sm.height = 0.12
-		sm.radial_segments = 4
-		sm.rings = 2
-		mm.mesh = sm
-		_echo_mm.multimesh = mm
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.vertex_color_use_as_albedo = true
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.no_depth_test = true # the pulse sees through the flesh
-		_echo_mm.material_override = mat
-		m.add_child(_echo_mm)
-	var mm2 := _echo_mm.multimesh
-	mm2.instance_count = echo_marks.size()
-	for i in range(echo_marks.size()):
-		var e: Dictionary = echo_marks[i]
-		var sc := 2.2 if e.kind == Echo.TUMOR else 1.0
-		mm2.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * sc), e.pos))
-		mm2.set_instance_color(i, ECHO_COLORS[e.kind])
-	_echo_mm.visible = true
+	if echo_view != null:
+		echo_view.set_marks(echo_marks)
 
 func _step_echo_marks(delta: float) -> void:
-	if _echo_mm == null:
-		return
-	if not m.progression.has_mutation("T1"):
-		_echo_mm.visible = false
+	var on: bool = m.progression.has_mutation("T1")
+	if echo_view != null:
+		echo_view.step(delta, on)
+	if not on:
 		_echo_scan = -1
 		return
 	if _echo_scan >= 0:
 		_echo_scan_some(ECHO_PER_FRAME)
 	_echo_age += delta
-	var a := clampf(1.0 - _echo_age / 1.2, 0.0, 1.0)
-	(_echo_mm.material_override as StandardMaterial3D).albedo_color = Color(1, 1, 1, 0.25 + 0.75 * a)
 
 # --- M23 sensory hairs ------------------------------------------------------
 
@@ -384,19 +385,26 @@ func _shake_bristles() -> void:
 		var j := hair_shiver * 0.004
 		n3.position = rest + Vector3(sin(tm * 71.0), cos(tm * 83.0), sin(tm * 59.0)) * j
 
-## M22 / tests: tear one cell in reach with the left hand, even when full.
-func alien_tear() -> bool:
+## The edible cell the alien hand would tear now, or INF.
+func _alien_target() -> Vector3:
 	var hit: Dictionary = m._look_hit()
 	if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
-		return false
+		return Vector3.INF
 	var dir: Vector3 = m.player.get_look_ray()[1]
 	var at: Vector3 = hit.position + dir * m.terrain_config.cell_size * 0.5
-	if not m.terrain.is_edible_at(at):
+	return at if m.terrain.is_edible_at(at) else Vector3.INF
+
+## M22 / tests: tear one cell in reach with the left hand, even when full.
+func alien_tear() -> bool:
+	var at := _alien_target()
+	if at == Vector3.INF:
 		return false
 	m.terrain.dig_at(at, 1.0)
+	m.terrain.queue_visible_tear(at)
 	m.stomach.add_flesh(m.stomach_config.flesh_per_cell)
 	m.progression.on_flesh_eaten(m.shell_at(at), m.stomach_config.flesh_per_cell)
 	alien_tears += 1
+	alien_since_tear = 0.0
 	alien_hand_tore.emit()
 	return true
 
@@ -425,6 +433,7 @@ func _on_torn(world_pos: Vector3) -> void:
 		if m.terrain.density_at(at) < 0.5 or not m.terrain.is_edible_at(at):
 			break
 		m.terrain.dig_at(at, 1.0)
+		m.terrain.queue_visible_tear(at)
 		if m.carry_mode:
 			m.carried_flesh += m.stomach_config.flesh_per_cell
 			var sh: int = m.shell_at(at)

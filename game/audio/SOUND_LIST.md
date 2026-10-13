@@ -53,3 +53,4 @@
 | ending_roll | sfx | 엔딩(고기공이 굴러감) | 무거운 돌 구르는 소리 |
 | settle_tick | sfx | 정산 숫자 올라갈 때 | 기계 키 딸깍 |
 | ui_click | sfx | 화면 버튼 누를 때 | 작은 버튼 클릭 |
+| echo_click | sfx | 반향정위(T1) 파동이 나갈 때 | 혀를 입천장에서 떼는 딸깍 |

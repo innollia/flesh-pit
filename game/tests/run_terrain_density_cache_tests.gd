@@ -14,8 +14,7 @@ func check(ok: bool,label: String) -> void:
         failed += 1
         print("FAIL: ",label)
 func expected(p: Vector3) -> float:
-    var vent := p-FPRestroom.VENT_CENTER
-    if absf(vent.x)<0.30 and absf(vent.z)<0.30 and vent.y>=-0.04 and vent.y<0.8: return 0.0
+    if m.in_vent_duct(p): return 0.0
     return FPWorldFeatures.world_density(p,FPRestroom.HALF,FPRestroom.DOOR_HALF_W,FPRestroom.DOOR_H,m.ROOM_MARGIN,m.DOOR_GAP,m.RESTROOM_CENTER,m.OUTER_RADIUS,m.rest_points)
 func run() -> void:
     await process_frame
@@ -45,6 +44,27 @@ func run() -> void:
         check(m._world_density(changed_point)>0.5,"old container hollow no longer returned after layout changes")
         for p in m.rest_points:
             check(is_equal_approx(m._world_density(p),0.0),"new container hollow uses new layout")
+    # The open vent: no flesh face inside the duct model. Every cell touching
+    # it must have only empty corners (density_at = max of a cell's 8 corners).
+    var t: FDKTerrainField = m.terrain
+    var duct_cells_empty := func() -> bool:
+        for ix in range(-5, 6):
+            for iy in range(0, 15):
+                for iz in range(-5, 6):
+                    var q: Vector3 = FPRestroom.VENT_CENTER + Vector3(ix * 0.05, 0.01 + iy * 0.049, iz * 0.05)
+                    if t.density_at(q) >= m.terrain_config.iso_level:
+                        print("  flesh corner in a duct cell at ", q - FPRestroom.VENT_CENTER)
+                        return false
+        return true
+    check(duct_cells_empty.call(), "no flesh corner in any cell the vent duct model touches")
+    # an older save still holds flesh there: loading clears only the duct
+    var probe: Vector3 = FPRestroom.VENT_CENTER + Vector3(0.3, 1.5, 0.3)
+    var probe_before := t.density_at(probe)
+    t.fill_box_uniform(AABB(FPRestroom.VENT_CENTER + Vector3(-0.5, -0.02, -0.5), Vector3(1.0, 0.9, 1.0)), 1.0, FDKTissueRules.COMPRESSIVE)
+    check(not duct_cells_empty.call(), "fixture: old-save flesh put back into the duct")
+    m.deserialize(m.serialize())
+    check(duct_cells_empty.call(), "loading an old save clears the flesh out of the vent duct")
+    check(is_equal_approx(t.density_at(probe), probe_before), "flesh outside the duct space is left as saved")
     print("%d passed, %d failed" % [passed,failed])
     m.queue_free()
     await process_frame

@@ -39,6 +39,7 @@ func _process(_d: float) -> bool:
 	if _frame < 6:
 		return false
 	_run_params()
+	_run_alien_hand()
 	_run_mirror()
 	_run_long_knuckle()
 	_run_tumors()
@@ -130,10 +131,118 @@ func _run_params() -> void:
 	_assert(is_equal_approx(m.stomach.fill, 45.0), "M16 shrinks the stomach 10%% per 60 s (%.1f)" % m.stomach.fill)
 	prog.mutation_tree._purchased.erase("M16")
 	m.stomach.fill = 0.0
+	# M21 charges the blender only while a hand holds it
+	prog.mutation_tree._purchased["M21"] = true
+	prog.grant_item("blender")
+	prog.hands.clear()
+	m.blender_charge = 0.0
+	m.mutation_apply.step_timed(1.0)
+	_assert(m.blender_charge == 0.0, "M21 an owned blender that is not held stays empty (%.3f)" % m.blender_charge)
+	_assert(m.equip_hand("blender", 0), "M21 blender goes into the left hand")
+	m.mutation_apply.step_timed(1.0)
+	_assert(is_equal_approx(m.blender_charge, 0.05), "M21 the held blender charges 5 per second (%.3f)" % m.blender_charge)
+	prog.hands.clear()
+	m.blender_charge = 0.0
+	prog.mutation_tree._purchased.erase("M21")
 	prog.mutation_tree._purchased["M06"] = true
 	_assert(is_equal_approx(m.progression.crush_time(), 9.0) and m.crush_progress() >= 0.0, "main's crush clock reads M06")
 	prog.mutation_tree._purchased.erase("M06")
+	# T5: a real 200-degree fisheye over five 90-degree faces of the camera
+	var eye: FPFisheyeView = m.mutation_apply.fisheye
+	var mask0: int = m.player.camera.cull_mask
+	prog.tumor_mutations.append("T5")
 	m.mutation_apply.apply_now()
+	eye.sync_cameras()
+	var cam_basis: Basis = m.player.camera.global_basis
+	var right_face: Camera3D = eye.cameras["right"]
+	_assert(eye.is_active() and is_equal_approx(eye.live_fov(), 200.0) and is_equal_approx(m.player.camera.fov, 75.0), "T5 draws a 200-degree fisheye; aim keeps the 75-degree camera")
+	_assert(eye.cameras.size() == 5 and is_equal_approx((right_face.global_basis * Vector3.FORWARD).dot(cam_basis * Vector3.RIGHT), 1.0) and right_face.cull_mask == mask0, "T5 the side faces look out of the sides of the head with the camera's layers")
+	prog.tumor_mutations.erase("T5")
+	m.mutation_apply.apply_now()
+	_assert(not eye.is_active() and m.player.camera.cull_mask == mask0, "without T5 the normal view is back")
+	m.mutation_apply.apply_now()
+
+## Queued for the first tear render (or already covered by the buried patch).
+func _tear_queued(m, at: Vector3) -> bool:
+	var cs: float = m.terrain_config.cell_size
+	var cell := Vector3i(floori(at.x / cs), floori(at.y / cs), floori(at.z / cs))
+	return m.terrain._visible_tear_corners.has(cell) and not m.terrain._visible_tear_readers.is_empty()
+
+## M22 / M07 in the live game: the alien left hand reaches, grips and tears a
+## cell on its own; that tear and the extra M07 cell show at the first tear
+## render (queue_visible_tear) like the chewer's own cell.
+func _run_alien_hand() -> void:
+	var m = _m
+	var prog: FPProgression = m.progression
+	var ma: FPMutationApply = m.mutation_apply
+	var pos0: Vector3 = m.player.global_position
+	var rot0: Vector3 = m.player.rotation
+	var pitch0: float = m.player.camera_pivot.rotation.x
+	m.terrain.carve_sphere(Vector3(0, 1.2, 4.2), 1.6)
+	m.terrain.remesh_all()
+	m.player.set_physics_process(false)
+	m.player.velocity = Vector3.ZERO
+	m.player.global_position = Vector3(0, 0.6, 4.0)
+	m.player.rotation.y = PI
+	m.player.camera_pivot.rotation.x = -0.15
+	m.player.force_update_transform()
+	m.progression.hands.clear()
+	_assert(m.hands_rig.pose_hook == m.hand_motions, "the hands rig asks the game motions for its pose from the start")
+	var left_root: Node3D = m.hands_rig.call("get_hand_root", "left")
+	var right_root: Node3D = m.hands_rig.call("get_hand_root", "right")
+	for k in range(30):
+		m.hands_rig.step(1.0 / 60.0)
+	var left_rest: Vector3 = left_root.position
+	var right_rest: Vector3 = right_root.position
+	prog.mutation_tree._purchased["M22"] = true
+	var target: Vector3 = ma._alien_target()
+	_assert(target != Vector3.INF and m.terrain.density_at(target) >= 0.5, "M22 fixture: edible flesh in reach")
+	var rest_l := {"pos": Vector3(-0.16, -0.175, -0.31), "wrist_pitch": 48.0, "wrist_yaw": -14.0, "wrist_roll": 12.0, "f1": 12.0, "f2": 16.0, "f3": 12.0, "t1": -6.0, "t2": 6.0, "t3": 10.0, "t_opp": 0.0}
+	var rest_r := rest_l.duplicate()
+	rest_r["pos"] = Vector3(0.16, -0.175, -0.31)
+	var tears0 := ma.alien_tears
+	var fill0: float = m.stomach.fill
+	for i in range(19):
+		ma.step_timed(0.1)
+	var lp: Dictionary = m.hand_motions.shape_pose(m.hands_rig, -1.0, rest_l)
+	var rp: Dictionary = m.hand_motions.shape_pose(m.hands_rig, 1.0, rest_r)
+	_assert(ma.alien_tears == tears0 and ma.alien_reach > 0.5, "M22 just before the tear the left hand is reaching (%.2f)" % ma.alien_reach)
+	_assert((lp["pos"] as Vector3).z < -0.4 and float(lp["f1"]) > 40.0 and rp == rest_r, "M22 only the left hand reaches out and grips")
+	for k in range(12):
+		m.hands_rig.step(1.0 / 60.0)
+	_assert(left_root.position.z < left_rest.z - 0.05 and right_root.position.distance_to(right_rest) < 0.02, "M22 on the real rig the left hand moves out, the right stays (%.3f -> %.3f)" % [left_rest.z, left_root.position.z])
+	ma.step_timed(0.1)
+	_assert(ma.alien_tears == tears0 + 1 and m.terrain.density_at(target) < 0.5, "M22 every 2 s the left hand tears the cell")
+	_assert(is_equal_approx(m.stomach.fill - fill0, m.stomach_config.flesh_per_cell), "M22 the torn cell is the flesh that reaches the stomach")
+	_assert(_tear_queued(m, target), "M22 the alien tear is published at the first tear render")
+	ma.step_timed(0.1)
+	lp = m.hand_motions.shape_pose(m.hands_rig, -1.0, rest_l)
+	var chunk: MeshInstance3D = m.hand_motions._alien_chunk
+	_assert(chunk != null and chunk.visible and chunk.get_parent() == m.hands_rig.get_node("HandLeft/Wrist") and float(lp["f1"]) > 40.0, "M22 the torn cell is in the left fist")
+	var to_mouth := false
+	for i in range(8):
+		ma.step_timed(0.1)
+		lp = m.hand_motions.shape_pose(m.hands_rig, -1.0, rest_l)
+		if (lp["pos"] as Vector3).z > -0.3:
+			to_mouth = true
+	_assert(to_mouth and ma.alien_since_tear < 0.0 and not chunk.visible and lp == rest_l, "M22 the hand pushes it to the mouth and goes back")
+	prog.mutation_tree._purchased.erase("M22")
+	ma.step_timed(0.1)
+	# M07: the extra cell behind the chewer's cell is published the same way
+	prog.mutation_tree._purchased["M07"] = true
+	var dir: Vector3 = m.player.get_look_ray()[1]
+	var first: Vector3 = ma._alien_target()
+	var extra: Vector3 = first + dir * m.terrain_config.cell_size
+	_assert(first != Vector3.INF and m.terrain.density_at(extra) >= 0.5, "M07 fixture: two cells of flesh in a row")
+	m.terrain.remesh_all()
+	m.terrain.dig_at(first, 1.0)
+	ma._on_torn(first)
+	_assert(m.terrain.density_at(extra) < 0.5 and _tear_queued(m, extra), "M07 the extra cell is torn and published at the first tear render")
+	prog.mutation_tree._purchased.erase("M07")
+	m.player.global_position = pos0
+	m.player.rotation = rot0
+	m.player.camera_pivot.rotation.x = pitch0
+	m.player.set_physics_process(true)
 
 func _key(m, action: String) -> void:
 	var ev := InputEventAction.new()
@@ -378,13 +487,18 @@ func _run_skipped_followup() -> void:
 		if e.kind == E.THIN and (e.pos as Vector3).z < c.z + 0.5:
 			thin_ok = false
 	_assert(thin_ok, "T1 only the thin +z wall reads as thin")
-	_assert(ma._echo_mm != null and ma._echo_mm.visible and ma._echo_mm.multimesh.instance_count == ma.echo_marks.size(), "T1 echo marks are drawn")
+	var ev: FPEchoView = ma.echo_view
+	ev.step(0.016, true)
+	_assert(ev.visible and ev.marks_shown == mini(ma.echo_marks.size(), FPEchoView.MAX_MARKS) and ev.layers == FPEchoView.LAYER, "T1 the lidar view is on and carries the sorted spots")
+	_assert((_m.player.camera.cull_mask & FPEchoView.LAYER) != 0 and (_m.mirror_view.cam.cull_mask & FPEchoView.LAYER) == 0, "T1 the eye sees the lidar view, the mirror reflection does not")
+	ev.step(0.5, true)
+	_assert(is_equal_approx(ev.radius(), minf((0.016 + 0.5) * FPEchoView.SPEED, FPEchoView.MAX_RADIUS)), "T1 the pulse front spreads out from the body over time")
 	t.contract_time = FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.contract_phase(cp) - 5.0
 	n = ma.echo_pulse()
 	_assert(int(n[E.SQUEEZE]) == 0, "T1 a resting contractile wall is not marked")
 	_ungrant("T1")
 	ma._step_echo_marks(0.016)
-	_assert(not ma._echo_mm.visible, "T1 marks vanish without the tumor")
+	_assert(not ma.echo_view.visible, "T1 the lidar view goes away without the tumor")
 	_m.tumor_nodes.erase(fake)
 	fake.queue_free()
 	# M23: periodic squeeze
