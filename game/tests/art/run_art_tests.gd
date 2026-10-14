@@ -17,7 +17,7 @@ const MODELS := {
     "fp_big_saw": [["set_stroke", [0.5]]],
     "fp_belt": [["set_spray_count", [2, 1]], ["set_canary", [true]]],
     "fp_tumor_bag": [["set_tumor", [true]], ["set_tumor", [false]]],
-    "fp_tumor": [["set_variant", [0]], ["set_variant", [1]], ["set_variant", [2]]],
+    "fp_tumor": [["set_variant", [0]], ["set_variant", [1]], ["set_variant", [2]], ["set_variant", [3]], ["set_variant", [4]], ["set_variant", [5]], ["flash", []]],
     "fp_mutation_hands": [["set_mutation", ["extra_arm", true]], ["set_mutation", ["palm_mouth", true]], ["set_mutation", ["swollen_torso", true]], ["play_mouth", []]],
     "fp_rest_container": [["set_door_open", [0.6]]],
     "fp_barrier_stages": [["set_stage", [0]], ["set_stage", [3]], ["play_break", []]],

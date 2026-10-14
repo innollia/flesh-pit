@@ -277,13 +277,13 @@ static func build_container_placeholder(parent: Node3D, at: Vector3) -> Node3D:
 	root.add_child(bucket)
 	return root
 
-## Tumor: the main/art lump model, one of its 3 silhouettes per kind.
+## Tumor: the main/art lump model of its kind (03-restroom.md 10).
 static func build_tumor(parent: Node3D, spot: Dictionary) -> Node3D:
 	var t: Node3D = (load("res://main/art/fp_tumor.tscn") as PackedScene).instantiate()
 	t.name = "Tumor_" + String(spot["kind"])
 	t.position = spot["pos"]
 	t.set_meta("kind", spot["kind"])
 	parent.add_child(t)
-	t.call("set_variant", maxi(0, FPProgression.TUMOR_KINDS.find(String(spot["kind"]))) % 3)
+	t.call("set_variant", maxi(0, FPProgression.TUMOR_KINDS.find(String(spot["kind"]))))
 	t.call("set_pulse", true)
 	return t

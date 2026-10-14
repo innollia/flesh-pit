@@ -64,7 +64,7 @@ func set_tumor(present: bool, kind: int = 0) -> void:
     _lump.visible = present
     _net_empty.visible = not present
     if present:
-        _lump.mesh = Tumor.build_mesh(clampi(kind, 0, 2))
+        _lump.mesh = Tumor.build_mesh(clampi(kind, 0, 5))
 
 func has_tumor() -> bool:
     return _has

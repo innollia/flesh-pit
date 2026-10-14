@@ -15,6 +15,7 @@ const HairScene := preload("res://main/art/fp_arm_hair.tscn")
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
+const TumorArt := preload("res://main/art/fp_tumor.gd")
 const MutHandsScene := preload("res://main/art/fp_mutation_hands.tscn")
 const BarrierScene := preload("res://main/art/fp_barrier_stages.tscn")
 const MUT_KINDS := ["T2", "T3", "T4"] ## extra arm, palm mouth, swollen torso
@@ -77,6 +78,7 @@ func setup(main: Node3D) -> void:
 	hand_tumor = TumorScene.instantiate()
 	hand_tumor.name = "HeldTumor"
 	hand_tumor.scale = Vector3.ONE * 0.45
+	hand_tumor.call("set_pulse", false)
 	saw = SawScene.instantiate()
 	saw.name = "HeldSaw"
 	saw.scale = Vector3.ONE * 0.5
@@ -205,6 +207,12 @@ func _process(_delta: float) -> void:
 				_put(prop, wrist, Vector3(0, -0.025, -0.06))
 			prop.visible = true
 	hand_tumor.visible = prog.tumor_in_hand()
+	var held: Array = prog.tumors.get("_carried") if prog.tumors.get("_carried") != null else []
+	if hand_tumor.visible and held.size() > 0 and int(hand_tumor.call("variant")) != _variant(held[held.size() - 1]):
+		hand_tumor.call("set_variant", _variant(held[held.size() - 1]))
+	# tumors in the flesh turn, shy away or flash toward the player's eye
+	TumorArt.watch_pos = m.player.camera.global_position
+	TumorArt.watch_on = true
 	knife.call("set_bloody", m.hand_blood)
 	blender.call("set_fill", clampf(m.carried_flesh / 40.0, 0.0, 1.0))
 	blender.call("set_spin", m.blender_charge > 0.0 and m.carried_flesh > 0.0)
@@ -230,8 +238,7 @@ func _process(_delta: float) -> void:
 		mir.call("set_focus", false and (m.player.global_position.distance_to(m.mirror_point()) < 1.1 and m._looking_at(m.mirror_point(), 35.0, 1.6)))
 
 static func _variant(kind: Variant) -> int:
-	var k := FPProgression.TUMOR_KINDS.find(str(kind))
-	return maxi(0, k) % 3
+	return maxi(0, FPProgression.TUMOR_KINDS.find(str(kind)))
 
 func _sync_hairs(prog: FPProgression) -> void:
 	var key := "%d/%d/%d/%d" % [prog.hairs(FPProgression.COMMON), prog.hairs("core"), prog.hairs("mantle"), prog.hairs("surface")]
