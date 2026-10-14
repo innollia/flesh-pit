@@ -25,7 +25,8 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │           ├── index.md → 결정 목록
 │           ├── 0001-continuous-regeneration.md → 느린 연속 재생
 │           ├── 0002-actual-terrain.md → 실제 살점 면으로 내부 표시
-│           └── 0003-publication-and-restore.md → 단계 게시와 복원 시점
+│           ├── 0003-publication-and-restore.md → 단계 게시와 복원 시점
+│           └── 0004-tumor-specific-mutations.md → 종양마다 정해진 변이
 └── game/
     ├── main/AGENTS.md → 게임 조작·진행·표현·단일 저장
     ├── addons/flesh_dig_kit/AGENTS.md → 재사용 지형·먹기·몸·도구
