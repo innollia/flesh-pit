@@ -368,6 +368,8 @@ REGEX_LOOKUPS = {
     "audio_director.GURGLE_BANDS": (r"fill\s*/\s*maxf\(capacity,\s*[0-9.]+\)\s*\*\s*([0-9.]+)", True),
     "main.climb_up_speed": (r"climb_up_speed\s*=\s*([0-9.]+)", False),
     "main.nerve_cooldown": (r"_nerve_cool\[id\]\s*=\s*([0-9.]+)", False),
+    "spray_can.CHEAP_DEPTH": (r"Tier\.CHEAP:\s*([0-9.]+)", False),
+    "spray_can.DEEP_DEPTH": (r"Tier\.DEEP:\s*([0-9.]+)", False),
 }
 JSON_SECTIONS = ("시간", "기준")
 
@@ -494,6 +496,7 @@ P_CHUNK = KIT + "terrain/fdk_chunk.gd"
 P_DROP = KIT + "death/fdk_death_drop.gd"
 P_RULES = KIT + "terrain/fdk_tissue_rules.gd"
 P_DIRECTOR = KIT + "audio/fdk_audio_director.gd"
+P_HAIR = "game/main/art/fp_arm_hair.gd"
 
 
 @dataclass
@@ -933,6 +936,37 @@ class Model:
         mantle = up * ((T - band) - self.door)
         surface = mantle + up * ((2 * T - band) - T)
         return mantle, surface
+
+    # D08 소모품 -------------------------------------------------------
+    def spray_demand(self) -> dict:
+        """스프레이 통로망의 이빨 수요. 뿌린 셀은 다시 자라지 않으므로(06-tools.md 5) 스프레이는
+        "같은 땅을 여러 번 파는" 길을 영구 통로로 바꾸는 투자다. 통로망 = 화장실 문에서 가장 바깥
+        껍질까지의 줄기(경계 띠는 원래 자라지 않아 뺀다) + 되돌아가는 쉼터마다 줄기에서 갈라지는 가지.
+        가지 길이는 반지름 r 구면 위 두 무작위 점의 평균 직선 거리 4r/3으로 본다.
+        한 번 뿌리면 반경 0.75 m 원통을 깊이만큼 녹이니 1 m 통로 = 1 ÷ 깊이 번이다."""
+        n = int(self.V["world_features.SHELL_COUNT"])
+        band = float(self.V["world_features.BOUNDARY_BAND"])
+        trunk = float(self.V["world_features.OUTER_RADIUS"]) - self.door - band * (n - 1)
+        share = float(self.A.get("spray_rest_share", 1.0) if self.A.get("spray_rest_share") is not None else 1.0)
+        rests = [int(x) for x in self.V["world_features.REST_PER_SHELL"]]
+        depths = [float(x) for x in self.V["world_features.REST_DEPTH"]]
+        branch = share * sum(c * 4.0 / 3.0 * r for c, r in zip(rests, depths))
+        per_can = float(self.V["spray_can.SPRAYS_PER_CAN"])
+        tiers = {"spray_cheap": float(self.V["spray_can.CHEAP_DEPTH"]),
+                 "spray_deep": float(self.V["spray_can.DEEP_DEPTH"])}
+        per_m = {t: self.price(t) / (per_can * d) for t, d in tiers.items()}
+        best = min(per_m, key=lambda t: per_m[t])
+        route = trunk + branch
+        return {"trunk_m": trunk, "branch_m": branch, "route_m": route, "per_m": per_m, "best": best,
+                "teeth": route * per_m[best], "trunk_teeth": trunk * per_m[best],
+                "sprays": {t: route / d for t, d in tiers.items()}}
+
+    def consumable_demand(self) -> tuple[float, str]:
+        """(이빨 수, 출처). assumptions.consumable_teeth_demand가 숫자면 그 값, null이면 스프레이 통로망."""
+        v = self.A.get("consumable_teeth_demand")
+        if v is not None:
+            return float(v), "가정"
+        return self.spray_demand()["teeth"], "스프레이 통로망"
 
     # D9 ---------------------------------------------------------------
     def oneoff_tools(self) -> list[str]:
@@ -1394,7 +1428,9 @@ def build_rows(cx: Context) -> list[Row]:
     slots, shaggy = int(V["arm_hair.MAX_SLOTS"]), int(V["arm_hair.SHAGGY_AT"])
     add("A11", g, "팔 털 표시 상한", f"MAX_SLOTS {slots}가닥", f"최대 털 가격 {top} · SHAGGY_AT {shaggy}",
         f"{slots} ≥ max({top}, {shaggy})", IN if slots >= max(top, shaggy) else LOW,
-        f"변이를 다 산 뒤 모은 털은 {slots}가닥을 넘으면 보이지 않는다({cx.src('arm_hair.MAX_SLOTS')}).",
+        (f"{slots}가닥을 넘으면 종류마다 개수 비율로 자리를 나누고 털이 굵고 길어진다({cx.at(P_HAIR, 'func _slot_shares() -> Dictionary:')}). 모은 털은 계속 몸에 보인다."
+         if _has(cx.repo, P_HAIR, "func _slot_shares() -> Dictionary:") else
+         f"변이를 다 산 뒤 모은 털은 {slots}가닥을 넘으면 보이지 않는다({cx.src('arm_hair.MAX_SLOTS')})."),
         ["arm_hair.MAX_SLOTS", "arm_hair.SHAGGY_AT", "progression.POOL_COST"])
 
     sd = float(V["audio_director.swallow_delay"])
@@ -1800,17 +1836,30 @@ def build_rows(cx: Context) -> list[Row]:
     tum_shell = M.tumors_by_shell()
     tumors_total = sum(tum_shell)
     tum_teeth = tumors_total * float(V["progression.TUMOR_TOOTH_PAYOUT"])
-    cons_demand = float(A.get("consumable_teeth_demand") or 0.0)
+    cons_demand, cons_src = M.consumable_demand()
+    sp = M.spray_demand()
     t_supply = run["teeth_supply"] + tum_teeth
     t_demand = run["tools_oneoff"] + cons_demand
     sd_t = t_supply / t_demand
     cons_note = " (소모품 미정)" if cons_demand <= 0 else ""
+    sd_trunk = t_supply / (run["tools_oneoff"] + sp["trunk_teeth"])
+    afford = (t_supply - run["tools_oneoff"]) / sp["teeth"] if sp["teeth"] > 0 else math.inf
+    if cons_src == "스프레이 통로망":
+        cons_memo = (f"소모품은 스프레이 통로망이다: 줄기 {f2(sp['trunk_m'])} m + 쉼터 가지 {f2(sp['branch_m'])} m "
+                     f"= {f2(sp['route_m'])} m, 1 m에 {f2(sp['per_m'][sp['best']])}개"
+                     f"(싼 통 {f2(sp['per_m']['spray_cheap'])} · 비싼 통 {f2(sp['per_m']['spray_deep'])}, "
+                     f"{cx.src('spray_can.SPRAYS_PER_CAN')}). 뿌린 셀은 다시 자라지 않는다({cx.at(P_FIELD, 'sealed, never')}). "
+                     f"이빨로 통로망의 {f2(min(afford, 9.99) * 100)}%를 영구로 만든다. "
+                     f"줄기만 뿌리면 SD {f2(sd_trunk)}라 남는다: 이빨의 쓰임은 쉼터까지 이어지는 영구 통로다.")
+    else:
+        cons_memo = "소모품 기준 수요는 정하기 전까지 0이다."
     add("D08", g, "이빨 공급/수요", f"공급 {fu(t_supply)}(원정 {fu(run['teeth_supply'])} + 종양 {fn(tum_teeth)}) / "
-        f"수요 {fn(t_demand)}개(일회성 도구 {fn(run['tools_oneoff'])} + 소모품 {fn(cons_demand)})",
+        f"수요 {fn(round(t_demand, 1))}개(일회성 도구 {fn(run['tools_oneoff'])} + {cons_src} {fn(round(cons_demand, 1))})",
         f"{f2(sd_t)}{cons_note}", "≤ 1.5", judge(sd_t, None, 1.5),
         f"일회성 도구: {', '.join(ITEM_KO.get(i, i) for i in M.oneoff_tools())}. 종양은 모두 정산한 상한으로 셌다. "
-        "소모품 기준 수요는 정하기 전까지 0이다. 이빨 SD는 가격으로 맞추지 않고 이빨의 쓰임으로 푼다(N12).",
-        ["progression.TEETH_PER_FLESH", "progression.PRICE_UNITS", "progression.TUMOR_TOOTH_PAYOUT"])
+        + cons_memo + " 이빨 SD는 가격으로 맞추지 않고 이빨의 쓰임으로 푼다(N12).",
+        ["progression.TEETH_PER_FLESH", "progression.PRICE_UNITS", "progression.TUMOR_TOOTH_PAYOUT",
+         "spray_can.SPRAYS_PER_CAN", "spray_can.CHEAP_DEPTH", "spray_can.DEEP_DEPTH", "world_features.REST_PER_SHELL"])
 
     tp = float(V["progression.TUMOR_TOOTH_PAYOUT"])
     delta = tp / M.exp_teeth
@@ -2259,7 +2308,8 @@ def header_line(model: Model, git: str, as_of: str = "", virtual: str | None = N
             f"전형 죽음 {fn(float(A['death_typical_fill']))} u + 방벽 {int(A['death_typical_barriers'])}, "
             f"무입력 창 {fn(float(A['idle_window']))} s"
             + (f", 종양 껍질별 {'/'.join(str(x) for x in A['tumors_by_shell'])}" if A.get("tumors_by_shell") else "")
-            + (f", 소모품 이빨 수요 {fn(float(A['consumable_teeth_demand']))}" if A.get("consumable_teeth_demand") else "")
+            + (f", 소모품 이빨 수요 {fn(float(A['consumable_teeth_demand']))}" if A.get("consumable_teeth_demand") is not None
+               else f", 스프레이 쉼터 가지 {fn(float(A.get('spray_rest_share') if A.get('spray_rest_share') is not None else 1.0) * 100)}%")
             + (f", 일회성 도구 {'/'.join(A['oneoff_tools'])}" if A.get("oneoff_tools") and list(A["oneoff_tools"]) != ONEOFF_TOOLS else ""))
 
 
@@ -2393,6 +2443,8 @@ FIXED_PARAMS = {
     "terrain_config.cell_size": 0.5, "terrain_config.iso_level": 0.5, "terrain_config.regen_rate": 0.003,
     "depth_danger.DANGER_STEP": 0.35, "chunk.CROWD_GAIN": 1.5, "stomach_config.flesh_per_cell": 4.0,
     "spray_can.BOOST_MULT": 2.0, "spray_can.MAX_CARRIED": 3,
+    "spray_can.SPRAYS_PER_CAN": 6, "spray_can.CHEAP_DEPTH": 0.5, "spray_can.DEEP_DEPTH": 1.5,
+    "world_features.REST_PER_SHELL": [2, 4, 6],
     "barrier.break_threshold": 12.0, "barrier.stress_decay": 0.15, "player_config.crouch_speed": 1.5,
     "hazard_check.hazard_dps": 40.0, "hazard_check.hazard_radius": 1.1, "hazard_check.health": 100.0,
     "main.BODY_PROTECT_RADIUS": 0.9, "main.HAZARD_TIME": 1.2, "main.HEALTH_REGEN": 12.0,
@@ -2407,7 +2459,7 @@ FIXED_ASSUMPTIONS = {
     "tumor_point_value_E": 2.5, "new_tissue_sightings": 3, "death_typical_fill": 100.0,
     "death_typical_barriers": 1, "idle_window": 300.0,
     "oneoff_tools": ["knife", "tumor_bag", "blender", "big_saw"], "tumors_by_shell": None,
-    "consumable_teeth_demand": 0,
+    "consumable_teeth_demand": None, "spray_rest_share": 1.0,
 }
 
 
@@ -2459,6 +2511,11 @@ def selftest() -> int:
     chk("용량 120 u 회차 추정 (h)", [M.trips(run["E_run"], 120) * x / 3600 for x in m120.T_E_calc("core_bare", 120)],
         [0.823, 1.235])
     chk("이빨 SD (원정 + 종양 ÷ 일회성 도구)", (run["teeth_supply"] + 12 * 24) / run["tools_oneoff"], 5.123)
+    spd = M.spray_demand()
+    chk("스프레이 통로망 줄기/가지/1 m 이빨", [spd["trunk_m"], spd["branch_m"], spd["per_m"]["spray_cheap"],
+                                       spd["per_m"]["spray_deep"]], [23.7, 264.0, 2.6667, 2.6667])
+    chk("스프레이 이빨 수요", spd["teeth"], 767.2)
+    chk("이빨 SD (원정 + 종양 ÷ 도구 + 스프레이)", (run["teeth_supply"] + 12 * 24) / (run["tools_oneoff"] + spd["teeth"]), 0.8492)
     chk("종양 껍질별", M.tumors_by_shell(), [4, 4, 4])
     chk("새 재고 사건", M.draws(run["E_run"])["new_stock"], 2)
     chk("신호 구독 정규식", [len(signal_connect_re("canary_cry").findall(s)) for s in
