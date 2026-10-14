@@ -2,7 +2,7 @@
 
 This document summarizes the strongest recurring patterns across commercially or critically successful digging-focused games.
 
-See detailed sources under `docs/references/`.
+See detailed sources under `docs/research/references/`.
 
 ## The key pattern
 

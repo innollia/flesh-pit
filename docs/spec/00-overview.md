@@ -1,6 +1,6 @@
 # 00. 개요
 
-용어: `CONTEXT.md`. 무대·엔딩 결정 기록: `docs/adr/0001-rolling-human-sphere-and-fall-out-ending.md`.
+용어: `CONTEXT.md`. 무대·엔딩 결정 기록: `docs/tracking/decisions/0000-rolling-human-sphere.md`.
 
 ## 한 줄
 

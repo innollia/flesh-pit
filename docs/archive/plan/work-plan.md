@@ -1,6 +1,6 @@
 # 작업 계획
 
-기준 기획서: `docs/spec/`. 진행 기록: `game/STATUS.md`.
+기준 기획서: `docs/spec/`. 진행 기록: `docs/archive/status-log-2026-09.md`.
 
 - 담당: **프론트**는 화면에 보이는 것(손·몸 메시와 애니메이션, 화장실·물체 생김새, UI, 캡처 판정)이다. **백엔드**는 로직, 데이터, 테스트, 빌드다.
 - 코드 상태
@@ -67,5 +67,5 @@
 |---|---|---|
 | D01 | `docs/asset-list.md`를 새 기준으로 다시 쓰기. 옛 목록과 2D/3D 분류는 `docs/archive/`로 옮김 | 완료 |
 | D04 | `tools/artgen`을 새 목록에 맞출지 정하기. 지금 파서는 새 목록 119개를 읽지만, 그림 레시피(BY_ID)는 옛 ID 기준이라 새 ID는 전부 기본 레시피로 떨어짐. 게임은 artgen 출력을 쓰지 않음(`game/tools/bake_ps1_textures.py`만 씀) | 할 일 |
-| D02 | `docs/plan/open-questions.md`의 빈 곳 채우기 | 완료 |
+| D02 | `docs/tracking/findings.md`의 빈 곳 채우기 | 완료 |
 | D03 | 코드 주석의 "design-core N절" 참조를 새 기획서 경로로 바꾸기 | 할 일 |

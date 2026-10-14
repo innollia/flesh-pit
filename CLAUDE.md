@@ -17,12 +17,16 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │   ├── engineering-notes.md → 면 방향·갱신·조준·복원에서 확인한 함정
 │   ├── operations.md → 실행과 격리 검사 절차
 │   ├── contracts.md → 키트 호출·신호·저장 소비자 계약
+│   ├── spec/ → 기획서 (00이 목록, 09가 경제 척도)
+│   ├── research/ → 참고 게임·조사 자료 (기준 아님)
+│   ├── archive/ → 끝난 계획·옛 진행 기록 (고치지 않음)
 │   ├── whiteboard/ → 기획·시스템 화이트보드 (Excalidraw & 캔버스 동기화)
 │   └── tracking/
 │       ├── status.md → 구현·검증 상태와 남은 게임 검증
 │       ├── findings.md → 현재 범위 밖의 확인된 문제
 │       └── decisions/
 │           ├── index.md → 결정 목록
+│           ├── 0000-rolling-human-sphere.md → 구르는 인간 구체와 떨어지는 엔딩
 │           ├── 0001-continuous-regeneration.md → 느린 연속 재생
 │           ├── 0002-actual-terrain.md → 실제 살점 면으로 내부 표시
 │           ├── 0003-publication-and-restore.md → 단계 게시와 복원 시점

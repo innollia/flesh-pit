@@ -120,7 +120,7 @@ The hole-equivalent visible progress is:
 - restroom accumulating evidence of progress
 
 Detailed study:
-- [A Game About Digging A Hole](../references/a-game-about-digging-a-hole.md)
+- [A Game About Digging A Hole](references/a-game-about-digging-a-hole.md)
 
 ---
 

@@ -1,7 +1,7 @@
 class_name FPTissueTools
 extends RefCounted
 
-## Session D gameplay glue for main.gd (docs/plan/work-plan.md W10, W20,
+## Session D gameplay glue for main.gd (docs/archive/plan/work-plan.md W10, W20,
 ## W24-W26): tissue-aware chewing (hardness, membrane needs a knife), the big
 ## saw's six-cell strokes, the blender (plug into nerves to charge, blend a
 ## pile, drink it) and the spray aim. main.gd holds one instance and calls in

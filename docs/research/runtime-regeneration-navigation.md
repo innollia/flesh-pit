@@ -65,7 +65,7 @@ Relevant current files:
 - `game/addons/flesh_dig_kit/terrain/fdk_chunk.gd`
 - `game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd`
 - `game/addons/flesh_dig_kit/terrain/fdk_terrain_config.gd`
-- `game/STATUS.md`
+- `docs/archive/status-log-2026-09.md`
 
 Current terrain defaults:
 - chunk size: **16 cells**

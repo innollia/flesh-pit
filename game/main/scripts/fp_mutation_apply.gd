@@ -10,7 +10,7 @@ extends Node
 ## of main and call setup(main). main.gd reads reach/crush time/body radius
 ## from progression.
 
-## sound hooks (game/audio_HOOKUP.md)
+## sound hooks (game/audio/HOOKUP.md)
 signal tumor_eaten
 signal alien_hand_tore
 signal gulped

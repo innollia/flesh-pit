@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Session D rule tests (docs/plan/work-plan.md W10, W20, W22-W26, W28):
+## Session D rule tests (docs/archive/plan/work-plan.md W10, W20, W22-W26, W28):
 ## tissue hardness / regrowth / periodic squeeze, knife and membrane, rest
 ## points, barrier, spray, blender, big saw, death drop, remesh budget.
 ## Run: Godot_console.exe --headless --path <project> --script tests/run_tissue_tools_tests.gd

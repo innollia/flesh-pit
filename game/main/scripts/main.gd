@@ -11,7 +11,7 @@ signal ending_reached
 signal canary_chirp(urgency: float)
 signal canary_cry(frightened: bool)
 signal flushed(teeth_gain: int, hair_gain: int)
-## Opening: the flush heard on the black screen (audio: game/audio_HOOKUP.md).
+## Opening: the flush heard on the black screen (audio: game/audio/HOOKUP.md).
 signal opening_flush
 ## Sound hooks for stage-5 events that had no signal (game/audio/HOOKUP.md).
 signal spray_used(world_pos: Vector3)

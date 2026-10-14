@@ -1,6 +1,6 @@
 """fleshkit: procedural generation of every image asset for flesh-pit.
 
-Design rules taken from docs/design-core.md and docs/asset-list.md:
+Design rules taken from docs/archive/design-core-map.md and docs/asset-list.md:
 
   * No baked text anywhere.  Numerals too.  If a row needs digits, the row says
     "atlas" and ships an empty stencil frame, never a string.
