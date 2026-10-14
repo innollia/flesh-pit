@@ -206,6 +206,17 @@ func _run_params() -> void:
 	_assert(not m.chewer.is_chewing(), "a full stomach takes no more flesh")
 	m.stomach.fill = 0.0
 	m.mutation_apply.apply_now()
+	# arm hair keeps showing every kind however much has grown
+	var arm: Node3D = m.art_hookup.arm_hair
+	arm.call("set_hair", 200, {"core": 30, "mantle": 20, "surface": 6})
+	var shares: Dictionary = arm.call("_slot_shares")
+	_assert(int(arm.call("hair_total")) == 256 and int(arm.call("strand_count")) == 240 * 3, "past 240 hairs the arm is full of strands and still counts them all")
+	_assert(int(shares["core"]) > 0 and int(shares["mantle"]) > 0 and int(shares["surface"]) > 0, "every hair colour keeps a share of the arm (%s)" % [shares])
+	_assert(float(arm.call("density")) > 1.0, "a crowded arm grows longer, thicker hair")
+	arm.call("set_blink", "surface", 6)
+	_assert(int(arm.call("blink_count")) == 6, "the hairs a purchase would pull still blink on a crowded arm")
+	arm.call("set_blink", "", 0)
+	arm.call("set_hair", 2, {"core": 1, "mantle": 0, "surface": 0})
 	# subtitles: a line that arrives while one is up waits instead of replacing it
 	var sub: FPSubtitles = m.subtitles
 	sub.show_text("첫 줄")

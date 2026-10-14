@@ -13,7 +13,11 @@ const LEN := 0.33 ## elbow -> wrist (the rig's palm root sits 0.34 m in front of
 const UPPER_LEN := 0.32 ## upper arm stub behind the elbow, runs off screen
 const UPPER_DROP := 0.1
 const SIDES := 12
-const MAX_SLOTS := 90
+## Strand slots on the arm. Up to this many hairs each get their own slot;
+## past it every kind keeps a share of the slots in proportion to its count
+## (at least one while it has any), and the hairs grow longer and thicker,
+## so more hair always shows on the body (spec 04: the body is the status).
+const MAX_SLOTS := 240
 const SHAGGY_AT := 40
 ## Strands drawn per hair point (mut6: fewer thick rods read as bugs).
 const STRANDS := 3
@@ -125,7 +129,33 @@ func hair_total() -> int:
     var n := 0
     for k in _counts:
         n += int(_counts[k])
-    return mini(n, MAX_SLOTS)
+    return n
+
+## Slots each kind gets: one per hair while they fit, else a share in
+## proportion to its count (at least one for a kind that has hairs).
+func _slot_shares() -> Dictionary:
+    var total := hair_total()
+    var out := {}
+    if total <= MAX_SLOTS:
+        for k in _counts:
+            out[k] = int(_counts[k])
+        return out
+    var used := 0
+    for k in ["common", "core", "mantle", "surface"]:
+        var c: int = int(_counts[k])
+        out[k] = 0 if c <= 0 else maxi(1, int(floor(float(c) / float(total) * float(MAX_SLOTS))))
+        used += int(out[k])
+    # hand the rounding leftover to the largest kind
+    var big := "common"
+    for k in out:
+        if int(_counts[k]) > int(_counts[big]):
+            big = k
+    out[big] = int(out[big]) + MAX_SLOTS - used
+    return out
+
+## How full the arm is beyond one hair per slot (1 = fits, grows after).
+func density() -> float:
+    return maxf(1.0, float(hair_total()) / float(MAX_SLOTS))
 
 func _rebuild() -> void:
     var st := K.begin()
@@ -135,12 +165,18 @@ func _rebuild() -> void:
     var any := false
     # spec 04 §2: past 40 strands the arm reads as a shaggy tuft
     var shaggy := hair_total() > SHAGGY_AT
+    var shares := _slot_shares()
     for kind in ["common", "core", "mantle", "surface"]:
-        for n in range(int(_counts[kind])):
+        var share: int = int(shares[kind])
+        var count: int = int(_counts[kind])
+        # the blinking hairs (what a purchase pulls) take the same share of slots
+        var blink_slots := 0
+        if kind == _blink_kind and count > 0:
+            blink_slots = mini(share, int(ceil(float(_blink_n) * float(share) / float(count))))
+        for n in range(share):
             if slot >= MAX_SLOTS:
                 break
-            # the last `_blink_n` of the blinking kind are the ones a buy pulls
-            var blink: bool = kind == _blink_kind and n >= int(_counts[kind]) - _blink_n
+            var blink: bool = n >= share - blink_slots
             for k in range(STRANDS):
               _strand(bst if blink else st, _slots[slot * STRANDS + k], kind, shaggy, blink)
             slot += 1
@@ -173,20 +209,33 @@ func _process(delta: float) -> void:
         _blink_mi.visible = fmod(_blink_t, 0.5) < 0.3
 
 func strand_count() -> int:
-    return hair_total() * STRANDS
+    return mini(hair_total(), MAX_SLOTS) * STRANDS
 
 func _strand(st: SurfaceTool, s: Array, kind: String, shaggy: bool, blink: bool = false) -> void:
             var base: Vector3 = s[0]
             var nrm: Vector3 = s[1]
-            var length := (0.02 + float(s[2]) * 0.014) * (1.7 if shaggy else 1.0)
-            # hairs lie back toward the elbow (+Z) and curl a little
-            var lean := Vector3(0, 0, 1)
-            var p1 := base + nrm * length * 0.45 + lean * length * 0.35
-            var p2 := base + nrm * length * 0.6 + lean * length * 0.9 + Vector3(0.004 * (float(s[2]) - 0.5), 0, 0)
+            var thick := sqrt(density())
+            # a crowded arm grows denser more than longer: a mane hid the arm
+            var length := (0.02 + float(s[2]) * 0.014) * (1.35 if shaggy else 1.0) * minf(thick, 1.25)
+            # hairs leave the skin at a shallow angle and bend down to lie back
+            # toward the elbow (+Z), each a little off straight, along a smooth
+            # curve (three points drew a right-angled hook, like a staple)
+            var j := (float(s[2]) - 0.5) * 0.7
+            var lean := Vector3(sin(j), 0, cos(j))
+            var side := nrm.cross(lean).normalized()
+            var pts: Array = [base - nrm * 0.001]
+            var radii: Array = []
+            var w := (0.0011 if shaggy else 0.001) * minf(thick, 1.6)
+            for i in range(1, 6):
+                var t := float(i) / 5.0
+                var lift := 0.3 * sin(t * PI * 0.5) - 0.08 * t * t
+                pts.append(base + nrm * length * lift + lean * length * t + side * length * 0.12 * j * t * t)
+            for i in range(pts.size()):
+                radii.append(lerpf(w, 0.0003, float(i) / float(pts.size() - 1)))
             var col := HAIR.lerp(COLORS[kind], TINT)
             if blink:
                 col = COLORS[kind].lightened(0.35)
-            K.tube(st, Transform3D.IDENTITY, [base - nrm * 0.001, p1, p2], [0.0011 if shaggy else 0.001, 0.00075, 0.0003], 3, [col], false)
+            K.tube(st, Transform3D.IDENTITY, pts, radii, 3, [col], false)
 
 func drop_hairs(n: int) -> void:
     for k in ["surface", "mantle", "core", "common"]:
