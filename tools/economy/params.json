@@ -76,7 +76,7 @@
     "stomach_config.flesh_per_cell": {"value": 4.0, "unit": "u/셀", "source": "game/addons/flesh_dig_kit/eat/fdk_stomach_config.gd:26", "note": "셀 하나 = 4 u. 재생 중인 셀도 다 준다(F_REGEN_PAY)"},
 
     "spray_can.MAX_CARRIED": {"value": 3, "unit": "통", "source": "game/addons/flesh_dig_kit/barrier/fdk_spray_can.gd:15", "note": "스프레이 소지 상한"},
-    "spray_can.SPRAYS_PER_CAN": {"value": 6, "unit": "회", "source": "game/addons/flesh_dig_kit/barrier/fdk_spray_can.gd:16", "note": "통 하나의 분사 횟수"},
+    "spray_can.SPRAYS_PER_CAN": {"value": 8, "unit": "회", "source": "game/addons/flesh_dig_kit/barrier/fdk_spray_can.gd:16", "note": "통 하나의 분사 횟수"},
     "spray_can.CHEAP_DEPTH": {"value": 0.5, "unit": "m", "source": "game/addons/flesh_dig_kit/barrier/fdk_spray_can.gd:21", "note": "싼 통이 한 번에 녹이는 깊이(셀 1겹)"},
     "spray_can.DEEP_DEPTH": {"value": 1.5, "unit": "m", "source": "game/addons/flesh_dig_kit/barrier/fdk_spray_can.gd:22", "note": "비싼 통이 한 번에 녹이는 깊이(셀 3겹)"},
     "spray_can.SPRAY_RADIUS": {"value": 0.75, "unit": "m", "source": "game/addons/flesh_dig_kit/barrier/fdk_spray_can.gd:17", "note": "분사 반경"},
@@ -127,7 +127,7 @@
 
     "vent_rules.FRANTIC_TIME": {"value": 20.0, "unit": "s", "source": "game/main/data/vent_rules.json:4", "note": "시간.FRANTIC_TIME.값"},
     "vent_rules.CALM_TIME": {"value": 30.0, "unit": "s", "source": "game/main/data/vent_rules.json:8", "note": "시간.CALM_TIME.값"},
-    "vent_rules.NAG_INTERVAL": {"value": 6.0, "unit": "s", "source": "game/main/data/vent_rules.json:12", "note": "시간.NAG_INTERVAL.값"},
+    "vent_rules.NAG_INTERVAL": {"value": 10.0, "unit": "s", "source": "game/main/data/vent_rules.json:12", "note": "시간.NAG_INTERVAL.값"},
     "vent_rules.IDLE_TIME": {"value": 12.0, "unit": "s", "source": "game/main/data/vent_rules.json:20", "note": "시간.IDLE_TIME.값"},
     "vent_rules.STARE_TIME": {"value": 5.0, "unit": "s", "source": "game/main/data/vent_rules.json:24", "note": "시간.STARE_TIME.값"},
     "vent_rules.PICK_LONG_TIME": {"value": 15.0, "unit": "s", "source": "game/main/data/vent_rules.json:28", "note": "시간.PICK_LONG_TIME.값"},

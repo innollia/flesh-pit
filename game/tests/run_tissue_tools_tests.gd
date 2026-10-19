@@ -206,7 +206,7 @@ func _unit_tests() -> void:
 		_assert(is_equal_approx(sf.regen_multiplier_at(Vector3(0.5, 3.5, 3.5)), 1.5), "W24 flesh farther than 1 m is not sped up")
 		sf.regenerate_all(120.0, Vector3(50, 50, 50), 0.0)
 		_assert(sf.density_at(Vector3(0.25, 0.75, 0.75)) < 0.5, "W24 melted cells never regrow")
-		_assert(can.uses_left == FDKSprayCan.SPRAYS_PER_CAN - 1, "W24 a can sprays 6 times")
+		_assert(can.uses_left == FDKSprayCan.SPRAYS_PER_CAN - 1, "W24 a can sprays SPRAYS_PER_CAN times (8, decision 0005)")
 		sf.free()
 	# W28 death drop marker stays while the drop drifts
 	var dd := FDKDeathDrop.new()

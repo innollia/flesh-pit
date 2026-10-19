@@ -2,7 +2,7 @@ class_name FDKSprayCan
 extends RefCounted
 
 ## Biosecurity spray (docs/spec/06-tools.md 5). The player carries up to 3
-## cans; each can sprays 6 times. One spray melts the wall the player aims at
+## cans; each can sprays 8 times. One spray melts the wall the player aims at
 ## (FDKTerrainField.spray_surface): melted cells never regrow and cannot be
 ## eaten, and the flesh within 1.0 m of them regrows x2.0 faster, so the
 ## squeeze never goes away.
@@ -13,7 +13,7 @@ extends RefCounted
 enum Tier { CHEAP, DEEP }
 
 const MAX_CARRIED: int = 3
-const SPRAYS_PER_CAN: int = 6
+const SPRAYS_PER_CAN: int = 8
 const SPRAY_RADIUS := 0.75
 const BOOST_RANGE := 1.0
 const BOOST_MULT := 2.0

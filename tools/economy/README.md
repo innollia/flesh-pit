@@ -13,3 +13,7 @@
 ## 새 숫자 시험
 
 코드를 고치기 전에 `params.json`을 복사해 후보 값을 넣고 `python -X utf8 tools/economy/reward_scale.py --no-verify --params <사본> > new.md`로 돌린 뒤 기본 출력과 diff한다. 새로 대역 밖이 된 행만 판정한다. 이 출력은 머리에 "가상 값"과 코드와 다른 키가 찍히고 `--write`에 쓸 수 없다. 새 물건은 `PRICE_UNITS`·`UNLOCK_SHELL`에 넣고, 일회성 도구면 `assumptions.oneoff_tools`에도 더한다. 새 변이는 `MUTATIONS`에 더한다. 이때 29개 검사는 경고로만 나온다. 껍질별 종양 수는 `assumptions.tumors_by_shell`(예: `[4, 5, 4]`)로 시험한다. 코드에 반영한 뒤에 기본 실행과 `--write`로 문서 표를 갱신한다.
+
+## 스프레이 회차 시뮬레이션
+
+`spray_sim.py`는 원정 단위로 회차를 돌려 스프레이 통 상한이 몇 번 걸리는지와 회차 끝 영구 통로망 비율을 낸다(결정 0005). 껍질별 원정 수·종양 수·도구 값·통로망 길이는 표(D08·D17·D18)의 값을 옮겨 적은 것이라, 그 값이 바뀌면 함께 고친다.
