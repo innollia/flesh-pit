@@ -6,6 +6,9 @@ const MOVE := ["fdk_move_forward", "fdk_move_left", "fdk_move_back", "fdk_move_r
 var waiting := false
 var remaining: Array[String] = []
 var vomit_hint := false
+## The vomit key is shown until it is used once, like the other icons (the
+## stomach gauge keeps its own key prompt).
+var vomit_learned := false
 var _time := 0.0
 
 func _ready() -> void:
@@ -15,6 +18,7 @@ func _ready() -> void:
 func reset() -> void:
 	remaining.clear()
 	waiting = false
+	vomit_learned = false
 	visible = true
 
 func movement() -> void:
@@ -28,6 +32,7 @@ func _input(event: InputEvent) -> void:
 			remaining.erase(action)
 	if event.is_action_pressed("fp_vomit"):
 		vomit_hint = false
+		vomit_learned = true
 
 func _process(delta: float) -> void:
 	_time += delta
@@ -43,7 +48,7 @@ func _draw() -> void:
 			if remaining.has(MOVE[i]):
 				_icon(c + Vector2((i - 2) * 42, 42), _key(MOVE[i], ["A", "S", "D"][i - 1]), 0.9)
 		_mouse(c + Vector2(118, 24))
-	if vomit_hint:
+	if vomit_hint and not vomit_learned:
 		_icon(Vector2(size.x * 0.5, size.y * 0.88), _key("fp_vomit", "V"), alpha)
 
 func _key(action: String, fallback: String) -> String:
@@ -67,19 +72,8 @@ func _mouse(center: Vector2) -> void:
 		button.set_corner_radius_all(4)
 		button.set_corner_radius(CORNER_TOP_LEFT if i == 0 else CORNER_TOP_RIGHT, 16)
 		draw_style_box(button, Rect2(center + Vector2(-24 + i * 25, -32), Vector2(23, 28)))
-		draw_string(ThemeDB.fallback_font, center + Vector2(-17 + i * 25, -12), "L" if i == 0 else "R", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.9))
+		draw_string(FPMenuKit.FONT, center + Vector2(-17 + i * 25, -12), "L" if i == 0 else "R", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.9))
 
-func _icon(center: Vector2, text: String, alpha: float, width: float = 34) -> void:
-	var box := Rect2(center - Vector2(width, 30) * 0.5, Vector2(width, 30))
-	draw_style_box(_box(alpha), box)
-	var font := ThemeDB.fallback_font
-	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-	draw_string(font, center + Vector2(-tw * 0.5, 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, alpha))
-
-func _box(alpha: float) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(0.05, 0.04, 0.04, alpha * 0.6)
-	s.border_color = Color(1, 1, 1, alpha)
-	s.set_border_width_all(1)
-	s.set_corner_radius_all(4)
-	return s
+## Tooth-coloured key caps, like the stomach and interaction prompts.
+func _icon(center: Vector2, text: String, alpha: float) -> void:
+	FPMenuKit.draw_key(self, center, text, alpha, 17)

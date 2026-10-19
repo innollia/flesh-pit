@@ -67,6 +67,8 @@ var _target := Vector3.ZERO ## take: rig-local point of the item
 var _held_mesh: MeshInstance3D
 var _wash_from := 0.0
 var _stream: MeshInstance3D
+## Vomit lumps: a few textured blob shapes shared by every spill.
+static var _lump_meshes: Array = []
 var _heaves_done := 0
 var _spill_n := 0
 var _poured := false
@@ -768,7 +770,42 @@ func _chunk(color: Color, r: float) -> MeshInstance3D:
     mi.material_override = mat
     return mi
 
+## A chewed lump of flesh, some of it coated in bile (PS1 torn-chunk texture).
+func _vomit_lump(i: int, r: float) -> MeshInstance3D:
+    if _lump_meshes.is_empty():
+        for k in range(3):
+            var st := SurfaceTool.new()
+            st.begin(Mesh.PRIMITIVE_TRIANGLES)
+            FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(1.0, 0.75, 0.9), 0.4, 80 + k, Color(1, 1, 1), Color(0.86, 0.78, 0.76))
+            _lump_meshes.append(FDKLowPoly.with_box_uvs(st.commit(), 0.8))
+    var mi := MeshInstance3D.new()
+    mi.mesh = _lump_meshes[i % _lump_meshes.size()]
+    mi.material_override = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 1.0, true, 0.9, 0.35)
+    mi.scale = Vector3.ONE * r
+    mi.rotation = Vector3(i * 1.7, i * 2.9, i * 0.6)
+    return mi
+
+## A thin sheet of bile where the vomit lands (floor or bowl water).
+func _bile_puddle(at: Vector3, radius: float, life: float) -> void:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(1.0, 1.0, 0.8), 0.25, 90, Color(0.66, 0.7, 0.24), Color(0.56, 0.6, 0.18))
+    var mi := MeshInstance3D.new()
+    mi.name = "SpillPuddle"
+    mi.mesh = FDKLowPoly.with_box_uvs(st.commit(), 2.0)
+    mi.material_override = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_membrane_128.png", 1.0, true, 1.0, 0.2)
+    m.add_child(mi)
+    mi.global_position = at
+    mi.scale = Vector3(0.001, 0.001, 0.001)
+    var tw := mi.create_tween()
+    tw.tween_property(mi, "scale", Vector3(radius, 0.004, radius), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+    tw.tween_interval(life)
+    tw.tween_property(mi, "scale", Vector3(radius * 0.6, 0.002, radius * 0.6), 0.5)
+    tw.tween_callback(mi.queue_free)
+
 ## Flesh falls: into the bowl (toilet) or onto the floor in front of the feet.
+## Each lump arcs out of the mouth and drops, squashes where it lands with
+## a splash of bile, then sinks into the bowl or lies on the floor a while.
 func _spill(toilet: bool, n: int) -> void:
     if not m.is_inside_tree():
         return
@@ -795,16 +832,37 @@ func _spill(toilet: bool, n: int) -> void:
         q.exclude = [m.player.get_rid()]
         var hit: Dictionary = m.get_world_3d().direct_space_state.intersect_ray(q)
         to = hit.position + Vector3.UP * 0.02 if not hit.is_empty() else m.player.global_position + fwd2 * 0.4
+    var gore: Node3D = m.get("gore")
+    _bile_puddle(to + Vector3.UP * 0.003, 0.05 if toilet else 0.09, 1.0 if toilet else 2.6)
     for i in range(n):
-        var c := _chunk(FLESH.lerp(Color(0.8, 0.35, 0.3), 0.3 * (i % 3) / 2.0), 0.018 + 0.01 * (i % 3))
+        var r := 0.018 + 0.01 * (i % 3)
+        var c := _vomit_lump(i, r)
         c.name = "Spill"
         m.add_child(c)
         var jit := Vector3(sin(i * 2.3) * 0.05, 0.0, cos(i * 1.7) * 0.05)
-        c.global_position = from + jit * 0.3
+        var start := from + jit * 0.3
+        var land := to + jit
+        c.global_position = start
         var tw := c.create_tween()
+        var arc := func(k: float) -> void:
+            if is_instance_valid(c):
+                c.global_position = start.lerp(land, k * k) + Vector3.UP * 0.04 * sin(PI * k)
+                c.rotate_x(0.12)
+        var splat := func() -> void:
+            if is_instance_valid(c):
+                c.scale = Vector3(r * 1.3, r * 0.55, r * 1.3)
+            if gore != null and i % 2 == 0:
+                gore.burst(land + Vector3.UP * 0.01, Vector3.UP, 0, 4, Color(0.64, 0.7, 0.2), 0.7, 1.0)
         tw.tween_interval(0.04 * i)
-        tw.tween_property(c, "global_position", to + jit, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-        tw.tween_interval(3.0 if not toilet else 1.2)
+        tw.tween_method(arc, 0.0, 1.0, 0.32)
+        tw.tween_callback(splat)
+        if toilet:
+            # sinks into the water and goes soft
+            tw.tween_property(c, "global_position", land + Vector3.DOWN * 0.025, 1.2)
+            tw.parallel().tween_property(c, "scale", Vector3(r * 0.8, r * 0.3, r * 0.8), 1.2)
+        else:
+            tw.tween_interval(2.6)
+            tw.tween_property(c, "scale", Vector3(r * 0.5, r * 0.2, r * 0.5), 0.4)
         tw.tween_callback(c.queue_free)
 
 ## The handful spills from the fist onto the grate, where the being takes it.
@@ -814,8 +872,16 @@ func _pour_teeth() -> void:
     var hand: Node3D = m.hands_rig.call("get_hand_root", "right")
     var from := hand.global_position + (-hand.global_basis.z) * 0.08
     var to: Vector3 = m.vent.global_position + Vector3(0, -0.03, 0)
+    var tank: Node = m.restroom.tank_art if m.restroom != null else null
+    var tooth: Mesh = tank.call("_tooth_mesh") if tank != null else null
     for i in range(_spill_n):
         var c := _chunk(Color(0.93, 0.9, 0.8), 0.009)
+        if tooth != null:
+            # the same molars as in the tank and on the palm
+            c.mesh = tooth
+            c.material_override = FDKPs1Material.get_material(FPArtKit.TEX + "tex_ceramic_64.png", 1.0, true, 0.5, 0.6)
+            c.scale = Vector3.ONE * 2.0
+            c.rotation = Vector3(i * 1.3, i * 2.2, i * 0.7)
         c.name = "PourTooth"
         m.add_child(c)
         var jit := Vector3(sin(i * 3.1) * 0.05, 0.0, cos(i * 2.1) * 0.03)
@@ -823,6 +889,7 @@ func _pour_teeth() -> void:
         var tw := c.create_tween()
         tw.tween_interval(0.025 * i)
         tw.tween_property(c, "global_position", to + jit, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+        tw.parallel().tween_property(c, "rotation", c.rotation + Vector3(4.0, 2.0, 0.0), 0.2)
         tw.tween_interval(0.35)
         tw.tween_callback(c.queue_free)
 

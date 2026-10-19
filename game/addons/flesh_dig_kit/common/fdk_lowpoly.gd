@@ -32,6 +32,30 @@ static func add_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, outward
     st.set_normal(normal)
     st.add_vertex(c)
 
+## The blob/tri builders write no UVs, so a textured material samples one
+## texel. This returns the mesh with box-projected UVs (each flat triangle
+## projected along its dominant normal axis), `per_metre` repeats per metre.
+static func with_box_uvs(mesh: ArrayMesh, per_metre: float) -> ArrayMesh:
+    var out := ArrayMesh.new()
+    for si in range(mesh.get_surface_count()):
+        var arrays := mesh.surface_get_arrays(si)
+        var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+        var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+        var uvs := PackedVector2Array()
+        uvs.resize(verts.size())
+        for i in range(verts.size()):
+            var v := verts[i] * per_metre
+            var n := normals[i].abs() if i < normals.size() else Vector3.FORWARD
+            if n.x >= n.y and n.x >= n.z:
+                uvs[i] = Vector2(v.z, v.y)
+            elif n.y >= n.z:
+                uvs[i] = Vector2(v.x, v.z)
+            else:
+                uvs[i] = Vector2(v.x, v.y)
+        arrays[Mesh.ARRAY_TEX_UV] = uvs
+        out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+    return out
+
 ## Adds a quad a-b-c-d as two flat triangles (each keeps its own normal, so a
 ## non-planar quad reads as a folded facet).
 static func add_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3, color: Color) -> void:

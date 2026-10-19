@@ -149,7 +149,6 @@ func _build() -> void:
 	sb.bg_color = Color(0.13, 0.07, 0.07, 0.97)
 	sb.border_color = Color(0.55, 0.22, 0.22)
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
 	sb.content_margin_left = 28
 	sb.content_margin_right = 28
 	sb.content_margin_top = 18
@@ -158,6 +157,10 @@ func _build() -> void:
 	center.add_child(panel)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
+	# the menus' face (title, pause, settings) for every label and button
+	var font_theme := Theme.new()
+	font_theme.default_font = FPMenuKit.FONT
+	col.theme = font_theme
 	panel.add_child(col)
 	var title := Label.new()
 	title.text = "키 설정"
@@ -177,27 +180,44 @@ func _build() -> void:
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
 	bottom.add_theme_constant_override("separation", 16)
 	col.add_child(bottom)
-	reset_button = _button("기본값 되돌리기", 200)
+	reset_button = _button("기본값 되돌리기", 200, false)
 	reset_button.pressed.connect(reset_defaults)
 	bottom.add_child(reset_button)
-	close_button = _button("닫기", 140)
+	close_button = _button("닫기", 140, false)
 	close_button.pressed.connect(close)
 	bottom.add_child(close_button)
 
-func _button(text: String, w: float) -> Button:
+## Key buttons are the tooth-coloured key caps of the HUD prompts
+## (FPMenuKit.draw_key); the others are plain ink, lit when focused.
+func _button(text: String, w: float, key_cap: bool = true) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.custom_minimum_size = Vector2(w, 34)
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_font_size_override("font_size", 18)
+	if not key_cap:
+		for state in ["normal", "hover", "focus", "pressed", "disabled"]:
+			b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		b.add_theme_color_override("font_color", Color(0.85, 0.72, 0.66))
+		b.add_theme_color_override("font_focus_color", Color(1.0, 0.88, 0.53))
+		b.add_theme_color_override("font_hover_color", Color(1.0, 0.88, 0.53))
+		b.mouse_entered.connect(func(): b.grab_focus())
+		return b
 	var n := StyleBoxFlat.new()
-	n.bg_color = Color(0.24, 0.12, 0.12)
-	n.set_corner_radius_all(6)
-	var f := StyleBoxFlat.new()
-	f.bg_color = Color(0.62, 0.2, 0.2)
-	f.border_color = Color(1.0, 0.85, 0.7)
+	n.bg_color = Color(0.9, 0.84, 0.74)
+	n.border_color = Color(0.06, 0.01, 0.02)
+	n.set_border_width_all(1)
+	n.border_width_bottom = 4
+	n.set_corner_radius_all(2)
+	var f := n.duplicate() as StyleBoxFlat
+	f.bg_color = Color(1.0, 0.94, 0.72)
+	f.border_color = Color(1.0, 0.55, 0.3)
 	f.set_border_width_all(2)
-	f.set_corner_radius_all(6)
+	f.border_width_bottom = 4
+	b.add_theme_color_override("font_color", Color(0.25, 0.05, 0.06))
+	b.add_theme_color_override("font_focus_color", Color(0.32, 0.02, 0.04))
+	b.add_theme_color_override("font_hover_color", Color(0.32, 0.02, 0.04))
+	b.add_theme_color_override("font_pressed_color", Color(0.32, 0.02, 0.04))
 	b.add_theme_stylebox_override("normal", n)
 	b.add_theme_stylebox_override("hover", f)
 	b.add_theme_stylebox_override("focus", f)

@@ -85,14 +85,9 @@ func glyph_pos() -> Vector2:
 	var k := ui_scale()
 	return ring_center() + Vector2(cos(deg_to_rad(30.0)), sin(deg_to_rad(30.0))) * (17.0 + 16.0) * k
 
+## The same tooth-coloured key cap as the stomach and opening prompts.
 func _draw_key(p: Vector2, label: String) -> void:
-	var rect := Rect2(p - Vector2(9, 9), Vector2(18, 18))
-	draw_rect(rect, Color(DARK, 0.55 * _a), true)
-	draw_rect(rect, Color(INK, 0.85 * _a), false, 1.5)
-	var font := ThemeDB.fallback_font
-	var fs := 12
-	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	draw_string(font, p + Vector2(-w * 0.5, fs * 0.36), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(INK, 0.95 * _a))
+	FPMenuKit.draw_key(self, p, label, _a, 12)
 
 func _draw_pad(p: Vector2) -> void:
 	# Face-button diamond with the left (X) button filled.

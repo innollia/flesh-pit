@@ -1,5 +1,7 @@
 extends Node3D
 const FPProfile := preload("res://main/scripts/fp_profile.gd")
+const FPGore := preload("res://main/scripts/fp_gore.gd")
+const FPWakeLids := preload("res://main/scripts/fp_wake_lids.gd")
 
 ## 화장실과 세 겹의 살점, 전체 진행을 연결한다.
 ## 실제 굴착·먹기 -> 위장과 즉시 털 성장 -> 변기로 토하기 -> 물내림과 이빨 정산 ->
@@ -80,6 +82,10 @@ var hands_rig: FDKHandsRig:
 var restroom: FPRestroom
 var tank_lid: FPTankLid
 var stomach_view: FPStomachView
+## Bits and droplets out of tears and splashes (fp_gore.gd).
+var gore: Node3D
+## Eyes opening when waking in the restroom after a death (fp_wake_lids.gd).
+var wake_lids: CanvasLayer
 var vomit_button: FPVomitButton
 var settle_camera: Camera3D
 var environment: Environment
@@ -303,6 +309,12 @@ func _ready() -> void:
 	stomach_view.name = "StomachView"
 	player.camera.add_child(stomach_view)
 	stomach.fill_changed.connect(func(_f, _c, _o): stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio()))
+	gore = FPGore.new()
+	gore.name = "Gore"
+	add_child(gore)
+	wake_lids = FPWakeLids.new()
+	wake_lids.name = "WakeLids"
+	add_child(wake_lids)
 
 	player_lamp = OmniLight3D.new()
 	player_lamp.name = "BodyGlow"
@@ -2350,6 +2362,11 @@ func use_spray(deep: bool = false) -> int:
 	var used := progression.sprays.use(terrain, hit.position, tier, player.get_look_ray()[1])
 	if used >= 0:
 		spray_used.emit(hit.position)
+		# a mist out of the hand, and melted flesh spitting where it lands
+		var look: Vector3 = player.get_look_ray()[1]
+		var nozzle: Vector3 = player.camera.global_position + look * 0.35 + player.camera.global_basis.y * -0.12
+		gore.burst(nozzle, look, 0, 16, Color(0.78, 0.86, 0.62), 3.0, 0.18)
+		gore.burst(hit.position - look * 0.05, -look, 0, 8, Color(0.74, 0.46, 0.3), 0.9, 0.8)
 	return used
 
 # --- tumors -------------------------------------------------------------------------
@@ -2491,6 +2508,7 @@ func die(cause: String) -> void:
 	deaths += 1
 	player.global_position = START_POS
 	player.velocity = Vector3.ZERO
+	wake_lids.play()
 	died.emit(cause)
 	# 형님 2026-09-30: same autosave gap as end_settlement -- a death is a
 	# real checkpoint (deaths count, tank/canary state reset) worth keeping
@@ -2595,6 +2613,10 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 	_chew_contact = Vector3.INF
 	tissue_tools.on_cell_torn(world_pos)
 	terrain.queue_visible_tear(world_pos)
+	# bits and blood spit out of the fresh hole, toward the eater
+	var out := player.camera.global_position - world_pos
+	out = out.normalized() if out.length() > 0.01 else Vector3.UP
+	gore.burst(world_pos + out * 0.1, out, 3, 7)
 	# the chewer already put chewer.last_units in the stomach unless carrying
 	if carry_mode and progression.equipped() == "big_saw":
 		swallow_torn(shell, chewer.last_units) # a saw stroke cannot be held (06-tools.md)

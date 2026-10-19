@@ -28,7 +28,13 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fade)
 	_credits = Label.new()
-	_credits.set_anchors_preset(Control.PRESET_CENTER)
+	# centred on screen in the title's face
+	_credits.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_credits.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_credits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_credits.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_credits.add_theme_font_override("font", FPMenuKit.FONT)
+	_credits.add_theme_font_size_override("font_size", 46)
 	_credits.text = "flesh-pit"
 	_credits.modulate = Color(0.2, 0.2, 0.2, 0)
 	add_child(_credits)

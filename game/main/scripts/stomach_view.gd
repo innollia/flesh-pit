@@ -18,6 +18,7 @@ var _time: float = 0.0
 var _mass: MeshInstance3D
 var _pile: Array[MeshInstance3D] = []
 var _material: ShaderMaterial
+var _pile_material: ShaderMaterial
 ## ★ mutation forms (05-mutations.md): M01 bigger saggy mass, M02 a thick
 ## gullet tube rising to the throat, M30 an extra throat pouch beside it.
 var forms: Array[String] = []
@@ -30,35 +31,42 @@ func _ready() -> void:
 func build() -> void:
     if _mass != null:
         return
-    _material = ShaderMaterial.new()
-    _material.shader = load("res://addons/flesh_dig_kit/common/fdk_viewmodel.gdshader")
-    _material.set_shader_parameter("wet", 0.7)
-    _material.set_shader_parameter("rim_strength", 0.5)
+    # PS1-textured organ wall (the pale membrane tinted by the vertex
+    # colours: red lobes, a vein ridge, a fat streak), squashed toward the
+    # eye like the hands.
+    _material = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_membrane_128.png", 1.0, true, 0.75, 0.45, 0.18, false)
+    _pile_material = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 1.0, true, 0.7, 0.4, 0.18, false)
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var a := Color(0.58, 0.08, 0.12)
-    var b := Color(0.86, 0.3, 0.3)
+    var a := Color(0.6, 0.12, 0.15)
+    var b := Color(0.88, 0.34, 0.33)
     FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(0.2, 0.12, 0.08), 0.22, 21, a, b)
     FDKLowPoly.add_blob(st, Vector3(-0.12, 0.03, 0.01), Vector3(0.1, 0.08, 0.06), 0.3, 22, a, b)
     FDKLowPoly.add_blob(st, Vector3(0.13, 0.02, 0.0), Vector3(0.09, 0.075, 0.06), 0.3, 23, a, b)
-    # a pale fatty streak and a darker vein ridge so it reads as organ, not ball
-    FDKLowPoly.add_blob(st, Vector3(0.04, 0.07, 0.04), Vector3(0.07, 0.025, 0.03), 0.2, 24, Color(0.9, 0.7, 0.55), Color(0.8, 0.55, 0.45))
-    FDKLowPoly.add_blob(st, Vector3(-0.06, 0.08, 0.03), Vector3(0.05, 0.012, 0.02), 0.2, 25, Color(0.4, 0.05, 0.12), Color(0.5, 0.08, 0.15))
+    # a darker vein ridge so it reads as organ, not ball
+    FDKLowPoly.add_blob(st, Vector3(-0.06, 0.08, 0.03), Vector3(0.05, 0.012, 0.02), 0.2, 25, Color(0.36, 0.06, 0.15), Color(0.45, 0.09, 0.18))
+    var mesh := st.commit()
+    # and a pale fatty streak, its own drier surface
+    var fat := SurfaceTool.new()
+    fat.begin(Mesh.PRIMITIVE_TRIANGLES)
+    FDKLowPoly.add_blob(fat, Vector3(0.04, 0.07, 0.04), Vector3(0.07, 0.025, 0.03), 0.2, 24, Color(0.92, 0.76, 0.6), Color(0.84, 0.66, 0.52))
+    fat.commit(mesh)
     _mass = MeshInstance3D.new()
     _mass.name = "Mass"
-    _mass.mesh = st.commit()
-    _mass.material_override = _material
+    _mass.mesh = FDKLowPoly.with_box_uvs(mesh, 6.0)
+    _mass.set_surface_override_material(0, _material)
+    _mass.set_surface_override_material(1, FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_membrane_128.png", 1.0, true, 0.35, 0.6, 0.18, false))
     add_child(_mass)
     for i in range(PILE_MAX):
         var ps := SurfaceTool.new()
         ps.begin(Mesh.PRIMITIVE_TRIANGLES)
         # 형님 결정 2026-09-29: 넘겨 먹기 더미도 화면 높이 20% 이하 기준.
         var r := 0.01 + FDKLowPoly.hash3(i, 3, 9) * 0.008
-        FDKLowPoly.add_blob(ps, Vector3.ZERO, Vector3(r * 1.3, r, r), 0.4, 40 + i, Color(0.55, 0.05, 0.08), Color(0.85, 0.22, 0.2))
+        FDKLowPoly.add_blob(ps, Vector3.ZERO, Vector3(r * 1.3, r, r), 0.4, 40 + i, Color(0.8, 0.6, 0.6), Color(1.0, 0.85, 0.82))
         var mi := MeshInstance3D.new()
         mi.name = "Pile%d" % i
-        mi.mesh = ps.commit()
-        mi.material_override = _material
+        mi.mesh = FDKLowPoly.with_box_uvs(ps.commit(), 14.0)
+        mi.material_override = _pile_material
         mi.visible = false
         var u := (float(i) + 0.5) / PILE_MAX
         var row := i % 2
@@ -124,8 +132,8 @@ func _apply(_delta: float) -> void:
             _pile[i].scale = Vector3.ONE * (1.0 + sin(_time * 3.0 + i) * 0.04)
 
 func _build_forms() -> void:
-    var a := Color(0.58, 0.08, 0.12)
-    var b := Color(0.86, 0.3, 0.3)
+    var a := Color(0.6, 0.12, 0.15)
+    var b := Color(0.88, 0.34, 0.33)
     # gullet: a tube from the top of the mass up toward the throat
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -134,7 +142,7 @@ func _build_forms() -> void:
         FDKLowPoly.add_blob(st, Vector3(sin(t * 3.0) * 0.012, t * 0.16, 0.0), Vector3(0.022, 0.03, 0.02), 0.2, 60 + i, a, b)
     _gullet = MeshInstance3D.new()
     _gullet.name = "Gullet"
-    _gullet.mesh = st.commit()
+    _gullet.mesh = FDKLowPoly.with_box_uvs(st.commit(), 8.0)
     _gullet.material_override = _material
     add_child(_gullet)
     # throat pouch: a second, paler sac beside the mass
@@ -144,7 +152,7 @@ func _build_forms() -> void:
     FDKLowPoly.add_blob(st, Vector3(-0.05, 0.045, 0.0), Vector3(0.02, 0.03, 0.02), 0.1, 71, Color(0.8, 0.45, 0.42), Color(0.9, 0.55, 0.5))
     _pouch = MeshInstance3D.new()
     _pouch.name = "Pouch"
-    _pouch.mesh = st.commit()
+    _pouch.mesh = FDKLowPoly.with_box_uvs(st.commit(), 8.0)
     _pouch.material_override = _material
     add_child(_pouch)
 

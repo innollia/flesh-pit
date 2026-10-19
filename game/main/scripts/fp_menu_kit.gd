@@ -7,6 +7,7 @@ extends RefCounted
 ## window height, so 1920x1080 shows the same layout larger.
 
 const BASE_H := 720.0
+const FONT := preload("res://main/art/fonts/BlackHanSans-Regular.ttf")
 const INK := Color(0.93, 0.9, 0.86)
 const DIM_INK := Color(0.66, 0.6, 0.57)
 const PLATE := Color(0.1, 0.07, 0.07, 0.96)
@@ -182,3 +183,26 @@ static func chain_focus(items: Array) -> void:
         c.focus_neighbor_bottom = c.get_path_to(down)
         c.focus_previous = c.get_path_to(up)
         c.focus_next = c.get_path_to(down)
+
+## A key glyph for HUD prompts: a chunky tooth-coloured key cap with its
+## dark depth edge, the key's name in the menu font. Reads on white tile and
+## dark flesh alike. Returns the cap's width.
+static func draw_key(ci: CanvasItem, center: Vector2, text: String, alpha: float = 1.0, font_size: int = 16) -> float:
+    var tw := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+    var h := roundf(font_size * 1.6)
+    var w := maxf(roundf(tw + font_size * 0.9), h)
+    var r := Rect2((center - Vector2(w, h) * 0.5).round(), Vector2(w, h))
+    ci.draw_rect(r.grow(1.0), Color(0.06, 0.01, 0.02, 0.75 * alpha))
+    ci.draw_rect(Rect2(r.position + Vector2(0, 2), r.size), Color(0.06, 0.01, 0.02, 0.6 * alpha))
+    ci.draw_rect(r, Color(0.62, 0.52, 0.42, alpha))
+    var face := Rect2(r.position + Vector2(2, 1), r.size - Vector2(4, 4))
+    ci.draw_rect(face, Color(0.92, 0.86, 0.76, alpha))
+    ci.draw_rect(Rect2(face.position, Vector2(face.size.x, 2)), Color(1.0, 0.97, 0.9, alpha))
+    ci.draw_string(FONT, Vector2(center.x - tw * 0.5, face.get_center().y + font_size * 0.36).round(), text,
+            HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.25, 0.05, 0.06, alpha))
+    return w
+
+## Menu-font text with a dark edge, for HUD words over any background.
+static func draw_ink(ci: CanvasItem, at: Vector2, text: String, font_size: int, color: Color) -> void:
+    ci.draw_string_outline(FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 5, Color(0.06, 0.0, 0.02, 0.8 * color.a))
+    ci.draw_string(FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)

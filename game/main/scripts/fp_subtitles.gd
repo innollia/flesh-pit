@@ -43,8 +43,10 @@ func _ready() -> void:
 	band.anchor_bottom = 0.84
 	band.grow_vertical = Control.GROW_DIRECTION_BOTH
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.02, 0.02, 0.025, 0.62)
-	sb.set_corner_radius_all(6)
+	# a dim, warm smear rather than a modern rounded box
+	sb.bg_color = Color(0.05, 0.01, 0.02, 0.6)
+	sb.shadow_color = Color(0.05, 0.01, 0.02, 0.35)
+	sb.shadow_size = 10
 	sb.content_margin_left = 18
 	sb.content_margin_right = 18
 	sb.content_margin_top = 8
@@ -55,7 +57,8 @@ func _ready() -> void:
 	label.name = "Line"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 26)
+	label.add_theme_font_override("font", FPMenuKit.FONT)
+	label.add_theme_font_size_override("font_size", 25)
 	label.add_theme_color_override("font_color", Color(0.96, 0.95, 0.88))
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	label.add_theme_constant_override("outline_size", 6)
