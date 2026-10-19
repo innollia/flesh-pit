@@ -1,5 +1,6 @@
 class_name FPRestroom
 extends Node3D
+const FPProfile := preload("res://main/scripts/fp_profile.gd")
 
 ## The clean white restroom (docs/spec/03-restroom.md): low-poly tiled walls/floor,
 ## ceiling light panel, toilet with an openable tank lid, sink with mirror,
@@ -775,6 +776,11 @@ func set_tank_open(open: bool, instant: bool = false) -> void:
         tank_lid.rotation.x = _lid_target
 
 func _process(delta: float) -> void:
+    FPProfile.begin("restroom")
+    _process_inner(delta)
+    FPProfile.end("restroom")
+
+func _process_inner(delta: float) -> void:
     var k := 1.0 - exp(-delta * 6.0)
     door_pivot.rotation.y = lerpf(door_pivot.rotation.y, _door_target, k)
     tank_lid.rotation.x = lerpf(tank_lid.rotation.x, _lid_target, k)

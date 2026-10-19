@@ -1,5 +1,6 @@
 class_name FPArtHookup
 extends Node
+const FPProfile := preload("res://main/scripts/fp_profile.gd")
 
 ## Puts the main/art prop models where main.gd used to have placeholder
 ## shapes or nothing: tools in the hands, arm hairs on the left forearm, the
@@ -192,6 +193,11 @@ func _on_torn(_p: Vector3) -> void:
 			m.saw_stroked.emit()
 
 func _process(_delta: float) -> void:
+	FPProfile.begin("art_hookup")
+	_process_inner(_delta)
+	FPProfile.end("art_hookup")
+
+func _process_inner(_delta: float) -> void:
 	if m == null:
 		return
 	_sync_belt_posture(_delta)

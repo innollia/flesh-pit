@@ -1,4 +1,5 @@
 extends Node3D
+const FPProfile := preload("res://main/scripts/fp_profile.gd")
 
 ## 화장실과 세 겹의 살점, 전체 진행을 연결한다.
 ## 실제 굴착·먹기 -> 위장과 즉시 털 성장 -> 변기로 토하기 -> 물내림과 이빨 정산 ->
@@ -91,6 +92,8 @@ const BODY_FILL := 0.35 ## body fill energy per unit of player lamp energy
 ## walls half a metre away at full strength; the approved door light is not
 ## the cause and stays. The lamp now comes up as the eyes adapt and dims
 ## while a wall is right in front of the eye.
+## Frames between a chunk's regrowth steps (FDKTerrainField.regen_stagger).
+const REGEN_STAGGER := 6
 const LAMP_ENERGY := 2.4
 const LAMP_ADAPT_TIME := 2.5 ## s from leaving the room to full lamp
 const LAMP_ADAPT_START := 0.3 ## share of full lamp the moment you step out
@@ -252,6 +255,9 @@ func _ready() -> void:
 		tissue_mat.set_shader_parameter("room_half", FPRestroom.HALF)
 	terrain.tissue_sampler = _world_tissue
 	terrain.regen_rate_scale = _regen_scale
+	# growth is a few thousandths a second: each chunk grows on one frame in
+	# six by the time it waited (its cost no longer scales with all dug flesh)
+	terrain.regen_stagger = REGEN_STAGGER
 	add_child(terrain)
 	terrain.generate_region(AABB(Vector3.ONE * -WORLD_GEN_HALF, Vector3.ONE * WORLD_GEN_HALF * 2.0))
 	terrain.remesh_all()
@@ -906,8 +912,11 @@ func is_opening() -> bool:
 func _process(delta: float) -> void:
 	if player == null or chewer == null:
 		return
+	FPProfile.begin("main_pre")
 	_restore_frame_camera()
+	FPProfile.begin("atmosphere")
 	_update_atmosphere(delta)
+	FPProfile.end("atmosphere")
 	_update_restroom_front()
 	_update_hands_room_layer()
 	player.climb_enabled = can_climb_at(player.global_position)
@@ -920,9 +929,12 @@ func _process(delta: float) -> void:
 	hand_motions.check_cancel()
 	_watch_tank_lean(delta)
 	hand_motions.tick(delta)
+	FPProfile.begin("eye_guard")
 	_guard_terrain_eye(false, false)
+	FPProfile.end("eye_guard")
 	_vent_watch(delta)
 	_update_tank_teeth()
+	FPProfile.end("main_pre")
 	if ended:
 		ending.tick(delta)
 		return
@@ -952,11 +964,15 @@ func _process(delta: float) -> void:
 	if InputMap.has_action("fp_mutate") and Input.is_action_just_pressed("fp_mutate") and Engine.get_process_frames() != _mutate_guard_frame:
 		open_mirror()
 		return
+	FPProfile.begin("actions")
 	_handle_actions()
 	hand_actions.tick(delta)
 	_repeat_tooth_op(delta)
+	FPProfile.end("actions")
 	step_world(delta)
+	FPProfile.begin("eye_guard")
 	_guard_terrain_eye(false)
+	FPProfile.end("eye_guard")
 	tick_autosave(delta)
 
 # Start of a new frame, before hand/mutation camera writers. Do not use this
@@ -970,6 +986,11 @@ func _filter_terrain_motion(motion: Vector3) -> Vector3:
 	return _body_clearance.constrain_motion(player, terrain, motion)
 
 func _physics_process(delta: float) -> void:
+	FPProfile.begin("main_physics")
+	_physics_process_inner(delta)
+	FPProfile.end("main_physics")
+
+func _physics_process_inner(delta: float) -> void:
 	if not _body_relief_needed or ended or _seated or _settling or is_opening():
 		return
 	if not is_instance_valid(player) or not is_instance_valid(terrain):
@@ -994,7 +1015,9 @@ func _restore_terrain_eye() -> void:
 
 func _guard_terrain_eye(update_nerves: bool = true, sync_mirrors: bool = true) -> void:
 	if update_nerves:
+		FPProfile.begin("nerve_anchors")
 		_update_nerve_anchors()
+		FPProfile.end("nerve_anchors")
 	# Also reached by production frame_pre_draw, after late child mutation
 	# writes. Recompose without advancing shake time, then constrain the eye.
 	if danger_show != null:
@@ -1118,7 +1141,9 @@ func swallow_torn(shell: int, units: float) -> void:
 
 ## Everything that moves on its own each frame (tests drive it directly).
 func step_world(delta: float) -> void:
+	FPProfile.begin("stream")
 	_stream_world()
+	FPProfile.end("stream")
 	var blockers: Array = []
 	for b in barrier_field.get_barriers():
 		if not b.is_broken():
@@ -1127,12 +1152,22 @@ func step_world(delta: float) -> void:
 		blockers.append_array(mutation_apply.extra_regen_blockers())
 	terrain.regen_blockers = blockers
 	barrier_field.pressure_scale = BARRIER_PRESSURE * _regen_scale(player.global_position)
+	FPProfile.begin("regen")
 	terrain.regenerate_all(delta, player.global_position, BODY_PROTECT_RADIUS)
+	FPProfile.end("regen")
+	FPProfile.begin("barriers")
 	barrier_field.update(delta)
+	FPProfile.end("barriers")
+	FPProfile.begin("nerves")
 	_step_nerve_touch(delta)
+	FPProfile.end("nerves")
+	FPProfile.begin("hazards_crush")
 	_step_hazards(delta)
+	FPProfile.end("hazards_crush")
+	FPProfile.begin("canary")
 	_step_canary(delta)
 	_step_canary_pull(delta)
+	FPProfile.end("canary")
 	if danger_show == null and hands_rig != null:
 		danger_show = (load("res://main/scripts/fp_danger_show.gd") as GDScript).new()
 		danger_show.setup(self)
@@ -1141,13 +1176,21 @@ func step_world(delta: float) -> void:
 	if belt_swap != null:
 		belt_swap.tick(delta)
 	if interact_ring != null:
+		FPProfile.begin("interact_ring")
 		var target := interact_target()
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else "fp_interact")
 		interact_ring.set("shown", target != "")
+		FPProfile.end("interact_ring")
+	FPProfile.begin("death_drop")
 	_step_death_drop(delta)
+	FPProfile.end("death_drop")
+	FPProfile.begin("contraction")
 	terrain.step_contraction(delta, player.global_position)
+	FPProfile.end("contraction")
+	FPProfile.begin("tissue_tools")
 	tissue_tools.step_charge(delta, hand_actions.charging())
 	tissue_tools.step_blend(delta)
+	FPProfile.end("tissue_tools")
 	if not ended and player.global_position.distance_to(RESTROOM_CENTER) >= OUTER_RADIUS - 0.3:
 		reach_ending()
 
@@ -1346,7 +1389,12 @@ func _looking_at(p: Vector3, deg: float, dist: float) -> bool:
 	return to.normalized().dot(ray[1]) > cos(deg_to_rad(deg))
 
 func _interact() -> void:
-	match interact_target():
+	var target := interact_target()
+	# F settles at the toilet like V does, standing by it without aiming
+	if target == "" and _near_toilet() and (stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents()):
+		start_settlement()
+		return
+	match target:
 		"tank_lid":
 			if tank_lid.held: tank_lid.drop()
 			else: tank_lid.pick()
@@ -1847,19 +1895,44 @@ func _repeat_tooth_op(delta: float) -> void:
 			return
 
 ## The lean over the tank ends when the eye leaves it (looking away), the
-## lid goes back on, or there is nothing left to pick or put back.
+## lid goes back on, or there is nothing left to pick or put back. While
+## leaning the body stays put: left/right walk the head round the tank
+## (still bent over it, LEAN_ORBIT_MAX each way), backing off (S) ends it
+## (fp_hand_motions TANK_CANCEL) and so does frantic movement (LEAN_FRANTIC
+## movement presses within LEAN_FRANTIC_WINDOW seconds).
+const LEAN_ORBIT_SPEED := 1.6
+const LEAN_ORBIT_MAX := 1.2
+const LEAN_FRANTIC := 4
+const LEAN_FRANTIC_WINDOW := 1.0
 var _lean_off_t := 0.0
+var _lean_presses: Array[float] = []
+var _lean_clock := 0.0
 func _watch_tank_lean(delta: float) -> void:
+	player.move_locked = hand_motions.tank_leaning()
 	if not hand_motions.tank_leaning():
 		_lean_off_t = 0.0
+		_lean_presses.clear()
 		return
+	_lean_clock += delta
+	for a in ["fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right"]:
+		if Input.is_action_just_pressed(a):
+			_lean_presses.append(_lean_clock)
+	_lean_presses = _lean_presses.filter(func(t): return _lean_clock - t <= LEAN_FRANTIC_WINDOW)
+	if _lean_presses.size() >= LEAN_FRANTIC:
+		hand_motions.release_tank_lean()
+		player.move_locked = false
+		return
+	var turn := Input.get_action_strength("fdk_move_right") - Input.get_action_strength("fdk_move_left")
+	hand_motions.lean_orbit = clampf(hand_motions.lean_orbit + turn * LEAN_ORBIT_SPEED * delta, -LEAN_ORBIT_MAX, LEAN_ORBIT_MAX)
 	var empty: bool = progression.teeth <= 0 and progression.teeth_in_hand <= 0
 	if tank_lid.on_tank or tank_lid.held or empty:
 		hand_motions.release_tank_lean()
+		player.move_locked = false
 		return
 	_lean_off_t = 0.0 if interact_target() == "tank_teeth" else _lean_off_t + delta
 	if _lean_off_t > 0.4:
 		hand_motions.release_tank_lean()
+		player.move_locked = false
 
 func try_pick_tank_item() -> bool:
 	return scoop_teeth() > 0
@@ -2383,6 +2456,11 @@ func _step_hazards(delta: float) -> void:
 
 ## Current capsule volume and reachable collision-respecting escape path.
 func is_trapped() -> bool:
+	# no flesh pressing into the body: it cannot be boxed in (the full escape
+	# search below cost ms every frame while simply standing on flesh)
+	if _body_clearance.clearly_free(player, terrain):
+		_body_relief_needed = false
+		return false
 	var current: Dictionary = _body_clearance.assess(player, terrain)
 	_body_relief_needed = bool(current.overlap) and not bool(current.trapped)
 	return bool(current.trapped)

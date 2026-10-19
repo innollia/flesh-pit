@@ -6,7 +6,7 @@ shader_type canvas_item;
 uniform float internal_height : hint_range(60.0, 480.0) = 240.0;
 uniform float dither_levels : hint_range(2.0, 256.0) = 40.0;
 uniform float grain_amount : hint_range(0.0, 0.3) = 0.05;
-uniform sampler2D screen_tex : hint_screen_texture, filter_nearest_mipmap;
+uniform sampler2D screen_tex : hint_screen_texture, filter_nearest; // only LOD 0 is read: no mip chain per frame
 uniform float time_seed = 0.0;
 
 float hash12(vec2 p) {

@@ -88,6 +88,16 @@ var _pending_shape_ready := false
 ## density (dig, load, tissue edit); healed corners drop out as they finish.
 var _regen_idx: PackedInt32Array = PackedInt32Array()
 var _regen_scan: bool = true
+## Regrowth adds a hair of density every frame; re-meshing the chunk for each
+## (one chunk costs several ms) kept a chunk rebuilding every frame even with
+## nobody digging. Growth now marks the chunk for a new mesh when a corner
+## crosses the surface (a hole closing), finishes healing, or the growth since
+## the last mesh adds up to REGEN_REMESH_DRIFT (0.02: a few mm of surface).
+## Digging, contraction and sealing still mark it at once. Tests may set 0.
+static var REGEN_REMESH_DRIFT := 0.02
+var _regen_drift: float = 0.0
+## Growth time waiting for this chunk's turn (FDKTerrainField.regen_stagger).
+var _regen_wait: float = 0.0
 
 ## Tissue ids (docs/spec/02-world-tissue.md): 0 core/compressive (default flesh), 1 nerve
 ## bundle (surface shell precursor + door nerves), 2 fat band (shell-boundary
@@ -308,7 +318,9 @@ func has_contractile_tissue() -> bool:
 
 ## Advances the contractile squeeze to `time`. Returns true if the shape
 ## changed enough to need a remesh (the chunk is then marked dirty).
-func step_contraction(time: float, delta: float) -> bool:
+## `step` is the smallest squeeze change that is applied (and re-meshed);
+## the field passes a coarser one for chunks away from the player.
+func step_contraction(time: float, delta: float, step: float = 0.02) -> bool:
     if not has_contractile_tissue():
         return false
     var n := config.chunk_size + 1
@@ -331,7 +343,7 @@ func step_contraction(time: float, delta: float) -> bool:
     for k in range(_contract_idx.size()):
         var i: int = _contract_idx[k]
         var v := FDKTissueRules.CONTRACT_GAIN * FDKTissueRules.contract_envelope(time + _contract_phase[k])
-        if absf(v - _contract[i]) > 0.02 or (v == 0.0 and _contract[i] != 0.0):
+        if absf(v - _contract[i]) > step or (v == 0.0 and _contract[i] != 0.0):
             _contract[i] = v
             changed = true
         if v > 0.0:
@@ -340,6 +352,10 @@ func step_contraction(time: float, delta: float) -> bool:
     if changed:
         _dirty = true
     return changed
+
+## World box round the corners that squeeze (empty when none): the field
+## steps contraction by how near the player is to these, not to the chunk.
+var contract_box := AABB()
 
 func _rebuild_contract_list() -> void:
     var n := config.chunk_size + 1
@@ -377,6 +393,15 @@ func _rebuild_contract_list() -> void:
                 _dirty = true
     _contract_idx = idx
     _contract_phase = ph
+    contract_box = AABB()
+    if not idx.is_empty():
+        var lo := Vector3(INF, INF, INF)
+        var hi := -lo
+        for i in idx:
+            var p := position + Vector3(i % n, (i / n) % n, i / (n * n)) * config.cell_size
+            lo = lo.min(p)
+            hi = hi.max(p)
+        contract_box = AABB(lo, hi - lo)
 
 ## Current squeeze offset at a corner (0 when none).
 func contract_at_corner(idx: int) -> float:
@@ -400,6 +425,8 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
     if _regen_idx.is_empty():
         return
     var healed := 0
+    var crossed := false
+    var max_step := 0.0
     for k in range(_regen_idx.size()):
         var i: int = _regen_idx[k]
         var orig: float = _original_density[i]
@@ -435,6 +462,9 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
         _density[i] = minf(orig, cur + rate * m * delta)
         if cur < FDKTissueRules.EMPTY_DENSITY and _density[i] >= FDKTissueRules.EMPTY_DENSITY:
             _contract_list_dirty = true
+        if cur < config.iso_level and _density[i] >= config.iso_level:
+            crossed = true
+        max_step = maxf(max_step, _density[i] - cur)
         if _density[i] >= orig:
             healed += 1
         changed = true
@@ -446,7 +476,10 @@ func regenerate(delta: float, rate: float, protect_local_pos: Vector3, protect_r
                 keep.append(i)
         _regen_idx = keep
     if changed:
-        _dirty = true
+        _regen_drift += max_step
+        if crossed or healed > 0 or _regen_drift >= REGEN_REMESH_DRIFT:
+            _dirty = true
+            _regen_drift = 0.0
 
 ## P4 neighbourhood growth term for compressive tissue. Extra regen gain for
 ## an empty corner with this many solid face neighbours (0..6): a wide room
@@ -742,6 +775,10 @@ func effective_density() -> PackedFloat32Array:
     return values
 
 func publish_staged_mesh() -> void:
+    # a published mesh can clear the field's temporary patch: count it as a
+    # change for the patch refresh (FDKTerrainField._patch_density_rev)
+    if field != null and "_patch_density_rev" in field:
+        field._patch_density_rev += 1
     # The body may enter the chunk while the snapshot is being built.
     # A broad guard overlap is cheap and conservatively keeps that collider
     # immediate without scanning all density corners during publication.

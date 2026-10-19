@@ -1,4 +1,5 @@
 extends Node
+const FPProfile := preload("res://main/scripts/fp_profile.gd")
 
 ## flesh-pit sound hookup. Lives under the main scene and only READS main's
 ## nodes and state (duck-typed, so main can change without breaking this).
@@ -151,6 +152,11 @@ func _hook(sig: String, cb: Callable) -> void:
 		main.connect(sig, cb)
 
 func _process(_delta: float) -> void:
+	FPProfile.begin("audio_hookup")
+	_process_inner(_delta)
+	FPProfile.end("audio_hookup")
+
+func _process_inner(_delta: float) -> void:
 	if main == null or director == null:
 		return
 	var restroom = main.get("restroom")

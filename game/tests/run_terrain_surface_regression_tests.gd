@@ -76,12 +76,17 @@ func run() -> void:
             topology("budgeted removal frame %d" % step)
         var initial_mesh: Mesh = field.get_chunk(field.world_to_chunk_coord(center))._mesh_instance.mesh
         var published := false
+        # worst case: every regrowth step re-marks the meshes (the game only
+        # does so once growth shows, FDKChunk.REGEN_REMESH_DRIFT)
+        var drift := FDKChunk.REGEN_REMESH_DRIFT
+        FDKChunk.REGEN_REMESH_DRIFT = 0.0
         for step in range(24):
             field.regenerate_all(0.1, Vector3.ONE * 100, 0.01)
             field._process(0.016)
             topology("continuous budgeted regen frame %d" % step)
             if field.get_chunk(field.world_to_chunk_coord(center))._mesh_instance.mesh != initial_mesh:
                 published = true
+        FDKChunk.REGEN_REMESH_DRIFT = drift
         check(published, "continuous regen publishes despite new mutations")
         field.remesh_all()
         topology("flush pending continuous changes")

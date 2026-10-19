@@ -1,5 +1,6 @@
 class_name FPStomachView
 extends Node3D
+const FPProfile := preload("res://main/scripts/fp_profile.gd")
 
 ## Stomach state without any text (docs/spec/01-body-eating.md Overfilling): a lumpy mass
 ## of flesh swells up from the bottom of the screen between the hands as the
@@ -79,6 +80,11 @@ func snap() -> void:
     _apply(0.0)
 
 func _process(delta: float) -> void:
+    FPProfile.begin("stomach_view")
+    _process_inner(delta)
+    FPProfile.end("stomach_view")
+
+func _process_inner(delta: float) -> void:
     _time += delta
     var k := 1.0 - exp(-delta * 4.0)
     _shown_fill = lerpf(_shown_fill, fill_ratio, k)

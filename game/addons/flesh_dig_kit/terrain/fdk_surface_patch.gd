@@ -18,6 +18,15 @@ func clear_tile_children() -> void:
 			child.queue_free()
 	tile_children.clear()
 
+## Drops one tile's child (its real mesh is published).
+func remove_tile_child(origin: Vector3i) -> void:
+	if not tile_children.has(origin):
+		return
+	var child = tile_children[origin]
+	if is_instance_valid(child) and child.get_parent() == self:
+		remove_child(child)
+	tile_children.erase(origin)
+
 func add_tile_child(origin: Vector3i, child: MeshInstance3D) -> void:
 	is_aggregate = true
 	mesh = null

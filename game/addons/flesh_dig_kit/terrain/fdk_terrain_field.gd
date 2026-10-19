@@ -291,7 +291,9 @@ func _compute_tile_state(tile_origin: Vector3i) -> Array:
     state.append(surface_constraint)
     return state
 
-func _rebuild_aggregate_tiles(new_tile_states: Dictionary = {}) -> void:
+## Rebuilds the tiles in `only` (all tiles when empty, and any never built),
+## then recomposes the aggregate's faces from every tile.
+func _rebuild_aggregate_tiles(new_tile_states: Dictionary = {}, only: Array = []) -> void:
     if _surface_patch == null:
         return
     _surface_patch.faces = PackedVector3Array()
@@ -305,11 +307,12 @@ func _rebuild_aggregate_tiles(new_tile_states: Dictionary = {}) -> void:
     for origin in sorted_origins:
         var t_info: Dictionary = _surface_patch_tiles[origin]
         var patch: FDKSurfacePatch = t_info.patch
-        patch.build_tile(origin)
-        if new_tile_states.has(origin):
-            t_info.state = new_tile_states[origin]
-        else:
-            t_info.state = _compute_tile_state(origin)
+        if only.is_empty() or only.has(origin) or (t_info.state as Array).is_empty():
+            patch.build_tile(origin)
+            if new_tile_states.has(origin):
+                t_info.state = new_tile_states[origin]
+            else:
+                t_info.state = _compute_tile_state(origin)
         if patch.faces.size() > 0:
             if _surface_patch.has_method("add_tile_child"):
                 _surface_patch.add_tile_child(origin, patch)
@@ -329,27 +332,38 @@ func _refresh_or_clear_aggregate_patch() -> void:
         _clear_surface_patch()
         return
 
-    var all_published := true
+    # Each tile goes as soon as its own corners are published: waiting for
+    # every tile kept (and rebuilt) the whole dug area while regrowth kept
+    # one tile or another unpublished. A tile is dropped only on its own
+    # verified 6x6x6 corners, never because another tile is clear.
+    var dropped := false
     for origin in _surface_patch_tiles.keys():
         var t_info: Dictionary = _surface_patch_tiles[origin]
-        if not _is_tile_published(origin, t_info.required_epoch):
-            all_published = false
-            break
+        if _is_tile_published(origin, t_info.required_epoch):
+            var p: Object = t_info.get("patch", null)
+            if _surface_patch.has_method("remove_tile_child"):
+                _surface_patch.remove_tile_child(origin)
+            if is_instance_valid(p):
+                if p.get_parent() != null:
+                    p.get_parent().remove_child(p)
+                p.free()
+            _surface_patch_tiles.erase(origin)
+            dropped = true
 
-    if all_published:
+    if _surface_patch_tiles.is_empty():
         _clear_surface_patch()
         return
 
-    var any_state_changed := false
+    var changed: Array = []
     var new_states: Dictionary = {}
     for origin in _surface_patch_tiles.keys():
         var s := _compute_tile_state(origin)
-        new_states[origin] = s
         if s != _surface_patch_tiles[origin].state:
-            any_state_changed = true
+            new_states[origin] = s
+            changed.append(origin)
 
-    if any_state_changed:
-        _rebuild_aggregate_tiles(new_states)
+    if not changed.is_empty() or dropped:
+        _rebuild_aggregate_tiles(new_states, changed if not changed.is_empty() else [Vector3i(1 << 30, 0, 0)])
 
 func _handle_aggregate_dig(tear_cell: Vector3i, union_min: Vector3i, union_max: Vector3i) -> void:
     var prev_min := _surface_patch_min
@@ -385,6 +399,7 @@ func _handle_aggregate_dig(tear_cell: Vector3i, union_min: Vector3i, union_max: 
             }
 
     var new_origins := _get_tile_origins_for_cell(tear_cell)
+    var fresh: bool = not _surface_patch_tiles.is_empty() and (_surface_patch_tiles.values()[0].state as Array).is_empty()
     for to in new_origins:
         if not _surface_patch_tiles.has(to):
             var p := FDKSurfacePatch.new(self)
@@ -396,11 +411,35 @@ func _handle_aggregate_dig(tear_cell: Vector3i, union_min: Vector3i, union_max: 
         else:
             _surface_patch_tiles[to].required_epoch = _dig_epoch
 
-    _rebuild_aggregate_tiles()
+    # A tear changes only its own corners, read by new_origins; the other
+    # tiles keep their meshes (rebuilding every tile on every tear grew with
+    # the whole dug area). A just-made aggregate builds all of its tiles.
+    _rebuild_aggregate_tiles({}, [] if fresh else new_origins)
+
+## Density edits since the patch was last refreshed (every edit entry point
+## bumps it). The camera guard casts many rays a frame, each refreshing the
+## patch: with nothing edited in between, the first refresh of the frame
+## stands. A new frame or any density edit refreshes again.
+var _patch_density_rev := 0
+var _patch_refresh_key := Vector2i(-1, -1)
+
+## The per-frame callers (publication loop, camera guard rays, solid
+## contact) use this: the first refresh of a frame stands until a density
+## edit or a published mesh. A direct _refresh_or_clear_surface_patch()
+## always does the work.
+func _refresh_surface_patch_once() -> void:
+    if _surface_patch == null:
+        return
+    var key := Vector2i(Engine.get_process_frames(), _patch_density_rev + _dig_epoch * 1000003)
+    if key == _patch_refresh_key:
+        return
+    _patch_refresh_key = key
+    _refresh_or_clear_surface_patch()
 
 func _refresh_or_clear_surface_patch() -> void:
     if _surface_patch == null:
         return
+    patch_refresh_count += 1
     if _surface_patch_is_aggregate:
         _refresh_or_clear_aggregate_patch()
         return
@@ -461,7 +500,7 @@ func _update_solid_volume(eye: Vector3) -> void:
 
 ## Local filled-mass contact for an eye proven inside solid mass. Ordinary
 func solid_contact_ray(from: Vector3, to: Vector3) -> Dictionary:
-    _refresh_or_clear_surface_patch()
+    _refresh_surface_patch_once()
     _update_solid_volume(from)
     var hit_vol: Dictionary = _solid_volume.contact_ray(from, to)
     var hit_patch: Dictionary = {}
@@ -501,9 +540,21 @@ var collision_guard_margin: float = 1.2
 var _guard_pos: Vector3 = Vector3.ZERO
 var _guard_radius: float = -1.0
 
+## Cost of the last _process (publication), for measurements.
+var last_process_us: int = 0
+## Running counts for performance checks: chunk meshes built by the
+## publication batch, and surface patch refreshes that did real work.
+var remesh_count: int = 0
+var patch_refresh_count: int = 0
+
 func _process(delta: float) -> void:
+    var began := Time.get_ticks_usec()
+    _process_publish(delta)
+    last_process_us = Time.get_ticks_usec() - began
+
+func _process_publish(delta: float) -> void:
     _publish_visible_tears()
-    _refresh_or_clear_surface_patch()
+    _refresh_surface_patch_once()
     var done := 0
     var start := Time.get_ticks_usec()
     if _mesh_batch.is_empty():
@@ -512,12 +563,13 @@ func _process(delta: float) -> void:
             # The frozen snapshot is useful work. Resume this same batch next
             # frame instead of adding a mesh build to expensive preparation.
             step_collision(delta)
-            _refresh_or_clear_surface_patch()
+            _refresh_surface_patch_once()
             return
     while _mesh_batch_cursor < _mesh_batch.size():
         var chunk: FDKChunk = _mesh_batch[_mesh_batch_cursor]
         _reading_mesh_snapshot = true
         chunk.remesh(false, true)
+        remesh_count += 1
         _reading_mesh_snapshot = false
         var group_id: int = _mesh_group_for[chunk.chunk_coord]
         _mesh_group_remaining[group_id] -= 1
@@ -539,7 +591,7 @@ func _process(delta: float) -> void:
                     ready._staged_edit_epoch = 0
                 else:
                     ready.publish_staged_mesh()
-            _refresh_or_clear_surface_patch()
+            _refresh_surface_patch_once()
         _mesh_batch_cursor += 1
         done += 1
         if done >= remesh_budget_per_frame or (Time.get_ticks_usec() - start) / 1000.0 >= remesh_ms_per_frame * 0.5:
@@ -549,7 +601,7 @@ func _process(delta: float) -> void:
         _mesh_snapshot.clear()
         _mesh_missing_snapshot.clear()
     step_collision(delta)
-    _refresh_or_clear_surface_patch()
+    _refresh_surface_patch_once()
 
 ## Keep the old closed surface until all meshes that share changed cells are
 ## ready. Density changes arriving during this bounded batch stay dirty for
@@ -694,7 +746,14 @@ func collision_guard_local(chunk: FDKChunk) -> Vector4:
 
 ## Advances the contractile squeeze (only chunks within `radius` of `near`,
 ## which is where the player can see or feel it). Returns chunks changed.
-func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
+## Contraction squeeze is stepped for chunks whose nearest point is within
+## `radius` of `near`; past CONTRACT_FINE_RADIUS it moves in coarser steps
+## (CONTRACT_COARSE_STEP), each step costing a chunk re-mesh. Near the body
+## (crush) it stays fine. A pulsing wall out of sight is not re-meshed.
+const CONTRACT_FINE_RADIUS := 3.0
+const CONTRACT_COARSE_STEP := 0.06
+func step_contraction(delta: float, near: Vector3, radius: float = 8.0) -> int:
+    _patch_density_rev += 1
     contract_time += delta
     # keep the (wider) regen guard when it is already centred on the player
     if _guard_radius <= 0.0 or _guard_pos.distance_to(near) > 0.01:
@@ -704,9 +763,14 @@ func step_contraction(delta: float, near: Vector3, radius: float = 14.0) -> int:
     for cc in _chunks.keys():
         var chunk: FDKChunk = _chunks[cc]
         var mid: Vector3 = chunk.position + Vector3.ONE * chunk_world * 0.5
-        if mid.distance_to(near) > radius + chunk_world:
+        # how near the squeezing walls are; the whole chunk while its list is
+        # stale or empty (a dig may have opened new walls anywhere in it)
+        var listed: bool = not chunk._contract_list_dirty and not chunk._contract_idx.is_empty()
+        var box: AABB = chunk.contract_box if listed else AABB(chunk.position, Vector3.ONE * chunk_world)
+        var gap: float = near.clamp(box.position, box.end).distance_to(near)
+        if gap > radius:
             continue
-        if chunk.step_contraction(contract_time, delta):
+        if chunk.step_contraction(contract_time, delta, 0.02 if gap <= CONTRACT_FINE_RADIUS else CONTRACT_COARSE_STEP):
             changed += 1
         if chunk.has_contractile_tissue() and not chunk._contract_idx.is_empty():
             var k: int = chunk._contract_idx.size() / 2
@@ -758,6 +822,7 @@ func get_or_create_chunk(chunk_coord: Vector3i) -> FDKChunk:
 
 ## Creates (and fills from the samplers) every chunk overlapping aabb.
 func generate_region(aabb: AABB) -> void:
+    _patch_density_rev += 1
     var a := world_to_chunk_coord(aabb.position)
     var b := world_to_chunk_coord(aabb.end)
     for cz in range(a.z, b.z + 1):
@@ -831,6 +896,7 @@ func corner_density_global(g: Vector3i) -> float:
 ## Changes one global corner in every chunk that stores it (a corner on a
 ## chunk face/edge/vertex is stored by up to 8 chunks).
 func _add_corner_global(g: Vector3i, delta_density: float) -> void:
+    _patch_density_rev += 1
     var s := config.chunk_size
     for dz in range(2):
         for dy in range(2):
@@ -856,6 +922,7 @@ func _add_corner_global(g: Vector3i, delta_density: float) -> void:
                 _urgent_chunks[cc] = chunk
 
 func dig_at(world_pos: Vector3, amount: float) -> void:
+    _patch_density_rev += 1
     var result := world_to_cell(world_pos)
     var chunk_coord: Vector3i = result[0]
     get_or_create_chunk(chunk_coord)
@@ -926,6 +993,7 @@ func tissue_at(world_pos: Vector3) -> int:
 ## squeezes in from the side. Returns the number of cells melted.
 func spray_surface(hit: Vector3, into: Vector3, radius: float, depth: float,
         boost_range: float = 1.0, boost_mult: float = 2.0) -> int:
+    _patch_density_rev += 1
     var n_dir := into.normalized()
     var reach := maxf(radius, depth) + boost_range + config.cell_size
     var min_coord := world_to_chunk_coord(hit - Vector3.ONE * reach)
@@ -1056,12 +1124,29 @@ func density_at(world_pos: Vector3) -> float:
                 m = maxf(m, corner_density_global(g + Vector3i(dx, dy, dz)))
     return m
 
+## Regrowth is slow (a few thousandths a second), so a game may spread it:
+## with regen_stagger N each chunk grows on one call in N, by the time it
+## waited. Its cost then no longer grows per frame with everything dug.
+## 1 (the default) grows every chunk on every call.
+var regen_stagger: int = 1
+var _regen_turn: int = 0
+
 func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: float) -> void:
+    _patch_density_rev += 1
     set_collision_guard(protect_world_pos, protect_radius + collision_guard_margin)
+    _regen_turn += 1
+    var slot := 0
     for chunk_coord in _chunks.keys():
         var chunk: FDKChunk = _chunks[chunk_coord]
         if not chunk._regen_scan and chunk._regen_idx.is_empty():
+            chunk._regen_wait = 0.0
             continue
+        slot += 1
+        chunk._regen_wait += delta
+        if regen_stagger > 1 and (slot + _regen_turn) % regen_stagger != 0:
+            continue
+        var grow := chunk._regen_wait
+        chunk._regen_wait = 0.0
         var chunk_origin: Vector3 = Vector3(chunk_coord) * config.chunk_size * config.cell_size
         var local_protect: Vector3 = (protect_world_pos - chunk_origin) / config.cell_size
         var local_radius: float = protect_radius / config.cell_size
@@ -1077,7 +1162,7 @@ func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: fl
             if closest.distance_to(bc) <= bv.w:
                 var lc := (bc - chunk_origin) / config.cell_size
                 local_blockers.append(Vector4(lc.x, lc.y, lc.z, bv.w / config.cell_size))
-        chunk.regenerate(delta, rate, local_protect, local_radius, local_blockers)
+        chunk.regenerate(grow, rate, local_protect, local_radius, local_blockers)
 
 ## Chew press visual: dents then stretches the wall around `center` toward
 ## `toward` (usually the player) as amount goes 0..1. amount 0 = off.
@@ -1144,7 +1229,7 @@ func constrain_eye(desired_eye: Vector3, body_anchor: Vector3, near: float) -> V
     return closest
 
 func _eye_terrain_ray(from: Vector3, to: Vector3) -> Dictionary:
-    _refresh_or_clear_surface_patch()
+    _refresh_surface_patch_once()
     var query := PhysicsRayQueryParameters3D.create(from, to)
     query.hit_back_faces = true
     # Props keep their own layers and behavior. They must not hide a terrain
@@ -1188,6 +1273,7 @@ func _eye_surface_outward(hit: Dictionary) -> Vector3:
 ## value by up to `amount` (more at the middle). Sprayed cells stay open.
 ## Returns how many corners moved.
 func contract_sphere(center: Vector3, radius: float, amount: float) -> int:
+    _patch_density_rev += 1
     var moved := 0
     var min_coord := world_to_chunk_coord(center - Vector3.ONE * radius)
     var max_coord := world_to_chunk_coord(center + Vector3.ONE * radius)
@@ -1251,6 +1337,7 @@ func carve_sphere(center: Vector3, radius: float) -> void:
                 chunk._dirty = true
 
 func fill_box_uniform(aabb: AABB, density: float, tissue_id: int) -> void:
+    _patch_density_rev += 1
     var min_coord := world_to_chunk_coord(aabb.position)
     var max_coord := world_to_chunk_coord(aabb.position + aabb.size)
     for cz in range(min_coord.z, max_coord.z + 1):
@@ -1285,6 +1372,7 @@ func serialize() -> Dictionary:
     return {"version": 1, "chunks": chunks_data}
 
 func deserialize(data: Dictionary) -> void:
+    _patch_density_rev += 1
     _visible_tear_readers.clear()
     _visible_tear_corners.clear()
     _clear_surface_patch()

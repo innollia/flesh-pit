@@ -7,6 +7,8 @@ var m: Node3D
 var passed := 0
 var failed := 0
 var torn: Array[Vector3] = []
+## Whether the terrain had pending tear faces at the moment of the last tear.
+var patch_at_tear := false
 var center := Vector3(8, 5, 8)
 var grabs := 0
 var progress := 0
@@ -44,6 +46,14 @@ func ray(origin: Vector3, direction: Vector3, distance: float) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(origin, origin + direction.normalized() * distance)
 	q.exclude = [m.player.get_rid()]
 	return m.get_world_3d().direct_space_state.intersect_ray(q)
+
+## Every one of the six rays from the hole centre hits a terrain wall.
+func hole_walls_all_hit(p: Vector3) -> bool:
+	for a in [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK]:
+		var col := ray(p, a, 0.7)
+		if col.is_empty() or not col.collider.has_meta("fdk_terrain_chunk"):
+			return false
+	return true
 
 func mesh_triangle_count() -> int:
 	var result := 0
@@ -86,7 +96,9 @@ func run() -> void:
 	binding.button_index = MOUSE_BUTTON_LEFT
 	InputMap.action_add_event("fdk_eat", binding)
 
-	m.chewer.cell_torn.connect(func(p): torn.append(p))
+	m.chewer.cell_torn.connect(func(p):
+		torn.append(p)
+		patch_at_tear = m.terrain._surface_patch != null and not m.terrain._surface_patch.faces.is_empty())
 	m.chewer.grab_started.connect(func(_p): grabs += 1)
 	m.chewer.chew_progress.connect(func(_r, _p): progress += 1)
 	m.chewer.released.connect(func(): releases += 1)
@@ -179,7 +191,9 @@ func run() -> void:
 		var hole_p: Vector3 = torn[0]
 		# Do NOT call remesh_all()! Budget 1 is active.
 		# Maintain budget 1 across several frames and check pending patch gap exists
-		var patch_existed := false
+		# the buried tear's faces come at once; each tile of them goes as soon
+		# as its own mesh is out, which can be the very next frame
+		var patch_existed := patch_at_tear
 		for f in range(4):
 			await process_frame
 			await physics_frame
@@ -188,8 +202,13 @@ func run() -> void:
 		check(patch_existed, budget_label + " pending surface patch existed during budget 1 frames")
 
 		# Allow publication to finish naturally through frame processing
+		# Publication under budget 1 runs in batches (the batch can be empty
+		# for a frame before the next picks up chunks the tear dirtied, while
+		# regrowth keeps re-marking them), and a new collider reaches the
+		# physics server on the next physics step. The walls must be there
+		# within a short bound, not on one exact frame.
 		var wait_frames := 0
-		while not m.terrain._mesh_batch.is_empty() and wait_frames < 60:
+		while wait_frames < 30 and not hole_walls_all_hit(hole_p):
 			await process_frame
 			await physics_frame
 			wait_frames += 1

@@ -35,6 +35,9 @@ var movement_filter: Callable
 ## Multiplies walking/crouching speed only (e.g. being pressed by flesh);
 ## the view bob keeps reading config.walk_speed, so it never speeds up.
 var move_speed_scale: float = 1.0
+## The game holds the body still (e.g. leaning over something): movement keys
+## are left for the game to read; look, gravity and posture carry on.
+var move_locked: bool = false
 ## Squeezing through (config.step_height/squeeze_*): where the body would
 ## bump, it steps over a low lip, else ducks its head (lower capsule) or
 ## twists its hips (thinner capsule), slower the more it gives; it relaxes
@@ -84,7 +87,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pitch -= event.relative.y * config.mouse_sensitivity * (-1.0 if config.invert_y else 1.0)
 		_pitch = clampf(_pitch, deg_to_rad(-config.pitch_limit_deg), deg_to_rad(config.pitch_limit_deg))
 
+## Cost of the last physics step (move, posture), for measurements.
+var last_physics_us: int = 0
+
 func _physics_process(delta: float) -> void:
+	var began := Time.get_ticks_usec()
+	_physics_step(delta)
+	last_physics_us = Time.get_ticks_usec() - began
+
+func _physics_step(delta: float) -> void:
 	_process_keyboard_look(delta)
 	_process_crouch()
 	_process_move_and_climb(delta)
@@ -391,6 +402,8 @@ func _process_move_and_climb(delta: float) -> void:
 	if Input.is_action_pressed("fdk_move_right"):
 		input_dir.x += 1.0
 	input_dir = input_dir.normalized()
+	if move_locked:
+		input_dir = Vector2.ZERO
 
 	var forward: Vector3 = -global_transform.basis.z
 	var right: Vector3 = global_transform.basis.x

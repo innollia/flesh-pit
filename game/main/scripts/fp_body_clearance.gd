@@ -117,6 +117,23 @@ func fits(body: CharacterBody3D, field: FDKTerrainField) -> bool:
 	query.margin = 0.0
 	return body.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
 
+## Nothing presses into the capsule deeper than `tolerance`: real flesh
+## cannot be crushing this body, so the escape search can be skipped.
+## (Resting on a floor or brushing a wall is within the tolerance.)
+func clearly_free(body: CharacterBody3D, field: FDKTerrainField, tolerance: float = 0.02) -> bool:
+	var node := body.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if node == null or not node.shape is CapsuleShape3D or not body.is_inside_tree():
+		return false
+	var shape := node.shape as CapsuleShape3D
+	var xf := node.global_transform
+	var radius := shape.radius * maxf(xf.basis.x.length(), xf.basis.z.length())
+	var half_axis := maxf(0.0, shape.height * xf.basis.y.length() * 0.5 - radius)
+	var up := xf.basis.y.normalized()
+	var a := xf.origin - up * half_axis
+	var b := xf.origin + up * half_axis
+	_prepare_surface(field, a.min(b) - Vector3.ONE * radius, a.max(b) + Vector3.ONE * radius)
+	return not _point_in_solid(xf.origin) and not _touches_surface(a, b, maxf(0.001, radius - tolerance))
+
 ## Normal movement uses the same actual capsule and current triangles as crush.
 ## Surface-only physics has no collider inside a fully solid mass. Reject that
 ## interior displacement before ordinary physics, while preserving axis sliding.

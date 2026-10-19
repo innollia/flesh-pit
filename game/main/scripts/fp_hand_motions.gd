@@ -31,11 +31,15 @@ const CANCEL_ACTIONS := ["fdk_move_forward", "fdk_move_back", "fdk_move_left", "
 ## tooth taken or put back dips the hand in. Held until released; only moving
 ## or Esc cancels it here (F and right click keep picking teeth).
 const TANK_LEAN_IN := 0.35
-const TANK_CANCEL := ["fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right", "fdk_jump", "fp_vomit", "ui_cancel"]
+## Leaning, left/right walk the head round the tank (main: lean_orbit) and
+## only backing off, jumping, V or Esc cancel here; frantic movement too (main).
+const TANK_CANCEL := ["fdk_move_back", "fdk_jump", "fp_vomit", "ui_cancel"]
 ## The lean eye: this far back from the tank mouth toward the player and up.
 const TANK_EYE := Vector2(0.14, 0.34)
 const DIP_TIME := 0.25
 var _dip_t := 1.0
+## Radians the leaned head has walked round the tank mouth (main drives it).
+var lean_orbit := 0.0
 ## Offer kinds held with both hands.
 const BIG_ITEMS := ["blender", "big_saw", "blender_box", "saw_box"]
 const FLESH := Color(0.55, 0.12, 0.13)
@@ -163,6 +167,7 @@ func play_tank_lean() -> void:
         return
     _start("tank_lean")
     _dip_t = 1.0
+    lean_orbit = 0.0
 
 func release_tank_lean() -> void:
     if kind == "tank_lean":
@@ -182,6 +187,8 @@ func tank_lean_transform(from: Vector3) -> Transform3D:
     var flat := from - mouth
     flat.y = 0.0
     flat = flat.normalized() if flat.length() > 0.01 else Vector3.RIGHT
+    # the head walks round the tank, still bent over it
+    flat = flat.rotated(Vector3.UP, lean_orbit)
     var eye := mouth + flat * TANK_EYE.x + Vector3.UP * TANK_EYE.y
     var look := mouth + Vector3.DOWN * 0.1
     return Transform3D(Basis.looking_at(look - eye, Vector3.UP), eye)

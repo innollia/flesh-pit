@@ -28,6 +28,8 @@ func look_at_point(p: Vector3) -> void:
 	m.player._yaw = atan2(-d.x, -d.z)
 	m.player._pitch = asin(clampf(d.y, -1, 1))
 
+const LEAN_KEYS := ["fdk_move_left", "fdk_move_right", "fdk_move_left", "fdk_move_right", "fdk_move_forward"]
+
 func frames(n: int) -> void:
 	for i in range(n):
 		await process_frame
@@ -75,7 +77,21 @@ func run() -> void:
 	var wrist: Node3D = ht.get_parent()
 	var to_eye: Vector3 = (m.player.camera.global_position - wrist.global_position).normalized()
 	check((wrist.global_basis * Vector3.DOWN).normalized().dot(to_eye) > 0.4, "the palm (and the teeth on it) faces the eye")
-	# moving ends the lean; the teeth stay in the hand, still shown
+	# left/right walk the head round the tank; the body stays put
+	var body_at: Vector3 = m.player.global_position
+	var eye_at: Vector3 = m.player.camera.global_position
+	Input.action_press("fdk_move_left")
+	var held := 0.0
+	while held < 0.5:
+		await process_frame
+		held += get_root().get_process_delta_time()
+	Input.action_release("fdk_move_left")
+	await frames(3)
+	check(m.hand_motions.tank_leaning(), "walking sideways keeps the lean")
+	check(m.hand_motions.lean_orbit < -0.3, "the head walks round the tank (%.2f rad)" % m.hand_motions.lean_orbit)
+	check(m.player.global_position.distance_to(body_at) < 0.05, "the body stays put while leaning")
+	check(m.player.camera.global_position.distance_to(eye_at) > 0.05 and m.player.camera.global_position.distance_to(mouth) < 0.6, "the eye moves round, still bent over the tank mouth")
+	# moving back ends the lean; the teeth stay in the hand, still shown
 	Input.action_press("fdk_move_back")
 	await frames(2)
 	m.hand_motions.check_cancel()
@@ -93,6 +109,18 @@ func run() -> void:
 		await physics_frame
 	m._interact()
 	check(m.hand_motions.tank_leaning(), "leaning in again")
+	# frantic movement gets you out
+	for k in range(LEAN_KEYS.size()):
+		Input.action_press(LEAN_KEYS[k])
+		await frames(2)
+		Input.action_release(LEAN_KEYS[k])
+		await frames(2)
+	await frames(2)
+	check(not m.hand_motions.tank_leaning(), "frantic movement ends the lean")
+	for i in range(20):
+		look_at_point(tank)
+		await physics_frame
+	m._interact()
 	m.tank_lid.on_tank = true
 	await frames(3)
 	check(not m.hand_motions.tank_leaning(), "the lid back on ends the lean")
@@ -105,6 +133,15 @@ func run() -> void:
 		await process_frame
 		turned += 1
 	check(not ht.visible and right.basis.is_equal_approx(Basis.IDENTITY), "an empty hand is the rig's own hand again")
+	# F at the toilet settles like V, standing by it without aiming at it
+	m.stomach.add_flesh(20.0)
+	m.player.global_position = Vector3(-1.39, 0.9, 0.8)
+	m.player._pitch = 0.6
+	await frames(3)
+	check(m.interact_target() == "" and m._near_toilet(), "standing by the toilet, aiming at nothing")
+	m._interact()
+	check(m.is_settling(), "F settles at the toilet as V does")
+	m.leave_settlement()
 	print("--- tank lean: %d passed, %d failed ---" % [passed, failed])
 	m.queue_free()
 	quit(1 if failed else 0)

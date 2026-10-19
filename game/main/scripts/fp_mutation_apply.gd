@@ -1,5 +1,6 @@
 class_name FPMutationApply
 extends Node
+const FPProfile := preload("res://main/scripts/fp_profile.gd")
 
 ## Puts the owned mutations (docs/spec/05-mutations.md) into the running game.
 ## FPProgression holds the numbers; this node writes them into the stomach
@@ -112,6 +113,11 @@ func apply_now() -> void:
 		m.stomach_view.set_forms(p.all_mutations())
 
 func _process(delta: float) -> void:
+	FPProfile.begin("mutation_apply")
+	_process_inner(delta)
+	FPProfile.end("mutation_apply")
+
+func _process_inner(delta: float) -> void:
 	if m == null or m.ended:
 		return
 	var p: FPProgression = m.progression

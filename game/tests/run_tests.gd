@@ -642,7 +642,8 @@ func _run_terrain_collision_split_tests() -> void:
 
 	# regrowth far from the player: mesh now, collider later
 	var shape1 = chunk._collision.shape
-	field.regenerate_all(0.2, Vector3(50, 50, 50), 0.5)
+	# (a hair of growth waits until it shows: FDKChunk.REGEN_REMESH_DRIFT)
+	field.regenerate_all(10.0, Vector3(50, 50, 50), 0.5)
 	_assert(chunk.is_dirty(), "split: regrowth marks the mesh dirty")
 	chunk.remesh()
 	_assert(chunk.is_collision_pending(), "split: regrowth parks the collider")
