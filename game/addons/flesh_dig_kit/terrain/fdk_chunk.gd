@@ -374,19 +374,24 @@ func _rebuild_contract_list() -> void:
                 var t: int = _tissue[mini(x, s - 1) + mini(y, s - 1) * s + mini(z, s - 1) * s * s]
                 if t != FDKTissueRules.CONTRACTILE:
                     continue
-                if _sealed_corner_touches_sealed_cell(x, y, z, s):
-                    continue
+                # cheap test first: most contractile corners sit deep in
+                # solid flesh and touch no empty corner
                 var touches := _density[i] < iso or _density[i - 1] < iso or _density[i + 1] < iso \
                     or _density[i - n] < iso or _density[i + n] < iso \
                     or _density[i - n * n] < iso or _density[i + n * n] < iso
                 if not touches:
                     continue
+                if _sealed_corner_touches_sealed_cell(x, y, z, s):
+                    continue
                 idx.append(i)
                 ph.append(FDKTissueRules.contract_phase(origin + Vector3(x, y, z) * config.cell_size))
     # corners that dropped off the list relax back to 0
     if _contract.size() == n * n * n:
+        var listed := {}
+        for i in idx:
+            listed[i] = true
         for i in keep.keys():
-            if not ph.is_empty() and idx.has(i):
+            if listed.has(i):
                 continue
             if _contract[i] != 0.0:
                 _contract[i] = 0.0
@@ -513,7 +518,7 @@ func _sealed_corner_touches_sealed_cell(x: int, y: int, z: int, s: int) -> bool:
                 var cz := z + dz
                 if cx < 0 or cy < 0 or cz < 0 or cx >= s or cy >= s or cz >= s:
                     continue
-                if _sealed[_cell_index(cx, cy, cz)] != 0:
+                if _sealed[cx + (cy + cz * s) * s] != 0:
                     return true
     return false
 

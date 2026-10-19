@@ -24,6 +24,9 @@ func _begin(name: String) -> void:
 	phase = name
 	samples = []
 	FPProfile.take()
+	# phase marks for tools/perf/godot_profile.py (script profiler capture)
+	if EngineDebugger.is_active():
+		EngineDebugger.send_message("bench:phase", [name, "begin"])
 
 func _sample() -> void:
 	var vp := root.get_viewport_rid()
@@ -41,6 +44,8 @@ func _sample() -> void:
 	})
 
 func _end() -> void:
+	if EngineDebugger.is_active():
+		EngineDebugger.send_message("bench:phase", [phase, "end"])
 	var out := {"phase": phase, "frames": samples.size()}
 	for k in ["frame", "process", "physics", "cpu_render", "gpu_render", "draws", "prims", "objects"]:
 		var v: Array = []
@@ -121,7 +126,7 @@ func _run() -> void:
 	Input.action_release("fdk_move_forward")
 	_end()
 	# D: standing in a dug cave, looking round while the flesh regrows
-	_begin("cave_look")
+	# (the digging is setup, measured from the first frame after it)
 	var cave := Vector3(8, 0, 6)
 	for z in range(-4, 4):
 		for y in range(0, 5):
@@ -129,6 +134,8 @@ func _run() -> void:
 				m.terrain.dig_at(cave + Vector3(x * 0.5 + 0.25, y * 0.5 + 0.25, z * 0.5 + 0.25), 1.0)
 	m.terrain.remesh_all()
 	m.player.global_position = cave + Vector3(0, 0.95, 0)
+	await process_frame
+	_begin("cave_look")
 	await frames_for(5.0, func(t):
 		m.player._yaw = t * 1.0
 		m.player._pitch = sin(t) * 0.4)

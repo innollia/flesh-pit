@@ -66,10 +66,8 @@ static func world_density(p: Vector3, room_half: Vector3, door_half_w: float, do
 		# Interpolated iso crossings fall on the wall instead of half a grid
 		# cell beyond it. A binary carve created a visible perimeter air gap.
 		return clampf(0.5 + signed_distance, 0.0, 1.0)
-	if p.distance_to(center) >= outer_radius:
-		return 0.0
-	if in_container(p, rests):
-		return 0.0
+	# (outside the shell and inside a container already returned 0 above;
+	# checking them again doubled the cost of every generated corner)
 	return 1.0
 
 ## True in the corridor in front of (and a bit behind) the door -- the

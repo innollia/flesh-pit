@@ -26,6 +26,14 @@ godot_console --path game --resolution 640x360 --fixed-fps 60 --script res://tes
 
 성능은 `godot_console --path game --resolution 1280x720 --script res://tests/bench_play.gd`로 잰다. 같은 플레이(화장실 둘러보기, 문에서 파고 나가기, 긴 통로 걷기, 판 동굴 둘러보기)를 수직 동기화 없이 돌린다. 구간마다 프레임·GPU·그리기 호출과 CPU 구간별 ms(FPProfile)를 한 줄씩 낸다. 다른 기계·해상도의 수치와 비교하지 않는다. 격리 사본에서 실행한다.
 
+함수 단위 비용은 `python -X utf8 tools/perf/godot_profile.py`로 본다. Godot 자체 스크립트 프로파일러를 원격 디버그로 받아 기록하므로 엔진을 다시 빌드하지 않아도 된다(Tracy는 엔진을 따로 빌드해야 한다).
+- `capture --project <격리>/game --out x.json`: `bench_play.gd`를 돌리며 단계(`bench:phase`)별로 함수마다 호출 수·self·total ms를 모으고, 단계마다 가장 느린 프레임 5개의 구성을 남긴다.
+- `hotspots x.json --phase tunnel_walk [--by total]`: 비싼 함수 순위.
+- `hitches x.json --phase tunnel_walk`: 끊김 프레임이 무엇으로 찼는지.
+- `compare a.json b.json`: 수정 전후 함수별 차이.
+
+수정 전후 비교는 HEAD 코드에 같은 벤치를 얹은 격리 사본과 변경한 격리 사본을 번갈아 잰다. 측정만 하는 `.claude/agents/performance-analyst.md`가 이 절차를 따른다. 구현한 쪽이 스스로 개선을 판정하지 않게 측정을 그 에이전트에 맡길 수 있다.
+
 FP_AUDIO_LOG=1은 소리 이벤트 로그만 켠다. FP_PLAY_LOG=<CSV 경로>는 보상 척도용 플레이 기록을 남긴다(docs/spec/09-reward-scale.md 10.2). 원정 시간을 재려면 이 기록으로 몇 번 원정한 뒤 `python -X utf8 tools/economy/reward_scale.py --log <CSV 경로>`로 읽는다. 기록은 저장 슬롯과 설정을 바꾸지 않는다. 기록 장치 자체는 `run_play_log_tests.gd`로 검사한다. FP_TERRAIN_EVIDENCE는 이를 지원하는 성능·캡처 프로그램의 출력 경로이며 플레이 데이터 경로가 아니다. 엔진이 검사 시작 전에 멈추면 시간 초과를 실패로 기록하고 원인을 확인해 같은 검사를 다시 실행한다. 사용자의 editor 프로세스를 종료하지 않는다.
 
 개발 실행 외의 배포 대상과 export preset은 이번 검증으로 확정하지 않았다. 배포 작업은 별도 대상과 결과물 확인이 필요하다.

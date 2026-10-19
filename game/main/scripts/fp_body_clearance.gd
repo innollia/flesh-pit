@@ -8,6 +8,14 @@ const SURFACE := preload("res://addons/flesh_dig_kit/terrain/fdk_surface_patch.g
 const CONTACT_SKIN := 0.002
 const AXES := [Vector3.BACK, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.DOWN, Vector3.UP]
 var _signature: Array = []
+## Corner values the current triangles were built from (see _prepare_surface).
+var _built: PackedFloat32Array = PackedFloat32Array()
+var _memo: Array = []
+## Rebuild the triangles only when a corner moved more than this from the
+## values they were built from, or crossed the surface. Regrowth nudges every
+## corner a hair per frame; the published collision mesh itself trails by up
+## to FDKChunk.REGEN_REMESH_DRIFT (0.02), so a smaller drift is invisible.
+const SURFACE_DRIFT := 0.005
 var _faces := PackedVector3Array()
 var _face_low := PackedVector3Array()
 var _face_high := PackedVector3Array()
@@ -207,7 +215,15 @@ func _prepare_surface(field: FDKTerrainField, lo: Vector3, hi: Vector3) -> void:
 	_iso = field.config.iso_level
 	var first := Vector3i((lo / _cell_size).floor()) - Vector3i.ONE
 	var last := Vector3i((hi / _cell_size).floor()) + Vector3i.ONE
+	# The crush and posture checks ask several times a frame about the same
+	# box; with no density edit since, the corners and triangles still hold.
+	var memo: Array = [Engine.get_process_frames(), field.get_instance_id(), first, last, field._patch_density_rev]
+	if memo == _memo:
+		surface_cache_hits += 1
+		return
+	_memo = memo
 	var next: Array = [field.get_instance_id(), first, last, _cell_size, _iso, field.config.facet_jitter, field.surface_constraint]
+	var values := PackedFloat32Array()
 	_corners.clear()
 	for z in range(first.z, last.z + 2):
 		for y in range(first.y, last.y + 2):
@@ -215,12 +231,21 @@ func _prepare_surface(field: FDKTerrainField, lo: Vector3, hi: Vector3) -> void:
 				var corner := Vector3i(x, y, z)
 				var value := field.corner_density_global(corner)
 				_corners[corner] = value
-				next.append(value)
+				values.append(value)
 				last_corner_reads += 1
-	if next == _signature:
-		surface_cache_hits += 1
-		return
+	if next == _signature and values.size() == _built.size():
+		var same := true
+		for i in range(values.size()):
+			var was: float = _built[i]
+			var now: float = values[i]
+			if absf(now - was) > SURFACE_DRIFT or (now >= _iso) != (was >= _iso):
+				same = false
+				break
+		if same:
+			surface_cache_hits += 1
+			return
 	_signature = next
+	_built = values
 	_faces = PackedVector3Array()
 	_face_low = PackedVector3Array()
 	_face_high = PackedVector3Array()

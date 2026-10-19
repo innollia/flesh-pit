@@ -852,7 +852,7 @@ func world_to_cell(world_pos: Vector3) -> Array:
     return [chunk_coord, local_cell]
 
 func _floordiv(a: int, b: int) -> int:
-    return int(floor(float(a) / float(b)))
+    return floori(float(a) / b)
 
 ## Density at a global corner coordinate (chunk_coord * chunk_size + local).
 ## Sum of the 8 corner densities of the cell containing world_pos. Eating
@@ -868,8 +868,18 @@ func cell_corner_sum(world_pos: Vector3) -> float:
 
 func corner_density_global(g: Vector3i) -> float:
     var s := config.chunk_size
-    var cc := Vector3i(_floordiv(g.x, s), _floordiv(g.y, s), _floordiv(g.z, s))
+    # The hottest read in the kit (thousands a frame while meshing): floor
+    # division in one vector op, and the plain live-density case first with
+    # the corner index and contraction offset inlined (no script calls).
+    var cc := Vector3i((Vector3(g) / float(s)).floor())
     var chunk: FDKChunk = _chunks.get(cc, null)
+    if chunk != null and not _reading_visible_tear and not _reading_mesh_snapshot:
+        var l := g - cc * s
+        var n := s + 1
+        var ci := l.x + (l.y + l.z * n) * n
+        if chunk._has_contract and ci < chunk._contract.size():
+            return chunk._density[ci] + chunk._contract[ci]
+        return chunk._density[ci]
     if _reading_visible_tear:
         if _visible_tear_corners.has(g):
             return float(_visible_tear_corners[g])
