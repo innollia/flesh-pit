@@ -1733,9 +1733,19 @@ func handle_esc() -> String:
 
 func open_pause_menu() -> void:
 	chewer.stop()
+	pause_menu.set_eyes(progression.all_mutations(), restroom_field_angle())
 	pause_menu.open()
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+## Where the restroom lies from the eye, as a screen angle: 0 = straight
+## ahead (up), positive to the right (the magnetic eye's field, M03).
+func restroom_field_angle() -> float:
+	var to := RESTROOM_CENTER - player.camera.global_position
+	var local := player.camera.global_basis.inverse() * to
+	if Vector2(local.x, local.z).length() < 0.01:
+		return 0.0
+	return atan2(local.x, -local.z)
 
 func _on_pause_resumed() -> void:
 	get_tree().paused = false
@@ -2508,6 +2518,7 @@ func die(cause: String) -> void:
 	deaths += 1
 	player.global_position = START_POS
 	player.velocity = Vector3.ZERO
+	wake_lids.set_eyes(progression.all_mutations(), restroom_field_angle())
 	wake_lids.play()
 	died.emit(cause)
 	# 형님 2026-09-30: same autosave gap as end_settlement -- a death is a

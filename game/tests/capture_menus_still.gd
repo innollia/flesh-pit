@@ -47,6 +47,17 @@ func _run() -> void:
 	m.settings_menu.open_keys()
 	await frames(20)
 	await shot("pause_keys")
+	# every action's motion, mid-loop
+	var kb: FPKeybindMenu = m.keybind_menu
+	for i in range(kb._order.size()):
+		kb.show_action(i)
+		if i == 1:
+			await frames(8)
+			await shot("keys_turning")
+			await frames(42)
+		else:
+			await frames(50)
+		await shot("keys_%s" % kb._order[i])
 	m.handle_esc()
 	m.handle_esc()
 	m.handle_esc()

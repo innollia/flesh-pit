@@ -86,6 +86,60 @@ func run() -> void:
 	ev.pressed = true
 	hints._input(ev)
 	check(hints.vomit_learned, "pressing V once retires the opening's V icon")
+	# --- eye mutations shut differently
+	var lid_mat: ShaderMaterial = pm.lids.material
+	pm.set_eyes(["T5", "M03"], 0.7)
+	check(lid_mat.get_shader_parameter("fish") == 1.0 and lid_mat.get_shader_parameter("magnet") == 1.0 and lid_mat.get_shader_parameter("owl") == 0.0, "fish and magnet eyes shut their own way")
+	check(is_equal_approx(lid_mat.get_shader_parameter("field_angle"), 0.7), "the magnetic eye's field points where it is told")
+	pm.set_eyes([])
+	check(lid_mat.get_shader_parameter("fish") == 0.0 and lid_mat.get_shader_parameter("echo") == 0.0, "plain eyes again")
+	var fa: float = m.restroom_field_angle()
+	m.player._yaw += PI * 0.5
+	await frames(2)
+	check(absf(wrapf(m.restroom_field_angle() - fa, -PI, PI)) > 1.0, "the field turns with the head (%.2f -> %.2f)" % [fa, m.restroom_field_angle()])
+	# --- the key screen: a turntable of the player's body, one per action
+	var kb: FPKeybindMenu = m.keybind_menu
+	m.open_keybind_menu()
+	await frames(5)
+	var doll: Node = kb.doll
+	check(doll.call("front_action") == kb._order[0], "the first action is in the light")
+	var shown_caps := 0
+	for a in kb.buttons:
+		if (kb.buttons[a] as Button).visible:
+			shown_caps += 1
+	check(shown_caps == 1 and (kb.buttons[kb._order[0]] as Button).visible, "only its key cap shows")
+	var waiting_bodies := 0
+	for sl in doll.slots:
+		if (sl.body as Node3D).visible and absf((sl.body as Node3D).position.x) > 0.8:
+			waiting_bodies += 1
+	check(waiting_bodies == 2, "the previous and next wait at the sides (%d)" % waiting_bodies)
+	var right_ev := InputEventAction.new()
+	right_ev.action = "ui_right"
+	right_ev.pressed = true
+	kb._input(right_ev)
+	check(kb.current == 1 and doll.call("turning"), "→ turns the table to the next action")
+	check(kb.action_label.text == String(m.keybind_defaults()[kb._order[1]]["설명"]) and (kb.buttons[kb._order[1]] as Button).visible, "its name and key cap show")
+	var turn_t := 0.0
+	while turn_t < 3.0 and (doll.call("turning") or doll.slots.all(func(sl): return sl.w < 0.6)):
+		await process_frame
+		turn_t += get_root().get_process_delta_time()
+	check(not doll.call("turning") and doll.call("front_action") == kb._order[1], "the next body arrives in the light (%.2f s)" % turn_t)
+	var front_w := 0.0
+	for sl in doll.slots:
+		front_w = maxf(front_w, sl.w)
+	check(front_w > 0.5, "and starts its motion")
+	kb.prev_arrow.pressed.emit()
+	turn_t = 0.0
+	while turn_t < 3.0 and doll.call("turning"):
+		await process_frame
+		turn_t += get_root().get_process_delta_time()
+	check(kb.current == 0 and doll.call("front_action") == kb._order[0], "the left arrow turns back")
+	kb.show_action(kb._order.size() - 1)
+	check(doll.call("front_action") == kb._order.back(), "jumping goes the short way round")
+	(kb.buttons["fp_carry"] as Button).pressed.emit()
+	check(kb.waiting == "fp_carry" and doll.call("front_action") == "fp_carry", "clicking a cap turns its action into the light and waits for the key")
+	kb.waiting = ""
+	kb.close()
 	# --- death wakes with the lids
 	m.die("test")
 	check(m.wake_lids.playing() and m.wake_lids.visible, "waking in the restroom starts with shut eyes")

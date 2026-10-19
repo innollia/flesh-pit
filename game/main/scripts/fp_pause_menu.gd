@@ -75,6 +75,18 @@ func _ink_button(b: Button) -> void:
     b.add_theme_color_override("font_outline_color", Color(0.12, 0.0, 0.02, 0.55))
     b.add_theme_constant_override("outline_size", 8)
 
+## Eye mutations shut differently (fp_pause_lids.gdshader): M24 owl,
+## T5 fish, M03 magnet (field toward the restroom), T1 echo.
+static func apply_eyes(mat: ShaderMaterial, ids: Array, field_angle: float) -> void:
+    mat.set_shader_parameter("owl", 1.0 if ids.has("M24") else 0.0)
+    mat.set_shader_parameter("fish", 1.0 if ids.has("T5") else 0.0)
+    mat.set_shader_parameter("magnet", 1.0 if ids.has("M03") else 0.0)
+    mat.set_shader_parameter("echo", 1.0 if ids.has("T1") else 0.0)
+    mat.set_shader_parameter("field_angle", field_angle)
+
+func set_eyes(ids: Array, field_angle: float = 0.0) -> void:
+    apply_eyes(_lid_mat, ids, field_angle)
+
 func is_open() -> bool:
     return _open
 

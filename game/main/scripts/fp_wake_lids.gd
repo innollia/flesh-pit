@@ -27,6 +27,9 @@ func _ready() -> void:
 	add_child(lids)
 	visible = false
 
+func set_eyes(ids: Array, field_angle: float = 0.0) -> void:
+	FPPauseMenu.apply_eyes(_mat, ids, field_angle)
+
 func play() -> void:
 	_t = 0.0
 	_beat = 0.0

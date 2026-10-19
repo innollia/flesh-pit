@@ -20,6 +20,7 @@
 
 - `run_mutation_tests.gd`: 손목 시계(Tab) 자세 4건(왼손목 0.35~0.45m, 팔뚝 방향, 팔꿈치 화면 밖, 팔뚝 위 작은 인형)이 변경 전 코드에서도 같은 항목으로 실패한다. 같은 Tab·팔 B 조건을 보는 `run_preservation_tests.gd` 206항목은 통과하므로, 승인 기준이 바뀐 뒤 갱신되지 않은 검사인지 실제 회귀인지 승인된 자세와 대조해 판정해야 한다. 이번 작업에서는 팔·Tab을 바꾸지 않았다.
 - `run_settle_vent_tests.gd`: 레버 없이 일어서기, 야외 구토 털, NPC 이빨 대사 2건이 변경 전 코드에서도 실패한다. 표준 33개 묶음에는 들어 있지 않다.
+- `run_terrain_dig_regression_tests.gd`의 "existing vomit motion restores neutral camera without storing guard offset"은 간헐적으로 실패한다. 2026-10-20 같은 소스를 두 번 연달아 돌렸을 때 한 번 실패하고 한 번 통과했고, 이전 작업 중에도 여러 번 나왔다. 실시간 타이머(`create_timer`)로 구토를 0.4초 돌리고 취소한 뒤 카메라 보호 보정을 비교하므로, 프레임 속도에 따라 보정이 덜 수렴한 시점을 읽는 것으로 보인다. 원인은 확인하지 않았다.
 - 격리 사본에서 `run_terrain_density_cache_tests.gd`, `run_preservation_tests.gd`가 엔진 시작 배너 직후 멈춰 180초 시간 초과로 한 번씩 실패했다. 같은 소스의 단독 재실행과 최종 전체 실행은 통과했다. 원인은 특정하지 못했다.
 
 ## 사용자 FOV 설정이 변이 적용 때 75도로 덮임 — 2026-10-12 수정
