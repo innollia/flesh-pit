@@ -30,6 +30,9 @@ func _process(_d: float) -> bool:
     _frame += 1
     if _frame == 2:
         _m.finish_opening()
+        # these checks are about which line the being picks; the voice gate
+        # (delay, quiet spell, chance) has its own checks in run_mutation_tests
+        _m.vent.instant_voice = true
     if _frame < 6:
         return false
     _settlement()

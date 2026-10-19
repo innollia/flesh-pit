@@ -83,6 +83,19 @@ static var LONG_AWAY: float = _num("LONG_AWAY", 120.0)
 static var SPRAY_SULK: float = _num("SPRAY_SULK", 40.0)
 static var TOGGLE_HIDE: float = _num("TOGGLE_HIDE", 20.0)
 static var REMARK_COOLDOWN: float = _num("REMARK_COOLDOWN", 90.0)
+## Voice gate (2026-10-19 play: it talked too much and spoke the instant a
+## condition matched). The being still decides a line at once (spoken,
+## last_line: its memory, saved); line_spoken (subtitles, voice) comes after
+## a reaction delay. Room chatter about what the player is doing is voiced
+## only after a quiet spell, only sometimes, and not the same line again soon.
+static var VOICE_DELAY_MIN: float = _num("VOICE_DELAY_MIN", 0.7)
+static var VOICE_DELAY_MAX: float = _num("VOICE_DELAY_MAX", 1.6)
+static var LINE_GAP: float = _num("LINE_GAP", 2.5)
+static var CHATTER_QUIET: float = _num("CHATTER_QUIET", 15.0)
+static var CHATTER_REPEAT: float = _num("CHATTER_REPEAT", 90.0)
+static var CHATTER_CHANCE: float = _lim("CHATTER_CHANCE", 0.5)
+## Line ids that are chatter (comments on the room), not replies to a trade.
+const CHATTER_PREFIXES := ["distract.", "tank.", "lid.", "pick.long", "pick.hover", "player.", "surface.paid", "mantle.paid", "leave.walk"]
 
 static var FIRST_CHAIN: Array[String] = _pool("FIRST_CHAIN", ["first.heard", "first.nobody", "first.hello", "first.tsk"])
 static var FLUSH_A: Array[String] = _pool("FLUSH_A", ["flush.a1", "flush.a2", "flush.a3", "flush.a4", "flush.a5"])
@@ -109,9 +122,16 @@ var _pile_prog: FPProgression
 var shell: int = 0
 ## The last trade before the outermost shell (spec 12 마지막 거래).
 var final_trade: bool = false
-## Line ids spoken so far, oldest first (tests and subtitles read it).
+## Line ids the being has decided to say, oldest first (its memory; saved).
 var spoken: Array[String] = []
 var last_line: String = ""
+## Line ids actually voiced (line_spoken), oldest first.
+var voiced: Array[String] = []
+## Tests of the line logic voice every decided line at once.
+var instant_voice := false
+var _pending: Array = [] # [id, clock to voice at]
+var _voiced_t: float = -INF
+var _chatter_t: Dictionary = {} # chatter id -> clock it was last voiced
 ## Eyes gone: after a spray or heavy toggling.
 var absent_left: float = 0.0
 
@@ -188,7 +208,46 @@ func _rand(n: int) -> int:
 func _say(id: String) -> void:
     spoken.append(id)
     last_line = id
+    if instant_voice:
+        _voice(id)
+        return
+    if is_chatter(id):
+        # chatter never queues behind anything and never interrupts
+        if not _pending.is_empty() or _clock - _voiced_t < CHATTER_QUIET:
+            return
+        if _clock - float(_chatter_t.get(id, -INF)) < CHATTER_REPEAT:
+            return
+        if _rand(1000) >= int(CHATTER_CHANCE * 1000.0):
+            return
+        _chatter_t[id] = _clock
+    else:
+        # a reply drops chatter still waiting to be voiced
+        _pending = _pending.filter(func(p): return not is_chatter(String(p[0])))
+        if _pending.size() >= 2:
+            _pending.pop_front()
+    var at := _clock + lerpf(VOICE_DELAY_MIN, VOICE_DELAY_MAX, float(_rand(1000)) / 1000.0)
+    at = maxf(at, _voiced_t + LINE_GAP)
+    if not _pending.is_empty():
+        at = maxf(at, float(_pending[_pending.size() - 1][1]) + LINE_GAP)
+    _pending.append([id, at])
+
+static func is_chatter(id: String) -> bool:
+    for p in CHATTER_PREFIXES:
+        if id.begins_with(p):
+            return true
+    return false
+
+func _voice(id: String) -> void:
+    voiced.append(id)
+    _voiced_t = _clock
     line_spoken.emit(id)
+
+## Lines decided but not voiced yet.
+func pending_lines() -> Array[String]:
+    var out: Array[String] = []
+    for p in _pending:
+        out.append(String(p[0]))
+    return out
 
 ## The line for an event from the 사건 table (random one if several).
 func _ev(key: String, fallback: String) -> String:
@@ -203,6 +262,8 @@ func _pick(arr: Array[String]) -> String:
 
 func tick(delta: float) -> void:
     _clock += delta
+    while not _pending.is_empty() and float(_pending[0][1]) <= _clock:
+        _voice(String(_pending.pop_front()[0]))
     _since_flush += delta
     _since_paid += delta
     if absent_left > 0.0:
@@ -383,6 +444,8 @@ func close() -> void:
     var was_open := is_open
     is_open = false
     _eyes.visible = false
+    # chatter about the open grate no longer applies once it is shut
+    _pending = _pending.filter(func(p): return not is_chatter(String(p[0])))
     if was_open and not offers.is_empty():
         _say(_ev("물건두고_닫기", "leave.close"))
         _held = offers.duplicate()

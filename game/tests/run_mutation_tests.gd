@@ -225,6 +225,45 @@ func _run_params() -> void:
 	sub._process(30.0)
 	_assert(sub.current_text == "둘째 줄" and sub.queued() == 0, "then it shows")
 	sub.show_now("")
+	# vent voice gate: decided at once, voiced after a reaction delay; room
+	# chatter only after a quiet spell, only sometimes, never again soon
+	var vv := FPVent.new()
+	m.add_child(vv)
+	var chance := FPVent.CHATTER_CHANCE
+	FPVent.CHATTER_CHANCE = 1.0
+	vv._say("appraise.1")
+	_assert(vv.last_line == "appraise.1" and vv.voiced.is_empty(), "the being decides a reply at once but does not blurt it out")
+	vv.tick(FPVent.VOICE_DELAY_MIN * 0.5)
+	_assert(vv.voiced.is_empty(), "still thinking just after")
+	vv.tick(FPVent.VOICE_DELAY_MAX)
+	_assert(vv.voiced == ["appraise.1"], "then says it")
+	vv._say("distract.sink")
+	vv.tick(5.0)
+	_assert(not vv.voiced.has("distract.sink"), "no chatter right after it has spoken")
+	vv.tick(FPVent.CHATTER_QUIET)
+	vv._say("distract.sink")
+	vv.tick(FPVent.VOICE_DELAY_MAX + 0.1)
+	_assert(vv.voiced.has("distract.sink"), "chatter after a quiet spell")
+	vv.tick(FPVent.CHATTER_QUIET + 1.0)
+	vv._say("distract.sink")
+	vv.tick(FPVent.VOICE_DELAY_MAX + 0.1)
+	_assert(vv.voiced.count("distract.sink") == 1, "the same chatter is not repeated soon")
+	vv.tick(FPVent.CHATTER_REPEAT)
+	vv._say("distract.mirror")
+	vv._say("appraise.2")
+	_assert(vv.pending_lines() == ["appraise.2"], "a reply drops chatter still waiting")
+	vv._say("pick.take1")
+	vv._say("final.given")
+	_assert(vv.pending_lines().size() == 2, "at most two replies wait in line")
+	vv.tick(20.0)
+	var gaps_ok: bool = vv.voiced.slice(-2) == ["pick.take1", "final.given"]
+	_assert(gaps_ok, "replies keep their order")
+	FPVent.CHATTER_CHANCE = 0.0
+	vv.tick(FPVent.CHATTER_REPEAT)
+	vv._say("distract.door")
+	_assert(vv.pending_lines().is_empty(), "chatter that loses the chance roll stays unsaid")
+	FPVent.CHATTER_CHANCE = chance
+	vv.queue_free()
 	# the last trade opens only right before the outermost shell
 	prog.max_depth = 5.0
 	m._vent_watch(0.1)
