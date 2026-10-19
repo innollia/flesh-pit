@@ -77,6 +77,8 @@ func _apply_speeds() -> void:
 		c.set(k, float(_base_speed[k]) * f)
 	if "move_speed_scale" in m.player:
 		m.player.move_speed_scale = _squeeze_factor
+	# squeezing past flesh: x0.35 at the tightest, M20 no slowdown, M19 faster
+	c.set("squeeze_speed_min", m.progression.posture_speed_min())
 
 ## The cud credit, once (settling or losing the stomach).
 func take_cud_credit() -> float:
@@ -93,14 +95,9 @@ func apply_now() -> void:
 	sc.overfill_chew_multiplier = p.overfill_chew_multiplier()
 	sc.base_chew_time = p.base_chew_time()
 	_apply_speeds()
-	# M05 folded shoulders x0.85, T4 swollen torso x1.3: the real capsule
-	var cap := m.player.collision_shape.shape as CapsuleShape3D
-	if cap != null:
-		if not m.player.collision_shape.has_meta("own_shape"):
-			cap = cap.duplicate()
-			m.player.collision_shape.shape = cap
-			m.player.collision_shape.set_meta("own_shape", true)
-		cap.radius = p.body_radius()
+	# M05 folded shoulders x0.85, T4 swollen torso x1.3: the real capsule's
+	# own radius (the controller's twist squeezes from there)
+	m.player.set_natural_radius(p.body_radius())
 	if m.player_lamp != null:
 		m.player_lamp.omni_range = 9.0 * p.light_range_factor()
 	if m.player.camera != null:

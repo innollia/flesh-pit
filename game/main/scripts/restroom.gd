@@ -51,6 +51,10 @@ var door_spill: SpotLight3D
 var door_spill_fill: OmniLight3D
 const DOOR_SPILL_ENERGY := 0.85
 const DOOR_FILL_ENERGY := 0.25
+## 0..1 dimming of the door light while the player stands in its beam right
+## outside the door (main sets it; 1 = the approved light). 2026-10-19 play:
+## digging into the flesh at the door, the light 0.25 m away blew it out.
+var door_spill_dim := 1.0
 
 func _ready() -> void:
     build()
@@ -786,8 +790,8 @@ func _update_door_spill() -> void:
     if door_spill == null:
         return
     var k := door_open_amount()
-    door_spill.light_energy = DOOR_SPILL_ENERGY * k
-    door_spill_fill.light_energy = DOOR_FILL_ENERGY * k
+    door_spill.light_energy = DOOR_SPILL_ENERGY * k * door_spill_dim
+    door_spill_fill.light_energy = DOOR_FILL_ENERGY * k * door_spill_dim
     door_spill.visible = k > 0.01
     door_spill_fill.visible = k > 0.01
 

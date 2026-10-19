@@ -22,3 +22,14 @@ extends Resource
 @export var bob_roll: float = 0.35 ## camera roll per metre of sway
 @export var bob_ease_speed: float = 4.0 ## how fast the bob fades in/out on start/stop
 @export var pitch_limit_deg: float = 89.0
+## Squeezing past flesh instead of bumping (FDKFirstPersonController):
+## a low lip (step_height) is stepped over and an opening up to climb_reach
+## crawled into; where it would still bump the body ducks
+## (capsule down to squeeze_min_height) and twists sideways (radius down to
+## squeeze_min_radius_scale), moving at squeeze_speed_min at the tightest.
+@export var step_height: float = 0.32
+@export var climb_reach: float = 0.9 ## highest opening the body crawls up into by itself
+@export var squeeze_min_height: float = 0.7
+@export var squeeze_min_radius_scale: float = 0.6
+@export var squeeze_speed_min: float = 0.35
+@export var squeeze_relax_speed: float = 1.2 ## squeeze shed per second once there is room

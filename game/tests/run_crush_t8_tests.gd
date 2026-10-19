@@ -54,6 +54,11 @@ func fixture(boxes: Array[AABB], restorable: bool = false) -> void:
 	field.remesh_all()
 	actor.global_position = center
 	actor.velocity = Vector3.ZERO
+	# each fixture starts from the body's own size: a squeeze (duck/twist)
+	# left over from walking in the previous fixture is not part of this one
+	actor.duck = 0.0
+	actor.twist = 0.0
+	actor._apply_posture()
 	m.terrain = field
 	await frames(3)
 

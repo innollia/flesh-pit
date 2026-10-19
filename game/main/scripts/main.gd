@@ -86,6 +86,28 @@ var player_lamp: OmniLight3D
 var body_fill: OmniLight3D
 const BODY_LAYER := 1 << 11 ## the first-person waist (belt, shirt, trousers)
 const BODY_FILL := 0.35 ## body fill energy per unit of player lamp energy
+## Eye lamp in the flesh (2026-10-19 play: stepping out of the door blew the
+## view out to white). The lamp switched from 0 to full within ~0.3 s and lit
+## walls half a metre away at full strength; the approved door light is not
+## the cause and stays. The lamp now comes up as the eyes adapt and dims
+## while a wall is right in front of the eye.
+const LAMP_ENERGY := 2.4
+const LAMP_ADAPT_TIME := 2.5 ## s from leaving the room to full lamp
+const LAMP_ADAPT_START := 0.3 ## share of full lamp the moment you step out
+## A wall nearer than this gets the lamp scaled by (d / LAMP_FULL_AT) ^
+## attenuation, which cancels the light's own near falloff: a wall at the
+## eye reads as lit as one at LAMP_FULL_AT instead of blowing out.
+const LAMP_FULL_AT := 1.2
+const LAMP_NEAR_MIN := 0.12
+const LAMP_TIGHT := 0.5 ## share of the lamp with the body fully squeezed
+const LAMP_SIDE_NEAR := 0.4 ## m: a wall this close beside the eye counts like one LAMP_FULL_AT ahead
+## The door light seen from the room stays the approved light; standing in
+## its beam right outside the door (digging in) it dims to DOOR_GLARE_MIN and
+## comes back over DOOR_GLARE_RANGE metres.
+const DOOR_GLARE_MIN := 0.3
+const DOOR_GLARE_RANGE := 3.0
+const LAMP_DOOR_ZONE := 1.8 ## m past the door plane the open door still lights the eyes
+var _eye_adapt := 0.0
 var nerves: Array[FDKNerveStalk] = []
 
 var progression: FPProgression = FPProgression.new()
@@ -248,6 +270,7 @@ func _ready() -> void:
 	player.config.climb_up_speed = 4.5
 	player.name = "Player"
 	player.movement_filter = _filter_terrain_motion
+	player.shape_fits = func(): return _body_clearance.fits(player, terrain)
 	player.position = START_POS
 	add_child(player)
 	player.set("_yaw", START_YAW)
@@ -649,10 +672,61 @@ func _update_atmosphere(delta: float, immediate: bool = false) -> void:
 	environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
 	environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
 	environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.42, k)
-	player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.0 if inside else 2.4, k)
+	var from_door := player.global_position.z - (restroom.global_position.z + FPRestroom.HALF.z)
+	# the eyes do not get used to the dark while the open door's light is
+	# right beside them: the lamp waits until the body is past its beam (the
+	# two together blew the view out; each alone did not)
+	var door_lit: bool = restroom.door_open_amount() > 0.05 and from_door < LAMP_DOOR_ZONE
+	if inside:
+		_eye_adapt = 0.0
+	elif door_lit and not immediate:
+		_eye_adapt = maxf(0.0, _eye_adapt - delta / LAMP_ADAPT_TIME)
+	else:
+		_eye_adapt = minf(1.0, _eye_adapt + (1.0 if immediate else delta / LAMP_ADAPT_TIME))
+	var dim := 1.0 if inside else lerpf(DOOR_GLARE_MIN, 1.0, smoothstep(0.0, DOOR_GLARE_RANGE, maxf(from_door, 0.0)))
+	restroom.door_spill_dim = lerpf(restroom.door_spill_dim, dim, k)
+	player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.0 if inside else lamp_target(), k)
 	body_fill.light_energy = player_lamp.light_energy * BODY_FILL
 	if not inside:
 		environment.fog_light_color = Color(0.22, 0.03, 0.05).lerp(Color(0.1, 0.01, 0.07), depth_tone)
+
+## Eye lamp energy outside the room: eye adaptation times the near-wall dim.
+func lamp_target() -> float:
+	var adapt := lerpf(LAMP_ADAPT_START, 1.0, smoothstep(0.0, 1.0, _eye_adapt))
+	var near := clampf(pow(_wall_ahead() / LAMP_FULL_AT, player_lamp.omni_attenuation), LAMP_NEAR_MIN, 1.0)
+	# a squeezed body is in a tight gap: everything the lamp lights is close
+	var tight := lerpf(1.0, LAMP_TIGHT, float(player.squeeze())) if player.has_method("squeeze") else 1.0
+	return LAMP_ENERGY * adapt * near * tight
+
+## Distance from the eye to the nearest real surface ahead or right beside it.
+func _wall_ahead() -> float:
+	if not is_inside_tree() or player == null:
+		return LAMP_FULL_AT
+	var ray: Array = player.get_look_ray()
+	var origin: Vector3 = ray[0]
+	var fwd: Vector3 = ray[1]
+	var basis: Basis = player.camera.global_basis
+	var space := get_world_3d().direct_space_state
+	var best := LAMP_FULL_AT
+	# a cone ahead (counted as it is) plus the sides, top and bottom, which
+	# count only when pressed close (squeezed into a tight gap the walls right
+	# beside the eye blew out; an ordinary tunnel's walls must not dim it)
+	var rays: Array = []
+	for off in [Vector2.ZERO, Vector2(0.35, 0.0), Vector2(-0.35, 0.0), Vector2(0.0, -0.3)]:
+		rays.append([(fwd + basis.x * off.x + basis.y * off.y).normalized(), LAMP_FULL_AT])
+	for side in [basis.x, -basis.x, basis.y, -basis.y]:
+		rays.append([(side + fwd * 0.3).normalized(), LAMP_SIDE_NEAR])
+	for r in rays:
+		var reach: float = r[1]
+		var q := PhysicsRayQueryParameters3D.create(origin, origin + (r[0] as Vector3) * reach)
+		q.exclude = [player.get_rid()]
+		# an eye pressed right against the flesh starts at its surface
+		q.hit_from_inside = true
+		q.hit_back_faces = true
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			best = minf(best, origin.distance_to(hit.position) * LAMP_FULL_AT / reach)
+	return best
 
 func apply_atmosphere_now() -> void:
 	_update_atmosphere(0.0, true)
@@ -844,6 +918,7 @@ func _process(delta: float) -> void:
 	hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
 	vent.tick(delta)
 	hand_motions.check_cancel()
+	_watch_tank_lean(delta)
 	hand_motions.tick(delta)
 	_guard_terrain_eye(false, false)
 	_vent_watch(delta)
@@ -1280,6 +1355,8 @@ func _interact() -> void:
 			vent.notice("mirror")
 		"canary": begin_canary_pull()
 		"tank_teeth":
+			# lean in over the tank, then pick teeth one at a time
+			hand_motions.play_tank_lean()
 			_start_tooth_op("take", "fp_interact")
 		"lever": pull_lever()
 		"vent": use_vent()
@@ -1711,14 +1788,19 @@ func scoop_teeth() -> int:
 		return 0
 	var first := progression.teeth_in_hand == 0
 	var n := progression.take_tooth()
+	if n > 0 and hand_motions.tank_leaning():
+		hand_motions.dip()
 	if n > 0 and first:
 		vent.notice("grab")
-		hand_motions.play_scoop()
+		if not hand_motions.tank_leaning():
+			hand_motions.play_scoop()
 	return n
 
 ## One tooth from the hand back into the tank.
 func put_tooth_back() -> int:
 	var n := progression.put_back_tooth()
+	if n > 0 and hand_motions.tank_leaning():
+		hand_motions.dip()
 	if n > 0 and progression.teeth_in_hand == 0:
 		vent.notice("put_back")
 	return n
@@ -1763,6 +1845,21 @@ func _repeat_tooth_op(delta: float) -> void:
 		if _do_tooth_op(_tooth_op) == 0:
 			_tooth_op = ""
 			return
+
+## The lean over the tank ends when the eye leaves it (looking away), the
+## lid goes back on, or there is nothing left to pick or put back.
+var _lean_off_t := 0.0
+func _watch_tank_lean(delta: float) -> void:
+	if not hand_motions.tank_leaning():
+		_lean_off_t = 0.0
+		return
+	var empty: bool = progression.teeth <= 0 and progression.teeth_in_hand <= 0
+	if tank_lid.on_tank or tank_lid.held or empty:
+		hand_motions.release_tank_lean()
+		return
+	_lean_off_t = 0.0 if interact_target() == "tank_teeth" else _lean_off_t + delta
+	if _lean_off_t > 0.4:
+		hand_motions.release_tank_lean()
 
 func try_pick_tank_item() -> bool:
 	return scoop_teeth() > 0

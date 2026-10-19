@@ -23,6 +23,7 @@ const MODELS := {
     "fp_barrier_stages": [["set_stage", [0]], ["set_stage", [3]], ["play_break", []]],
     "fp_ending_street": [["set_roll", [0.5]], ["play_roll_away", []]],
     "fp_rolling_sphere": [["set_roll", [1.2]]],
+    "fp_legs": [["set_pose", [0.95, 1.0, 1.0, 0.0]], ["set_pose", [0.47, 2.0, 1.0, 1.0]]],
 }
 
 var _passed := 0

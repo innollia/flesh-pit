@@ -16,6 +16,8 @@ Main의 저장 version은5이고 진행의 내부 version은3이다. 지형 payl
 
 `FDKFirstPersonController.movement_filter`는 선택적인 Callable이다. 초 단위 물리 프레임에서 요청된 세계 이동 벡터를 받아 허용된 이동 벡터를 반환하며, 컨트롤러는 이를 속도로 환산한 뒤 기존 `move_and_slide()`를 실행한다. 콜백이 없으면 기존 독립 컨트롤러의 물리 동작을 유지한다. Main이 현재 실제 지형과 전체 캡슐의 경계를 연결하며 키트는 Main을 참조하지 않는다.
 
+`FDKFirstPersonController.shape_fits`도 선택적인 Callable이다. 현재 캡슐이 지금 자리에 맞는지(실제 지형 면이 관통하지 않고, 중심이 고체 안이 아니고, 건축물과 겹치지 않는지) bool로 답한다. 없으면 물리 겹침 질의를 쓴다. 컨트롤러는 몸이 살에 걸리면 낮은 턱을 넘고(config.step_height), 0.9 m까지의 입구로 기어오르고(config.climb_reach), 고개를 숙이거나(duck, 키 최저 config.squeeze_min_height) 몸을 뒤틀어(twist, 반지름 ×config.squeeze_min_radius_scale) 실제 캡슐을 바꾼다. 모든 변경은 shape_fits와 movement_filter를 통과해야 남는다. squeeze()는 0~1, 걷기 속도는 lerp(1, config.squeeze_speed_min, squeeze())배다. set_natural_radius(r)은 몸 자체 반지름(변이)을 정한다. probe_space(dir)는 앞 바닥 높이·천장·폭을 실제 충돌로 잰 사전이며, 판정 근거가 아니라 자세를 고르는 단서다. Main은 FPBodyClearance.fits()를 연결한다.
+
 허용된 이동은 출발 캡슐에서 반환 벡터까지의 실제 직선 전체 경로와 끝점이 안전해야 한다. 여러 축으로 꺾어 검사한 경로를 합벡터의 안전성으로 대신하지 않는다. 현재 살점이 몸을 침범한 경우의 짧은 탈출은 별도의 전체 캡슐 경로 검사와 기존 물리 충돌을 통해 수행한다.
 
 ## 조준 결과

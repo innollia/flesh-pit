@@ -16,6 +16,7 @@ const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
 const TumorArt := preload("res://main/art/fp_tumor.gd")
+const LegsScene := preload("res://main/art/fp_legs.tscn")
 const MutHandsScene := preload("res://main/art/fp_mutation_hands.tscn")
 const BarrierScene := preload("res://main/art/fp_barrier_stages.tscn")
 const MUT_KINDS := ["T2", "T3", "T4"] ## extra arm, palm mouth, swollen torso
@@ -30,6 +31,12 @@ var arm_hair: Node3D
 var belt: Node3D
 var bag: Node3D
 var hand_tumor: Node3D
+## The player's own legs under the belt (fp_legs.gd), posed with the body.
+var legs: Node3D
+## Teeth held in the right hand, one real tooth per tooth (never a number),
+## heaped on the palm side of the wrist (2026-10-19: the hand showed nothing).
+var held_teeth: MultiMeshInstance3D
+const HELD_TEETH_SHOWN := 40
 var mut_hands: Node3D
 var _rig: Node3D
 var _hair_key := ""
@@ -84,6 +91,7 @@ func setup(main: Node3D) -> void:
 	saw.scale = Vector3.ONE * 0.5
 	arm_hair = HairScene.instantiate()
 	arm_hair.name = "ArmHair"
+	held_teeth = _make_held_teeth()
 	_attach_to_rig(_rig)
 	# mutation hands: a second rig with the tumor-mutation parts, swapped in
 	# once any of those mutations is owned
@@ -105,6 +113,10 @@ func setup(main: Node3D) -> void:
 	belt.position = Vector3(0, 0.05, 0.02)
 	m.player.add_child(belt)
 	_tag_body(belt)
+	legs = LegsScene.instantiate()
+	legs.name = "Legs"
+	m.player.add_child(legs)
+	_tag_body(legs)
 	bag = BagScene.instantiate()
 	bag.name = "TumorBag"
 	bag.position = Vector3(-0.2, -0.02, 0.06)
@@ -117,6 +129,7 @@ func _attach_to_rig(rig: Node3D) -> void:
 	var lroot := rig.get_node("HandLeft") as Node3D
 	_put(knife, rw, Vector3(0, -0.015, -0.06))
 	_put(hand_tumor, rw, Vector3(0, -0.06, -0.08))
+	_put(held_teeth, rw, Vector3.ZERO)
 	_put(scissors, lw, Vector3(0, -0.012, -0.07))
 	# the blender hangs in camera space low on the left, handle turned
 	# outward, and the rig's left hand grips that handle (hold_left), so
@@ -207,6 +220,9 @@ func _process(_delta: float) -> void:
 				_put(prop, wrist, Vector3(0, -0.025, -0.06))
 			prop.visible = true
 	hand_tumor.visible = prog.tumor_in_hand()
+	var held_n := mini(prog.teeth_in_hand, HELD_TEETH_SHOWN)
+	held_teeth.multimesh.visible_instance_count = held_n
+	held_teeth.visible = held_n > 0
 	var held: Array = prog.tumors.get("_carried") if prog.tumors.get("_carried") != null else []
 	if hand_tumor.visible and held.size() > 0 and int(hand_tumor.call("variant")) != _variant(held[held.size() - 1]):
 		hand_tumor.call("set_variant", _variant(held[held.size() - 1]))
@@ -236,6 +252,36 @@ func _process(_delta: float) -> void:
 	var mir: Node3D = m.restroom.mirror_art
 	if mir != null:
 		mir.call("set_focus", false and (m.player.global_position.distance_to(m.mirror_point()) < 1.1 and m._looking_at(m.mirror_point(), 35.0, 1.6)))
+
+## A heap of teeth on the palm side of the right wrist (the palm pads sit
+## at y -0.01, fingers run toward -z), filled from the middle outward. The
+## hand is turned palm-up while it holds them (fp_hand_motions _cup_teeth).
+func _make_held_teeth() -> MultiMeshInstance3D:
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "HeldTeeth"
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = m.restroom.tank_art.call("_tooth_mesh") if m.restroom.tank_art != null else BoxMesh.new()
+	mm.instance_count = HELD_TEETH_SHOWN
+	for i in range(HELD_TEETH_SHOWN):
+		var layer := i / 8
+		var a := float(i) * 2.39996
+		var r := 0.006 + 0.0045 * float(i % 8) * (1.0 - float(layer) * 0.15)
+		var at := Vector3(cos(a) * r, -0.03 - float(layer) * 0.011, -0.045 + sin(a) * r * 1.3)
+		var rot := Vector3(FPArtKit.h(i, 4), FPArtKit.h(i, 5), FPArtKit.h(i, 6)) * TAU
+		mm.set_instance_transform(i, Transform3D(Basis.from_euler(rot).scaled(Vector3.ONE * 2.0), at))
+		var y := FPArtKit.h(i, 9)
+		mm.set_instance_color(i, Color(0.9, 0.78 - y * 0.1, 0.55 - y * 0.15))
+	mm.visible_instance_count = 0
+	mmi.multimesh = mm
+	# the hands draw with their depth pulled toward the eye (FDKSkinMaterial
+	# squash 0.18); the teeth on the palm use the same squash or the palm
+	# paints over them
+	mmi.material_override = FDKPs1Material.get_material(FPArtKit.TEX + "tex_ceramic_64.png", 1.0, true, 0.5, 0.6, 0.18, false)
+	mmi.custom_aabb = AABB(Vector3(-0.06, -0.08, -0.1), Vector3(0.12, 0.1, 0.12))
+	mmi.visible = false
+	return mmi
 
 static func _variant(kind: Variant) -> int:
 	return maxi(0, FPProgression.TUMOR_KINDS.find(str(kind)))
@@ -385,3 +431,12 @@ func _sync_belt_posture(_delta: float) -> void:
 		var prone: float = m.canary_pull.prone()
 		belt.position = belt.position.lerp(Vector3(0, -m.player.config.stand_height * 0.5 + 0.22, 0.52), prone)
 		belt.rotation.x = -PI * 0.5 * prone
+	# the legs hang from the same waist: knees bend as it sinks, they step
+	# with the walk and worm along when the body twists through a gap
+	if legs != null and is_instance_valid(legs):
+		legs.transform = belt.transform
+		var bob_t: Variant = pl.get("_bob_time")
+		var bob_w: Variant = pl.get("_bob_weight")
+		var tw: Variant = pl.get("twist")
+		legs.call("set_pose", belt.position.y + m.player.config.stand_height * 0.5,
+			float(bob_t) if bob_t != null else 0.0, float(bob_w) if bob_w != null else 0.0, float(tw) if tw != null else 0.0)

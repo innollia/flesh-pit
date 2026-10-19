@@ -16,7 +16,7 @@ extends RefCounted
 const DUR := {
     "scoop": 0.55, "pour": 0.85, "take": 0.65, "take2": 0.75,
     "vomit_toilet": 2.4, "vomit_floor": 2.4, "wash": 2.6,
-    "belt": 0.75, "cycle": 0.35, "watch": 1.0e9,
+    "belt": 0.75, "cycle": 0.35, "watch": 1.0e9, "tank_lean": 1.0e9,
 }
 const CANCEL_TIME := 0.25
 ## Mirror look (watch): the left arm comes up like checking a wristwatch and
@@ -24,6 +24,18 @@ const CANCEL_TIME := 0.25
 const WATCH_RAISE := 0.3
 const CANCEL_ACTIONS := ["fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right",
     "fdk_jump", "fp_interact", "fp_pick", "fdk_eat", "fp_tool_next", "fp_vomit", "ui_cancel"]
+## Leaning in over the open tank (2026-10-19 play: from where the body
+## stands the teeth were a smudge a metre away and the hand showed nothing):
+## the head bends over the tank mouth, the right hand cups palm-up just over
+## the teeth with the held teeth on it, the left rests by the rim, and each
+## tooth taken or put back dips the hand in. Held until released; only moving
+## or Esc cancels it here (F and right click keep picking teeth).
+const TANK_LEAN_IN := 0.35
+const TANK_CANCEL := ["fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right", "fdk_jump", "fp_vomit", "ui_cancel"]
+## The lean eye: this far back from the tank mouth toward the player and up.
+const TANK_EYE := Vector2(0.14, 0.34)
+const DIP_TIME := 0.25
+var _dip_t := 1.0
 ## Offer kinds held with both hands.
 const BIG_ITEMS := ["blender", "big_saw", "blender_box", "saw_box"]
 const FLESH := Color(0.55, 0.12, 0.13)
@@ -146,6 +158,34 @@ func release_watch() -> void:
 func watch_raised() -> float:
     return weight() if kind == "watch" else 0.0
 
+func play_tank_lean() -> void:
+    if kind == "tank_lean" and not cancelled:
+        return
+    _start("tank_lean")
+    _dip_t = 1.0
+
+func release_tank_lean() -> void:
+    if kind == "tank_lean":
+        cancel()
+
+func tank_leaning() -> bool:
+    return kind == "tank_lean" and not cancelled
+
+## One tooth in or out: the cupped hand dips.
+func dip() -> void:
+    _dip_t = 0.0
+
+## The leaned-in eye over the tank mouth, from where the head is now.
+func tank_lean_transform(from: Vector3) -> Transform3D:
+    var tank: Node3D = m.restroom.tank_art
+    var mouth: Vector3 = tank.to_global(Vector3(0, 0.34, 0))
+    var flat := from - mouth
+    flat.y = 0.0
+    flat = flat.normalized() if flat.length() > 0.01 else Vector3.RIGHT
+    var eye := mouth + flat * TANK_EYE.x + Vector3.UP * TANK_EYE.y
+    var look := mouth + Vector3.DOWN * 0.1
+    return Transform3D(Basis.looking_at(look - eye, Vector3.UP), eye)
+
 func play_cycle() -> void:
     _start("cycle")
 
@@ -166,7 +206,7 @@ func check_cancel() -> void:
         return
     if not busy() or cancelled or t < 0.06:
         return
-    for a in CANCEL_ACTIONS:
+    for a in (TANK_CANCEL if kind == "tank_lean" else CANCEL_ACTIONS):
         if InputMap.has_action(a) and Input.is_action_just_pressed(a):
             cancel()
             return
@@ -174,10 +214,12 @@ func check_cancel() -> void:
 # --- per frame --------------------------------------------------------------------
 
 func tick(delta: float) -> void:
+    _apply_cup_root(delta)
     if not busy():
         _apply_cam_rest()
         return
     t += delta
+    _dip_t += delta
     if cancelled:
         _cancel_w -= delta / CANCEL_TIME
     var u := progress()
@@ -268,6 +310,11 @@ func weight() -> float:
         if cancelled:
             ww *= clampf(_cancel_w, 0.0, 1.0)
         return ww
+    if kind == "tank_lean":
+        var wl := seg(t, 0.0, TANK_LEAN_IN)
+        if cancelled:
+            wl *= clampf(_cancel_w, 0.0, 1.0)
+        return wl
     var w := seg(u, 0.0, 0.14) * (1.0 - seg(u, 0.86, 1.0))
     if kind in ["vomit_toilet", "vomit_floor", "wash"]:
         w = seg(u, 0.0, 0.08) * (1.0 - seg(u, 0.92, 1.0))
@@ -368,6 +415,10 @@ func _apply_cams(u: float, reset: bool = false) -> void:
             pitch = -0.06 * sin(progress() * PI) * weight()
         cam.position = _cam_pos + off
         cam.rotation = _cam_rot + Vector3(pitch, 0.0, roll)
+        if not reset and kind == "tank_lean" and m.restroom != null and m.restroom.tank_art != null:
+            # bend over the tank: blend the eye toward the leaned pose
+            var base := cam.global_transform
+            cam.global_transform = base.interpolate_with(tank_lean_transform(base.origin), weight())
         if not reset and kind == "vomit_floor":
             # Camera-local rotation still inherits the head pivot's pitch.
             # Apply the heave in the upright body's frame, captured once.
@@ -409,6 +460,8 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
     var alien := _alien_pose(rig, side, p)
     if not alien.is_empty():
         p = alien
+    if side > 0.0 and kind != "tank_lean":
+        p = _cup_teeth(p)
     var w := weight()
     if w <= 0.0 or kind == "vomit_toilet":
         return p
@@ -422,6 +475,52 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
         else:
             out[key] = lerpf(float(p[key]), float(q[key]), w)
     return out
+
+## Holding teeth the right hand is cupped palm-up (the rig's carry pose) so
+## they stay in it and show; empty-handed it is the rig's own pose.
+func _cup_teeth(p: Dictionary) -> Dictionary:
+    if m.progression == null or m.progression.teeth_in_hand <= 0:
+        return p
+    var q := p.duplicate()
+    _cup_fingers(q)
+    q["pos"] = Vector3(0.11, -0.22, -0.38)
+    return q
+
+## Joints of the cupped right hand; the palm itself is turned up by the hand
+## root (CUP_ROLL), past the wrist's own roll limit.
+static func _cup_fingers(q: Dictionary) -> void:
+    # wrist bent back so the palm (and the teeth on it) faces the eye
+    q["wrist_roll"] = 0.0
+    q["wrist_pitch"] = -32.0
+    q["wrist_yaw"] = 0.0
+    q["f1"] = 22.0
+    q["f2"] = 28.0
+    q["f3"] = 16.0
+    q["t1"] = 10.0
+    q["t2"] = 14.0
+    q["t3"] = 10.0
+    q["t_opp"] = 18.0
+
+## Right hand root roll (radians about its forward axis) that turns the palm
+## up for holding teeth; eased in and out by _cup_w.
+const CUP_ROLL := 2.4
+var _cup_w := 0.0
+
+func _apply_cup_root(delta: float) -> void:
+    var want := 1.0 if (m.progression != null and m.progression.teeth_in_hand > 0) or tank_leaning() else 0.0
+    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor"]:
+        want = 0.0
+    _cup_w = move_toward(_cup_w, want, delta * 4.0)
+    var rigs: Array = [m.hands_rig]
+    var hook = m.get("art_hookup")
+    if hook != null and hook.get("mut_hands") != null and (hook.mut_hands as Node).has_method("rig"):
+        rigs.append((hook.mut_hands as Node).call("rig"))
+    for rig in rigs:
+        if rig == null or not (rig as Node).has_method("get_hand_root"):
+            continue
+        var rr: Node3D = rig.call("get_hand_root", "right")
+        if rr != null:
+            rr.basis = Basis(Vector3.FORWARD, CUP_ROLL * _cup_w) if _cup_w > 0.0 else Basis.IDENTITY
 
 ## M22: the alien left hand reaches out and grips on its own, trembling,
 ## jerks the cell free and pushes it to the mouth; FPMutationApply times it
@@ -515,6 +614,20 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["wrist_pitch"] = lerpf(48.0, 72.0, reach)
             q["wrist_roll"] = -8.0
             q["pos"] = idle.lerp(Vector3(0.1, -0.32, -0.44), reach)
+        "tank_lean":
+            var d := sin(clampf(_dip_t / DIP_TIME, 0.0, 1.0) * PI)
+            if right:
+                # palm up and cupped over the teeth (the rig's carry pose),
+                # dipping in for each tooth
+                _cup_fingers(q)
+                q["wrist_pitch"] = -32.0 + 30.0 * d
+                q["pos"] = Vector3(0.06, -0.13 - 0.06 * d, -0.27 - 0.03 * d)
+            else:
+                # the left hand braced by the rim
+                _fingers(q, 0.45)
+                q["wrist_pitch"] = 55.0
+                q["wrist_roll"] = 10.0
+                q["pos"] = Vector3(-0.2, -0.3, -0.32)
         "pour":
             if not right:
                 return {}

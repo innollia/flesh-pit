@@ -9,6 +9,10 @@ extends RefCounted
 ## - Crush: no screen-edge effect (spec 07 §1). The body shows it: the hands
 ##   are pressed together, the view is squeezed (FOV narrows) and trembles
 ##   as crush_progress() rises. The canary cry carries the early warning.
+## - Squeezing through (2026-10-19 play: getting stuck had no build-up): as
+##   the body ducks and twists to pass the flesh (player.squeeze()) the view
+##   already tightens and shudders a little, more the tighter it gets, so the
+##   danger rises before the body is actually boxed in.
 
 const BRUISE_SHADER := """
 shader_type spatial;
@@ -101,6 +105,13 @@ func tick(delta: float) -> void:
 ## Remove only this effect before the next frame's camera writers. An
 ## external absolute write is respected instead of subtracting a stale
 ## contribution from its new base. Calling this or apply_camera twice is safe.
+## 0..1 how hard the body is squeezing past flesh (0 in open space and
+## in the restroom); squeezes below a third do not count, a brush is fine.
+func tightness() -> float:
+	if main == null or not is_instance_valid(main.player) or not main.player.has_method("squeeze"):
+		return 0.0
+	return clampf((float(main.player.squeeze()) - 0.33) / 0.67, 0.0, 1.0)
+
 func restore_camera() -> void:
 	if not is_instance_valid(_camera): return
 	if is_equal_approx(_camera.h_offset, _written_offset.x):
@@ -130,8 +141,10 @@ func apply_camera(base_fov: float = -1.0) -> void:
 		# the new base, while repeated predraw composition cannot compound.
 		_base_fov = cam.fov
 	var c := clampf(float(main.call("crush_progress")), 0.0, 1.0)
-	cam.fov = _base_fov * (1.0 - 0.22 * c)
-	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * c, sin(_t * 23.0 + 1.3) * 0.005 * c)
+	var sq := tightness()
+	cam.fov = _base_fov * (1.0 - 0.22 * c - 0.07 * sq)
+	var shake := c + 0.35 * sq
+	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * shake, sin(_t * 23.0 + 1.3) * 0.005 * shake)
 	cam.h_offset += _applied_offset.x
 	cam.v_offset += _applied_offset.y
 	_written_offset = Vector2(cam.h_offset, cam.v_offset)

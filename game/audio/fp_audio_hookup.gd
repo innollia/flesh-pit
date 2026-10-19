@@ -23,6 +23,11 @@ var _torn: Array[Vector3] = []
 const TORN_KEEP := 48
 const CREAK_RANGE := 8.0
 var _chirp_cool := 0.0
+## Squeezing past flesh: a wet strain each time the body has to give way
+## harder (player.squeeze() over half), at most every SQUEEZE_COOL seconds.
+const SQUEEZE_COOL := 1.4
+var _squeeze_cool := 0.0
+var _squeeze_was := 0.0
 ## Every play_event name so far, in order (tests and the run log read it).
 var played_events: Array[String] = []
 
@@ -37,6 +42,7 @@ const EVENT_SOUNDS := {
 	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
 	"echo_click": "echo_click",
 	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
+	"squeeze": "chew_strain",
 }
 
 func _ready() -> void:
@@ -167,6 +173,13 @@ func _process(_delta: float) -> void:
 	if prog != null and prog.has_method("mutation_amount"):
 		director.set_mutation_stage(int(clampf(float(prog.mutation_amount()), 0.0, 0.999) * 3.0))
 	_chirp_cool = maxf(0.0, _chirp_cool - _delta)
+	_squeeze_cool = maxf(0.0, _squeeze_cool - _delta)
+	if player != null and player.has_method("squeeze") and not in_room:
+		var sq := float(player.squeeze())
+		if sq > 0.5 and sq > _squeeze_was + 0.05 and _squeeze_cool <= 0.0:
+			_squeeze_cool = SQUEEZE_COOL
+			play_event("squeeze", (player as Node3D).global_position)
+		_squeeze_was = sq if sq > _squeeze_was or _squeeze_cool <= 0.0 else _squeeze_was
 	if restroom != null:
 		if restroom.has_method("is_door_open"):
 			var d: bool = restroom.is_door_open()

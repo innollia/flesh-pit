@@ -88,6 +88,35 @@ func assess(body: CharacterBody3D, field: FDKTerrainField, preferred: Vector3 = 
 	last_assess_us = Time.get_ticks_usec() - started
 	return {"trapped": true, "overlap": overlaps, "motion": Vector3.ZERO, "reason": "no_capsule_path", "queries": last_direction_queries}
 
+## Does the body's current capsule fit where it stands: no real terrain
+## surface through it, its centre not inside solid, no architecture overlap?
+## The controller's squeeze (duck/twist) asks this before keeping a posture.
+func fits(body: CharacterBody3D, field: FDKTerrainField) -> bool:
+	var node := body.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if node == null or not node.shape is CapsuleShape3D or not body.is_inside_tree():
+		return true
+	var shape := node.shape as CapsuleShape3D
+	var xf := node.global_transform
+	var radius := shape.radius * maxf(xf.basis.x.length(), xf.basis.z.length())
+	var half_axis := maxf(0.0, shape.height * xf.basis.y.length() * 0.5 - radius)
+	var up := xf.basis.y.normalized()
+	var a := xf.origin - up * half_axis
+	var b := xf.origin + up * half_axis
+	var skin_radius := maxf(0.001, radius - CONTACT_SKIN)
+	_prepare_surface(field, a.min(b) - Vector3.ONE * radius, a.max(b) + Vector3.ONE * radius)
+	if _point_in_solid(xf.origin) or _touches_surface(a, b, skin_radius):
+		return false
+	var query_shape := shape.duplicate() as CapsuleShape3D
+	query_shape.radius = maxf(0.001, shape.radius - CONTACT_SKIN)
+	query_shape.height = maxf(query_shape.radius * 2.0, shape.height - CONTACT_SKIN * 2.0)
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = query_shape
+	query.transform = xf
+	query.collision_mask = body.collision_mask
+	query.exclude = [body.get_rid()]
+	query.margin = 0.0
+	return body.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
 ## Normal movement uses the same actual capsule and current triangles as crush.
 ## Surface-only physics has no collider inside a fully solid mass. Reject that
 ## interior displacement before ordinary physics, while preserving axis sliding.

@@ -116,7 +116,13 @@ func test_f_and_fixture_inputs() -> void:
 	await press("fp_pick")
 	check(is_zero_approx(m.toilet.bowl_flesh) and m.progression.teeth > 0, "정상 레버 입력은 실제 내용을 이빨로 정산한다")
 	check(m.vent.spoken.has(FPVent.FIRST_CHAIN[0]), "첫 물내림은 기존 NPC 첫 대사를 발생시킨다")
-	check(m.subtitles.current_text == FPSubtitles.line_text(FPVent.FIRST_CHAIN[0]), "첫 NPC 대사가 기존 자막에 도달한다")
+	# the being thinks before it talks (FPVent voice gate): not at once, then shown
+	check(m.subtitles.current_text != FPSubtitles.line_text(FPVent.FIRST_CHAIN[0]), "첫 NPC 대사는 물내림과 같은 순간에 튀어나오지 않는다")
+	var waited := 0.0
+	while waited < FPVent.VOICE_DELAY_MAX + 1.0 and m.subtitles.current_text != FPSubtitles.line_text(FPVent.FIRST_CHAIN[0]):
+		await process_frame
+		waited += get_root().get_process_delta_time()
+	check(m.subtitles.current_text == FPSubtitles.line_text(FPVent.FIRST_CHAIN[0]), "첫 NPC 대사가 반응 지연 뒤 기존 자막에 도달한다")
 	check(director.played_log.has("toilet_flush"), "실제 레버 신호가 물내림 소리를 발생시킨다")
 	aim(m.restroom.tank_art.to_global(Vector3(0, 0.3, 0)))
 	await frames(3)

@@ -318,6 +318,17 @@ func squeeze_speed_factor(squeeze: float) -> float:
 		return 1.0
 	return 0.5
 
+## Walking speed share with the body fully squeezed (ducked and twisted to
+## pass flesh, FDKFirstPersonController): M20 hypermobile joints feel no
+## slowdown, M19 peristalsis is pushed along faster the tighter it gets.
+const POSTURE_SPEED_MIN := 0.35
+func posture_speed_min() -> float:
+	if _m("M19"):
+		return 1.3
+	if _m("M20"):
+		return 1.0
+	return POSTURE_SPEED_MIN
+
 ## Effective hardness of a tissue id for the player's body.
 ## M08 compressive x0.7, M18 contractile x0.6, M12 excess over 1.0 x0.5,
 ## T6 membrane 2.0 -> 1.0, M09 bare-hand membrane chew x3.
