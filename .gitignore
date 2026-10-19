@@ -8,3 +8,6 @@ hack.py
 INVESTIGATION_REPORT.md
 game/tools/_barrier_probe2.gd
 game/tools/_barrier_probe2.gd.uid
+
+# play logs from play_logged.bat
+playlogs/
