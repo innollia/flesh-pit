@@ -36,12 +36,27 @@ def last_step():
     return max(steps) if steps else -1
 
 
+def closed_reason():
+    path = os.path.join(SESSION, "closed.json")
+    if os.path.exists(path):
+        try:
+            return json.load(open(path, encoding="utf-8")).get("reason", "closed")
+        except (OSError, json.JSONDecodeError):
+            return "closed"
+    return None
+
+
 def wait_obs(n, timeout=240.0):
     path = os.path.join(SESSION, "obs_%04d.json" % n)
     t0 = time.time()
     while not os.path.exists(path):
+        why = closed_reason()
+        if why:
+            sys.exit("THE GAME IS CLOSED (%s). This is the test setup, not something you did in the game. "
+                     "Stop playing and say so in your report." % why)
         if time.time() - t0 > timeout:
-            sys.exit("the game did not answer (step %d). Try `python play.py look` again in a moment." % n)
+            sys.exit("the game did not answer (step %d) and did not say it closed: it may have crashed. "
+                     "Try `python play.py look` once more; if it still fails, stop and report it." % n)
         time.sleep(0.1)
     for _ in range(20):
         try:

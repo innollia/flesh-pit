@@ -18,7 +18,9 @@ extends Node
 
 const FPS := 30.0
 const WARMUP_FRAMES := 90
-const IDLE_QUIT_MS := 45 * 60 * 1000
+## A player session may start hours after the game is up; it still quits
+## on its own in the end so a forgotten window does not stay forever.
+const IDLE_QUIT_MS := 8 * 60 * 60 * 1000
 const MAX_SECS := 10.0
 
 var dir := ""
@@ -282,7 +284,7 @@ func _wait_for_command() -> void:
 		OS.delay_msec(25)
 		waited += 25
 		if waited > IDLE_QUIT_MS:
-			get_tree().quit()
+			_close("no command for %d hours" % (IDLE_QUIT_MS / 3600000))
 			return
 	var cmd = JSON.parse_string(FileAccess.get_file_as_string(path))
 	step += 1
@@ -292,12 +294,18 @@ func _wait_for_command() -> void:
 	if not cmd is Dictionary:
 		cmd = {"wait": 0.1}
 	if bool(cmd.get("quit", false)):
-		get_tree().quit()
+		_close("the test was stopped")
 		return
 	_plan_command(cmd)
 
 ## {"keys": ["W", "Shift"], "mouse": ["LMB"], "secs": 1.5, "look": [right_deg, up_deg],
 ##  "tap": ["F"], "at": [x, y], "click": "LMB", "wait": 2}
+## The player's client reads closed.json and says the game is closed (s3: a
+## silent idle quit looked to the player like a freeze in the settings menu).
+func _close(reason: String) -> void:
+	_write_json(dir.path_join("closed.json"), {"step": step, "reason": reason})
+	get_tree().quit()
+
 func _plan_command(cmd: Dictionary) -> void:
 	var secs := clampf(float(cmd.get("secs", cmd.get("wait", 0.4))), 0.1, MAX_SECS)
 	var n := maxi(2, int(round(secs * FPS)))
