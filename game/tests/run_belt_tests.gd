@@ -113,7 +113,9 @@ func _run() -> void:
 	m.player.camera_pivot.rotation.x = -1.3
 	m.player.force_update_transform()
 	bs.tick(0.0)
-	_assert(not bs.looking_down() and bs.aimed_hook() == -1 and m.interact_target() != "belt" and m.hands_rig.aside < 0.01, "bowing without a belt shows no hooks and no swap")
+	# the compass rides the waistband from the start (decision 0009): it is the
+	# one thing that can be taken bowed without a belt; the hands swing clear
+	_assert(not bs.looking_down() and bs.aimed_hook() in [-1, FPBeltSwap.COMPASS_SLOT] and m.hands_rig.aside > 0.99, "bowing without a belt shows no hooks or tool swap, only the waistband compass; the hands swing clear")
 	m.player.camera_pivot.rotation.x = 0.0
 	# the first vent trade hands over the belt
 	var v: FPVent = m.vent

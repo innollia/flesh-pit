@@ -212,20 +212,32 @@ func run() -> void:
 	m.request_vomit()
 	check(m.stomach.fill == 0.0, "after a lever settlement V outside empties the stomach as before")
 	check(bool(m.serialize()["lever_settled"]), "the first settlement is saved")
-	# --- the wrist compass points home
-	var compass: Node3D = m.art_hookup.wrist_compass
-	var active_rig: Node3D = m.art_hookup.get("_rig")
-	check(compass.get_parent() == active_rig.get_node("HandLeft") and compass.is_visible_in_tree(), "the compass is on the left forearm of the hands in use")
+	# --- the compass: on the waistband, read in the left hand (decision 0009)
+	var waist_c: Node3D = m.art_hookup.waist_compass
+	var hand_c: Node3D = m.art_hookup.hand_compass
+	m.equip_hand("", FDKToolKit.Hand.LEFT)
+	m.progression.has_belt = false
+	await frames(2)
+	check(waist_c.is_visible_in_tree() and not hand_c.is_visible_in_tree() and m.progression.owns("compass"), "the compass hangs on the waistband from the start")
+	check(m.belt_swap.target_for(FPBeltSwap.COMPASS_SLOT, FDKToolKit.Hand.LEFT) == "compass", "bowed over the waist it can be taken even before there is a belt")
+	m.cycle_tool(1)
+	check(m.progression.equipped() == "compass" and m.progression.hands.left == "compass", "the tool cycle reaches it first from bare hands, into the left hand")
+	await frames(2)
+	check(hand_c.is_visible_in_tree() and not waist_c.is_visible_in_tree(), "held, it shows in the hand and not on the waist")
 	var settle_t := 0.0
 	while settle_t < 1.2:
 		await process_frame
 		settle_t += get_root().get_process_delta_time()
-	var needle: Node3D = compass.get_node("Needle")
+	var needle: Node3D = hand_c.get_node("Needle")
 	var tip: Vector3 = -needle.global_transform.basis.z
-	var face_n: Vector3 = compass.global_transform.basis.y.normalized()
-	var home: Vector3 = m.RESTROOM_CENTER - compass.global_position
+	var face_n: Vector3 = hand_c.global_transform.basis.y.normalized()
+	var home: Vector3 = m.RESTROOM_CENTER - hand_c.global_position
 	var flat_home := (home - face_n * home.dot(face_n)).normalized()
-	check((tip - face_n * tip.dot(face_n)).normalized().dot(flat_home) > 0.97, "out in the flesh the needle points at the restroom (%.2f)" % (tip - face_n * tip.dot(face_n)).normalized().dot(flat_home))
+	var aim := (tip - face_n * tip.dot(face_n)).normalized().dot(flat_home)
+	check(aim > 0.97, "out in the flesh the needle points at the restroom (%.2f)" % aim)
+	var eye: Vector3 = m.player.camera.global_position
+	check(face_n.dot((eye - hand_c.global_position).normalized()) > 0.8, "the dial faces the eye while held")
+	m.equip_hand("", FDKToolKit.Hand.LEFT)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(m.save_path))
 	print("--- ui polish: %d passed, %d failed ---" % [passed, failed])
 	m.queue_free()

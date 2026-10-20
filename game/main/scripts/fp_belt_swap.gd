@@ -7,7 +7,10 @@ extends RefCounted
 ## begin()/swap_now() keep their legacy single-tool defaults for kit callers.
 
 const LOOK_DOWN_DEG := 55.0
-const SLOTS := ["knife", "blender", "big_saw", "spray_cheap", "spray_deep", "canary_feed", "barrier"]
+const SLOTS := ["knife", "blender", "big_saw", "spray_cheap", "spray_deep", "canary_feed", "barrier", "compass"]
+## The compass rides the waistband from the start: it can be taken before
+## there is a belt (decision 0009); every other slot needs the belt.
+const COMPASS_SLOT := 7
 const AIM_DEG := 9.0
 const REACH := 1.2
 const SWAP_TIME := 0.75 ## reach down, hang, grab, bring up (fp_hand_motions "belt")
@@ -31,7 +34,16 @@ func worn() -> bool:
 	return m.progression != null and bool(m.progression.has_belt)
 
 func looking_down() -> bool:
-	return worn() and m.player.camera_pivot.rotation.x < -deg_to_rad(LOOK_DOWN_DEG)
+	return worn() and bowed()
+
+## Head bowed far enough to see the waist (belt or not).
+func bowed() -> bool:
+	return m.player.camera_pivot.rotation.x < -deg_to_rad(LOOK_DOWN_DEG)
+
+func _slot_point(belt: Node3D, i: int) -> Vector3:
+	if i == COMPASS_SLOT:
+		return m.art_hookup.waist_compass.global_position
+	return belt.call("slot_point", i)
 
 func busy() -> bool:
 	return swap_t >= 0.0
@@ -47,13 +59,15 @@ func hung_ids() -> Array:
 ## Index of the aimed hook, or -1.
 func aimed_hook() -> int:
 	var belt = m.art_hookup.belt if m.art_hookup != null else null
-	if belt == null or not looking_down():
+	if belt == null or not bowed():
 		return -1
 	var ray: Array = m.player.get_look_ray()
 	var best := -1
 	var best_dot := cos(deg_to_rad(AIM_DEG))
 	for i in range(SLOTS.size()):
-		var to: Vector3 = (belt.call("slot_point", i) as Vector3) - ray[0]
+		if i != COMPASS_SLOT and not worn():
+			continue
+		var to: Vector3 = _slot_point(belt, i) - ray[0]
 		if to.length() > REACH:
 			continue
 		var d: float = to.normalized().dot(ray[1])
@@ -113,8 +127,9 @@ func tick(delta: float) -> void:
 		belt.call("set_hung", hung_ids())
 		_twist_hips(belt, delta)
 		belt.call("set_focus", aimed_hook() if not busy() and can_act() else -1)
-	# bowed past LOOK_DOWN_DEG: both hands swing out so the belt is clear
-	var ak := 0.0 if not worn() else clampf((-m.player.camera_pivot.rotation.x - deg_to_rad(LOOK_DOWN_DEG - 10.0)) / deg_to_rad(10.0), 0.0, 1.0)
+	# bowed past LOOK_DOWN_DEG: both hands swing out so the waist is clear
+	# (the compass hangs there even before the belt)
+	var ak := clampf((-m.player.camera_pivot.rotation.x - deg_to_rad(LOOK_DOWN_DEG - 10.0)) / deg_to_rad(10.0), 0.0, 1.0)
 	for r in _rigs():
 		var rig = r.call("rig") if r.has_method("rig") else r
 		if rig != null and "aside" in rig:

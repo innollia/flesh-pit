@@ -129,6 +129,8 @@ func _init() -> void:
 	tools.define_tool("knife", FDKToolKit.Hand.RIGHT, false)
 	tools.define_tool("blender", FDKToolKit.Hand.LEFT, false)
 	tools.define_tool("big_saw", FDKToolKit.Hand.RIGHT, true)
+	# carried from the start on the waistband, read in the left hand (decision 0009)
+	tools.define_tool("compass", FDKToolKit.Hand.LEFT, false)
 	for id in PRICE_UNITS.keys():
 		vent.define_item(id, price_for(id), float(UNLOCK_SHELL.get(id, 0)))
 	tumors.bag_capacity = 2 if has_bag else 1
@@ -466,6 +468,7 @@ func owns(id: String) -> bool:
 		"spray_deep": return sprays.count_of_tier(FDKSprayCan.Tier.DEEP) > 0
 		"canary_feed": return canary_feed > 0
 		"barrier": return barriers > 0
+		"compass": return true
 	return tools.owns(id)
 
 ## Hands are busy with a flesh pile or a tumor carried without the bag.

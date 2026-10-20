@@ -490,6 +490,8 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
         p = alien
     if side > 0.0 and kind != "tank_lean":
         p = _cup_teeth(p)
+    elif side < 0.0:
+        p = _hold_compass(p)
     var w := weight()
     if w <= 0.0 or kind == "vomit_toilet":
         return p
@@ -512,6 +514,21 @@ func _cup_teeth(p: Dictionary) -> Dictionary:
     var q := p.duplicate()
     _cup_fingers(q)
     q["pos"] = Vector3(0.11, -0.22, -0.38)
+    return q
+
+## Left hand holding the compass (decision 0009): it comes in under the
+## compass (fp_art_hookup COMPASS_HELD_AT) and grips its lower rim between
+## thumb and fingers, so the dial stays clear above the fingertips. No root
+## roll: the Tab watch pose keeps sole use of the left root basis.
+func _hold_compass(p: Dictionary) -> Dictionary:
+    if m.progression == null or m.progression.hands.left != "compass":
+        return p
+    var q := p.duplicate()
+    _fingers(q, 0.5)
+    q["wrist_pitch"] = 36.0
+    q["wrist_yaw"] = -8.0
+    q["wrist_roll"] = 14.0
+    q["pos"] = FPArtHookup.COMPASS_HELD_AT + Vector3(-0.035, -0.115, 0.06)
     return q
 
 ## Joints of the cupped right hand; the palm itself is turned up by the hand
@@ -549,6 +566,7 @@ func _apply_cup_root(delta: float) -> void:
         var rr: Node3D = rig.call("get_hand_root", "right")
         if rr != null:
             rr.basis = Basis(Vector3.FORWARD, CUP_ROLL * _cup_w) if _cup_w > 0.0 else Basis.IDENTITY
+
 
 ## M22: the alien left hand reaches out and grips on its own, trembling,
 ## jerks the cell free and pushes it to the mouth; FPMutationApply times it

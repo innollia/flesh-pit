@@ -2310,7 +2310,7 @@ func equip_hand(id: String, hand: int) -> bool:
 	return progression.equip_hand(id, hand, carried_flesh > 0.0)
 
 func cycle_tool(direction: int = 1) -> void:
-	var order := ["", "knife", "blender", "big_saw", "spray_cheap", "spray_deep", "canary_feed", "barrier"]
+	var order := ["", "compass", "knife", "blender", "big_saw", "spray_cheap", "spray_deep", "canary_feed", "barrier"]
 	var i := order.find(progression.equipped())
 	var current_hand := FDKToolKit.Hand.LEFT if progression.hands.left == progression.equipped() and progression.equipped() != "" else FDKToolKit.Hand.RIGHT
 	for k in range(1, order.size() + 1):
