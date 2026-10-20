@@ -70,6 +70,24 @@ func _run_test() -> void:
 		"save/load: terrain density at dug cell restored (got %f, expected %f)" % [restored_density, saved_density])
 
 	_test_drawings()
+	_test_rest_cans()
+
+## Rest-point spray cans already taken stay gone after a load (decision 0006).
+func _test_rest_cans() -> void:
+	var m := _main_node
+	m.looted_rest_cans = [3, 7]
+	var d: Dictionary = m.serialize()
+	_assert(d.get("looted_rest_cans", []) == [3, 7], "save: taken rest-point cans")
+	m.looted_rest_cans = []
+	for c in m.rest_cans:
+		c.visible = true
+	m.deserialize(d)
+	_assert(m.looted_rest_cans == [3, 7] and not m.rest_cans[3].visible and not m.rest_cans[7].visible and m.rest_cans[4].visible,
+		"load: the taken cans are not on their chairs, the others are")
+	var old: Dictionary = d.duplicate()
+	old.erase("looted_rest_cans")
+	m.deserialize(old)
+	_assert(m.looted_rest_cans.is_empty() and m.rest_cans.all(func(c): return c.visible), "load: an old save has every can in place")
 
 ## Crayon drawings (kind + order) survive save/load and hang on the wall again.
 func _test_drawings() -> void:

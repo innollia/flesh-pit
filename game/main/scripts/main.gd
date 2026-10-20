@@ -163,6 +163,10 @@ var _world_density_cache: Dictionary = {}
 const WORLD_DENSITY_CACHE_LIMIT := 8192
 var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
+## The spray can on each rest point's chair (rest_points order) and the
+## indexes already taken this game (decision 0006).
+var rest_cans: Array[Node3D] = []
+var looted_rest_cans: Array = []
 
 var carried_flesh: float = 0.0
 ## Flesh in the hands per shell, in flesh units (not cells).
@@ -362,8 +366,12 @@ func _ready() -> void:
 	toilet.name = "ToiletSettlement"
 	add_child(toilet)
 
-	for r in rest_points:
-		FPWorldFeatures.build_container(self, r)
+	for i in range(rest_points.size()):
+		var loot: String = FPWorldFeatures.REST_SPRAY_LOOT[FPWorldFeatures.rest_shell(i)]
+		var rest := FPWorldFeatures.build_container(self, rest_points[i], loot)
+		var can := rest.get_node("LootCan") as Node3D
+		can.set_meta("rest", i)
+		rest_cans.append(can)
 	var spots := FPWorldFeatures.tumor_spots(RESTROOM_CENTER)
 	for i in range(spots.size()):
 		var t := FPWorldFeatures.build_tumor(self, spots[i])
@@ -1427,6 +1435,7 @@ func _interact() -> void:
 			else: sit_down()
 		"door": restroom.set_door_open(not restroom.is_door_open())
 		"tumor": pick_up_tumor()
+		"rest_can": take_rest_can()
 
 func _pick() -> void:
 	var target := interact_target()
@@ -2401,6 +2410,34 @@ func pick_up_tumor() -> bool:
 	taken_tumor_spots.append(int(t.get_meta("spot")))
 	return true
 
+## The spray can left in a rest point (closest one in reach). With three cans
+## already on the belt the hand touches it and it stays (B10 cap).
+func nearest_rest_can(dist: float) -> Node3D:
+	var best: Node3D = null
+	var bd := dist
+	for c in rest_cans:
+		if not c.visible:
+			continue
+		var d := c.global_position.distance_to(player.camera.global_position)
+		if d < bd:
+			bd = d
+			best = c
+	return best
+
+func take_rest_can() -> bool:
+	var c := nearest_rest_can(1.4)
+	if c == null:
+		return false
+	var kind := String(c.get_meta("loot"))
+	var item := c.get_node_or_null("Item") as MeshInstance3D
+	hand_motions.play_take(c.global_position, kind, item)
+	if not progression.grant_item(kind):
+		emit_signal("belt_refused")
+		return false
+	c.visible = false
+	looted_rest_cans.append(int(c.get_meta("rest")))
+	return true
+
 func eat_tumor() -> bool:
 	if progression.eat_carried_tumor():
 		progression.refresh_hands(carry_mode)
@@ -2680,6 +2717,7 @@ func serialize() -> Dictionary:
 		"ended": ended,
 		"tank_lid": tank_lid.serialize() if tank_lid != null else {},
 		"taken_tumor_spots": taken_tumor_spots.duplicate(),
+		"looted_rest_cans": looted_rest_cans.duplicate(),
 		"player_position": [player.global_position.x, player.global_position.y, player.global_position.z],
 		"drawings": vent.drawings.duplicate(),
 		"vent_progress": vent.serialize_progress(),
@@ -2758,6 +2796,9 @@ func deserialize(data: Dictionary) -> void:
 	taken_tumor_spots = (data.get("taken_tumor_spots", []) as Array).duplicate()
 	for t in tumor_nodes:
 		t.visible = not taken_tumor_spots.has(int(t.get_meta("spot")))
+	looted_rest_cans = (data.get("looted_rest_cans", []) as Array).duplicate()
+	for c in rest_cans:
+		c.visible = not looted_rest_cans.has(int(c.get_meta("rest")))
 	_tank_teeth_shown = -1
 	var pos: Array = data.get("player_position", [])
 	if pos.size() == 3:

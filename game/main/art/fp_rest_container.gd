@@ -7,7 +7,7 @@ extends Node3D
 ## thing to do here is vomit/settle). Flesh blobs have grown over its
 ## corners and roof. Origin = floor centre; door on the +Z long side.
 ## Public: set_door_open(0..1), play_door(), set_light(on), set_flicker(bool),
-## drain_point() -> Vector3.
+## drain_point(), chair_point() -> Vector3 (local).
 
 const K := preload("res://main/art/fp_art_kit.gd")
 const L := 1.5
@@ -143,6 +143,10 @@ func set_light(on: bool) -> void:
 
 func set_flicker(on: bool) -> void:
     _flicker = on
+
+## Top of the folding chair seat (local frame).
+func chair_point() -> Vector3:
+    return Vector3(-0.8, 0.44, -0.6)
 
 func drain_point() -> Vector3:
     return Vector3(0.7, 0.0, -0.5)

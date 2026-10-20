@@ -206,7 +206,7 @@ func _unit_tests() -> void:
 		_assert(is_equal_approx(sf.regen_multiplier_at(Vector3(0.5, 3.5, 3.5)), 1.5), "W24 flesh farther than 1 m is not sped up")
 		sf.regenerate_all(120.0, Vector3(50, 50, 50), 0.0)
 		_assert(sf.density_at(Vector3(0.25, 0.75, 0.75)) < 0.5, "W24 melted cells never regrow")
-		_assert(can.uses_left == FDKSprayCan.SPRAYS_PER_CAN - 1, "W24 a can sprays SPRAYS_PER_CAN times (8, decision 0005)")
+		_assert(can.uses_left == FDKSprayCan.SPRAYS_PER_CAN - 1, "W24 a can sprays SPRAYS_PER_CAN times (6, decision 0006)")
 		sf.free()
 	# W28 death drop marker stays while the drop drifts
 	var dd := FDKDeathDrop.new()
@@ -306,6 +306,30 @@ func _main_tests(m) -> void:
 	_assert(not m.vent.is_open, "W22 a rest point has no vent")
 	var saved: Dictionary = m.serialize()
 	_assert(int(saved.get("rest_seed", 0)) == m.rest_seed, "W22 the rest-point rotation is saved")
+	# W22 a spray can on each rest point's chair, taken once (decision 0006)
+	var kinds_ok: bool = m.rest_cans.size() == 12
+	for i in range(m.rest_cans.size()):
+		var want := "spray_cheap" if i < 2 else "spray_deep"
+		var can_node: Node3D = m.rest_cans[i]
+		if String(can_node.get_meta("loot")) != want or not can_node.visible or can_node.get_node_or_null("Item") == null:
+			kinds_ok = false
+		if FPWorldFeatures.in_container(can_node.global_position, [rp[i]] as Array[Vector3]) == false:
+			kinds_ok = false
+	_assert(kinds_ok, "W22 every rest point has one can inside it: cheap in the core, deep beyond")
+	prog.sprays = FDKSprayCan.Inventory.new()
+	m.player.global_position = m.rest_cans[3].global_position + Vector3(0.5, 0.0, 0.0)
+	_assert(m.nearest_rest_can(1.4) == m.rest_cans[3], "W22 standing by the can, it is in reach")
+	_assert(FPInteractions.get_candidates(m).any(func(cd): return cd[0] == "rest_can"), "W22 the can is an interaction")
+	_assert(m.take_rest_can() and not m.rest_cans[3].visible and prog.sprays.count_of_tier(FDKSprayCan.Tier.DEEP) == 1, "W22 taking it puts a deep can on the belt")
+	_assert(m.looted_rest_cans == [3] and (m.serialize()["looted_rest_cans"] as Array) == [3], "W22 the taken can is saved")
+	_assert(m.nearest_rest_can(1.4) == null, "W22 it does not come back")
+	prog.sprays.add(FDKSprayCan.new(FDKSprayCan.Tier.CHEAP))
+	prog.sprays.add(FDKSprayCan.new(FDKSprayCan.Tier.CHEAP))
+	m.player.global_position = m.rest_cans[4].global_position + Vector3(0.5, 0.0, 0.0)
+	var refused := [0]
+	m.belt_refused.connect(func(): refused[0] += 1)
+	_assert(not m.take_rest_can() and m.rest_cans[4].visible and refused[0] == 1 and prog.sprays.count() == FDKSprayCan.MAX_CARRIED, "W22 with three cans carried the can stays where it is")
+	prog.sprays = FDKSprayCan.Inventory.new()
 	# W23 barrier: auto-fit, stages, break with a boing
 	var t0p := Vector3(4.2, 1.0, -4.5)
 	var bc := t0p + Vector3(3.0, 0, 0)

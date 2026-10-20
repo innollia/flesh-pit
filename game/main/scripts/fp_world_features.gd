@@ -16,6 +16,10 @@ const CONTAINER_HALF := Vector3(1.1, 1.1, 2.2)
 const REST_PER_SHELL := [2, 4, 6]
 const REST_DEPTH := [4.5, 13.5, 22.5]
 const REST_MIN_ANGLE_DEG := 90.0
+## One spray can left on the chair of every rest point, the tier of its shell
+## (decision 0006). Taken once per game and saved; with three cans already
+## carried it stays where it is.
+const REST_SPRAY_LOOT := ["spray_cheap", "spray_deep", "spray_deep"]
 ## Restroom box half size + the membrane band around it (main.gd); a rest
 ## container must stay clear of it.
 ## 형님 2026-09-30: hardcoded to the old 1.5 room half-width; the room grew
@@ -138,6 +142,15 @@ static func _rest_clear_of_room(center: Vector3, at: Vector3) -> bool:
 	var h := CONTAINER_HALF
 	return q.x > ROOM_CLEAR_HALF.x + h.x or q.y > ROOM_CLEAR_HALF.y + h.y or q.z > ROOM_CLEAR_HALF.z + h.z
 
+## Shell of rest point `i` in the rest_points() order (core first).
+static func rest_shell(i: int) -> int:
+	var end := 0
+	for s in range(SHELL_COUNT):
+		end += int(REST_PER_SHELL[s])
+		if i < end:
+			return s
+	return SHELL_COUNT - 1
+
 ## One game's rest points. `seed` fixes the random rotation (saved with the
 ## game); a rotation that pushes a container into the restroom band or the
 ## door's corridor is re-rolled.
@@ -224,7 +237,8 @@ static func in_container(p: Vector3, rests: Array[Vector3]) -> bool:
 
 ## Rest point: the main/art container office model (door on its long side),
 ## stretched to the logic box CONTAINER_HALF with its floor on the box floor.
-static func build_container(parent: Node3D, at: Vector3) -> Node3D:
+## `loot` = the spray can left on its chair ("" for none).
+static func build_container(parent: Node3D, at: Vector3, loot: String = "") -> Node3D:
 	var root := Node3D.new()
 	root.name = "RestPoint"
 	root.position = at
@@ -240,6 +254,14 @@ static func build_container(parent: Node3D, at: Vector3) -> Node3D:
 	root.add_child(art)
 	art.call("set_light", true)
 	art.call("set_door_open", 0.8)
+	if loot != "":
+		# unscaled, standing on the chair seat (the art is stretched)
+		var can := FPConsumable.make(loot)
+		can.name = "LootCan"
+		can.set_meta("loot", loot)
+		root.add_child(can)
+		can.position = art.transform * (art.call("chair_point") as Vector3) + Vector3(0, 0.08, 0)
+		can.rotation.y = 0.6
 	return root
 
 ## Old placeholder container (kept for reference, no longer called).

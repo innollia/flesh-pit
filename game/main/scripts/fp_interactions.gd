@@ -51,6 +51,9 @@ static func get_candidates(main: Node3D) -> Array:
 	var tank_open: bool = main.tank_lid != null and not main.tank_lid.on_tank
 	if tank_open and (main.progression.teeth > 0 or main.progression.teeth_in_hand > 0):
 		candidates.append(["tank_teeth", main.restroom.tank_art.to_global(Vector3(0, 0.3, 0)), 10.0, 1.25])
+	var can: Node3D = main.nearest_rest_can(1.4)
+	if can != null:
+		candidates.append(["rest_can", can.global_position, 12.0, 1.4])
 	var tumor: Node3D = main._nearest_tumor(1.25)
 	if tumor != null:
 		candidates.append(["tumor", tumor.global_position, 10.0, 1.25])
