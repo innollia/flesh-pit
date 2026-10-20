@@ -6,7 +6,8 @@ extends RefCounted
 ## grate), take (reach for an offered item, curl, pull it back; big items
 ## with both hands), vomit_toilet (lean over the bowl, both hands on the rim,
 ## 2-3 heaves, breathe, straighten), vomit_floor (hands on the knees, flesh
-## onto the floor), wash (turn the tap, rub under the stream with laced
+## onto the floor), gag (a dry heave standing up, one hand to the mouth,
+## nothing comes out), wash (turn the tap, rub under the stream with laced
 ## fingers, shake, turn it off; the blood fades while rubbing), belt (reach
 ## down, hang the held tool, grab the other, bring it up) and cycle (a short
 ## dip for Tab / wheel). The hands rig asks shape_pose() every frame; the
@@ -15,7 +16,7 @@ extends RefCounted
 
 const DUR := {
     "scoop": 0.55, "pour": 0.85, "take": 0.65, "take2": 0.75,
-    "vomit_toilet": 2.4, "vomit_floor": 2.4, "wash": 2.6,
+    "vomit_toilet": 2.4, "vomit_floor": 2.4, "gag": 1.3, "wash": 2.6,
     "belt": 0.75, "cycle": 0.35, "watch": 1.0e9, "tank_lean": 1.0e9,
 }
 const CANCEL_TIME := 0.25
@@ -134,6 +135,18 @@ func play_take(world_pos: Vector3, art_kind: String, item: MeshInstance3D = null
         var hand: Node3D = rig.call("get_hand_root", "right")
         hand.add_child(_held_mesh)
         _held_mesh.position = Vector3(-0.02, -0.03, -0.1)
+
+## A dry heave: before the first lever settlement nothing comes up outside
+## (decision 0009). Standing, two retches, a hand to the mouth, no spill.
+func play_gag() -> void:
+    _start("gag")
+
+## Retch amount 0..1 at u (two pulses for the dry heave).
+func _gag(u: float) -> float:
+    var h := 0.0
+    for c in [0.32, 0.6]:
+        h = maxf(h, exp(-pow((u - c) / 0.06, 2.0)))
+    return h
 
 func play_vomit(at_toilet: bool, fill: float) -> void:
     _start("vomit_toilet" if at_toilet else "vomit_floor")
@@ -416,6 +429,12 @@ func _apply_cams(u: float, reset: bool = false) -> void:
             # no longer changes where the camera ends up pointing.
             pitch = (VOMIT_FLOOR_BASE_PITCH - _cam_rot.x) + (-0.62 * bow - 0.12 * h + shake) * w
             roll = sin(t * 29.0) * 0.006 * h * w
+        elif not reset and kind == "gag":
+            var wg := weight()
+            var hg := _gag(u)
+            off = Vector3(0.0, -0.05 * hg, -0.03 * hg) * wg
+            pitch = (-0.14 * hg + sin(t * 41.0) * 0.006 * hg) * wg
+            roll = sin(t * 31.0) * 0.008 * hg * wg
         elif not reset and kind == "wash":
             var w2 := weight()
             off = Vector3(0.0, -0.06, -0.03) * w2
@@ -517,7 +536,7 @@ var _cup_w := 0.0
 
 func _apply_cup_root(delta: float) -> void:
     var want := 1.0 if (m.progression != null and m.progression.teeth_in_hand > 0) or tank_leaning() else 0.0
-    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor"]:
+    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"]:
         want = 0.0
     _cup_w = move_toward(_cup_w, want, delta * 4.0)
     var rigs: Array = [m.hands_rig]
@@ -670,6 +689,21 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["wrist_yaw"] = -10.0 * side * bow
             _fingers(q, 0.35 + 0.35 * h)
             q["pos"] = idle.lerp(Vector3(0.2 * side, -0.27 - 0.02 * h, -0.43), bow)
+        "gag":
+            # right hand up to the mouth, left pressed to the belly; both
+            # jerk on each retch
+            var hg := _gag(u)
+            if right:
+                q["wrist_pitch"] = 20.0 - 10.0 * hg
+                q["wrist_roll"] = -40.0
+                q["wrist_yaw"] = -25.0
+                _fingers(q, 0.25 + 0.3 * hg)
+                q["pos"] = Vector3(0.04, -0.13 - 0.015 * hg, -0.2)
+            else:
+                q["wrist_pitch"] = 70.0
+                q["wrist_roll"] = 25.0 * side
+                _fingers(q, 0.55 + 0.3 * hg)
+                q["pos"] = Vector3(0.1 * side, -0.33 - 0.02 * hg, -0.3)
         "wash":
             var turn_on := seg(u, 0.0, 0.1) * (1.0 - seg(u, 0.14, 0.22))
             var turn_off := seg(u, 0.84, 0.9) * (1.0 - seg(u, 0.95, 1.0))

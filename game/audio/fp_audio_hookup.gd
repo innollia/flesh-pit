@@ -43,7 +43,7 @@ const EVENT_SOUNDS := {
 	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
 	"echo_click": "echo_click",
 	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
-	"squeeze": "chew_strain", "grab_refuse": "grab_refuse",
+	"squeeze": "chew_strain", "grab_refuse": "grab_refuse", "gag": "gag_dry",
 }
 
 func _ready() -> void:
@@ -121,6 +121,8 @@ func _wire() -> void:
 	_hook("belt_refused", func(): play_event("ui_click"))
 	# bare fingers slip off muscle or membrane: rubber stretches and springs back
 	_hook("grab_refused", func(_tissue, pos): play_event("grab_refuse", pos))
+	# V out in the flesh before the first settlement: retching, nothing comes up
+	_hook("dry_heaved", func(): play_event("gag"))
 
 func _remember_torn(pos: Vector3) -> void:
 	_torn.append(pos)

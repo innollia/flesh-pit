@@ -30,7 +30,8 @@ func _input(event: InputEvent) -> void:
 	for action in remaining.duplicate():
 		if event.is_action_pressed(action):
 			remaining.erase(action)
-	if event.is_action_pressed("fp_vomit"):
+	# only a vomit where it settles counts (V out in the flesh may just retch)
+	if event.is_action_pressed("fp_vomit") and vomit_hint:
 		vomit_hint = false
 		vomit_learned = true
 

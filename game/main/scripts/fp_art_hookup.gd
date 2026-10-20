@@ -13,6 +13,19 @@ const ScissorsScene := preload("res://main/art/fp_scissors.tscn")
 const BlenderScene := preload("res://main/art/fp_blender.tscn")
 const SawScene := preload("res://main/art/fp_big_saw.tscn")
 const HairScene := preload("res://main/art/fp_arm_hair.tscn")
+const WristCompass := preload("res://main/art/fp_wrist_compass.gd")
+## On the left forearm just short of the wrist bone, past the arm hairs
+## (they count mutation points and must stay readable). The eye looks along
+## the forearm in play, so a flat dial reads edge-on: like a driver's watch
+## it sits round the inner side and its dial tips toward the elbow. A pixel
+## sweep of the dial (960x540): flat on top 0-235 px, turned 90 deg 531 px,
+## turned 105 deg and tipped 40 deg 1180 px (458 px while tearing). On the
+## Tab screen it is then behind the arm, so the approved forearm doll view
+## does not change.
+const COMPASS_Z := 0.024
+const COMPASS_TURN := deg_to_rad(105.0)
+const COMPASS_TILT := deg_to_rad(40.0)
+const COMPASS_ARM_R := 0.031
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
@@ -29,6 +42,8 @@ var scissors: Node3D
 var blender: Node3D
 var saw: Node3D
 var arm_hair: Node3D
+## The wrist compass: its needle points at the restroom (07-danger-navigation.md 3).
+var wrist_compass: Node3D
 var belt: Node3D
 var bag: Node3D
 var hand_tumor: Node3D
@@ -92,6 +107,9 @@ func setup(main: Node3D) -> void:
 	saw.scale = Vector3.ONE * 0.5
 	arm_hair = HairScene.instantiate()
 	arm_hair.name = "ArmHair"
+	wrist_compass = WristCompass.new()
+	wrist_compass.name = "WristCompass"
+	wrist_compass.set("target", m.RESTROOM_CENTER)
 	held_teeth = _make_held_teeth()
 	_attach_to_rig(_rig)
 	# mutation hands: a second rig with the tumor-mutation parts, swapped in
@@ -151,6 +169,8 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
+	_put(wrist_compass, lroot, Vector3(sin(COMPASS_TURN) * COMPASS_ARM_R, cos(COMPASS_TURN) * COMPASS_ARM_R + 0.001, COMPASS_Z))
+	wrist_compass.basis = Basis(Vector3.BACK, -COMPASS_TURN) * Basis(Vector3.RIGHT, COMPASS_TILT)
 	# Keep the original watch geometry throughout raise and release, on both
 	# rig forearms so their existing mutation transforms still affect it.
 	var hair_arm := arm_hair.get_node_or_null("Forearm") as MeshInstance3D

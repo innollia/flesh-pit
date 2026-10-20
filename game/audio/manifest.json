@@ -52,6 +52,16 @@
    ],
    "spatial": true
   },
+  "gag_dry": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/gag_dry_v1.wav",
+    "res://audio/sfx/gag_dry_v2.wav",
+    "res://audio/sfx/gag_dry_v3.wav",
+    "res://audio/sfx/gag_dry_v4.wav"
+   ],
+   "spatial": false
+  },
   "swallow": {
    "kind": "sfx",
    "files": [

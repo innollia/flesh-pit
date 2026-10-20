@@ -34,7 +34,7 @@ FDKChewer.try_start(world_pos)는 세계 위치를 받아 같은 셀을 이어 �
 
 grab_started(target_cell: Vector3i)는 셀을 새로 잡을 때, chew_progress(ratio: float,target_cell: Vector3i)는 진행0~1을, cell_torn(world_pos: Vector3)는 실제 제거 완료 세계 위치를 전달한다. released()는 잡던 상태에서 놓는 전환에 한 번 발생한다. 손과 소리는 신호를 구독하며 Chewer가 손 mesh 구조를 읽지 않는다.
 
-잡기가 거절되면 Chewer는 시작하지 않으므로 신호가 없다. 게임이 FDKHandsRig.on_grab_refused()를 불러 손이 오므렸다 미끄러져 돌아오는 SLIP 상태(0.5 s)를 보인다. 게임 쪽 거절 신호는 Main.grab_refused(tissue: int, world_pos: Vector3)이고 소리 연결이 구독한다.
+잡기가 거절되면 Chewer는 시작하지 않으므로 신호가 없다. 게임이 FDKHandsRig.on_grab_refused()를 불러 손이 오므렸다 미끄러져 돌아오는 SLIP 상태(0.5 s)를 보인다. 게임 쪽 거절 신호는 Main.grab_refused(tissue: int, world_pos: Vector3)이고 소리 연결이 구독한다. 첫 레버 정산 전 밖의 헛구역질은 Main.dry_heaved()로 알리고 소리 연결이 구독한다.
 
 ## 지형 수정
 

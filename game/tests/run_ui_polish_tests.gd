@@ -90,8 +90,12 @@ func run() -> void:
 	var ev := InputEventAction.new()
 	ev.action = "fp_vomit"
 	ev.pressed = true
+	hints.vomit_hint = false
 	hints._input(ev)
-	check(hints.vomit_learned, "pressing V once retires the opening's V icon")
+	check(not hints.vomit_learned, "V where the icon is not shown (it may only retch) does not retire it")
+	hints.vomit_hint = true
+	hints._input(ev)
+	check(hints.vomit_learned, "pressing V once where it shows retires the opening's V icon")
 	# --- eye mutations shut differently
 	var lid_mat: ShaderMaterial = pm.lids.material
 	pm.set_eyes(["T5", "M03"], 0.7)
@@ -188,6 +192,40 @@ func run() -> void:
 		t += get_root().get_process_delta_time()
 	check(not arm.visible, "after the take the arm goes back up into the dark")
 	m.vent.close()
+	# --- first expedition comes back (decision 0009, playtests s1/s4)
+	m.lever_settled = false
+	m.player.global_position = m.RESTROOM_CENTER + Vector3(1.0, -0.5, 4.5)
+	m.stomach.add_flesh(60.0)
+	var fill0: float = m.stomach.fill
+	var gagged := [0]
+	m.dry_heaved.connect(func(): gagged[0] += 1)
+	m.request_vomit()
+	check(m.stomach.fill == fill0 and gagged[0] == 1 and m.hand_motions.kind == "gag", "before the first lever settlement V out in the flesh only retches; the stomach keeps it")
+	m.stomach.add_flesh(80.0)
+	await frames(2)
+	check(not m.opening_view.hints.vomit_hint and not m.vomit_button.shown, "out in the flesh the full stomach shows no vomit key")
+	m.player.global_position = m.restroom.toilet.to_global(Vector3(0, 0.9, 0.5))
+	await frames(2)
+	check(m.opening_view.hints.vomit_hint and m.vomit_button.shown, "at the toilet it does")
+	m.lever_settled = true
+	m.player.global_position = m.RESTROOM_CENTER + Vector3(1.0, -0.5, 4.5)
+	m.request_vomit()
+	check(m.stomach.fill == 0.0, "after a lever settlement V outside empties the stomach as before")
+	check(bool(m.serialize()["lever_settled"]), "the first settlement is saved")
+	# --- the wrist compass points home
+	var compass: Node3D = m.art_hookup.wrist_compass
+	var active_rig: Node3D = m.art_hookup.get("_rig")
+	check(compass.get_parent() == active_rig.get_node("HandLeft") and compass.is_visible_in_tree(), "the compass is on the left forearm of the hands in use")
+	var settle_t := 0.0
+	while settle_t < 1.2:
+		await process_frame
+		settle_t += get_root().get_process_delta_time()
+	var needle: Node3D = compass.get_node("Needle")
+	var tip: Vector3 = -needle.global_transform.basis.z
+	var face_n: Vector3 = compass.global_transform.basis.y.normalized()
+	var home: Vector3 = m.RESTROOM_CENTER - compass.global_position
+	var flat_home := (home - face_n * home.dot(face_n)).normalized()
+	check((tip - face_n * tip.dot(face_n)).normalized().dot(flat_home) > 0.97, "out in the flesh the needle points at the restroom (%.2f)" % (tip - face_n * tip.dot(face_n)).normalized().dot(flat_home))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(m.save_path))
 	print("--- ui polish: %d passed, %d failed ---" % [passed, failed])
 	m.queue_free()

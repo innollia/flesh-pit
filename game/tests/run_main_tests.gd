@@ -69,14 +69,18 @@ func _run() -> void:
     var cap: float = m.stomach_config.capacity
     var over: float = m.stomach_config.overfill_capacity
     var prog: FPProgression = m.progression
-    # outside vomit: empties, nothing gained
+    # outside vomit before the first lever settlement: only a retch (decision 0009)
     m.player.global_position = Vector3(0, 1, 4.0)
     m.stomach.add_flesh(50.0)
     prog.on_flesh_eaten(0, 5)
     m.request_vomit()
+    _assert(m.stomach.fill == 50.0 and m.hand_motions.kind == "gag", "before the first lever settlement V outside only retches")
+    # outside vomit after it: empties, nothing gained
+    m.lever_settled = true
+    m.request_vomit()
     _assert(m.stomach.fill == 0.0 and prog.teeth == 0 and prog.total_hairs() == 0 and prog.pending_hair_total() == 0, "vomit outside the toilet empties the stomach with no reward")
-    # vomit button threshold
-    m.player.global_position = Vector3(0, 0.95, 0)
+    # vomit button threshold (shown where vomiting settles: at the toilet)
+    m.player.global_position = m.restroom.toilet.to_global(Vector3(0, 0.9, 0.5))
     m.stomach.add_flesh(cap + over * 0.2)
     m._process(0.016)
     _assert(not m.vomit_button.shown, "vomit button hidden below the overfill threshold")

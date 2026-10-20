@@ -1,0 +1,15 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: gag_dry -- a dry heave: two throaty retches and a strained breath, nothing comes up.
+r1 = clamp((t - 0.05) / 0.06, 0, 1) * clamp((0.38 - t) / 0.1, 0, 1)
+r2 = clamp((t - 0.55) / 0.06, 0, 1) * clamp((0.9 - t) / 0.12, 0, 1)
+retch_env = r1 + r2 * 0.85
+groan = saw(92 * PITCH + sine(6) * 7) * retch_env * 0.4 |> bp(@, 380, 2.5)
+throat = noise(0, 0, SEED) * retch_env * 0.4 |> bp(@, 1400 * PITCH, 2.2)
+click = noise(0, 0, SEED2) * (clamp((t - 0.06) / 0.004, 0, 1) * exp(neg(clamp(t - 0.06, 0, 100)) / 0.03) + clamp((t - 0.56) / 0.004, 0, 1) * exp(neg(clamp(t - 0.56, 0, 100)) / 0.03)) * 0.5 |> bp(@, 2200, 3.0)
+breath = noise(0, 0, SEED2) * clamp((t - 0.95) / 0.08, 0, 1) * clamp((1.35 - t) / 0.25, 0, 1) * 0.25 |> bp(@, 900, 1.5)
+out((groan + throat + click + breath) * 0.5)

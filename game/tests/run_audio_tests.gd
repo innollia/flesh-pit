@@ -54,7 +54,7 @@ func _process(_delta: float) -> bool:
 			if not d.bank.has(String(events[ev])) or d.last_played != String(events[ev]):
 				all_ok = false
 				print("  missing event sound: ", ev)
-		_ok(all_ok and events.size() == 20, "all 20 event sounds (stage 5, the T1 tongue click, the canary, squeezing past flesh, a refused grip) load and play (%d)" % events.size())
+		_ok(all_ok and events.size() == 21, "all 21 event sounds (stage 5, the T1 tongue click, the canary, squeezing past flesh, a refused grip, a dry heave) load and play (%d)" % events.size())
 		_main.emit_signal("died", "test")
 		_ok(d.last_played == "player_death", "main.died plays the death sound (%s)" % d.last_played)
 		var mirror = _main.get("mirror")

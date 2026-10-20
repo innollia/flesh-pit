@@ -29,6 +29,9 @@ signal belt_refused
 ## Bare fingers slipped off flesh they cannot grip (muscle, membrane): the
 ## rubbery creak that says a blade is needed.
 signal grab_refused(tissue: int, world_pos: Vector3)
+## V away from the toilet and rest points before the first lever settlement:
+## the body retches but nothing comes up (decision 0009).
+signal dry_heaved
 
 const SAVE_VERSION := 5
 
@@ -170,6 +173,11 @@ var taken_tumor_spots: Array = []
 ## indexes already taken this game (decision 0006).
 var rest_cans: Array[Node3D] = []
 var looted_rest_cans: Array = []
+## True once a lever flush has settled teeth or a tumour. Until then V away
+## from the toilet and rest points is only a dry heave, so the first
+## expedition's full stomach has to come back to the toilet (decision 0009,
+## playtests s1 and s4 emptied it outside and never settled).
+var lever_settled: bool = false
 
 var carried_flesh: float = 0.0
 ## Flesh in the hands per shell, in flesh units (not cells).
@@ -948,8 +956,11 @@ func _process(delta: float) -> void:
 	_update_hands_room_layer()
 	player.climb_enabled = can_climb_at(player.global_position)
 	stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
-	vomit_button.shown = not _settling and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
-	opening_view.hints.vomit_hint = not _settling and stomach.fill_ratio() >= 1.0
+	# the vomit key and mouth show only where vomiting settles (decision 0009):
+	# shown everywhere they taught emptying the stomach out in the flesh
+	var settle_spot := _near_toilet() or _near_rest_point() >= 0
+	vomit_button.shown = not _settling and settle_spot and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
+	opening_view.hints.vomit_hint = not _settling and settle_spot and stomach.fill_ratio() >= 1.0
 	hands_rig.set_mutation(progression.mutation_amount())
 	hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
 	vent.tick(delta)
@@ -1489,6 +1500,9 @@ func request_vomit() -> void:
 	elif _near_rest_point() >= 0:
 		hand_motions.play_vomit(false, stomach.fill_ratio())
 		settle_at_rest_point()
+	elif not lever_settled:
+		hand_motions.play_gag()
+		dry_heaved.emit()
 	else:
 		hand_motions.play_vomit(false, stomach.fill_ratio())
 		stomach.vomit()
@@ -1501,6 +1515,8 @@ func start_settlement() -> void:
 	if stomach.fill > 0.0:
 		hand_motions.play_vomit(true, stomach.fill_ratio())
 	toilet.vomit_into(stomach.vomit() + mutation_apply.take_cud_credit())
+	if opening_view != null:
+		opening_view.hints.vomit_learned = true # settled once: the V hint has done its job
 	if toilet.throw_tumors(progression) > 0:
 		progression.refresh_hands(carry_mode)
 	_settling = true
@@ -1521,6 +1537,8 @@ func pull_lever() -> Dictionary:
 	var tumor_kinds := toilet.bowl_tumors.duplicate()
 	var got := toilet.press_lever(progression)
 	var settled: bool = int(got["teeth"]) > 0 or not tumor_kinds.is_empty()
+	if settled:
+		lever_settled = true
 	# an empty bowl flushed again does not restart the being's calling
 	if settled or not vent._first_flush_heard:
 		vent.on_flush()
@@ -1855,6 +1873,8 @@ func reset_keybinds() -> void:
 
 func settle_at_rest_point() -> Dictionary:
 	var got := progression.settle(stomach.vomit() + mutation_apply.take_cud_credit())
+	if opening_view != null:
+		opening_view.hints.vomit_learned = true
 	flushed.emit(got["teeth"], got["hairs"])
 	return got
 
@@ -2725,6 +2745,7 @@ func serialize() -> Dictionary:
 		"tank_lid": tank_lid.serialize() if tank_lid != null else {},
 		"taken_tumor_spots": taken_tumor_spots.duplicate(),
 		"looted_rest_cans": looted_rest_cans.duplicate(),
+		"lever_settled": lever_settled,
 		"player_position": [player.global_position.x, player.global_position.y, player.global_position.z],
 		"drawings": vent.drawings.duplicate(),
 		"vent_progress": vent.serialize_progress(),
@@ -2814,6 +2835,8 @@ func deserialize(data: Dictionary) -> void:
 		player.global_position = START_POS
 	_restore_drawings(data.get("drawings", []) as Array)
 	vent.restore_progress(data.get("vent_progress", {}), progression.has_belt)
+	# older saves: anyone who has met the being has flushed teeth before
+	lever_settled = bool(data.get("lever_settled", vent._paid_ever or vent._met or progression.has_belt))
 
 ## Crayon tumor drawings come back on the wall in the order they were given.
 func _restore_drawings(kinds: Array) -> void:

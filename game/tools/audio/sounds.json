@@ -135,6 +135,16 @@
    ]
   },
   {
+   "id": "gag_dry",
+   "kind": "sfx",
+   "seconds": 1.4,
+   "target_lufs": -17,
+   "spatial": false,
+   "bed": [
+    "body_a"
+   ]
+  },
+  {
    "id": "swallow",
    "kind": "sfx",
    "seconds": 0.6,
