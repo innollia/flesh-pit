@@ -80,6 +80,13 @@ def prepare(sess, name):
     os.makedirs(ev)
     shutil.copy(os.path.join(HERE, "play.py"), room)
     shutil.copy(os.path.join(HERE, "manual.md"), room)
+    # the room is its own tiny project so a fresh Claude session can be opened
+    # on it (no flesh-pit CLAUDE.md or memory in its context)
+    open(os.path.join(room, "session_dir.txt"), "w", encoding="utf-8").write(os.path.join(room, "session"))
+    open(os.path.join(room, ".gitignore"), "w", encoding="utf-8").write("session/\n")
+    for args in (["init", "-q"], ["add", "play.py", "manual.md", "session_dir.txt", ".gitignore"],
+                 ["-c", "user.name=playtest", "-c", "user.email=playtest@localhost", "commit", "-q", "-m", "playtest room"]):
+        subprocess.run(["git", "-C", room] + args, capture_output=True)
     git = subprocess.run(["git", "-C", REPO, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", REPO, "status", "--porcelain", "--", "game"], capture_output=True, text=True).stdout.strip()
     json.dump({"session": os.path.basename(sess), "project_name": name, "git": git, "game_dirty": bool(dirty),
@@ -191,7 +198,8 @@ def collect(room, ev, transcript=None):
             out.append("- 소리: " + ", ".join(obs["sounds"]))
         keep = {k: tel[k] for k in ("pos", "depth", "shell", "in_restroom", "stomach_fill", "teeth", "teeth_in_hand",
                                     "spray_cans", "barriers", "deaths", "opening", "title_open", "pause_open",
-                                    "interact_target", "vent_open", "vent_offers", "crush_t", "wall_ms_per_frame") if k in tel}
+                                    "interact_target", "vent_open", "vent_offers", "crush_t", "aim_tissue", "aim_dist", "aim_depth",
+                                    "grip_refusals", "wall_ms_per_frame") if k in tel}
         out.append("- 텔레메트리: `%s`" % json.dumps(keep, ensure_ascii=False))
         if tel.get("events"):
             out.append("- 사건: `%s`" % json.dumps(tel["events"], ensure_ascii=False))

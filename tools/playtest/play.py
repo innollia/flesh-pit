@@ -24,7 +24,10 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SESSION = os.path.join(HERE, "session")
+# a player session opened on a copy of the room (its own project) finds the
+# game's session folder through session_dir.txt
+_POINTER = os.path.join(HERE, "session_dir.txt")
+SESSION = open(_POINTER, encoding="utf-8").read().strip() if os.path.exists(_POINTER) else os.path.join(HERE, "session")
 BUTTONS = {"LMB", "RMB", "MMB", "WHEELUP", "WHEELDOWN"}
 
 
@@ -51,9 +54,9 @@ def wait_obs(n, timeout=240.0):
 
 def show(obs):
     print("step %d  (game time %.1f s)" % (obs["step"], obs.get("time", 0.0)))
-    print("screen: session/%s" % obs["screenshot"])
+    print("screen: %s" % os.path.join(SESSION, obs["screenshot"]))
     if obs.get("mid_screenshot"):
-        print("halfway through the action: session/%s" % obs["mid_screenshot"])
+        print("halfway through the action: %s" % os.path.join(SESSION, obs["mid_screenshot"]))
     texts = obs.get("text") or []
     if texts:
         print("text on screen: " + "; ".join(

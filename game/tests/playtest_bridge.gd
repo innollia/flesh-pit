@@ -29,7 +29,8 @@ var _plan: Array = [] # one Array of InputEvents per frame
 var _frame := 0
 var _settle := WARMUP_FRAMES
 var _mouse := Vector2.ZERO
-var _sounds_seen := 0
+var _heard: Array = []
+var _log_prev: Array = []
 var _events: Array = []
 var _game_time := 0.0
 var _step_wall_ms := 0
@@ -66,6 +67,7 @@ func _process(delta: float) -> void:
 		_hook_main()
 	_game_time += delta
 	_step_frames += 1
+	_listen()
 	if _frame < _plan.size():
 		for ev in _plan[_frame]:
 			Input.parse_input_event(ev)
@@ -169,17 +171,26 @@ func _layer_visible(c: Control) -> bool:
 	return true
 
 func _new_sounds() -> Array:
-	var out: Array = []
-	if _main == null:
-		return out
-	var hook := _main.get_node_or_null("AudioHookup")
-	if hook == null:
-		return out
-	var played: Array = hook.get("played_events") if hook.get("played_events") != null else []
-	for i in range(_sounds_seen, played.size()):
-		out.append(String(played[i]))
-	_sounds_seen = played.size()
+	var out := _heard.duplicate()
+	_heard.clear()
 	return out
+
+## Every one-shot the audio director starts (tears, swallows, doors, the
+## vent, refusals), not only the game's named events. The director keeps a
+## capped log, so new entries are found by matching the old tail each frame.
+func _listen() -> void:
+	if _main == null:
+		return
+	var director := _main.get_node_or_null("AudioHookup/AudioDirector")
+	if director == null:
+		return
+	var log: Array = director.get("played_log")
+	var n := _log_prev.size()
+	for k in range(0, mini(n, 16) + 1):
+		if log.size() >= n - k and log.slice(0, n - k) == _log_prev.slice(k):
+			_heard.append_array(log.slice(n - k))
+			break
+	_log_prev = log.duplicate()
 
 # --- telemetry (evaluator only) ---------------------------------------------------
 
@@ -249,6 +260,17 @@ func _telemetry() -> Dictionary:
 		d["vent_offers"] = vent.get("offers")
 	d["looted_rest_cans"] = m.get("looted_rest_cans")
 	d["crush_t"] = m.get("_crush_t")
+	var tools = m.get("tissue_tools")
+	if tools != null:
+		d["grip_refusals"] = tools.get("membrane_refusals")
+	if player != null and m.has_method("_look_hit"):
+		var hit: Dictionary = m.call("_look_hit")
+		if not hit.is_empty() and m.get("terrain") != null:
+			var dir: Vector3 = player.call("get_look_ray")[1]
+			var at: Vector3 = hit["position"] + dir * 0.2
+			d["aim_dist"] = snappedf(player.camera.global_position.distance_to(hit["position"]), 0.01)
+			d["aim_tissue"] = m.terrain.tissue_at(at)
+			d["aim_depth"] = snappedf(at.distance_to(m.get("RESTROOM_CENTER")), 0.01)
 	return d
 
 # --- commands -----------------------------------------------------------------------

@@ -38,7 +38,7 @@ FP_AUDIO_LOG=1은 소리 이벤트 로그만 켠다. FP_PLAY_LOG=<CSV 경로>는
 
 클린룸 플레이테스트는 코드와 문서를 모르는 플레이어 에이전트가 처음 하는 사람처럼 플레이하고, 평가자가 그 기록에 플레이어가 못 본 텔레메트리를 더해 발견을 내는 절차다(결정 0007).
 1. `python -X utf8 tools/playtest/run_session.py --session <이름> --no-agent`: `game/`을 `%TEMP%/flesh-pit-playtest/<이름>/iso`로 복사하고 `config/name`을 `flesh-pit-playtest-<이름>`으로 바꿔 `user://`를 따로 둔다. 그 폴더를 비운 뒤 브리지(`game/tests/playtest_bridge.gd`)를 autoload로 넣고, 960×540·`--fixed-fps 30`으로 띄운다. 플레이어의 방(`room/`)에는 `play.py`, `manual.md`, 화면이 쌓이는 `session/`만 있다. 텔레메트리와 로그는 `evidence/`에 쌓인다.
-2. 플레이어: `claude` CLI가 로그인되어 있으면 `--no-agent` 없이 실행한다. `claude -p`가 방에서 돌며 `python play.py`와 방 안 Read 말고는 거부된다. CLI를 쓸 수 없으면 `.claude/agents/playtester.md`의 규칙으로 하위 에이전트를 띄우고, 끝난 뒤 `python -X utf8 tools/playtest/audit_player.py <대화 기록 jsonl> <방>`으로 방 밖을 본 호출이 없었는지 검사한다. 하나라도 있으면 그 회차는 버린다. 하위 에이전트는 프로젝트 `CLAUDE.md`를 문맥으로 받고 시작한다(검사 결과에 적힌다).
+2. 플레이어: `claude` CLI가 로그인되어 있으면 `--no-agent` 없이 실행한다. `claude -p`가 방에서 돌며 `python play.py`와 방 안 Read 말고는 거부된다. CLI를 쓸 수 없으면 방 폴더를 프로젝트로 하는 새 세션(방은 실행기가 git 저장소로 만든다)에서 같은 규칙으로 플레이시킨다. 이 세션 안의 하위 에이전트는 세션 시작 때 읽힌 `CLAUDE.md`와 메모 색인을 그대로 받으므로(파일을 숨겨도 같다) 마지막 수단이다. 하위 에이전트를 쓰면 `.claude/agents/playtester.md`의 규칙으로 띄우고, 끝난 뒤 `python -X utf8 tools/playtest/audit_player.py <대화 기록 jsonl> <방>`으로 방 밖을 본 호출이 없었는지 검사한다. 하나라도 있으면 그 회차는 버린다. 하위 에이전트는 프로젝트 `CLAUDE.md`를 문맥으로 받고 시작한다(검사 결과에 적힌다).
 3. `run_session.py --session <이름> --stop [--transcript <하위 에이전트 jsonl>]`: 게임을 끝내고 `evidence/trajectory.md`(step마다 명령·메모·화면 글자·소리·텔레메트리)와 `player_report.md`를 만든다.
 4. `.claude/agents/playtest-evaluator.md`의 평가자가 `evidence/evaluation.md`를 쓴다. 발견마다 step·화면·텔레메트리 증거, 관찰과 추론, 심각도와 확신도를 따로 적고, 에이전트 인식 실패와 UX 문제를 가른다.
 - 게임 창은 포커스를 받지 않고 마우스를 통과시킨다. 실제 키보드·마우스는 게임에 닿지 않는다. 브리지가 커서 잡기를 매 프레임 푼다.

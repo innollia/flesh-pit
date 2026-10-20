@@ -53,10 +53,11 @@ def bash_ok(cmd, room):
     for p in parts:
         m = re.fullmatch(r'cd\s+"?([^"]+)"?', p)
         if m:
-            if norm(m.group(1)) != norm(room):
+            d = norm(m.group(1))
+            if d != norm(room) and not d.startswith(norm(room) + os.sep):
                 return False
             continue
-        if re.fullmatch(r'python(3)?\s+play\.py(\s.*)?', p, flags=re.S):
+        if re.fullmatch(r'python(3)?\s+("?[^"\s]*[\\/])?play\.py"?(\s.*)?', p, flags=re.S):
             continue
         return False
     return True
