@@ -16,6 +16,8 @@ var _drops: MultiMeshInstance3D
 var _live_bits: Array = []
 var _live_drops: Array = []
 var _seed := 0
+## Bodies the landing ray ignores (main sets the player).
+var exclude: Array[RID] = []
 
 func _ready() -> void:
 	_bits = _make_layer("Bits", MAX_BITS, "res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 0.7, 0.45, 51)
@@ -54,6 +56,8 @@ func burst(at: Vector3, out: Vector3, bits: int, drops: int, color: Color = BLOO
 		return
 	var floor_y := at.y - 2.5
 	var q := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 0.02, at + Vector3.DOWN * 2.5)
+	# the player's own body is no floor (s4: bits from the ceiling hung at head height)
+	q.exclude = exclude
 	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
 	if not hit.is_empty():
 		floor_y = (hit.position as Vector3).y

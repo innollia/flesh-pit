@@ -78,6 +78,12 @@ func run() -> void:
 		await process_frame
 		t += get_root().get_process_delta_time()
 	check(m.gore.live_count() == 0, "and they are gone within a few seconds (%.1f s)" % t)
+	# s4: bits torn above the player landed on its head and hung in the air
+	var head: Vector3 = m.player.global_position + Vector3(0, 1.4, 0)
+	m.gore.burst(head, Vector3.DOWN, 1, 0)
+	var floor_y: float = m.gore.get("_live_bits")[0]["floor"]
+	check(floor_y < m.player.global_position.y - 0.5, "bits from above the player fall past its body to the floor (floor %.2f, body %.2f)" % [floor_y, m.player.global_position.y])
+	m.gore.set("_live_bits", [])
 	# --- the opening's vomit key goes once used
 	var hints = m.opening_view.hints
 	hints.vomit_learned = false
@@ -95,7 +101,11 @@ func run() -> void:
 	check(lid_mat.get_shader_parameter("fish") == 0.0 and lid_mat.get_shader_parameter("echo") == 0.0, "plain eyes again")
 	var fa: float = m.restroom_field_angle()
 	m.player._yaw += PI * 0.5
-	await frames(2)
+	# the body turns in physics; wait by time, not frames (flaky under load)
+	var head_t := 0.0
+	while head_t < 0.5 and absf(wrapf(m.restroom_field_angle() - fa, -PI, PI)) <= 1.0:
+		await process_frame
+		head_t += get_root().get_process_delta_time()
 	check(absf(wrapf(m.restroom_field_angle() - fa, -PI, PI)) > 1.0, "the field turns with the head (%.2f -> %.2f)" % [fa, m.restroom_field_angle()])
 	# --- the key screen: a turntable of the player's body, one per action
 	var kb: FPKeybindMenu = m.keybind_menu

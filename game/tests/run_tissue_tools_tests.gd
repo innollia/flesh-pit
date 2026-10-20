@@ -265,6 +265,10 @@ func _main_tests(m) -> void:
 	# 2026-10-20 playtest: a refused grip showed nothing; now the fingers slip off and it creaks
 	_assert(slipped, "W10 a refused grip shows: the hand slips off the membrane")
 	_assert(grip_refused[0] == 3, "W10 held for 2 s the refusal sounds every 0.7 s, not every frame (%d)" % grip_refused[0])
+	# s4: a short retry after a break gave no sign; it shows at once now
+	tools.set("_refuse_frame", Engine.get_process_frames() - 10)
+	tools.chew_at(mem, mem, Vector3(1, 0, 0), 1.0 / 60.0)
+	_assert(grip_refused[0] == 4, "W10 a refusal after a break shows at once (%d)" % grip_refused[0])
 	_assert(m.grab_refused.get_connections().size() >= 2 and m.get_node("AudioHookup").get("EVENT_SOUNDS").has("grab_refuse"), "W10 the refusal is wired to its own sound")
 	# T6 vertical jaw is a TUMOR mutation (not bought): bare hands must grab membrane
 	prog.tumor_mutations.append("T6")

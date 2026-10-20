@@ -27,6 +27,10 @@ func _process(_d: float) -> bool:
     _frame += 1
     if _frame == 2:
         _assert(_m.is_opening(), "the game opens seated on the toilet")
+        # s4: mouse look while seated piled up and snapped the view at the end
+        _m.player.set("_yaw", _m.SEAT_YAW + 2.0)
+        _m.apply_opening_at(1.0)
+        _assert(is_equal_approx(float(_m.player.get("_yaw")), _m.SEAT_YAW), "mouse look during the opening is dropped, not saved up for the end")
         _m.finish_opening()
         _m.restroom.set_door_open(true, true)
         _m.terrain.remesh_all()

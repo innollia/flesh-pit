@@ -40,6 +40,7 @@ var membrane_refusals: int = 0
 ## while the button is held (2026-10-20 playtest: the stall gave no sign).
 const REFUSE_EVERY := 0.7
 var _refuse_cool := 0.0
+var _refuse_frame := -100
 ## Tests hold the blend button without real input.
 var hold_override: bool = false
 ## Contractions set off by charging (tests).
@@ -89,6 +90,11 @@ func chew_at(target: Vector3, hit_pos: Vector3, dir: Vector3, delta: float) -> b
 		m.chewer.stop()
 		m.terrain.set_press(hit_pos, -dir, 0.25) # the hand pushes, nothing gives
 		membrane_refusals += 1
+		# a refusal after a break shows at once (s4: a short retry gave no sign)
+		var frame := Engine.get_process_frames()
+		if frame - _refuse_frame > 2:
+			_refuse_cool = 0.0
+		_refuse_frame = frame
 		_refuse_cool -= delta
 		if _refuse_cool <= 0.0:
 			_refuse_cool = REFUSE_EVERY

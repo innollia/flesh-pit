@@ -317,6 +317,7 @@ func _ready() -> void:
 	player.camera.add_child(stomach_view)
 	stomach.fill_changed.connect(func(_f, _c, _o): stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio()))
 	gore = FPGore.new()
+	gore.exclude.append(player.get_rid())
 	gore.name = "Gore"
 	add_child(gore)
 	wake_lids = FPWakeLids.new()
@@ -912,6 +913,9 @@ func apply_opening_at(t: float) -> void:
 	var k := FPOpening.rise_at(t)
 	player.global_position = SEAT_POS.lerp(Vector3(SEAT_POS.x + 0.28, START_POS.y, SEAT_POS.z), k)
 	var pitch := lerpf(OPENING_SEAT_PITCH, 0.0, k)
+	# the view is held while seated and rising; mouse input in the meantime
+	# is dropped instead of snapping the view when the opening ends (s4)
+	player.set("_yaw", SEAT_YAW)
 	player.set("_pitch", pitch)
 	player.camera_pivot.rotation.x = pitch
 	if opening_view != null:
