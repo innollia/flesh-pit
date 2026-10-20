@@ -30,7 +30,10 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │           ├── 0001-continuous-regeneration.md → 느린 연속 재생
 │           ├── 0002-actual-terrain.md → 실제 살점 면으로 내부 표시
 │           ├── 0003-publication-and-restore.md → 단계 게시와 복원 시점
-│           └── 0004-tumor-specific-mutations.md → 종양마다 정해진 변이
+│           ├── 0004-tumor-specific-mutations.md → 종양마다 정해진 변이
+│           ├── 0005-spray-economy.md → 3통 상한은 두고 스프레이 양은 통당 횟수로
+│           ├── 0006-rest-spray-loot.md → 쉼터마다 스프레이 한 통, 통당 6회
+│           └── 0007-clean-room-playtest.md → 화면만 보는 플레이어와 증거로 판정하는 평가자
 └── game/
     ├── main/AGENTS.md → 게임 조작·진행·표현·단일 저장
     ├── addons/flesh_dig_kit/AGENTS.md → 재사용 지형·먹기·몸·도구
