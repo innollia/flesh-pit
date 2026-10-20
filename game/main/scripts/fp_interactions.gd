@@ -37,6 +37,9 @@ static func get_candidates(main: Node3D) -> Array:
 		["toilet", main.toilet_point(), 12.0, 1.35],
 		["vent", FPRestroom.VENT_CENTER, 12.0, 2.0],
 	]
+	if main.vent.is_open and not main.vent.offers.is_empty():
+		# the being's hand holds the offer out below the grate
+		candidates.append(["vent", main.vent.offer_center(), 12.0, 2.0])
 	var pivot: Node3D = main.restroom.door_pivot
 	var width := 2.0 * FPRestroom.DOOR_HALF_W - 0.01
 	candidates.append(["door", pivot.to_global(Vector3(width - 0.095, 0.995, 0)), 30.0, 1.6])

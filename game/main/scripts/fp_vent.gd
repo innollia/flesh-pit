@@ -728,8 +728,26 @@ func _clear_offers() -> void:
         _offer_root.remove_child(c)
     offers_changed.emit(offers)
 
+## Aim anchors, kept on the items the being's hand holds out (the hand turns
+## toward the player, so the items move).
 func offer_nodes() -> Array:
-    return _offer_root.get_children()
+    var nodes := _offer_root.get_children()
+    if art != null and art.has_method("item_node"):
+        for i in range(nodes.size()):
+            var item: Node3D = art.call("item_node", i)
+            if item != null and item.is_inside_tree() and nodes[i].is_inside_tree():
+                (nodes[i] as Node3D).global_position = item.global_position
+    return nodes
+
+## Middle of the offer held out (the vent centre when nothing is offered).
+func offer_center() -> Vector3:
+    var nodes := offer_nodes()
+    if nodes.is_empty() or not is_inside_tree():
+        return FPRestroom.VENT_CENTER
+    var sum := Vector3.ZERO
+    for n in nodes:
+        sum += (n as Node3D).global_position
+    return sum / float(nodes.size())
 
 ## Offers waiting for the next open (left unpicked).
 func held_offers() -> Array[String]:

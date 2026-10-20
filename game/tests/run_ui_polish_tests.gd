@@ -148,6 +148,36 @@ func run() -> void:
 		await process_frame
 		t += get_root().get_process_delta_time()
 	check(not m.wake_lids.playing() and not m.wake_lids.visible, "and the eyes are open within a few seconds (%.1f s)" % t)
+	# --- the vent being holds its offer out in a hand you can see (2026-10-20)
+	var art: Node3D = m.vent.art
+	var arm: Node3D = art.get_node("BeingArm")
+	m.player.global_position = Vector3(0.1, 0.9, 0.2)
+	m.vent.open(30)
+	await frames(10)
+	check(not arm.visible, "no arm while nothing is offered")
+	m.progression.teeth_in_hand = 30
+	var ids: Array = m.place_teeth_at_vent()
+	t = 0.0
+	while t < 1.6:
+		await process_frame
+		t += get_root().get_process_delta_time()
+	var item: Node3D = art.call("item_node", 0)
+	var face_y: float = FPRestroom.VENT_CENTER.y
+	check(not ids.is_empty() and arm.visible and item.is_visible_in_tree(), "the offer comes out in the being's hand")
+	check(item.global_position.y < face_y - 0.25, "the hand holds it below the ceiling, in the light (%.2f m under)" % (face_y - item.global_position.y))
+	var to_player: Vector3 = m.player.camera.global_position - FPRestroom.VENT_CENTER
+	var toward: Vector3 = item.global_position - FPRestroom.VENT_CENTER
+	check(Vector2(toward.x, toward.z).dot(Vector2(to_player.x, to_player.z)) > 0.0, "it reaches toward the player")
+	var anchor: Node3D = m.vent.offer_nodes()[0]
+	check(anchor.global_position.distance_to(item.global_position) < 0.01, "aiming picks the item where the hand holds it")
+	check(FPInteractions.get_candidates(m).any(func(c): return c[0] == "vent" and (c[1] as Vector3).distance_to(m.vent.offer_center()) < 0.01), "the held-out hand is an aim point for taking")
+	m.take_vent_offer(ids[0])
+	t = 0.0
+	while t < 1.2:
+		await process_frame
+		t += get_root().get_process_delta_time()
+	check(not arm.visible, "after the take the arm goes back up into the dark")
+	m.vent.close()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(m.save_path))
 	print("--- ui polish: %d passed, %d failed ---" % [passed, failed])
 	m.queue_free()
