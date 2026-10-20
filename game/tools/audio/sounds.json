@@ -125,6 +125,16 @@
    }
   },
   {
+   "id": "grab_refuse",
+   "kind": "sfx",
+   "seconds": 0.55,
+   "target_lufs": -19,
+   "spatial": true,
+   "bed": [
+    "body_a"
+   ]
+  },
+  {
    "id": "swallow",
    "kind": "sfx",
    "seconds": 0.6,

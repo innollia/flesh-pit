@@ -26,11 +26,13 @@ const LIMITS_DEG := {
 }
 const JOINT_NAMES := ["wrist_pitch", "wrist_yaw", "wrist_roll", "f1", "f2", "f3", "t1", "t2", "t3", "t_opp"]
 
-enum HandState { IDLE, GRAB, TEAR, RELEASE }
+enum HandState { IDLE, GRAB, TEAR, RELEASE, SLIP }
 
 const GRAB_TIME := 0.32
 const TEAR_TIME := 0.34
 const RELEASE_TIME := 0.4
+## Grip refused (tissue too tough for this hand): reach, close, slip off, spring back.
+const SLIP_TIME := 0.5
 const SECOND_HAND_DELAY := 0.09
 ## Idle pose: wrist raised so the BACK of the hand faces the camera and the
 ## four-finger block + thumb read as a hand silhouette (the old pose showed
@@ -123,6 +125,13 @@ func on_released() -> void:
     _state_time = 0.0
     _chew = 0.0
 
+## The flesh would not give: the fingers close on it, slip off and the hand
+## springs back. Games call it when a grab is refused (no chewer signal).
+func on_grab_refused() -> void:
+    state = HandState.SLIP
+    _state_time = 0.0
+    _chew = 0.0
+
 func animate_chew(ratio: float, cell: Vector3i) -> void:
     on_chew_progress(ratio, cell)
 
@@ -162,6 +171,10 @@ func step(delta: float) -> void:
                 _state_time = 0.0
         HandState.RELEASE:
             if _state_time >= RELEASE_TIME:
+                state = HandState.IDLE
+                _state_time = 0.0
+        HandState.SLIP:
+            if _state_time >= SLIP_TIME:
                 state = HandState.IDLE
                 _state_time = 0.0
     _wet = maxf(0.0, _wet - delta * 0.08)
@@ -267,6 +280,26 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["wrist_roll"] = -14.0 * side - 18.0 * side * jerk
             var lead_scale := 1.0 if is_lead else 0.35
             p["pos"] = Vector3(0.13 * side, -0.11, -0.44) + Vector3(0.03 * side, -0.07, 0.11) * jerk * lead_scale
+        HandState.SLIP:
+            var st := clampf(t / SLIP_TIME, 0.0, 1.0)
+            var lead_k := 1.0 if is_lead else 0.6
+            # 0..0.35 reach and close on the wall, 0.35..0.55 slip, then spring back
+            var reach := _ease(st / 0.35)
+            var slip := _ease((st - 0.35) / 0.2)
+            var back := _ease((st - 0.55) / 0.45)
+            var close := reach * (1.0 - slip)
+            p["f1"] = lerpf(idle["f1"], 58.0, close) - 14.0 * slip * (1.0 - back)
+            p["f2"] = lerpf(idle["f2"], 70.0, close) - 10.0 * slip * (1.0 - back)
+            p["f3"] = lerpf(idle["f3"], 50.0, close) - 8.0 * slip * (1.0 - back)
+            p["t_opp"] = lerpf(idle["t_opp"], 44.0, close)
+            p["wrist_pitch"] = lerpf(idle["wrist_pitch"], 58.0, reach * (1.0 - back)) - 18.0 * slip * (1.0 - back)
+            var press := Vector3(0.12 * side, -0.1, -0.5)
+            var recoil := Vector3(0.17 * side, -0.16, -0.38)
+            var pos: Vector3 = (idle["pos"] as Vector3).lerp(press, reach * lead_k)
+            pos = pos.lerp(recoil, slip * lead_k).lerp(idle["pos"], back)
+            # the strain before it slips: a fine tremble while pressing
+            pos += Vector3(sin(_time * 57.0 + side), cos(_time * 49.0), 0.0) * 0.006 * close
+            p["pos"] = pos
         HandState.RELEASE:
             var rt := clampf(t / RELEASE_TIME, 0.0, 1.0)
             var e := _ease(rt)

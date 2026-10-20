@@ -33,7 +33,8 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │           ├── 0004-tumor-specific-mutations.md → 종양마다 정해진 변이
 │           ├── 0005-spray-economy.md → 3통 상한은 두고 스프레이 양은 통당 횟수로
 │           ├── 0006-rest-spray-loot.md → 쉼터마다 스프레이 한 통, 통당 6회
-│           └── 0007-clean-room-playtest.md → 화면만 보는 플레이어와 증거로 판정하는 평가자
+│           ├── 0007-clean-room-playtest.md → 화면만 보는 플레이어와 증거로 판정하는 평가자
+│           └── 0008-knife-gate-farther.md → 핵은 막까지 맨손, 칼은 원정 한 번 값
 └── game/
     ├── main/AGENTS.md → 게임 조작·진행·표현·단일 저장
     ├── addons/flesh_dig_kit/AGENTS.md → 재사용 지형·먹기·몸·도구

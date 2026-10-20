@@ -929,6 +929,17 @@ class Model:
             gaps.append(y - x)
         return max(gaps)
 
+    def bare_hand_reach(self) -> dict:
+        """문에서 핵의 첫 칼 조직까지. 핵의 섞임 폭(BLEND_ZONE[0])이 있으면 그 시작, 없으면 막 띠.
+        곧장 판 통로가 그 사이에서 얻는 살(웅크림 / 서기)."""
+        T = float(self.V["world_features.SHELL_THICKNESS"])
+        band = float(self.V["world_features.BOUNDARY_BAND"])
+        blends = self.V.get("world_features.BLEND_ZONE") or [0.0]
+        blend = float(blends[0])
+        end = T - band - blend
+        d = max(0.0, end - self.door)
+        return {"end": end, "d": d, "blend": blend, "crouch_u": d * self.u_per_m[0], "stand_u": d * self.u_per_m[1]}
+
     def transit(self) -> tuple[float, float]:
         T = float(self.V["world_features.SHELL_THICKNESS"])
         band = float(self.V["world_features.BOUNDARY_BAND"])
@@ -1762,6 +1773,16 @@ def build_rows(cx: Context) -> list[Row]:
         f"({cx.at(P_VENT, 'LONG_AWAY * LONG_ABSENT_MULT')}).",
         ["vent_rules.LONG_AWAY", "vent_rules.LONG_ABSENT_MULT"])
 
+    # 맨손 구간: 문에서 핵의 첫 칼 조직(다음 껍질 조직이 섞이기 시작하는 곳, 없으면 막 띠)까지
+    bh = M.bare_hand_reach()
+    add("C15", g, "맨손 구간 (핵)", f"문 {fn(M.door)} m → 첫 칼 조직 {f2(bh['end'])} m = {f2(bh['d'])} m",
+        f"곧장 판 통로: 웅크림 {fu(bh['crouch_u'])} u = {f2(bh['crouch_u'] / M.C)} C · 서기 {fu(bh['stand_u'])} u",
+        "웅크림 ≥ 0.5 C", judge(bh["crouch_u"] / M.C, 0.5),
+        f"L2 규칙(맨손 ≥ 0.5)의 핵 판정이다. 문에서 바깥으로 곧장 웅크림 통로만 파도 위장 절반을 채우고, 나머지는 옆으로 넓혀 채운다. "
+        f"핵의 섞임 폭은 {fn(bh['blend'])} m라({cx.src('world_features.BLEND_ZONE')}) 막 띠 앞까지 맨손으로 판다(결정 0008). "
+        "섞임 폭이 1.8 m이던 때는 4.8 m·0.38 C였고 2026-10-20 플레이테스트에서 위장 44%에 칼 조직을 만났다.",
+        ["world_features.BLEND_ZONE", "world_features.SHELL_THICKNESS", "world_features.BOUNDARY_BAND", "stomach_config.flesh_per_cell"])
+
     if cx.flag_ok("F_SUB_QUEUE"):
         add("C14", g, "자막 겹침", "대기열(최대 3줄)", "규칙 검사", "0.3 s 창에 주 신호 1개 (N13)", IN,
             f"앞 줄이 떠 있는 동안 온 줄은 기다렸다가 이어서 나온다({cx.at(P_SUBS, '_queue.append([text, seconds])')}).",
@@ -1833,6 +1854,14 @@ def build_rows(cx: Context) -> list[Row]:
     add("D06", g, "8이빨 이상 물건", " / ".join(f"{ITEM_KO.get(i, i)} {M.price(i)}" for i in big) + "개",
         " / ".join(f2(M.price(i) / M.exp_teeth) for i in big) + " E", "한 거래 합계로 닿음", v, memo,
         ["progression.PRICE_UNITS"], ["F_TRADE_SUM"])
+
+    first_teeth = [round_half_away(c * M.teeth_rate) for c in (M.C, M.C + M.Ov)]
+    kp = M.price("knife")
+    add("D19", g, "첫 원정으로 칼", f"한 원정 정산 {first_teeth[0]}개(100 u) · 과식 {first_teeth[1]}개 / 칼 {kp}개",
+        f"{f2(first_teeth[0] / kp)} · {f2(first_teeth[1] / kp)}", "100 u 원정 ≥ 1", judge(first_teeth[0] / kp, 1.0),
+        "10-first-ten-minutes.md의 순서(첫 원정 → 첫 정산 → 환풍구 첫 만남에서 칼 → 두 번째 원정에서 막)대로라면 "
+        "가득 찬 원정 한 번의 이빨로 칼을 사야 한다. 같은 값이면 환풍구는 칼을 맨 앞에 내민다(값 내림, 이름 순). 칼 2 E(16개)이던 때는 0.50이었다.",
+        ["progression.PRICE_UNITS", "progression.TEETH_PER_FLESH", "progression.BASE_CAPACITY"])
 
     saw_x = M.price("big_saw") / M.exp_teeth
     add("D07", g, "큰 톱 저축", f"{M.price('big_saw')}개", f"{f2(saw_x)} E", "≤ 10 E", judge(saw_x, None, 10),
@@ -2424,7 +2453,7 @@ FIXED_PARAMS = {
     "progression.SHELL_MULTIPLIER": {"core": 1, "mantle": 2, "surface": 3},
     "progression.TEETH_PER_FLESH": 0.08, "progression.EXPEDITION_TEETH": 8,
     "progression.FLESH_PER_BIOME_HAIR": 50.0, "progression.FLESH_PER_COMMON_HAIR": 150.0,
-    "progression.PRICE_UNITS": {"barrier": 0.5, "spray_cheap": 1.0, "knife": 2.0, "spray_deep": 3.0, "blender": 5.0,
+    "progression.PRICE_UNITS": {"barrier": 0.5, "spray_cheap": 1.0, "knife": 1.0, "spray_deep": 3.0, "blender": 5.0,
                                 "big_saw": 10.0, "canary_feed": 0.5, "tumor_bag": 2.0},
     "progression.UNLOCK_SHELL": {"barrier": 0, "spray_cheap": 0, "knife": 0, "canary_feed": 0, "spray_deep": 1,
                                  "blender": 1, "tumor_bag": 1, "big_saw": 2},
@@ -2460,6 +2489,7 @@ FIXED_PARAMS = {
     "main.BARRIER_PRESSURE": 0.28 / 0.003, "main.nerve_cooldown": 2.0,
     "world_features.SHELL_THICKNESS": 9.0, "world_features.SHELL_COUNT": 3, "world_features.OUTER_RADIUS": 27.0,
     "world_features.REST_DEPTH": [4.5, 13.5, 22.5], "world_features.BOUNDARY_BAND": 0.9,
+    "world_features.BLEND_ZONE": [0.0, 1.8, 1.8],
     "world_features.TUMORS_PER_SHELL": 4, "restroom.HALF": [2.25, 1.3, 1.5],
 }
 FIXED_ASSUMPTIONS = {
@@ -2511,7 +2541,7 @@ def selftest() -> int:
     chk("E_run", run["E_run"], 61.333)
     chk("common_supply", run["common_supply"], 86.0)
     chk("teeth_supply", run["teeth_supply"], 490.67)
-    chk("tools_oneoff", run["tools_oneoff"], 152)
+    chk("tools_oneoff (칼 8 + 가방 16 + 믹서기 40 + 큰 톱 80)", run["tools_oneoff"], 144)
     chk("T_run 240 s (h)", [M.trips(run["E_run"], u) * 240 / 3600 for u in (100, 160)], [4.089, 2.556])
     chk("4시간 필요 T_E", [14400 / M.trips(run["E_run"], u) for u in (100, 160)], [234.8, 375.7])
     chk("용량 원정 수", [M.trips(run["E_run"], c) for c in (120, 160, 200, 240)], [51.11, 38.33, 30.67, 25.56])
@@ -2519,13 +2549,13 @@ def selftest() -> int:
     chk("용량 120 u T_E,est", m120.T_E_calc("core_bare", 120), [58.0, 87.0])
     chk("용량 120 u 회차 추정 (h)", [M.trips(run["E_run"], 120) * x / 3600 for x in m120.T_E_calc("core_bare", 120)],
         [0.823, 1.235])
-    chk("이빨 SD (원정 + 종양 ÷ 일회성 도구)", (run["teeth_supply"] + 12 * 24) / run["tools_oneoff"], 5.123)
+    chk("이빨 SD (원정 + 종양 ÷ 일회성 도구, 칼 8개)", (run["teeth_supply"] + 12 * 24) / run["tools_oneoff"], 5.4074)
     spd = M.spray_demand()
     chk("스프레이 통로망 줄기/가지/1 m 이빨", [spd["trunk_m"], spd["branch_m"], spd["per_m"]["spray_cheap"],
                                        spd["per_m"]["spray_deep"]], [23.7, 264.0, 2.6667, 2.6667])
     chk("쉼터 통이 녹이는 길이 (2×6×0.5 + 4×6×1.5 + 6×6×1.5)", spd["loot_m"], 96.0)
     chk("스프레이 이빨 수요 ((287.7 − 96) × 2.6667)", spd["teeth"], 511.2)
-    chk("이빨 SD (원정 + 종양 ÷ 도구 + 스프레이)", (run["teeth_supply"] + 12 * 24) / (run["tools_oneoff"] + spd["teeth"]), 1.1741)
+    chk("이빨 SD (원정 + 종양 ÷ 도구 + 스프레이)", (run["teeth_supply"] + 12 * 24) / (run["tools_oneoff"] + spd["teeth"]), 1.1884)
     chk("종양 껍질별", M.tumors_by_shell(), [4, 4, 4])
     chk("새 재고 사건", M.draws(run["E_run"])["new_stock"], 2)
     chk("신호 구독 정규식", [len(signal_connect_re("canary_cry").findall(s)) for s in
@@ -2551,7 +2581,9 @@ def selftest() -> int:
     chk("문 앞 r 가정", ds["r_assumed"], [0.140, 0.260])
     chk("문 앞 r 추정", ds["r_est"], [0.668, 0.789])
     pb = M.payback()
-    chk("회수 칼/톱", [pb["knife"], pb["saw"]], [85.3, 213.3])
+    chk("회수 칼/톱", [pb["knife"], pb["saw"]], [42.7, 213.3])
+    bh = M.bare_hand_reach()
+    chk("핵 맨손 구간 (막 8.1 m − 문 1.5 m, 웅크림 8 u/m)", [bh["d"], bh["crouch_u"]], [6.6, 52.8])
     chk("M16 이빨", M.cud()["teeth"], [7, 6, 6])
 
     # 파서 검사

@@ -31,7 +31,7 @@ const FLESH_PER_COMMON_HAIR := 150.0
 const PRICE_UNITS := {
 	"barrier": 0.5,
 	"spray_cheap": 1.0,
-	"knife": 2.0,
+	"knife": 1.0, # one full first expedition (8 teeth) buys it at the first vent meeting (decision 0008)
 	"spray_deep": 3.0,
 	"blender": 5.0,
 	"big_saw": 10.0,
@@ -601,14 +601,14 @@ func vent_offer(placed: int) -> Array[String]:
 		out.append("junk")
 	return out
 
-## Absurd overpay: at least this many teeth (twice the dearest unlocked
-## item) makes the being laugh and spill early items.
+## Absurd overpay: at least this many teeth (twice the dearest unlocked item,
+## never below ABSURD_MIN) makes the being laugh and spill early items.
 func vent_absurd_threshold() -> int:
 	var top := 0
 	for id in PRICE_UNITS.keys():
 		if vent.is_unlocked(id, float(deepest_shell)):
 			top = maxi(top, price_for(id))
-	return int(ceil(float(top) * FPVent.ABSURD_MULT))
+	return maxi(int(ceil(float(top) * FPVent.ABSURD_MULT)), FPVent.ABSURD_MIN)
 
 ## Early (core-unlocked) items that spill out on an absurd overpay.
 func vent_spill() -> Array[String]:

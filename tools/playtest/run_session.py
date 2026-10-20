@@ -204,7 +204,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--session", required=True)
     ap.add_argument("--steps", type=int, default=150)
-    ap.add_argument("--model", default="sonnet")
+    ap.add_argument("--model", default="opus")
     ap.add_argument("--minutes", type=int, default=75)
     ap.add_argument("--base", default=os.path.join(os.environ.get("TEMP", "/tmp"), "flesh-pit-playtest"))
     ap.add_argument("--no-agent", action="store_true")

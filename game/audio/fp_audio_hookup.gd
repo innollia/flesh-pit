@@ -43,7 +43,7 @@ const EVENT_SOUNDS := {
 	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
 	"echo_click": "echo_click",
 	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
-	"squeeze": "chew_strain",
+	"squeeze": "chew_strain", "grab_refuse": "grab_refuse",
 }
 
 func _ready() -> void:
@@ -119,6 +119,8 @@ func _wire() -> void:
 	# look-down belt swap: the steel ring clinks (reuses the coin clink)
 	_hook("belt_swapped", func(_from, _to): play_event("coin_drop"))
 	_hook("belt_refused", func(): play_event("ui_click"))
+	# bare fingers slip off muscle or membrane: rubber stretches and springs back
+	_hook("grab_refused", func(_tissue, pos): play_event("grab_refuse", pos))
 
 func _remember_torn(pos: Vector3) -> void:
 	_torn.append(pos)

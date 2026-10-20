@@ -42,6 +42,16 @@
    ],
    "spatial": true
   },
+  "grab_refuse": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/grab_refuse_v1.wav",
+    "res://audio/sfx/grab_refuse_v2.wav",
+    "res://audio/sfx/grab_refuse_v3.wav",
+    "res://audio/sfx/grab_refuse_v4.wav"
+   ],
+   "spatial": true
+  },
   "swallow": {
    "kind": "sfx",
    "files": [

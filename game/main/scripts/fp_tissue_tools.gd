@@ -36,6 +36,10 @@ var _next_contract: float = CHARGE_CONTRACT_DELAY
 ## Seconds since the last chew at a membrane without a blade (the hand pushes
 ## on it, nothing tears) -- for tests and the hand press visual.
 var membrane_refusals: int = 0
+## A refused grip shows (the hand slips off) and sounds at most this often
+## while the button is held (2026-10-20 playtest: the stall gave no sign).
+const REFUSE_EVERY := 0.7
+var _refuse_cool := 0.0
 ## Tests hold the blend button without real input.
 var hold_override: bool = false
 ## Contractions set off by charging (tests).
@@ -85,6 +89,11 @@ func chew_at(target: Vector3, hit_pos: Vector3, dir: Vector3, delta: float) -> b
 		m.chewer.stop()
 		m.terrain.set_press(hit_pos, -dir, 0.25) # the hand pushes, nothing gives
 		membrane_refusals += 1
+		_refuse_cool -= delta
+		if _refuse_cool <= 0.0:
+			_refuse_cool = REFUSE_EVERY
+			m.hands_rig.on_grab_refused()
+			m.emit_signal("grab_refused", tissue, hit_pos)
 		return false
 	# the chewer refuses inedible ids: a blade (or mutation) opens membrane
 	m.terrain.inedible_tissues = PackedInt32Array() if tissue == FDKTissueRules.MEMBRANE else PackedInt32Array([FDKTissueRules.MEMBRANE])

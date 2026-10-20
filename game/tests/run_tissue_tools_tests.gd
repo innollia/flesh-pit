@@ -238,19 +238,34 @@ func _main_tests(m) -> void:
 	_assert(int(counts.get("210:1", 0)) == 300, "W20 the surface shell is nerve-dense tissue")
 	_assert(int(counts.get("86:3", 0)) == 300 and int(counts.get("176:3", 0)) == 300, "W21 a membrane band marks both shell boundaries")
 	var mixed := 0
+	var core_blade := 0
 	for i in range(300):
 		var dir := Vector3(sin(i * 1.3), cos(i * 0.7), sin(i * 2.9)).normalized()
-		if m._world_tissue(c + dir * 7.2) == R.CONTRACTILE:
+		if m._world_tissue(c + dir * 16.2) == R.NERVE:
 			mixed += 1
-	_assert(mixed > 10 and mixed < 290, "W21 tissue mixes gradually before a boundary (%d/300)" % mixed)
+		# the core keeps bare-hand flesh right up to its membrane (decision 0008)
+		var core_depth := 4.0 + fposmod(i * 0.37, 4.05)
+		if not R.can_grab(m._world_tissue(c + dir * core_depth), ""):
+			core_blade += 1
+	_assert(mixed > 10 and mixed < 290, "W21 tissue mixes gradually before the surface boundary (%d/300)" % mixed)
+	_assert(core_blade == 0, "W21 no blade-only tissue in the core before its membrane at 8.1 m (%d/300)" % core_blade)
 	# W10 membrane round the restroom: bare hands press, a knife cuts
 	var mem := Vector3(FPRestroom.HALF.x + 0.3, 1.0, -0.5)
 	_assert(m.terrain.tissue_at(mem) == R.MEMBRANE, "W10 the restroom is wrapped in membrane")
 	m.equip_tool("")
 	var d0: float = m.terrain.density_at(mem)
+	var grip_refused := [0]
+	m.grab_refused.connect(func(_t, _p): grip_refused[0] += 1)
+	var slipped := false
 	for i in range(120):
 		tools.chew_at(mem, mem, Vector3(1, 0, 0), 1.0 / 60.0)
+		if i == 0:
+			slipped = m.hands_rig.state == FDKHandsRig.HandState.SLIP
 	_assert(m.terrain.density_at(mem) >= d0 - 0.001 and tools.membrane_refusals > 0, "W10 bare hands cannot tear membrane")
+	# 2026-10-20 playtest: a refused grip showed nothing; now the fingers slip off and it creaks
+	_assert(slipped, "W10 a refused grip shows: the hand slips off the membrane")
+	_assert(grip_refused[0] == 3, "W10 held for 2 s the refusal sounds every 0.7 s, not every frame (%d)" % grip_refused[0])
+	_assert(m.grab_refused.get_connections().size() >= 2 and m.get_node("AudioHookup").get("EVENT_SOUNDS").has("grab_refuse"), "W10 the refusal is wired to its own sound")
 	# T6 vertical jaw is a TUMOR mutation (not bought): bare hands must grab membrane
 	prog.tumor_mutations.append("T6")
 	_assert(tools.can_grab_at(mem) and tools.tissue_opts().get("split_jaw", false), "T6 tumor jaw lets bare hands grab membrane")

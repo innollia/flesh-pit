@@ -28,9 +28,12 @@ const REST_SPRAY_LOOT := ["spray_cheap", "spray_deep", "spray_deep"]
 ## base now reads the room's real half-extent.
 const ROOM_CLEAR_HALF := Vector3(FPRestroom.HALF.x + 1.55, FPRestroom.HALF.y + 1.55, FPRestroom.HALF.z + 1.55)
 ## Shell boundary membrane band (02-world-tissue.md 2) and the blend zone
-## before it where the next shell's tissue starts to mix in.
+## before it where the next shell's tissue starts to mix in, per shell. The
+## core mixes nothing in: its flesh stays bare-hand flesh up to its membrane,
+## so the first expeditions fill the stomach before the knife is needed
+## (decision 0008; the mantle's muscle would need a blade from 6.3 m).
 const BOUNDARY_BAND := 0.9
-const BLEND_ZONE := 1.8
+const BLEND_ZONE := [0.0, 1.8, 1.8]
 const TUMORS_PER_SHELL := 4
 ## One more tumor in the mantle and the surface (docs/spec/09-reward-scale.md
 ## D10/D18: 14 >= 6 codex kinds + 7 tumor mutations, and an encounter every
@@ -202,8 +205,9 @@ static func world_tissue(p: Vector3, center: Vector3, noise: float, room_membran
 		return FDKTissueRules.MEMBRANE
 	var t: int = FDKTissueRules.SHELL_TISSUE[shell]
 	# the next shell's tissue mixes in gradually just before the band
-	if has_next and into > SHELL_THICKNESS - BOUNDARY_BAND - BLEND_ZONE:
-		var k := (into - (SHELL_THICKNESS - BOUNDARY_BAND - BLEND_ZONE)) / BLEND_ZONE
+	var blend: float = BLEND_ZONE[shell]
+	if has_next and blend > 0.0 and into > SHELL_THICKNESS - BOUNDARY_BAND - blend:
+		var k := (into - (SHELL_THICKNESS - BOUNDARY_BAND - blend)) / blend
 		if noise * 0.5 + 0.5 < k:
 			t = FDKTissueRules.SHELL_TISSUE[shell + 1]
 	# a few nerve bundles everywhere, packed in the surface shell

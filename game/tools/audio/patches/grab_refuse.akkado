@@ -1,0 +1,15 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: grab_refuse -- bare fingers dig into tough rubbery muscle: a tight creak rising as it
+// stretches, then the grip slips off with a dull wet thup and the flesh springs back. Nothing splits.
+stretch_env = clamp(t / 0.06, 0, 1) * clamp((0.3 - t) / 0.03, 0, 1)
+ticks = gt(noise(55 * PITCH, 0, SEED), 0.25)
+creak = noise(0, 0, SEED2) * ticks * stretch_env * 0.75 |> bp(@, (480 + clamp(t / 0.3, 0, 1) * 900) * PITCH, 6.0)
+slip_env = (clamp((t - 0.28) / 0.004, 0, 1) * exp(neg(clamp(t - 0.28, 0, 100)) / 0.05))
+thup = sine(130 * PITCH * (1 - clamp((t - 0.28) * 3, 0, 0.5))) * slip_env * 0.8
+squelch = noise(0, 0, SEED) * (clamp((t - 0.29) / 0.01, 0, 1) * exp(neg(clamp(t - 0.29, 0, 100)) / 0.07)) * 0.28 |> lp(@, 900, 0.8)
+out(creak + thup + squelch)

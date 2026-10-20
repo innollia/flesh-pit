@@ -26,6 +26,9 @@ signal ui_clicked
 ## Look-down belt swap (fp_belt_swap.gd): a tool hung / taken, or refused.
 signal belt_swapped(from_id: String, to_id: String)
 signal belt_refused
+## Bare fingers slipped off flesh they cannot grip (muscle, membrane): the
+## rubbery creak that says a blade is needed.
+signal grab_refused(tissue: int, world_pos: Vector3)
 
 const SAVE_VERSION := 5
 

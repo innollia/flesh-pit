@@ -9,6 +9,7 @@
 | tear_fat | sfx 3D | 지방 칸 | 미끈하게 뭉개짐, 꿀렁임 |
 | tear_nerve | sfx 3D | 신경 칸 | 팽팽한 가는 소리 → 툭 끊김·튕김 |
 | tear_membrane | sfx 3D | 막(화장실 둘레) | 고무 삐걱임 → 퍽 |
+| grab_refuse | sfx 3D | 맨손으로 못 잡는 조직(막·수축)을 잡을 때, 0.7초마다 | 팽팽히 늘어나는 삐걱임 → 미끄러지는 둔한 철퍽, 찢어지지 않음 |
 | nerve_twitch | sfx 3D | 신경을 뜯는 순간 같이 | 주변 살이 움찔 수축, 떨림 |
 | swallow | sfx | 뜯은 뒤 0.3초 | 목 꿀꺽 |
 | stomach_gurgle | sfx | 위가 1/4씩 찰 때마다 | 피부 밑 꾸르륵 |

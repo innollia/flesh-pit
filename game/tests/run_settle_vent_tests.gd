@@ -262,13 +262,14 @@ func _trade() -> void:
     _assert(v.pile == 4 and v.offers.is_empty(), "W05 teeth wait on the lip while the hand keeps placing")
     v.tick(FPVent.APPRAISE_DELAY + 0.05)
     _assert(v.trade_paid == 4 and not v.offers.is_empty() and not ("knife" in v.offers), "W05 the hand stops: it looks at 4 teeth (%s)" % [v.offers])
-    for i in range(12):
+    for i in range(4):
         v.add_tooth(p)
     _assert(v.offers.is_empty(), "W05 more teeth pull the offer back")
     v.tick(FPVent.APPRAISE_DELAY + 0.05)
-    _assert(v.trade_paid == 16 and "knife" in v.offers, "W05 16 teeth in one trade reach the knife (%s)" % [v.offers])
+    _assert(v.trade_paid == 8 and not v.offers.is_empty() and v.offers[0] == "knife", "W05 one full expedition's 8 teeth bring the knife out first (decision 0008) (%s)" % [v.offers])
+    _assert(p.vent_absurd_threshold() == FPVent.ABSURD_MIN, "W05 in the core 'absurd' still starts at ABSURD_MIN, not twice the 8-tooth knife (%d)" % p.vent_absurd_threshold())
     var save := v.serialize_progress()
-    _assert(int(save.trade_paid) == 16, "W05 teeth paid in an open trade survive a save")
+    _assert(int(save.trade_paid) == 8, "W05 teeth paid in an open trade survive a save")
     _assert(v.take("knife", p) and p.tools.owns("knife") and v.trade_paid == 0, "W05 taking the knife ends the trade")
     v.close()
     # crayon drawings: one per kind; the same kind again pays teeth only
