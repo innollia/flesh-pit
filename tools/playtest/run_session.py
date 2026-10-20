@@ -156,6 +156,7 @@ def collect(room, ev, transcript=None):
                 continue
             notes.setdefault(int(d.get("step", 0)), []).append(d.get("note", ""))
     report = ""
+    last_text = ""
     tpath = transcript or os.path.join(ev, "transcript.jsonl")
     if os.path.exists(tpath):
         for line in open(tpath, encoding="utf-8", errors="replace"):
@@ -165,10 +166,17 @@ def collect(room, ev, transcript=None):
                 continue
             if d.get("type") == "result":
                 report = d.get("result") or report
-            # a subagent player hands its report back through a tool call
-            for c in (d.get("message") or {}).get("content") or []:
-                if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "SubagentHandback":
+            # a subagent player hands its report back through a tool call; a
+            # player in its own session ends with a long assistant message
+            msg = d.get("message") or {}
+            for c in msg.get("content") or []:
+                if not isinstance(c, dict):
+                    continue
+                if c.get("type") == "tool_use" and c.get("name") == "SubagentHandback":
                     report = (c.get("input") or {}).get("message") or report
+                elif c.get("type") == "text" and msg.get("role") == "assistant" and len(c.get("text", "")) > 800:
+                    last_text = c["text"]
+    report = report or last_text
     open(os.path.join(ev, "player_report.md"), "w", encoding="utf-8").write(report or "(no final report)\n")
     out = ["# 플레이 기록", "", "step마다: 명령 · 플레이어 메모 · 화면 글자 · 소리 · 텔레메트리(플레이어는 못 본 것)", ""]
     steps = sorted(int(os.path.basename(p)[4:8]) for p in glob.glob(os.path.join(room, "session", "obs_[0-9]*.json")))
