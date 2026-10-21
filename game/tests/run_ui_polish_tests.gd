@@ -235,9 +235,15 @@ func run() -> void:
 	var flat_home := (home - face_n * home.dot(face_n)).normalized()
 	var aim := (tip - face_n * tip.dot(face_n)).normalized().dot(flat_home)
 	check(aim > 0.97, "out in the flesh the needle points at the restroom (%.2f)" % aim)
-	var eye: Vector3 = m.player.camera.global_position
-	check(face_n.dot((eye - hand_c.global_position).normalized()) > 0.8, "the dial faces the eye while held")
+	var cam_b: Basis = m.player.camera.global_transform.basis
+	var palm_up: Vector3 = -(m.art_hookup.get("_rig").get_node("HandLeft/Wrist") as Node3D).global_transform.basis.y
+	check(palm_up.dot(cam_b.y) > 0.8 and face_n.dot(cam_b.y) > 0.8, "held, the left palm is turned up and the compass lies flat on it (palm %.2f, dial %.2f)" % [palm_up.dot(cam_b.y), face_n.dot(cam_b.y)])
 	m.equip_hand("", FDKToolKit.Hand.LEFT)
+	var put_t := 0.0
+	while put_t < 0.6:
+		await process_frame
+		put_t += get_root().get_process_delta_time()
+	check((m.art_hookup.get("_rig").get_node("HandLeft") as Node3D).basis.is_equal_approx(Basis.IDENTITY), "put away, the left arm turns back (the Tab watch pose finds it as before)")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(m.save_path))
 	print("--- ui polish: %d passed, %d failed ---" % [passed, failed])
 	m.queue_free()

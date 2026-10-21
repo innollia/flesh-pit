@@ -16,18 +16,12 @@ const HairScene := preload("res://main/art/fp_arm_hair.tscn")
 const CompassArt := preload("res://main/art/fp_compass.gd")
 ## The compass hangs by its ring on the front right of the waistband (clear
 ## of the canary front left, the tumour bag left and the cans on the right
-## hip), dial tipped up toward the bowed head. Held, it sits low left of
-## centre in the view with its dial turned to the eye, the left hand gripping
-## its lower rim (on the palm itself the curled fingers hid it).
+## hip), dial tipped up toward the bowed head. Held, it lies flat on the
+## upturned left palm (the left root is rolled over by fp_hand_motions).
 const COMPASS_WAIST_ANGLE := 0.45 ## rad round the waist from the front centre
-const COMPASS_HELD_AT := Vector3(-0.06, -0.125, -0.36)
-
-## Dial (+Y) toward the eye at the rig origin, its ring (-Z) toward the top
-## of the view.
-static func compass_held_basis() -> Basis:
-	var y := (-COMPASS_HELD_AT).normalized()
-	var z := -(Vector3.UP - y * y.dot(Vector3.UP)).normalized()
-	return Basis(y.cross(z), y, z)
+## Palm centre on the palm side (-Y of the wrist; the palm surface is at
+## -0.0195 there), dial facing out of the palm.
+const COMPASS_ON_PALM := Vector3(0.0, -0.021, -0.05)
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
@@ -114,6 +108,7 @@ func setup(main: Node3D) -> void:
 	hand_compass = CompassArt.new()
 	hand_compass.name = "HandCompass"
 	hand_compass.set("target", m.RESTROOM_CENTER)
+	hand_compass.set("on_top", true) # the hand's squashed depth would hide it
 	held_teeth = _make_held_teeth()
 	_attach_to_rig(_rig)
 	# mutation hands: a second rig with the tumor-mutation parts, swapped in
@@ -182,8 +177,8 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(saw, rig, Vector3(0, -0.2, -0.5))
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
-	_put(hand_compass, rig, COMPASS_HELD_AT)
-	hand_compass.basis = compass_held_basis()
+	_put(hand_compass, lw, COMPASS_ON_PALM)
+	hand_compass.basis = Basis(Vector3.FORWARD, PI)
 	# Keep the original watch geometry throughout raise and release, on both
 	# rig forearms so their existing mutation transforms still affect it.
 	var hair_arm := arm_hair.get_node_or_null("Forearm") as MeshInstance3D

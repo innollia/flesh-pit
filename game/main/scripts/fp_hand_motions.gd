@@ -249,6 +249,8 @@ func tick(delta: float) -> void:
     _apply_cams(u)
     _update_stream(u)
     _apply_watch_arm()
+    # a short motion (tool cycle) must not drop the compass roll it does not own
+    _apply_compass_roll()
     if _held_mesh != null:
         _held_mesh.visible = u >= 0.45 and weight() > 0.3
     if (cancelled and _cancel_w <= 0.0) or (not cancelled and t >= dur):
@@ -516,19 +518,26 @@ func _cup_teeth(p: Dictionary) -> Dictionary:
     q["pos"] = Vector3(0.11, -0.22, -0.38)
     return q
 
-## Left hand holding the compass (decision 0009): it comes in under the
-## compass (fp_art_hookup COMPASS_HELD_AT) and grips its lower rim between
-## thumb and fingers, so the dial stays clear above the fingertips. No root
-## roll: the Tab watch pose keeps sole use of the left root basis.
+## Left hand holding the compass (decision 0009): palm up, fingers nearly
+## straight, the compass lying flat in the middle of the palm. The palm is
+## turned up by rolling the left root over (_cup_wl, past the wrist's own
+## roll limit); the wrist tips the fingers a little up so the palm leans
+## toward the eye.
 func _hold_compass(p: Dictionary) -> Dictionary:
     if m.progression == null or m.progression.hands.left != "compass":
         return p
     var q := p.duplicate()
-    _fingers(q, 0.5)
-    q["wrist_pitch"] = 36.0
-    q["wrist_yaw"] = -8.0
-    q["wrist_roll"] = 14.0
-    q["pos"] = FPArtHookup.COMPASS_HELD_AT + Vector3(-0.035, -0.115, 0.06)
+    q["wrist_pitch"] = -12.0
+    q["wrist_yaw"] = 0.0
+    q["wrist_roll"] = 0.0
+    q["f1"] = 8.0
+    q["f2"] = 10.0
+    q["f3"] = 6.0
+    q["t1"] = 4.0
+    q["t2"] = 6.0
+    q["t3"] = 4.0
+    q["t_opp"] = 4.0
+    q["pos"] = Vector3(-0.07, -0.205, -0.31)
     return q
 
 ## Joints of the cupped right hand; the palm itself is turned up by the hand
@@ -550,12 +559,20 @@ static func _cup_fingers(q: Dictionary) -> void:
 ## up for holding teeth; eased in and out by _cup_w.
 const CUP_ROLL := 2.4
 var _cup_w := 0.0
+## The same for the left hand holding the compass: a half turn, palm up.
+const COMPASS_ROLL := PI
+var _cup_wl := 0.0
+var _compass_rolled := false
 
 func _apply_cup_root(delta: float) -> void:
     var want := 1.0 if (m.progression != null and m.progression.teeth_in_hand > 0) or tank_leaning() else 0.0
     if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"]:
         want = 0.0
     _cup_w = move_toward(_cup_w, want, delta * 4.0)
+    var want_l := 1.0 if m.progression != null and m.progression.hands.left == "compass" else 0.0
+    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"] or m._mirror_open:
+        want_l = 0.0
+    _cup_wl = move_toward(_cup_wl, want_l, delta * 4.0)
     var rigs: Array = [m.hands_rig]
     var hook = m.get("art_hookup")
     if hook != null and hook.get("mut_hands") != null and (hook.mut_hands as Node).has_method("rig"):
@@ -566,6 +583,28 @@ func _apply_cup_root(delta: float) -> void:
         var rr: Node3D = rig.call("get_hand_root", "right")
         if rr != null:
             rr.basis = Basis(Vector3.FORWARD, CUP_ROLL * _cup_w) if _cup_w > 0.0 else Basis.IDENTITY
+    _apply_compass_roll()
+
+## Left root roll for the held compass. The Tab watch pose (_apply_watch_arm)
+## owns that basis while it runs, so this writes it only while the roll is on
+## and hands it back once (identity) as it fades out; it never runs during
+## the watch pose or with the mirror open.
+func _apply_compass_roll() -> void:
+    if kind == "watch" or m._mirror_open:
+        return
+    if _cup_wl <= 0.0 and not _compass_rolled:
+        return
+    var rigs: Array = [m.hands_rig]
+    var hook = m.get("art_hookup")
+    if hook != null and hook.get("mut_hands") != null and (hook.mut_hands as Node).has_method("rig"):
+        rigs.append((hook.mut_hands as Node).call("rig"))
+    for rig in rigs:
+        if rig == null or not (rig as Node).has_method("get_hand_root"):
+            continue
+        var lr: Node3D = rig.call("get_hand_root", "left")
+        if lr != null:
+            lr.basis = Basis(Vector3.FORWARD, -COMPASS_ROLL * _cup_wl) if _cup_wl > 0.0 else Basis.IDENTITY
+    _compass_rolled = _cup_wl > 0.0
 
 
 ## M22: the alien left hand reaches out and grips on its own, trembling,

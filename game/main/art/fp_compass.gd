@@ -7,9 +7,16 @@ const K := preload("res://main/art/fp_art_kit.gd")
 ## read (decision 0009). Its one needle always points at the restroom; the
 ## way out is the other way. Local frame: the dial looks up +Y, the ring
 ## sticks out at -Z. Dial and needle glow a little so they read in the dark
-## flesh. Public: target (world point the needle points at).
+## flesh. Public: target (world point the needle points at), on_top (set
+## before adding: draw over the first-person hands).
 
 var target := Vector3.ZERO
+## The first-person hands' skin squashes its depth toward the eye
+## (FDKSkinMaterial viewmodel_squash) so they never sink into the flesh;
+## anything resting on a hand at its true depth is drawn under it. The held
+## compass is therefore drawn without a depth test, case, dial, needle in
+## that order.
+var on_top := false
 ## Chunky: a small dial vanished into a few pixels on screen.
 const FACE_R := 0.02
 var _needle: Node3D
@@ -44,6 +51,24 @@ func _ready() -> void:
 	K.tri(st, Transform3D.IDENTITY, Vector3(0.002, 0, 0), Vector3(-0.002, 0, 0), Vector3(0, 0, 0.006), Vector3.UP, Color(0.25, 0.22, 0.2))
 	K.lathe(st, K.T(Vector3(0, 0.0003, 0)), [Vector2(0.0, 0.0), Vector2(0.002, 0.0), Vector2(0.0, 0.0008)], 6, [Color(0.3, 0.28, 0.26)])
 	K.add_mesh(_needle, "Hand", K.finish(st, 40.0), K.glow(Color(1, 1, 1)))
+	if on_top:
+		_draw_on_top()
+
+func _draw_on_top() -> void:
+	var order := {"Case": 1, "Face": 2, "Hand": 3}
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.vertex_color_use_as_albedo = true
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		if mi.name == "Case":
+			m.albedo_texture = load(K.TEX + "tex_fixture_64.png")
+			m.albedo_color = Color(0.85, 0.85, 0.85)
+		else:
+			m.albedo_color = (mi.material_override as StandardMaterial3D).albedo_color
+		m.no_depth_test = true
+		m.render_priority = int(order.get(String(mi.name), 1))
+		(mi as MeshInstance3D).material_override = m
 
 ## Needle angle (radians about the dial axis) that points at `target`.
 func aim_angle() -> float:
