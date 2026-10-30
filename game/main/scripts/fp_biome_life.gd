@@ -7,7 +7,8 @@ extends Node
 ## terrain fog colour, and the first visit of a biome or a structure,
 ## remembered (saved) and handed to the vent being, which may remark on it
 ## after being paid. The restroom, rest containers and base biomes have no
-## mood (weight 0).
+## mood (weight 0). It also builds structure art near the player and frees
+## it far away (FPBiomes.stream_art).
 
 ## Seconds between position checks and the mood crossfade time.
 const CHECK_EVERY := 0.25
@@ -56,6 +57,9 @@ func _check() -> void:
 	if player == null:
 		return
 	var p: Vector3 = (player as Node3D).global_position
+	var nodes = m.get("structure_nodes")
+	if nodes != null:
+		biomes.stream_art(nodes, p, m.get("terrain"), 1)
 	var restroom = m.get("restroom")
 	var inside: bool = restroom != null and restroom.contains(p)
 	if not inside:

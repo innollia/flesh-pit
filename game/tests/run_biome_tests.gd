@@ -46,6 +46,12 @@ func _static_tests() -> void:
 	var center := Vector3(0, 1, 0)
 	var b := FPBiomes.new(center)
 	_assert(b.biome_ids.size() == 5, "five biomes in biomes.json (got %d)" % b.biome_ids.size())
+	# the direction table is filled only where something asked
+	var filled := 0
+	for row in b._table:
+		for c in row:
+			filled += 1 if c != FPBiomes.UNSET else 0
+	_assert(filled < FPBiomes.TABLE_U * FPBiomes.TABLE_V, "direction table filled lazily (%d cells after setup)" % filled)
 	# same layout every time (saves rely on it)
 	var b2 := FPBiomes.new(center)
 	_assert(b2.structures.size() == b.structures.size(), "structure layout is deterministic")
@@ -150,7 +156,27 @@ func _static_tests() -> void:
 func _main_tests() -> void:
 	var m = _m
 	_assert(m.biomes != null and m.biome_life != null, "main has the biome layer")
-	_assert(m.structure_nodes.size() == m.biomes.structures.size(), "one art node per structure")
+	_assert(m.structure_nodes.size() == m.biomes.structures.size(), "one anchor per structure")
+	# art only where the player can see it: the restroom looks at no pocket
+	m.biome_life._check()
+	var built := 0
+	var far_built := 0
+	for n in m.structure_nodes:
+		if n.get_child_count() == 0:
+			continue
+		built += 1
+		var ns: Dictionary = m.biomes.structures[int(n.get_meta("structure"))]
+		if FPBiomes._point_box_dist(m.player.global_position, FPBiomes.pocket_aabb(ns["pos"], ns["half"])) > FPBiomes.ART_FAR:
+			far_built += 1
+	_assert(far_built == 0, "no art past the fog from the restroom (%d)" % far_built)
+	_assert(built == 0, "no structure art built from the restroom, all pockets are behind flesh (%d)" % built)
+	# a pocket in sight is built, one behind flesh is not
+	var probe: Dictionary = m.biomes.structures[0]
+	var pbox := FPBiomes.pocket_aabb(probe["pos"], probe["half"])
+	var inside_p := pbox.get_center()
+	m.terrain.carve_sphere(inside_p, 0.01)
+	_assert(m.biomes._in_sight(m.terrain, inside_p + Vector3(0, 0, 0.2), pbox), "the inside of a pocket sees the pocket")
+	_assert(not m.biomes._in_sight(m.terrain, m.RESTROOM_CENTER, pbox), "the restroom does not see %s" % probe["kind"])
 	var shown := 0
 	for n in m.structure_nodes:
 		var s: Dictionary = m.biomes.structures[int(n.get_meta("structure"))]
@@ -162,7 +188,22 @@ func _main_tests() -> void:
 		var mid: Vector3 = (s["pos"] as Vector3) + Vector3(0, (s["half"] as Vector3).y, 0)
 		m.terrain.carve_sphere(mid, 0.01) # streams the chunk in
 		_assert(m.terrain.density_at(mid) < 0.5, "pocket of %s is empty in the terrain" % s["kind"])
-		_assert(n.get_child_count() > 0, "%s art built" % s["kind"])
+		m.biomes.stream_art(m.structure_nodes, mid)
+		_assert(n.get_child_count() > 0, "%s art built when the player is there" % s["kind"])
+		var others := 0
+		for o in m.structure_nodes:
+			if o != n and o.get_child_count() > 0 and (o.position - n.position).length() > 30.0:
+				others += 1
+		_assert(others == 0, "far structures have no art while at %s" % s["kind"])
+	# far out on the surface shell, everything near the core is freed
+	var away: Vector3 = m.RESTROOM_CENTER + Vector3(0, -1, 0) * 26.0
+	m.biomes.stream_art(m.structure_nodes, away)
+	var left := 0
+	for n in m.structure_nodes:
+		var ns: Dictionary = m.biomes.structures[int(n.get_meta("structure"))]
+		if n.get_child_count() > 0 and FPBiomes._point_box_dist(away, FPBiomes.pocket_aabb(ns["pos"], ns["half"])) > FPBiomes.ART_FAR:
+			left += 1
+	_assert(left == 0, "moving away frees the art (%d left)" % left)
 	_assert(shown >= m.structure_nodes.size() - 2, "most structures shown (%d of %d)" % [shown, m.structure_nodes.size()])
 	# over many games, alternate spots keep almost every structure in
 	var b: FPBiomes = m.biomes

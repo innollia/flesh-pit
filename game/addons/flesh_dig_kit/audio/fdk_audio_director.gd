@@ -55,6 +55,7 @@ var steps_played: int = 0
 var _bed_players: Dictionary = {}
 var _bed_level: Dictionary = {}
 var _bed_target: Dictionary = {}
+var _bed_silent: Dictionary = {}
 var _fade: float = 1.0
 var _chew: AudioStreamPlayer
 var _strain: AudioStreamPlayer
@@ -136,9 +137,9 @@ func set_bed(bed_name: String, fade: float = 1.5) -> void:
 	current_bed = bed_name
 	_fade = maxf(fade, 0.0)
 	var wanted: Array = bank.beds.get(bed_name, [])
-	for b in bank.beds.keys():
-		for layer in bank.beds[b]:
-			_ensure_bed_layer(String(layer))
+	# only the wanted bed's layers start; the others keep fading out
+	for layer in wanted:
+		_ensure_bed_layer(String(layer))
 	for layer in _bed_players.keys():
 		_bed_target[layer] = 1.0 if wanted.has(layer) else 0.0
 		if _fade == 0.0:
@@ -226,6 +227,12 @@ func advance(delta: float) -> void:
 			var step := 1.0 if _fade <= 0.0 else delta / _fade
 			_bed_level[layer] = move_toward(cur, tgt, step)
 			_apply_bed_volume(layer)
+		if _bed_level[layer] <= 0.0 and tgt <= 0.0:
+			_bed_silent[layer] = float(_bed_silent.get(layer, 0.0)) + delta
+			if _bed_silent[layer] >= BED_RELEASE:
+				_release_bed_layer(layer)
+		else:
+			_bed_silent.erase(layer)
 	if _swallow_timer >= 0.0:
 		_swallow_timer -= delta
 		if _swallow_timer < 0.0:
@@ -325,6 +332,20 @@ func _ensure_bed_layer(layer: String) -> void:
 	_apply_bed_volume(layer)
 	if p.is_inside_tree():
 		p.play()
+
+## A layer silent this long stops and lets go of its stream; a quick walk
+## back still finds it running.
+const BED_RELEASE := 30.0
+
+func _release_bed_layer(layer: String) -> void:
+	var p := _bed_players[layer] as AudioStreamPlayer
+	p.stop()
+	p.queue_free()
+	_bed_players.erase(layer)
+	_bed_level.erase(layer)
+	_bed_target.erase(layer)
+	_bed_silent.erase(layer)
+	bank.forget(layer)
 
 func _apply_bed_volume(layer: String) -> void:
 	(_bed_players[layer] as AudioStreamPlayer).volume_db = _lin_to_db(float(_bed_level[layer]))

@@ -69,3 +69,4 @@
 
 - 살 속에서는 `main.biome_life.current_bed()`가 주는 바이옴 배경(`manifest.json` beds의 fat_caves, rib_vault, gut_folds, cloth_wads, hair_thicket)으로 바꾼다. 각 배경은 그 껍질의 몸 배경 층에 `amb_<바이옴>` 한 층을 더한 것이다. 바이옴이 없거나 바탕이면 `body_bed_for_shell()`.
 - 새 층은 `tools/build_biome_beds.py`가 합성한다(8초 이음매 없는 반복).
+- 감독은 부른 배경의 층만 틀고, 30초 동안 소리 0인 층은 멈춘 뒤 소리 데이터를 놓는다. 다섯 바이옴 층이 늘 조용히 도는 일은 없다.

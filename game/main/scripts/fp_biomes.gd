@@ -54,12 +54,14 @@ var _slot_dirs: Array[PackedVector3Array] = []
 var _slot_names: Array[PackedStringArray] = []
 var _windows: Array[Vector2] = []
 ## Per shell: biome name index for every direction cell (u = longitude,
-## v = height of the unit direction), filled once from the slot search at
-## the shell's middle depth. biome_at reads this table.
+## v = height of the unit direction), each cell filled from the slot search at
+## the shell's middle depth the first time biome_at reads it.
 const TABLE_U := 192
 const TABLE_V := 96
 var _table: Array[PackedByteArray] = []
 var _table_names := PackedStringArray()
+var _table_index := {}
+const UNSET := 255
 ## Enabled pockets as boxes, and the depth band they all lie in (cheap reject).
 var _pockets: Array[AABB] = []
 var _pocket_depth := Vector2(INF, -INF)
@@ -134,28 +136,37 @@ func biome_at(p: Vector3) -> String:
 		return SHELL_BASE[0]
 	var u := int((atan2(d.z, d.x) / TAU + 0.5) * TABLE_U) % TABLE_U
 	var v := clampi(int((d.y * 0.5 + 0.5) * TABLE_V), 0, TABLE_V - 1)
-	return _table_names[_table[shell][u + v * TABLE_U]]
+	var i := u + v * TABLE_U
+	var c: int = _table[shell][i]
+	if c == UNSET:
+		c = _table_cell(shell, u, v)
+		_table[shell][i] = c
+	return _table_names[c]
 
+## Cells are worked out the first time something asks for them: the
+## generator and the structure placement only ever touch a small part of
+## each shell's sphere.
 func _build_table() -> void:
 	_table.clear()
 	_table_names = PackedStringArray()
-	var index := {}
+	_table_index.clear()
 	for s in range(FPWorldFeatures.SHELL_COUNT):
-		var depth := (float(s) + 0.5) * FPWorldFeatures.SHELL_THICKNESS
 		var row := PackedByteArray()
 		row.resize(TABLE_U * TABLE_V)
-		for v in range(TABLE_V):
-			var y := (float(v) + 0.5) / TABLE_V * 2.0 - 1.0
-			var r := sqrt(maxf(0.0, 1.0 - y * y))
-			for u in range(TABLE_U):
-				var a := ((float(u) + 0.5) / TABLE_U - 0.5) * TAU
-				var d := Vector3(cos(a) * r, y, sin(a) * r)
-				var name := _slot_search(s, d, center + d * depth)
-				if not index.has(name):
-					index[name] = _table_names.size()
-					_table_names.append(name)
-				row[u + v * TABLE_U] = int(index[name])
+		row.fill(UNSET)
 		_table.append(row)
+
+func _table_cell(shell: int, u: int, v: int) -> int:
+	var depth := (float(shell) + 0.5) * FPWorldFeatures.SHELL_THICKNESS
+	var y := (float(v) + 0.5) / TABLE_V * 2.0 - 1.0
+	var r := sqrt(maxf(0.0, 1.0 - y * y))
+	var a := ((float(u) + 0.5) / TABLE_U - 0.5) * TAU
+	var d := Vector3(cos(a) * r, y, sin(a) * r)
+	var name := _slot_search(shell, d, center + d * depth)
+	if not _table_index.has(name):
+		_table_index[name] = _table_names.size()
+		_table_names.append(name)
+	return int(_table_index[name])
 
 ## The slot nearest to direction d, its edges wobbled by noise at p.
 func _slot_search(shell: int, d: Vector3, p: Vector3) -> String:
@@ -340,22 +351,9 @@ func _place_structures() -> void:
 			(st["spots"] as Array).append(pos)
 
 func _best_spot(id: String, half: Vector3, dirs: Array[Vector3], placed: Array[AABB]) -> Vector3:
-	var b := biome(id)
-	var shell := int(b.get("shell", 0))
-	var depth := float(b.get("structure_depth", FPWorldFeatures.REST_DEPTH[shell]))
-	var w := carve_window(shell)
-	if shell == 0:
-		w.x = CORE_STRUCT_MIN
 	var best_score := -INF
 	var best_pos := Vector3.INF
-	for d in dirs:
-		var mid: Vector3 = center + d * depth
-		if biome_at(mid) != id:
-			continue
-		var pos := mid - Vector3(0, half.y, 0)
-		var box := pocket_aabb(pos, half)
-		if not _box_ok(box, w, shell):
-			continue
+	for box in _spot_boxes(id, half, dirs):
 		var score := INF
 		for o in placed:
 			score = minf(score, _box_gap(box, o))
@@ -363,8 +361,32 @@ func _best_spot(id: String, half: Vector3, dirs: Array[Vector3], placed: Array[A
 			continue
 		if score > best_score:
 			best_score = score
-			best_pos = pos
+			best_pos = box.position + Vector3(half.x, 0, half.z)
 	return best_pos
+
+## The pocket boxes of one size that fit a biome, worked out once per size:
+## every later spot only measures the gap to what is already placed.
+var _spot_cache := {}
+func _spot_boxes(id: String, half: Vector3, dirs: Array[Vector3]) -> Array[AABB]:
+	var key := "%s|%s" % [id, half]
+	if _spot_cache.has(key):
+		return _spot_cache[key]
+	var b := biome(id)
+	var shell := int(b.get("shell", 0))
+	var depth := float(b.get("structure_depth", FPWorldFeatures.REST_DEPTH[shell]))
+	var w := carve_window(shell)
+	if shell == 0:
+		w.x = CORE_STRUCT_MIN
+	var out: Array[AABB] = []
+	for d in dirs:
+		var mid: Vector3 = center + d * depth
+		if biome_at(mid) != id:
+			continue
+		var box := pocket_aabb(mid - Vector3(0, half.y, 0), half)
+		if _box_ok(box, w, shell):
+			out.append(box)
+	_spot_cache[key] = out
+	return out
 
 func _box_ok(box: AABB, w: Vector2, shell: int) -> bool:
 	for i in range(8):
@@ -436,17 +458,14 @@ func _index_pockets() -> void:
 		# a box's nearest point can be closer than any corner
 		_pocket_depth.x = minf(_pocket_depth.x, _point_box_dist(center, box))
 
-## Builds the art of every structure under `parent` (hidden when disabled).
+## One empty anchor per structure under `parent` (hidden when disabled).
+## The art itself is built only near the player (stream_art): the pockets
+## sit inside solid flesh, past the fog, until someone digs to them.
 func build_structures(parent: Node3D) -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	for i in range(structures.size()):
 		var s: Dictionary = structures[i]
-		var path := "res://main/art/fp_struct_%s.gd" % s["kind"]
-		var n: Node3D
-		if ResourceLoader.exists(path):
-			n = (load(path) as GDScript).new()
-		else:
-			n = Node3D.new()
+		var n := Node3D.new()
 		n.name = "Structure_%d_%s" % [i, s["kind"]]
 		n.position = s["pos"]
 		n.set_meta("structure", i)
@@ -454,7 +473,68 @@ func build_structures(parent: Node3D) -> Array[Node3D]:
 		n.set_meta("biome", s["biome"])
 		n.visible = bool(s["enabled"])
 		parent.add_child(n)
-		if n.has_method("set_light"):
-			n.call("set_light", bool(s["enabled"]))
 		out.append(n)
 	return out
+
+## Art is built when the player can see into a pocket: within ART_NEAR
+## (the terrain fog is full at 11 m, FDKPs1Settings.fog_distance) with no
+## flesh in between, or within ART_TOUCH whatever is in between. It is freed
+## past ART_FAR; the gap keeps it from building and freeing at the edge.
+const ART_NEAR := 11.0
+const ART_FAR := 14.0
+const ART_TOUCH := 2.0
+
+## Builds or frees each anchor's art for a player at p. With `terrain`
+## (an FDKTerrainField) a pocket behind solid flesh is not built, and at
+## most `max_builds` are built in one call (-1 no limit); without it every
+## pocket within ART_NEAR is. Returns how many structures have art.
+func stream_art(nodes: Array[Node3D], p: Vector3, terrain: Node = null, max_builds: int = -1) -> int:
+	var built := 0
+	var builds := 0
+	for n in nodes:
+		var s: Dictionary = structures[int(n.get_meta("structure"))]
+		var has := n.get_child_count() > 0
+		var box := pocket_aabb(s["pos"], s["half"])
+		var dist := _point_box_dist(p, box)
+		if n.visible and has and dist < ART_FAR:
+			built += 1
+		elif n.visible and not has and dist < ART_NEAR and builds != max_builds:
+			if terrain == null or dist < ART_TOUCH or _in_sight(terrain, p, box):
+				_build_art(n, String(s["kind"]))
+				builds += 1
+				built += 1
+		elif has:
+			for c in n.get_children():
+				n.remove_child(c)
+				c.queue_free()
+	return built
+
+## Open flesh all the way from p to the pocket (its nearest point or its
+## middle): every half metre on the way is below the surface level.
+func _in_sight(terrain: Node, p: Vector3, box: AABB) -> bool:
+	var near := p.clamp(box.position, box.end)
+	var inward := box.get_center() - near
+	near += inward.limit_length(0.3)
+	for target in [near, box.get_center()]:
+		var ray: Vector3 = target - p
+		var length := ray.length()
+		var open := true
+		var t := 0.4
+		while t < length - 0.3:
+			if float(terrain.density_at(p + ray * (t / length))) >= 0.5:
+				open = false
+				break
+			t += 0.5
+		if open:
+			return true
+	return false
+
+func _build_art(anchor: Node3D, kind: String) -> void:
+	var path := "res://main/art/fp_struct_%s.gd" % kind
+	if not ResourceLoader.exists(path):
+		return
+	var art := (load(path) as GDScript).new() as Node3D
+	art.name = "Art"
+	anchor.add_child(art)
+	if art.has_method("set_light"):
+		art.call("set_light", true)

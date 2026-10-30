@@ -156,6 +156,10 @@ func _test_bed_transition() -> void:
 	_ok(d.bed_layer_db("amb_body_a") > -0.5 and d.bed_layer_db("amb_heart_a") > -0.5, "body_a drone + heart at full level")
 	_ok(d.bed_layer_db("amb_restroom") <= -60.0, "restroom faded out")
 	_ok(d.is_bed_layer_running("amb_restroom"), "faded layer is kept running, not restarted")
+	_ok(not d.is_bed_layer_running("amb_body_b"), "a bed nobody asked for does not run")
+	d.advance(d.BED_RELEASE + 0.1)
+	_ok(not d.is_bed_layer_running("amb_restroom"), "a layer silent for %.0f s stops" % d.BED_RELEASE)
+	_ok(d.is_bed_layer_running("amb_body_a"), "the playing bed keeps running")
 	d.shell = 0
 	d.set_shell(2)
 	_ok(d.played_log.has("depth_marker") and d.played_log.has("shell_transition"), "going deeper plays depth marker + transition")

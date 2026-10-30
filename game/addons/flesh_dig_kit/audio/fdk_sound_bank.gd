@@ -74,6 +74,12 @@ func pick(id: String) -> AudioStream:
 		return null
 	return stream(id, pick_index(id))
 
+## Lets go of the cached streams of one sound (a bed layer that stopped).
+func forget(id: String) -> void:
+	for key in _cache.keys():
+		if String(key).begins_with(id + "#"):
+			_cache.erase(key)
+
 func stream(id: String, index: int) -> AudioStream:
 	var key := "%s#%d" % [id, index]
 	if _cache.has(key):

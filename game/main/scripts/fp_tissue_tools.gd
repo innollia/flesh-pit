@@ -289,12 +289,12 @@ func relayout_rest_points(seed: int) -> void:
 			var s: Dictionary = m.biomes.structures[int(n.get_meta("structure"))]
 			n.position = s["pos"]
 			n.visible = bool(s["enabled"])
-			if n.has_method("set_light"):
-				n.call("set_light", n.visible)
 			if n.visible:
 				var box := FPBiomes.pocket_aabb(s["pos"], s["half"])
 				m.terrain.carve_sphere(box.get_center(), 0.01)
 				m.terrain.fill_box_uniform(box, 0.0, FDKTissueRules.COMPRESSIVE)
+		# art moves with its anchor; left-out ones drop theirs
+		m.biomes.stream_art(m.structure_nodes, m.player.global_position)
 ## Lamps show the charge; the jar spins and is tipped up while drinking.
 var _drink_played := false
 func _sync_blender_art() -> void:
