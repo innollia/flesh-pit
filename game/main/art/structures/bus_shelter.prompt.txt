@@ -1,0 +1,33 @@
+﻿[IMAGE] Square game texture atlas for a low-poly 3D model, painted onto the attached UV layout: a 1980s city bus shelter.
+[LAYOUT] The attached line image is the exact layout: keep the square canvas and every outlined face at its exact position, size, and orientation; do not move, rotate, resize, or distort any face.
+[LAYOUT] Leave every area outside the outlined faces a single flat medium gray (#808080); fill every face edge to edge with a flat, front-facing surface, with no perspective, 3D objects, cast shadows, or miniature scenes inside faces.
+[LAYOUT] The top of each side face points toward the top of the image and represents the top of the model, except where a face is explicitly identified otherwise; continue colors and patterns seamlessly across shared edges.
+[SURFACES] Paving, left 57%–91%, top 47%–66%: grey square paving slabs, a few darker slabs, a kerb strip along the FRONT edge, and a few small pieces of litter.
+[SURFACES] Post, left 6%–9%, top 43%–66%: square painted steel post with chipped dark green paint; this area wraps four identical parts. FRONT face at left 7%–8%, RIGHT face at 8%–9%, BACK face at 9%–9%, and LEFT face at 6%–7%; each runs top 43%–66%.
+[SURFACES] Back glass, left 11%–42%, top 46%–66%: three scratched safety-glass back panels in steel frames; the middle panel is smashed out and stuffed with a wad of clothes.
+[SURFACES] Side glass, left 44%–55%, top 46%–66%: scratched safety-glass side panel and a timetable frame containing colored route bars only, with no letters.
+[SURFACES] Roof overall, left 2%–98%, top 68%–98%: slanted dark green steel shelter roof; TOP face at left 17%–50%, top 68%–83%, covered with clothing wads; BOTTOM face at left 17%–50%, top 83%–98%, with a fluorescent fixture; FRONT face at left 17%–50%, RIGHT face at 50%–65%, BACK face at 65%–98%, and LEFT face at 2%–17%, each along top 83%–83%.
+[SURFACES] Bench overall, left 22%–74%, top 34%–41%: long slatted bench with faded orange wooden slats on a steel frame. TOP face at left 25%–48%, top 34%–37%; FRONT face at left 25%–48%, top 37%–38%; RIGHT face at 48%–51%, top 37%–38%; BACK face at 51%–74%, top 37%–38%; LEFT face at 22%–25%, top 37%–38%; BOTTOM face at left 25%–48%, top 38%–41%.
+[SURFACES] Stop pole, left 2%–4%, top 43%–66%: grey painted steel bus stop pole.
+[SURFACES] Stop sign side, left 82%–96%, top 41%–41%: round white bus stop sign with a red ring and a bus icon with an upward arrow above it, street direction; no letters.
+[SURFACES] Stop sign face, left 76%–80%, top 37%–41%: round white bus stop sign with a red ring and a bus icon with an upward arrow above it, street direction; no letters.
+[SURFACES] Cloth wad, left 2%–20%, top 33%–41%: a compressed wad of swallowed clothes pressed together, with denim, beige, and dull red cloth folds, blood-brown creases, and a sleeve end; this area wraps four identical parts.
+[LIGHT] Hand-painted light from above: paint the top-facing surfaces brightest, side faces slightly darker toward their lower edges, and the bottom edge darkest; add a thin painted light rim along face borders. Use soft painted light, flat base colors, and a few large painted shapes so each material reads at small mobile-game size.
+[PALETTE] Muted grey paving and steel, chipped dark green paint, faded orange wood, white and red sign, denim blue, beige, dull red, and blood-brown creases.
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.
+

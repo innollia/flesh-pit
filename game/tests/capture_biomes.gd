@@ -4,7 +4,7 @@ extends SceneTree
 ## looking in, in the real game (terrain streamed in, biome light and fog
 ## settled). Plus one shot per biome looking out of a pocket at its tissue.
 ## Isolated save.
-##   CAP_OUT=<dir> godot_console --path game --resolution 960x540 --fixed-fps 60 --script res://tests/capture_biomes.gd
+##   [CAP_KINDS=a,b] CAP_OUT=<dir> godot_console --path game --resolution 960x540 --fixed-fps 60 --script res://tests/capture_biomes.gd
 
 var m: Node3D
 var out := ""
@@ -40,8 +40,12 @@ func _run() -> void:
 	m.died.connect(func(cause): print("  DIED ", cause, " at ", m.player.global_position.snappedf(0.01), " frame ", Engine.get_process_frames(), " trapped ", m._crush_t))
 	var seen := {}
 	var seen_biome := {}
+	# CAP_KINDS=laundromat,phone_booth limits the shots to those kinds
+	var only := OS.get_environment("CAP_KINDS").split(",", false)
 	for s in m.biomes.structures:
 		if not s["enabled"] or seen.has(s["kind"]):
+			continue
+		if not only.is_empty() and not only.has(s["kind"]):
 			continue
 		seen[s["kind"]] = true
 		var pos: Vector3 = s["pos"]

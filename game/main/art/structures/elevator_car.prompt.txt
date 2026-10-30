@@ -1,0 +1,41 @@
+[IMAGE] Square game texture atlas for a low-poly 1950s service elevator car, a 106-triangle mobile horror game prop, painted onto the attached UV layout.
+[LAYOUT] The attached line image is the exact layout: keep this square canvas and every outlined face at its exact position, size, and orientation; do not move, rotate, stretch, or crop any face.
+[LAYOUT] Leave every area outside the outlined faces a single flat medium gray (#808080).
+[LAYOUT] Fill each face edge to edge as a flat, front-facing surface; do not depict perspective, three-dimensional objects, cast shadows, or a small scene inside any face.
+[LAYOUT] On side faces, the top of the image is the top of the modeled object. The face list's explicitly named exceptions are the only exceptions.
+[LAYOUT] Keep neighboring faces continuous in color and painted pattern across their shared line.
+[SURFACES] Floor, upper left square (x 2–25%, y 19–42%): steel checker-plate elevator floor, with a few broad plate marks and dark grime in the corners.
+[SURFACES] Back wall, lower left square (x 2–25%, y 69–98%): brushed steel wall with a horizontal handrail and a square black-bordered pictogram plate showing an elevator car with an up arrow crossed out in red; no letters.
+[SURFACES] Side wall left face, lower panel (x 27–49%, y 69–98%): brushed steel elevator side wall with a horizontal handrail, a few scratches and dents.
+[SURFACES] Side wall right face, adjacent lower panel (x 50–72%, y 69–98%): continue the same brushed steel, horizontal handrail, scratches, and dents as the neighboring side-wall face; this UV area is wrapped on two identical parts.
+[SURFACES] Ceiling front, right, back, and left faces, the four narrow adjoining segments of the horizontal strip (x 2–93%, y 44%): steel ceiling panel, continuous across the adjoining faces.
+[SURFACES] Ceiling bottom face, large central square below the strip (x 25–47%, y 44–67%): steel elevator ceiling underside with a domed lamp and a bent-up roof hatch, cartilage pushing through the hatch.
+[SURFACES] Door leaf left face, narrow lower strip at x 74–75%, y 69–98%: brushed steel edge of a sliding elevator door, scratched.
+[SURFACES] Door leaf front face, lower panel at x 75–81%, y 69–98%: brushed steel sliding door leaf, stuck half open, with a few broad scratches.
+[SURFACES] Door leaf right face, narrow lower strip at x 81–82%, y 69–98%: brushed steel edge of the sliding elevator door.
+[SURFACES] Door leaf back face, lower panel at x 82–88%, y 69–98%: continue the brushed steel sliding door surface and scratches; this UV area is wrapped on two identical parts.
+[SURFACES] Indicator front face, small horizontal panel (x 54–65%, y 39–42%): floor indicator above the door, a row of five round lamps with only the lowest lamp lit amber; no digits.
+[SURFACES] Indicator right face, very narrow segment at x 65–66%, y 39–42%: continue the indicator's dark metal edge.
+[SURFACES] Indicator left face, at x 54%, y 39–42%: continue the indicator's dark metal edge.
+[SURFACES] Buttons panel, tiny vertical panel (x 50–52%, y 36–42%): brass plate with a column of plain round black buttons.
+[SURFACES] Cartilage mass, upper small panel (x 27–48%, y 32–42%): white-blue cartilage, gristly with a few pink veins and restrained painted highlights.
+[SURFACES] Cartilage rib, narrow lower right panel (x 90–96%, y 71–98%): white-blue cartilage, gristly with a few pink veins and restrained painted highlights; this UV area is wrapped on three identical parts.
+[LIGHT] Paint soft light from above: upper-facing surfaces are brightest, side faces grow slightly darker toward their bottom edge, and the lowest edge is darkest; add a thin, light painted edge line along face borders.
+[PALETTE] Brushed steel blue-gray, charcoal grime, muted brass, amber, white-blue cartilage, dusty pink veins, flat medium gray (#808080).
+[STYLE] Hand-painted mobile game look, flat base colors and a few large painted shapes per material; readable at small screen size, with sparse detail concentrated in one or two places.
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.

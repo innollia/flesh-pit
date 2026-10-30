@@ -1,0 +1,53 @@
+﻿[IMAGE] Square game texture atlas for a low-poly 3D model, painted onto the attached UV layout.
+[LAYOUT] The attached line image is the exact layout: preserve its square format and keep every face at the same position, size, and orientation; do not move, rotate, or stretch any face.
+[LAYOUT] Fill every enclosed face edge to edge with a flat, front-facing painted surface; keep all areas outside the outlined faces a single flat medium gray (#808080).
+[LAYOUT] The top of each side face is the top of the world, except where a face is explicitly identified as a top or bottom.
+[LAYOUT] Keep each face flat, with no perspective, no three-dimensional objects casting shadows, and no small scene inside any face.
+[SURFACES] Checker floor, left 2%–46%, top 61%–98%: black and white checker tiles, with one heap of cut hair and a few large cracks.
+[SURFACES] Mirror wall, left 48%–93%, top 72%–98%: mint green barber-shop wall with a wide dark, cloudy mirror and a square yellow plate at the counter edge painted with scissors over a lock of hair; no letters.
+[SURFACES] Counter FRONT, left 7%–44%, top 42%–59%: mint green counter front with a few broad painted marks.
+[SURFACES] Counter RIGHT, left 44%–49%, top 42%–59%: mint green counter side.
+[SURFACES] Counter BACK, left 49%–86%, top 42%–59%: mint green counter back.
+[SURFACES] Counter LEFT, left 2%–7%, top 42%–59%: mint green counter side.
+[SURFACES] Counter TOP, left 7%–44%, top 38%–42%: white counter top with a glass jar of combs painted flat onto the surface.
+[SURFACES] Pedestal, left 32%–52%, top 8%–17%: tarnished polished chrome hydraulic pedestal, with a few broad vertical dark reflections.
+[SURFACES] Pedestal top, left 54%–61%, top 11%–17%: tarnished polished chrome cap.
+[SURFACES] Seat FRONT, left 48%–58%, top 32%–36%: cracked red leatherette with chrome trim.
+[SURFACES] Seat RIGHT, left 58%–69%, top 32%–36%: cracked red leatherette side with chrome trim.
+[SURFACES] Seat BACK, left 69%–79%, top 32%–36%: cracked red leatherette back with chrome trim.
+[SURFACES] Seat LEFT, left 37%–48%, top 32%–36%: cracked red leatherette side with chrome trim.
+[SURFACES] Seat TOP, left 48%–58%, top 22%–32%: red leatherette seat cushion with a few broad cracks and chrome trim.
+[SURFACES] Backrest FRONT, left 4%–14%, top 22%–33%: cracked red leatherette backrest with a headrest and chrome frame.
+[SURFACES] Backrest RIGHT, left 14%–16%, top 22%–33%: red leatherette edge and chrome frame.
+[SURFACES] Backrest BACK, left 16%–26%, top 22%–33%: red leatherette back with chrome frame.
+[SURFACES] Backrest LEFT, left 2%–4%, top 22%–33%: red leatherette edge and chrome frame.
+[SURFACES] Backrest TOP, left 4%–14%, top 19%–22%: red leatherette top edge with chrome frame.
+[SURFACES] Backrest BOTTOM, left 4%–14%, top 33%–36%: dark red leatherette underside with chrome frame.
+[SURFACES] Footrest FRONT, left 66%–73%, top 14%: chrome footrest bar plate.
+[SURFACES] Footrest RIGHT, left 73%–76%, top 14%: chrome footrest bar plate.
+[SURFACES] Footrest BACK, left 76%–83%, top 14%: chrome footrest bar plate.
+[SURFACES] Footrest LEFT, left 63%–66%, top 14%: chrome footrest bar plate.
+[SURFACES] Footrest TOP, left 66%–73%, top 11%–14%: chrome footrest bar plate with a broad pale reflection.
+[SURFACES] Footrest BOTTOM, left 66%–73%, top 14%–17%: dark chrome underside.
+[SURFACES] Barber pole, left 28%–35%, top 21%–36%: broad red, white, and blue diagonal stripes with chrome caps.
+[SURFACES] Barber pole cap, left 85%–88%, top 15%–17%: chrome cap with a small red, white, and blue stripe.
+[SURFACES] Hair mat, left 2%–29%, top 5%–17%: matted dark brown and black hair growing from a few pink scalp patches, hanging in locks; this one area is wrapped on four identical parts.
+[LIGHT] Painted light comes from above: tops are brightest; side faces grow slightly darker toward their bottom edges, with the lowest edge darkest; paint a thin bright edge line along each face border.
+[PALETTE] Mint green, white, black, warm gray, dark brown, black-brown, scalp pink, barber red, leather red, chrome silver, shadow gray, and plate yellow.
+[NEGATIVE]
+No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.

@@ -13,6 +13,9 @@ var _passed := 0
 var _m: Node3D
 var _frame := 0
 const SAVE := "user://test-biomes.bin"
+## Structure models are a few hundred triangles with every detail painted
+## (tools/struct_models); the glow box and the lamp come on top.
+const MAX_TRIS := 400
 
 func _assert(c: bool, msg: String) -> void:
 	if c:
@@ -92,6 +95,8 @@ func _static_tests() -> void:
 		for j in range(i + 1, b.structures.size()):
 			_assert(not box.intersects(FPBiomes.pocket_aabb(b.structures[j]["pos"], b.structures[j]["half"])), "structures %d and %d do not overlap" % [i, j])
 		_assert(ResourceLoader.exists("res://main/art/fp_struct_%s.gd" % st["kind"]), "art exists for %s" % st["kind"])
+		_assert(ResourceLoader.exists("res://main/art/structures/%s.glb" % st["kind"]), "model exists for %s" % st["kind"])
+		_assert(ResourceLoader.exists("res://main/art/structures/%s.png" % st["kind"]), "painted atlas exists for %s" % st["kind"])
 	# hollows: sample points; any hollow point must be inside a window, away
 	# from tumors, the door column and the restroom
 	var tumors: Array[Vector3] = []
@@ -190,6 +195,8 @@ func _main_tests() -> void:
 		_assert(m.terrain.density_at(mid) < 0.5, "pocket of %s is empty in the terrain" % s["kind"])
 		m.biomes.stream_art(m.structure_nodes, mid)
 		_assert(n.get_child_count() > 0, "%s art built when the player is there" % s["kind"])
+		var tris := _tris(n)
+		_assert(tris > 0 and tris <= MAX_TRIS, "%s is low-poly (%d triangles)" % [s["kind"], tris])
 		var others := 0
 		for o in m.structure_nodes:
 			if o != n and o.get_child_count() > 0 and (o.position - n.position).length() > 30.0:
@@ -239,3 +246,15 @@ func _main_tests() -> void:
 	var data: Dictionary = m.serialize()
 	_assert((data["biome_visits"]["structures"] as Array).has(st["kind"]), "visits saved")
 	_assert(m.biome_life.current_bed() == String(m.biomes.biome(st["biome"])["bed"]), "biome bed chosen in a biome")
+
+func _tris(n: Node) -> int:
+	var t := 0
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var mesh: Mesh = (n as MeshInstance3D).mesh
+		for i in range(mesh.get_surface_count()):
+			var a := mesh.surface_get_arrays(i)
+			var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX] if a[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			t += (idx.size() if idx.size() > 0 else (a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()) / 3
+	for c in n.get_children():
+		t += _tris(c)
+	return t

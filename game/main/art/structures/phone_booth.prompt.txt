@@ -1,0 +1,53 @@
+[IMAGE] Square game texture atlas for a low-poly 3D model, painted onto the attached UV layout; the attached line image is the exact layout.
+[LAYOUT] Keep the square canvas and every outlined face at the exact same position, size, and orientation as the attached line image; do not move, rotate, stretch, or resize any face.
+[LAYOUT] Fill all areas outside the outlined faces with one flat middle gray (#808080).
+[LAYOUT] Paint every face as a flat surface viewed straight on, filled to its edges; no perspective, 3D-looking objects, cast shadows, or scenes inside faces.
+[LAYOUT] The top of each side face is the model's top, except where the face list states otherwise; adjacent faces sharing an edge continue their colors and patterns across that edge.
+[SURFACES] Pavement, x 56–76%, y 14–34%: square gray pavement slabs with a few large dark cracks and yellow fat smears.
+[SURFACES] Back wall FRONT face, x 2–19%, y 36–61%: green-gray painted steel frame, low kick panel, dark bluish glass with one white crack; place a black coin telephone here with a rotary dial showing finger holes only, plus a hanging handset on a coiled cord.
+[SURFACES] Back wall RIGHT face, x 19–19%, y 36–61%: preserve this very narrow face; continue the green-gray painted steel frame and low kick panel, with dark bluish glass.
+[SURFACES] Back wall BACK face, x 19–35%, y 36–61%: green-gray painted steel frame, low kick panel, and dark bluish glass; continue the booth wall materials across adjoining edges.
+[SURFACES] Back wall LEFT face, x 2–2%, y 36–61%: preserve this line-thin face as a green-gray steel edge.
+[SURFACES] Side wall FRONT face, x 53–54%, y 36–61%: preserve this narrow face as a green-gray steel edge.
+[SURFACES] Side wall RIGHT face, x 54–70%, y 36–61%: green-gray painted steel frame, low kick panel, and dark bluish glass with one pane missing.
+[SURFACES] Side wall BACK face, x 70–70%, y 36–61%: preserve this line-thin face as a green-gray steel edge.
+[SURFACES] Side wall LEFT face, x 37–53%, y 36–61%: green-gray painted steel frame, low kick panel, and dark bluish glass with one pane missing.
+[SURFACES] Side wall r FRONT face, x 18–19%, y 10–34%: preserve this narrow face as a green-gray steel edge.
+[SURFACES] Side wall r RIGHT face, x 19–35%, y 10–34%: green-gray painted steel frame, low kick panel, and dark bluish glass with one cracked pane.
+[SURFACES] Side wall r BACK face, x 35–35%, y 10–34%: preserve this line-thin face as a green-gray steel edge.
+[SURFACES] Side wall r LEFT face, x 2–18%, y 10–34%: green-gray painted steel frame, low kick panel, dark bluish glass with one cracked pane, and a square sticker showing a telephone handset with an arrow sinking into wavy flesh, no letters.
+[SURFACES] Door FRONT face, x 38–46%, y 10–34%: folding glass door, slightly ajar, with green-gray steel frame and two tall dark bluish glass panes.
+[SURFACES] Door RIGHT face, x 46–46%, y 10–34%: preserve this line-thin face as a green-gray steel door edge.
+[SURFACES] Door BACK face, x 46–54%, y 10–34%: folding glass door back, with green-gray steel frame and two tall dark bluish glass panes.
+[SURFACES] Door LEFT face, x 37–38%, y 10–34%: preserve this narrow face as a green-gray steel door edge.
+[SURFACES] Roof FRONT face, x 19–36%, y 80–81%: preserve this narrow face as green-gray steel.
+[SURFACES] Roof RIGHT face, x 36–53%, y 80–81%: preserve this narrow face as green-gray steel.
+[SURFACES] Roof BACK face, x 53–70%, y 80–81%: preserve this narrow face as green-gray steel.
+[SURFACES] Roof LEFT face, x 2–19%, y 80–81%: preserve this narrow face as green-gray steel.
+[SURFACES] Roof TOP face, x 19–36%, y 63–80%: green-gray steel roof covered by soft yellow fat.
+[SURFACES] Roof BOTTOM face, x 19–36%, y 81–98%: green-gray steel underside.
+[SURFACES] Shelf FRONT face, x 4–10%, y 5–5%: preserve this line-thin face as steel.
+[SURFACES] Shelf RIGHT face, x 10–12%, y 5–5%: preserve this line-thin face as steel.
+[SURFACES] Shelf BACK face, x 12–18%, y 5–5%: preserve this line-thin face as steel.
+[SURFACES] Shelf LEFT face, x 2–4%, y 5–5%: preserve this line-thin face as steel.
+[SURFACES] Shelf TOP face, x 4–10%, y 2–5%: small steel shelf holding a thick phone directory secured by a chain.
+[SURFACES] Shelf BOTTOM face, x 4–10%, y 5–8%: steel underside of the small shelf.
+[SURFACES] Fat lump, x 78–95%, y 27–34%: a few soft yellow rendered fat lumps with pale highlights and orange drips; this texture area wraps onto five identical parts.
+[LIGHT] Paint soft light from above: top-facing surfaces are brightest; side faces grow slightly darker toward their bottom edge, darkest where they meet the ground; paint a thin light rim along face borders.
+[PALETTE] Named colors: middle gray (#808080), slab gray, crack charcoal, green-gray steel, dark bluish glass, soft fat yellow, pale fat highlight, and muted orange drips.
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.

@@ -1,0 +1,36 @@
+[IMAGE] Square game texture atlas for a low-poly 3D model, painted onto the attached UV layout; a 1950s public drinking fountain alcove for a PS1-era horror game, designed as a 140-triangle mobile-game prop.
+[LAYOUT] The attached line image is the exact layout: preserve its square canvas, every outlined face's exact position, size, and orientation; move, rotate, or stretch no face.
+[LAYOUT] Fill every outlined face edge to edge with a flat, front-facing surface; keep all area outside the outlined faces a single flat medium gray (#808080).
+[LAYOUT] For box nets, TOP is above FRONT, BOTTOM below FRONT, LEFT and RIGHT beside FRONT, and BACK to the right of RIGHT. For round parts, SIDE is the strip of columns wrapping around the part and TOP/BOTTOM are the circular caps seen from above/below. In each cone triangle row, the tip is the top.
+[LAYOUT] The top of every side face is the model's world-up direction unless a face is explicitly identified otherwise. Adjacent faces that share an edge continue their color and pattern across that edge.
+[SURFACES] Floor, x=67–95%, y=73–98%: small pale-blue and white floor tiles, with one large stained drain mark near the middle.
+[SURFACES] Back wall, x=2–29%, y=68–98%: pale-blue and white small wall tiles, a blue band at waist height, grime toward the floor, and a few missing tiles; include a small square plate with a clock ring and one squeeze-shaped beat mark, with no letters.
+[SURFACES] Side wall LEFT face, x=31–48%, y=68–98%, and side wall RIGHT face, x=48–64%, y=68–98%: matching pale-blue and white small wall tiles, a blue band at waist height, and grime toward the floor; these two wrapped parts use identical tile patterns and scale.
+[SURFACES] Soffit FRONT face, x=18–46%, y=48–49%; RIGHT face, x=46–62%, y=48–49%; BACK face, x=62–89%, y=48–49%; and LEFT face, x=2–18%, y=48–49%: tiled soffit surfaces, with tile patterns aligned at adjoining edges.
+[SURFACES] Soffit BOTTOM face, x=18–46%, y=49–66%: cracked tiles with a few red muscle folds bulging through the cracks.
+[SURFACES] Fountain FRONT face, x=7–14%, y=38–41%: white vitreous-china bowl surface with a small chrome push button and a restrained rust stain.
+[SURFACES] Fountain RIGHT face, x=14–19%, y=38–41%, and LEFT face, x=2–7%, y=38–41%: white vitreous-china side surfaces with restrained rust staining.
+[SURFACES] Fountain TOP face, x=7–14%, y=33–38%: white vitreous-china top surface with the chrome bubbler.
+[SURFACES] Fountain BOTTOM face, x=7–14%, y=41–47%: white vitreous-china underside, slightly grimed.
+[SURFACES] Supply pipe, x=21–23%, y=35–46%: tarnished chrome pipe.
+[SURFACES] Wall lamp FRONT face, x=53–55%, y=43–45%; RIGHT face, x=55–57%, y=43–45%; and LEFT face, x=51–53%, y=43–45%: small cream-enamel lamp housing.
+[SURFACES] Wall lamp TOP face, x=53–55%, y=41–43%: cream-enamel top of the small lamp housing. Wall lamp BOTTOM face, x=53–55%, y=45–47%: cream-enamel underside, subtly darker.
+[SURFACES] Muscle strip, x=25–49%, y=36–46%: red-brown gut muscle with a few broad wet striated folds and dark creases; this pattern wraps identically across three parts.
+[LIGHT] Paint soft light from above into the surfaces: top-facing areas are lightest; side faces become slightly darker toward their lower edges, with the ground-touching lower edge darkest. Paint a thin light-colored highlight along each face's outer edge; use painted color changes only, with no cast object shadows or 3D scene shading.
+[PALETTE] Pale tile blue, aged porcelain white, waist-band blue, medium gray (#808080), grime brown, rust orange-brown, red-brown muscle, dark crease brown, tarnished chrome gray, cream enamel.
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.

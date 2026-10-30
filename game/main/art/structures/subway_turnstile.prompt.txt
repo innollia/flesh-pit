@@ -1,0 +1,40 @@
+[IMAGE] square game texture atlas for a low-poly 3D model, painted onto the attached UV layout; the attached line image is the exact layout.
+[LAYOUT] Keep the square image and every face at the same position, size, and orientation as the line image; do not move, rotate, stretch, or resize any face.
+[LAYOUT] Keep every area outside the outlined faces a single flat medium gray (#808080).
+[LAYOUT] Paint each face as a flat surface viewed straight on, filled to its edges; the top of each side face points toward the model's top unless specified otherwise.
+[LAYOUT] Continue colors and markings across edges shared by neighboring faces.
+[SURFACES] Floor, left 2%–56%, top 11%–41%: station floor with small grey and cream square tiles; a few broad black grime marks in the grout.
+[SURFACES] Tile wall, left 14%–68%, top 64%–98%: cream station wall tiles with a green waist-height band; a few broad cracks, stains, and missing tile gaps.
+[SURFACES] Gate body LEFT face, left 58%–68%, top 26%–41%: brushed steel cabinet side, cool grey panels and a few scuffs; maintain matching cabinet finish across its three identical wrapped parts.
+[SURFACES] Gate body FRONT face, left 68%–73%, top 26%–41%: brushed steel cabinet front with a small round red lamp and a few scuffs; align finish and scuffs with adjoining gate faces.
+[SURFACES] Gate body RIGHT face, left 73%–83%, top 26%–41%: brushed steel cabinet side with a few scuffs; align finish and scuffs with adjoining gate faces.
+[SURFACES] Gate body BACK face, left 83%–88%, top 26%–41%: brushed steel cabinet back with a few scuffs; align finish and scuffs with adjoining gate faces.
+[SURFACES] Gate body TOP face, left 68%–73%, top 15%–26%: brushed steel cabinet top with a small brass token slot; this upper face is viewed from above.
+[SURFACES] Gate arm, left 90%–92%, top 33%–41%: polished steel tube finish, repeated consistently across its wrapped sections.
+[SURFACES] Sign FRONT face, left 2%–10%, top 3%–9%: white sign face with black border, a simple down arrow beside a knife blade pictogram, no letters.
+[SURFACES] Sign BACK face, left 10%–18%, top 3%–9%: white sign back with black border, matching the front sign finish, no letters.
+[SURFACES] Sign RIGHT and LEFT faces, narrow edge strips at the far right and left sides of the sign area, top 3%–9%: plain white sign edges with the black border continuing around them.
+[SURFACES] Tube fixture LEFT face, left 20%–22%, top 8%–9%: white metal housing edge with a few grey scuffs.
+[SURFACES] Tube fixture FRONT face, left 22%–35%, top 8%–9%: white metal housing with one snapped fluorescent tube; show two simple broken tube ends.
+[SURFACES] Tube fixture RIGHT face, left 35%–38%, top 8%–9%: white metal housing edge with a few grey scuffs, continuing the adjoining finish.
+[SURFACES] Tube fixture BACK face, left 38%–51%, top 8%–9%: white metal housing back with a few grey scuffs.
+[SURFACES] Tube fixture TOP face, left 22%–35%, top 6%–8%: white metal top plane, viewed from above, with a few grey scuffs.
+[SURFACES] Cartilage, left 2%–12%, top 43%–98%: white-blue gristly cartilage surface repeated consistently across its five wrapped parts; use a few broad pink veins and restrained pale painted highlights.
+[LIGHT] Painted light comes from above: upper faces are brightest; side faces grow slightly darker toward their bottom edges, darkest at the lower edge; paint a thin bright edge line near each face border.
+[PALETTE] Station tile grey, warm cream, grout black, wall green, brushed steel cool grey, slot brass, lamp red, sign white, border black, tube pale white, cartilage blue-white, vein pink.
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.

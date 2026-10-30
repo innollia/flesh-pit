@@ -1,0 +1,55 @@
+﻿[IMAGE] Square game texture atlas for a low-poly 3D model, painted onto the attached UV layout. The attached line image is the exact layout.
+[LAYOUT] Keep the square image and every outlined face at its exact position, size, shape, and orientation in the attached line image; do not move, rotate, stretch, crop, or add faces.
+[LAYOUT] Fill every face completely to its outlined edges with a flat, front-facing painted surface; leave every area outside the outlined faces one uniform medium gray (#808080).
+[LAYOUT] Box nets unfold around FRONT: TOP above FRONT, BOTTOM below FRONT, LEFT and RIGHT beside FRONT, and BACK to the right of RIGHT. The image top is the model top on side faces unless a face is explicitly oriented otherwise.
+[LAYOUT] Neighboring faces sharing an edge must continue their colors and painted marks across that edge. Do not draw borders beyond the supplied outlines.
+[SURFACES] Linoleum, x=2–48%, y=39–62%: grey-green school corridor floor with sparse speckles and a few black heel scuffs.
+[SURFACES] Green locker FRONT, x=7–13%, y=70–98%, on two identical wrapped parts: faded green enamel steel, pressed vent slots near the top, lift handle, restrained rust along the lower edge.
+[SURFACES] Green locker RIGHT, x=13–18%, y=70–98%: faded green enamel steel; continue lower-edge rust from the adjoining front.
+[SURFACES] Green locker BACK, x=18–24%, y=70–98%: faded green enamel steel; continue the adjoining green and lower-edge rust.
+[SURFACES] Green locker LEFT, x=2–7%, y=70–98%: faded green enamel steel; continue the adjoining green and lower-edge rust.
+[SURFACES] Green locker TOP, x=7–13%, y=64–70%: locker top in lighter green enamel.
+[SURFACES] Warning-plate locker FRONT, x=31–37%, y=70–98%: faded grey enamel steel, pressed vent slots near the top, lift handle, restrained lower-edge rust, and a square yellow door plate showing two walls squeezing a small figure as a simple pictogram without letters.
+[SURFACES] Warning-plate locker RIGHT, x=37–42%, y=70–98%: faded grey enamel steel; continue lower-edge rust from the adjoining front.
+[SURFACES] Warning-plate locker BACK, x=42–48%, y=70–98%: faded grey enamel steel; continue the adjoining grey and lower-edge rust.
+[SURFACES] Warning-plate locker LEFT, x=26–31%, y=70–98%: faded grey enamel steel; continue the adjoining grey and lower-edge rust.
+[SURFACES] Warning-plate locker TOP, x=31–37%, y=64–70%: locker top in lighter grey enamel.
+[SURFACES] Grey locker FRONT, x=55–61%, y=70–98%, on two identical wrapped parts: faded grey enamel steel, pressed vent slots near the top, lift handle, restrained rust along the lower edge.
+[SURFACES] Grey locker RIGHT, x=61–66%, y=70–98%: faded grey enamel steel; continue lower-edge rust from the adjoining front.
+[SURFACES] Grey locker BACK, x=66–72%, y=70–98%: faded grey enamel steel; continue the adjoining grey and lower-edge rust.
+[SURFACES] Grey locker LEFT, x=50–55%, y=70–98%: faded grey enamel steel; continue the adjoining grey and lower-edge rust.
+[SURFACES] Grey locker TOP, x=55–61%, y=64–70%: locker top in lighter grey enamel.
+[SURFACES] Open locker FRONT, x=79–85%, y=70–98%: faded green enamel steel door hanging open, with a few pressed vents.
+[SURFACES] Open locker RIGHT, x=85–90%, y=70–98%: empty dark locker interior with one shelf and one coat hook, simple flat marks.
+[SURFACES] Open locker BACK, x=90–96%, y=70–98%: empty dark locker interior with one shelf and one coat hook continuing naturally from the adjoining right face.
+[SURFACES] Open locker LEFT, x=74–79%, y=70–98%: faded green enamel steel, continuing the locker shell.
+[SURFACES] Open locker TOP, x=79–85%, y=64–70%: locker top in lighter green enamel.
+[SURFACES] Bench TOP, x=6–35%, y=28–32%: broad upper plank surface in warm varnished wood, pale worn patches where children sat.
+[SURFACES] Bench FRONT, x=6–35%, y=32–33%: narrow front plank edge in varnished wood, grain and worn color continuing from the top.
+[SURFACES] Bench RIGHT, x=35–40%, y=32–33%: varnished wood end grain, continuing the adjacent plank colors.
+[SURFACES] Bench BACK, x=40–69%, y=32–33%: varnished wood rear edge, continuing the plank grain and colors.
+[SURFACES] Bench LEFT, x=2–6%, y=32–33%: varnished wood end grain, continuing the adjacent plank colors.
+[SURFACES] Bench BOTTOM, x=6–35%, y=33–37%: darker varnished wood underside.
+[SURFACES] Bench leg FRONT, x=74–75%, y=31–37%, on two identical wrapped parts: dark varnished wood with a broad grain mark.
+[SURFACES] Bench leg RIGHT, x=75–79%, y=31–37%: dark varnished wood, grain continuous from the adjoining front.
+[SURFACES] Bench leg BACK, x=79%, y=31–37%: narrow dark wood seam, continuing adjoining grain.
+[SURFACES] Bench leg LEFT, x=71–74%, y=31–37%: dark varnished wood, grain continuous into the adjoining front.
+[SURFACES] Gut muscle, x=50–75%, y=52–62%, on four identical wrapped parts: red-brown muscle with broad wet striated folds and a few dark creases. Follow the supplied row of six triangular cone faces above two rows of rectangular side faces; align folds to each face and continue them across shared edges.
+[LIGHT] Paint soft light from above into the surfaces: top faces are brightest; side faces become slightly darker toward their bottom edges, with the ground-contact lower edge darkest. Paint a thin light edge highlight along the outer rim of each face. Keep all light painted flat on the face, never as cast shadows or volume.
+[PALETTE] Grey-green linoleum, charcoal heel marks, faded locker green, pale green highlights, aged locker grey, warm rust brown, warning-sign yellow, dark interior charcoal, varnished honey wood, worn pale wood, dark leg brown, red-brown muscle, deep crease brown, and uniform outside gray #808080.
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face.
+No text or labels.

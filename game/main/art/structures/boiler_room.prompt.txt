@@ -1,0 +1,34 @@
+[IMAGE] Square game texture atlas for a low-poly 3D model, painted onto the attached UV layout. A 1930s boiler room corner biome structure for a PS1-era horror game, a 284-triangle mobile game prop.
+[LAYOUT] The attached line image is the exact layout: preserve its square shape and every outlined face at the same position, size, and orientation; do not move, rotate, stretch, or omit any face.
+[LAYOUT] Fill every outlined face all the way to its edges with a flat, front-facing painted surface; keep all areas outside the outlined faces a single flat medium gray (#808080).
+[LAYOUT] Box nets are unfolded around FRONT: TOP above FRONT, BOTTOM below FRONT, LEFT and RIGHT beside FRONT, and BACK to the right of RIGHT. On side faces, the top of the image is the top of the model. Round parts use SIDE strips around the part and TOP/BOTTOM caps viewed from above or below. In each row of cone triangles, each triangle is a cone face and its tip is the top.
+[LAYOUT] Keep neighboring faces aligned at every shared edge so colors and painted marks continue across the edge. Show only flat surfaces, never an inset scene or a view of the assembled object.
+[SURFACES] Floor, the large lower-left rectangle at left 2%–43%, top 57%–98%: dark oily concrete, charcoal gray with a few broad coal-dust patches and several yellow fat drips.
+[SURFACES] Boiler drum, the large eight-column rectangular strip at left 2%–58%, top 25%–55%: black-gray iron with clear rows of large rivets and a few broad rust streaks; continue the rivet rows and streaks across adjacent columns.
+[SURFACES] Boiler end, the large octagonal cap at left 60%–78%, top 36%–55%: black-gray iron end of the drum, with a ring of rivets near the edge and a few rust streaks.
+[SURFACES] Firebox net at left 80%–94%, top 37%–55%: paint the FRONT face at left 82%–92%, top 38%–55% as a black iron firebox door with a slotted draft grille and orange glow in the slots, plus a round pressure gauge with a dial and needle but no digits. Paint the LEFT face at left 80%–82% and RIGHT face at left 92%–94%, both top 38%–55%, as matching dark iron sides with rust marks continued across their shared edges. Paint the TOP face at left 82%–92%, top 37%–38% as a lighter, upward-facing iron surface.
+[SURFACES] Steam pipe, the tall strip at left 45%–51%, top 63%–98%: rusty iron pipe surface with broad rust patches and repeated flange-ring bands; this strip wraps around three identical parts, so make the pattern repeat cleanly.
+[SURFACES] Valve wheel strip at left 61%–74%, top 23%: red-painted iron with a few clear spoke marks arranged as a valve wheel pattern.
+[SURFACES] Valve cap at left 55%–59%, top 19%–23%: red-painted iron round cap, with simple radial spoke marks matching the valve wheel.
+[SURFACES] Shovel net at left 2%–6%, top 5%–23%: coal shovel leaning on the wall, with a dark iron blade and worn brown wooden handle. Front face at left 3%–6%, side faces at left 2%–3% and 6%; keep the same upright direction on all faces.
+[SURFACES] Hot warning plate at left 42%–46%, top 19%–23%: square white enamel plate with a red border and a simple pictogram of a hand, heat waves, and a red slash to mean hot pipe, do not touch; no letters.
+[SURFACES] Closing-gap warning plate at left 49%–53%, top 19%–23%: square white enamel plate with a red border and two simple arrows meeting in the middle to show a gap closing; no letters.
+[SURFACES] Caged amber bulkhead lamp net at left 34%–40%, top 14%–23%: amber lamp behind an iron wire cage. FRONT face at left 34%–35%, RIGHT face at left 35%–38%, BACK face at left 38%–40%, all top 17%–20%; TOP face at left 34%–35%, top 14%–17%; BOTTOM face at left 34%–35%, top 20%–23%. Continue the cage bars cleanly across adjoining faces.
+[SURFACES] Rendered-fat lump wrap at left 8%–32%, top 13%–23%: soft yellow fat in six repeated panels, with a few waxy rounded lumps, pale highlights, and broad orange drips; make the repeated pattern wrap cleanly across all six identical parts.
+[LIGHT] Paint soft light from above into the surfaces: upper-facing faces are brightest, vertical surfaces become slightly darker toward their bottom edge, and the lower contact edge is darkest. Add a thin, light painted edge line along the borders of faces. The light is painted into the flat texture, with no cast shadow or 3D shading.
+[PALETTE] Charcoal iron, soot black, rivet gray, rust orange-brown, oily concrete gray, coal black, fat yellow, pale cream highlights, warning red, lamp amber, fire orange, and the single medium gray background (#808080).
+[NEGATIVE] No hyper-detailed fur, bark, stone, or leaf rendering; a few confident marks stand for each.
+No sky gradients, no cloud detail, no glow around the sun, moon, or lights.
+No glossy digital painting, no airbrushed smooth gradients, no plastic or waxy skin.
+No bloom, lens flare, god rays, or haze unless the subject asks for them.
+No shallow depth of field, bokeh, or photographic blur.
+No 3D render look, no subsurface skin sheen, no CGI lighting.
+No evenly spread detail; detail sits in one or two places only.
+No perfectly symmetrical faces, poses, or compositions.
+No generic fantasy decoration: floating particles, sparkles, magic circles, random runes or glyphs.
+No extra eyes, mouths, faces, limbs, or tentacles; no melted or fused anatomy; hands have the correct number of fingers.
+No characters, animals, or props that the subject did not ask for.
+No text, letters, captions, title, signature, monogram, watermark, logo, frame, or border.
+No oversaturated or neon color unless the style card asks for it.
+No muddy, smeared, or noisy surface texture.
+No perspective, no shading that implies a 3D view inside a face. No text or labels.
