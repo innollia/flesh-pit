@@ -281,6 +281,20 @@ func relayout_rest_points(seed: int) -> void:
 	for p in pts:
 		m.terrain.carve_sphere(p, 0.01) # makes sure the chunk exists
 		m.terrain.fill_box_uniform(AABB(p - h, h * 2.0), 0.0, FDKTissueRules.COMPRESSIVE)
+	# structures that would overlap this game's containers are left out; the
+	# shown ones get their pocket (also in saves from before the biomes)
+	if m.biomes != null:
+		m.biomes.apply_rest_points(pts)
+		for n in m.structure_nodes:
+			var s: Dictionary = m.biomes.structures[int(n.get_meta("structure"))]
+			n.position = s["pos"]
+			n.visible = bool(s["enabled"])
+			if n.has_method("set_light"):
+				n.call("set_light", n.visible)
+			if n.visible:
+				var box := FPBiomes.pocket_aabb(s["pos"], s["half"])
+				m.terrain.carve_sphere(box.get_center(), 0.01)
+				m.terrain.fill_box_uniform(box, 0.0, FDKTissueRules.COMPRESSIVE)
 ## Lamps show the charge; the jar spins and is tipped up while drinking.
 var _drink_played := false
 func _sync_blender_art() -> void:

@@ -7,7 +7,7 @@ extends RefCounted
 ## chew_time / tear_cells before and during a chew, and the terrain field
 ## drives the contractile tissue's periodic squeeze with contract_offset.
 
-## Tissue ids (stored per cell). 2 is an unused legacy slot (old fat band);
+## Tissue ids (stored per cell). 2 was the old fat band, now the fat-cave biome;
 ## MELTED is never stored -- tissue_at reports it for sprayed cells.
 const COMPRESSIVE := 0 ## core shell: puffy flesh, regrows fastest
 const NERVE := 1 ## surface shell: yellow nerves packed in
@@ -15,12 +15,20 @@ const LEGACY_FAT := 2
 const MEMBRANE := 3 ## around the restroom and on every shell boundary
 const CONTRACTILE := 4 ## mantle shell: muscle-like, squeezes periodically
 const MELTED := 5 ## sprayed: density 0 forever, inedible
+## Biome tissues (02-world-tissue.md 1-1): one shell holds several biomes,
+## each made of its own tissue. FAT reuses the old fat band slot.
+const FAT := 2 ## soft rendered fat, caves form in it
+const CARTILAGE := 6 ## gristle ribs, needs a blade like muscle
+const CLOTH := 7 ## swallowed clothing pressed into wads, barely regrows
+const HAIR := 8 ## matted hair over scalp, regrows fast
 
 ## Shell index (0 core, 1 mantle, 2 surface) -> main tissue.
 const SHELL_TISSUE := [COMPRESSIVE, CONTRACTILE, NERVE]
 
-const HARDNESS := {COMPRESSIVE: 1.0, NERVE: 1.2, LEGACY_FAT: 1.0, MEMBRANE: 2.0, CONTRACTILE: 1.4}
-const REGEN := {COMPRESSIVE: 1.5, NERVE: 0.8, LEGACY_FAT: 1.0, MEMBRANE: 0.0, CONTRACTILE: 1.0, MELTED: 0.0}
+const HARDNESS := {COMPRESSIVE: 1.0, NERVE: 1.2, FAT: 0.8, MEMBRANE: 2.0, CONTRACTILE: 1.4,
+	CARTILAGE: 1.8, CLOTH: 1.1, HAIR: 1.3}
+const REGEN := {COMPRESSIVE: 1.5, NERVE: 0.8, FAT: 1.2, MEMBRANE: 0.0, CONTRACTILE: 1.0, MELTED: 0.0,
+	CARTILAGE: 0.5, CLOTH: 0.3, HAIR: 1.2}
 
 const BASE_CHEW_TIME := 0.6
 ## Big saw: one stroke = base x 1.5 x hardness, tears 6 cells.
@@ -56,8 +64,8 @@ static func can_grab(tissue: int, tool: String, opts: Dictionary = {}) -> bool:
 		return false
 	if tissue == MEMBRANE:
 		return tool == "knife" or tool == "big_saw" or bool(opts.get("thick_nails", false)) or bool(opts.get("split_jaw", false))
-	if tissue == CONTRACTILE:
-		return tool == "knife" or tool == "big_saw" # muscle needs a blade
+	if tissue == CONTRACTILE or tissue == CARTILAGE:
+		return tool == "knife" or tool == "big_saw" # muscle and gristle need a blade
 	return true
 
 ## Effective hardness for this tool (membrane rules depend on how it is cut).

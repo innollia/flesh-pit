@@ -165,3 +165,19 @@
 - (올리기 전에) "......안 줘도 돼."
 - (그래도 올리면) "......그래. 고마워. 이거 그냥 가져가." (물건을 전부 내밈)
 - (닫을 때) "잘 가. 흐음~ 흠~"
+
+---
+
+## 13. 처음 다녀온 바이옴 (이빨 받은 뒤 혼잣말)
+
+플레이어가 새 바이옴에 처음 들어가면(`FPBiomeLife`), 다음에 이빨을 받은 뒤 혼잣말 자리에서 한마디 한다. 줄은 `game/main/data/vent_biome_lines.json`의 `biome.<바이옴>.1~3` 중 무작위. 존재는 거기 가 본 적이 없고 냄새·소리로만 안다. 아는 척하다 틀리고 자기 얘기로 샌다.
+
+바이옴: fat_caves(지방 동굴), rib_vault(연골 궁륭), gut_folds(위벽 주름), cloth_wads(옷 뭉치), hair_thicket(털 덤불).
+
+## 14. 처음 서 본 구조물
+
+13과 같은 자리에서, 구조물을 바이옴보다 먼저 말한다. `struct.<종류>.1~2`.
+
+종류: boiler_room, phone_booth, subway_turnstile, elevator_car, school_lockers, fountain_alcove, bus_shelter, laundromat, street_lamp, barber_chair.
+
+13·14의 대사 글은 안티그래비티에 맡긴다. 2026-10-30 요청은 할당량 초과로 실패해 줄 자리만 있고 글이 비어 있다. 빈 줄은 말하지 않는다.

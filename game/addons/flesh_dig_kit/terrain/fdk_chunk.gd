@@ -104,7 +104,8 @@ var _regen_wait: float = 0.0
 ## signal), 3 membrane (inedible, around the restroom), 4 mantle/contractile
 ## (mantle shell). Placeholder textures only; final art is frontend scope.
 ## Textures from tools/bake_tissue_textures.py (asset-list TIS-01..05). Index
-## = FDKTissueRules id; 5 (melted) skins faces that border a sprayed cell.
+## = FDKTissueRules id; 5 (melted) skins faces that border a sprayed cell;
+## 6..8 are the biome tissues (cartilage, cloth wad, hair mat).
 const TISSUE_TEXTURES: Array[String] = [
     "res://addons/flesh_dig_kit/textures/tissue_compressive_128.png",
     "res://addons/flesh_dig_kit/textures/tissue_nerve_128.png",
@@ -112,6 +113,9 @@ const TISSUE_TEXTURES: Array[String] = [
     "res://addons/flesh_dig_kit/textures/tissue_membrane_128.png",
     "res://addons/flesh_dig_kit/textures/tissue_contractile_128.png",
     "res://addons/flesh_dig_kit/textures/tissue_melted_64.png",
+    "res://addons/flesh_dig_kit/textures/tissue_cartilage_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_cloth_128.png",
+    "res://addons/flesh_dig_kit/textures/tissue_hair_128.png",
 ]
 const UV_SCALE := 0.9
 static var _terrain_materials: Dictionary = {}

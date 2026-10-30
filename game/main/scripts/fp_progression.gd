@@ -85,7 +85,7 @@ const BASE_CARRY := 40.0
 const BASE_FOV := 90.0
 const SQUEEZE_SLOW_AT := 0.5
 ## Tissue hardness (02-world-tissue.md 3), keyed by main.gd tissue id.
-const TISSUE_HARDNESS := {0: 1.0, 1: 1.2, 2: 1.0, 3: 2.0, 4: 1.4}
+const TISSUE_HARDNESS := {0: 1.0, 1: 1.2, 2: 0.8, 3: 2.0, 4: 1.4, 6: 1.8, 7: 1.1, 8: 1.3}
 const TISSUE_COMPRESSIVE := 0
 const TISSUE_NERVE := 1
 const TISSUE_MEMBRANE := 3

@@ -96,7 +96,7 @@ static var CHATTER_QUIET: float = _num("CHATTER_QUIET", 15.0)
 static var CHATTER_REPEAT: float = _num("CHATTER_REPEAT", 90.0)
 static var CHATTER_CHANCE: float = _lim("CHATTER_CHANCE", 0.5)
 ## Line ids that are chatter (comments on the room), not replies to a trade.
-const CHATTER_PREFIXES := ["distract.", "tank.", "lid.", "pick.long", "pick.hover", "player.", "surface.paid", "mantle.paid", "leave.walk"]
+const CHATTER_PREFIXES := ["distract.", "tank.", "lid.", "pick.long", "pick.hover", "player.", "surface.paid", "mantle.paid", "leave.walk", "biome.", "struct."]
 
 static var FIRST_CHAIN: Array[String] = _pool("FIRST_CHAIN", ["first.heard", "first.nobody", "first.hello", "first.tsk"])
 static var FLUSH_A: Array[String] = _pool("FLUSH_A", ["flush.a1", "flush.a2", "flush.a3", "flush.a4", "flush.a5"])
@@ -577,6 +577,12 @@ func _maybe_remark() -> void:
         id = _ev("혼잣말_팔더", "player.extra_arm")
     elif bool(st.get("mutated", false)):
         id = _ev("혼잣말_변이", "player.mutated")
+    elif st.has("new_biome") or st.has("new_struct"):
+        # where the player has been for the first time (FPBiomeLife):
+        # biome.<id>.1..3 / struct.<kind>.1..2 in vent_biome_lines.json
+        id = _place_line(String(st.get("new_struct", "")), String(st.get("new_biome", "")))
+        player_state.erase("new_biome")
+        player_state.erase("new_struct")
     elif float(st.get("blood", 0.0)) >= BLOOD_REMARK:
         id = _ev("혼잣말_피", "player.blood")
     elif int(st.get("hairs", 0)) >= HAIRS_REMARK:
@@ -590,6 +596,21 @@ func _maybe_remark() -> void:
         player_state.erase("died")
         player_state.erase("mutated")
         _say(id)
+
+## A remark on a structure (preferred) or biome the player just found; ""
+## when the line data has no text for it yet.
+func _place_line(kind: String, biome_id: String) -> String:
+    for pick in [["struct.%s.%d", kind, 2], ["biome.%s.%d", biome_id, 3]]:
+        if String(pick[1]) == "":
+            continue
+        var ids: Array[String] = []
+        for n in range(1, int(pick[2]) + 1):
+            var id := String(pick[0]) % [pick[1], n]
+            if FPSubtitles.line_text(id) != "":
+                ids.append(id)
+        if not ids.is_empty():
+            return _pick(ids)
+    return ""
 
 # --- player actions main reports ----------------------------------------------
 

@@ -169,6 +169,11 @@ var _world_density_cache: Dictionary = {}
 const WORLD_DENSITY_CACHE_LIMIT := 8192
 var tumor_nodes: Array[Node3D] = []
 var taken_tumor_spots: Array = []
+## Several biomes per shell (main/data/biomes.json): their tissue, hollows,
+## half-swallowed structures and mood. biome_life tracks where the player is.
+var biomes: FPBiomes
+var biome_life: FPBiomeLife
+var structure_nodes: Array[Node3D] = []
 ## The spray can on each rest point's chair (rest_points order) and the
 ## indexes already taken this game (decision 0006).
 var rest_cans: Array[Node3D] = []
@@ -262,6 +267,8 @@ func _ready() -> void:
 	if rest_seed == 0:
 		rest_seed = randi_range(1, 999999)
 	rest_points = FPWorldFeatures.rest_points(RESTROOM_CENTER, rest_seed)
+	biomes = FPBiomes.new(RESTROOM_CENTER)
+	biomes.apply_rest_points(rest_points)
 	tissue_tools = FPTissueTools.new(self)
 
 	terrain = FDKTerrainField.new()
@@ -389,6 +396,11 @@ func _ready() -> void:
 		var t := FPWorldFeatures.build_tumor(self, spots[i])
 		t.set_meta("spot", i)
 		tumor_nodes.append(t)
+	structure_nodes = biomes.build_structures(self)
+	biome_life = FPBiomeLife.new()
+	biome_life.name = "BiomeLife"
+	add_child(biome_life)
+	biome_life.setup(self, biomes)
 
 	art_hookup = FPArtHookup.new()
 	art_hookup.name = "ArtHookup"
@@ -543,6 +555,8 @@ func _world_density(p: Vector3) -> float:
 	else:
 		density = FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
 			ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points)
+		if biomes != null:
+			density = biomes.shape_density(p, density)
 	if _world_density_cache.size() >= WORLD_DENSITY_CACHE_LIMIT:
 		_world_density_cache.clear()
 	_world_density_cache[p] = density
@@ -586,7 +600,9 @@ func _world_tissue(p: Vector3) -> int:
 	# Initial exposed doorway is flesh; nerves belong to newly excavated depth.
 	if _in_door_column(p) and p.z > FPRestroom.HALF.z - 0.2 and p.z < FPRestroom.HALF.z + 1.0 and p.y > -0.1 and p.y < FPRestroom.DOOR_H + 0.3:
 		return FDKTissueRules.COMPRESSIVE
-	return FPWorldFeatures.world_tissue_at(p, RESTROOM_CENTER, _noise.get_noise_3dv(p), room)
+	var noise := _noise.get_noise_3dv(p)
+	var t := FPWorldFeatures.world_tissue_at(p, RESTROOM_CENTER, noise, room)
+	return biomes.tissue_at(p, t, noise) if biomes != null else t
 
 func _regen_scale(p: Vector3) -> float:
 	return FPWorldFeatures.regen_scale(p, RESTROOM_CENTER, SHELL_THICKNESS)
@@ -708,8 +724,15 @@ func _update_atmosphere(delta: float, immediate: bool = false) -> void:
 	var k := 1.0 if immediate else 1.0 - exp(-delta * 3.0)
 	var depth_tone := clampf(terrain.depth_at(player.global_position) / terrain_config.depth_tone_distance, 0.0, 1.0)
 	environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
-	environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else Color(0.55, 0.22, 0.24), k)
-	environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else 0.42, k)
+	var out_light := Color(0.55, 0.22, 0.24)
+	var out_energy := 0.42
+	# a biome's own light mixes in (FPBiomeLife, main/data/biomes.json)
+	var mood: float = biome_life.weight if biome_life != null else 0.0
+	if mood > 0.0:
+		out_light = out_light.lerp(biome_life.ambient * 0.5, 0.7 * mood)
+		out_energy *= lerpf(1.0, biome_life.energy, mood)
+	environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else out_light, k)
+	environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else out_energy, k)
 	var from_door := player.global_position.z - (restroom.global_position.z + FPRestroom.HALF.z)
 	# the eyes do not get used to the dark while the open door's light is
 	# right beside them: the lamp waits until the body is past its beam (the
@@ -727,6 +750,8 @@ func _update_atmosphere(delta: float, immediate: bool = false) -> void:
 	body_fill.light_energy = player_lamp.light_energy * BODY_FILL
 	if not inside:
 		environment.fog_light_color = Color(0.22, 0.03, 0.05).lerp(Color(0.1, 0.01, 0.07), depth_tone)
+		if mood > 0.0:
+			environment.fog_light_color = environment.fog_light_color.lerp(biome_life.fog * 1.6, 0.7 * mood)
 
 ## Eye lamp energy outside the room: eye adaptation times the near-wall dim.
 func lamp_target() -> float:
@@ -2749,6 +2774,7 @@ func serialize() -> Dictionary:
 		"player_position": [player.global_position.x, player.global_position.y, player.global_position.z],
 		"drawings": vent.drawings.duplicate(),
 		"vent_progress": vent.serialize_progress(),
+		"biome_visits": biome_life.serialize() if biome_life != null else {},
 	}
 
 func deserialize(data: Dictionary) -> void:
@@ -2835,6 +2861,9 @@ func deserialize(data: Dictionary) -> void:
 		player.global_position = START_POS
 	_restore_drawings(data.get("drawings", []) as Array)
 	vent.restore_progress(data.get("vent_progress", {}), progression.has_belt)
+	if biome_life != null:
+		biome_life.deserialize(data.get("biome_visits", {}))
+		biome_life.snap()
 	# older saves: anyone who has met the being has flushed teeth before
 	lever_settled = bool(data.get("lever_settled", vent._paid_ever or vent._met or progression.has_belt))
 

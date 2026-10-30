@@ -487,6 +487,41 @@
     "res://audio/sfx/echo_click_v4.wav"
    ],
    "spatial": false
+  },
+  "amb_fat_caves": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_fat_caves.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_rib_vault": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_rib_vault.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_gut_folds": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_gut_folds.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_cloth_wads": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_cloth_wads.wav"
+   ],
+   "loop_seconds": 8.0
+  },
+  "amb_hair_thicket": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_hair_thicket.wav"
+   ],
+   "loop_seconds": 8.0
   }
  },
  "beds": {
@@ -500,6 +535,31 @@
   "body_b": [
    "amb_body_b",
    "amb_heart_b"
+  ],
+  "fat_caves": [
+   "amb_body_a",
+   "amb_heart_a",
+   "amb_fat_caves"
+  ],
+  "rib_vault": [
+   "amb_body_a",
+   "amb_heart_a",
+   "amb_rib_vault"
+  ],
+  "gut_folds": [
+   "amb_body_a",
+   "amb_heart_a",
+   "amb_gut_folds"
+  ],
+  "cloth_wads": [
+   "amb_body_b",
+   "amb_heart_b",
+   "amb_cloth_wads"
+  ],
+  "hair_thicket": [
+   "amb_body_b",
+   "amb_heart_b",
+   "amb_hair_thicket"
   ]
  }
 }

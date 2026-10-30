@@ -1,0 +1,62 @@
+{
+ "_안내": "껍질마다 바이옴 여러 개(docs/spec/02-world-tissue.md 1-1). shells의 slots는 껍질을 나누는 방향 칸이고, 칸 이름이 base면 그 껍질의 원래 조직이다. biomes의 tissue는 FDKTissueRules id(2 지방, 4 수축, 6 연골, 7 옷 뭉치, 8 털), carve는 생성기가 미리 비워 두는 빈 곳의 모양, structures는 그 바이옴에 박힌 사람 구조물. ambient/fog는 그 바이옴에 서 있을 때의 빛과 안개 색, bed는 audio/manifest.json의 배경 소리 이름. 고친 뒤 res://tests/run_biome_tests.gd로 검사.",
+ "noise_seed": 7331,
+ "edge_wobble": 0.12,
+ "shells": [
+  {"slots": ["base", "fat_caves", "base", "base", "fat_caves", "base"], "turn": 2.4},
+  {"slots": ["base", "rib_vault", "gut_folds", "base", "rib_vault", "gut_folds", "base", "base"], "turn": 1.8},
+  {"slots": ["base", "cloth_wads", "hair_thicket", "base", "cloth_wads", "hair_thicket", "base", "base", "cloth_wads", "hair_thicket"], "turn": 2.2}
+ ],
+ "biomes": {
+  "fat_caves": {
+   "shell": 0,
+   "tissue": 2,
+   "carve": {"kind": "blobs", "freq": 0.26, "threshold": 0.38},
+   "ambient": [1.0, 0.8, 0.55], "ambient_energy": 1.0,
+   "fog": [0.13, 0.08, 0.02],
+   "bed": "fat_caves",
+   "structure_depth": 6.0,
+   "structures": [{"kind": "boiler_room", "count": 1}, {"kind": "phone_booth", "count": 1}]
+  },
+  "rib_vault": {
+   "shell": 1,
+   "tissue": 6,
+   "carve": {"kind": "ribs", "freq": 0.12, "threshold": 0.1, "spacing": 2.6, "thick": 0.7},
+   "ambient": [0.72, 0.86, 1.0], "ambient_energy": 0.95,
+   "fog": [0.05, 0.06, 0.1],
+   "bed": "rib_vault",
+   "structure_depth": 11.4,
+   "structures": [{"kind": "subway_turnstile", "count": 2}, {"kind": "elevator_car", "count": 1}]
+  },
+  "gut_folds": {
+   "shell": 1,
+   "tissue": 4,
+   "carve": {"kind": "folds", "freq": 0.2, "threshold": -0.15, "spacing": 2.8, "gap": 0.22},
+   "ambient": [0.82, 1.0, 0.7], "ambient_energy": 0.9,
+   "fog": [0.06, 0.09, 0.02],
+   "bed": "gut_folds",
+   "structure_depth": 11.4,
+   "structures": [{"kind": "school_lockers", "count": 2}, {"kind": "fountain_alcove", "count": 1}]
+  },
+  "cloth_wads": {
+   "shell": 2,
+   "tissue": 7,
+   "carve": {"kind": "blobs", "freq": 0.33, "threshold": 0.55},
+   "ambient": [0.86, 0.88, 0.98], "ambient_energy": 1.05,
+   "fog": [0.07, 0.07, 0.09],
+   "bed": "cloth_wads",
+   "structure_depth": 20.2,
+   "structures": [{"kind": "bus_shelter", "count": 2}, {"kind": "laundromat", "count": 2}]
+  },
+  "hair_thicket": {
+   "shell": 2,
+   "tissue": 8,
+   "carve": {"kind": "tunnels", "freq": 0.16, "threshold": 0.13},
+   "ambient": [1.0, 0.72, 0.48], "ambient_energy": 0.85,
+   "fog": [0.06, 0.03, 0.02],
+   "bed": "hair_thicket",
+   "structure_depth": 20.6,
+   "structures": [{"kind": "street_lamp", "count": 2}, {"kind": "barber_chair", "count": 2}]
+  }
+ }
+}

@@ -227,15 +227,29 @@ func _main_tests(m) -> void:
 	var R := FDKTissueRules
 	# W21/W20 layout: shells get their tissues, membrane band on the boundaries
 	var c: Vector3 = m.RESTROOM_CENTER
+	# shell tissue in the shells' base biome slots; the other slots hold the
+	# biome tissues (decision 0010, run_biome_tests.gd)
 	var counts := {}
+	var base_n := {}
 	for i in range(300):
 		var dir := Vector3(sin(i * 1.7), cos(i * 0.9), sin(i * 2.3)).normalized()
 		for depth in [5.0, 13.0, 21.0, 8.6, 17.6]:
-			var k := "%d:%d" % [int(depth * 10.0), m._world_tissue(c + dir * depth)]
+			var q: Vector3 = c + dir * depth
+			if m._world_tissue(q) == R.MEMBRANE:
+				# the band holds in every slot, biome or not (W21)
+				var mk := "%d:%d" % [int(depth * 10.0), R.MEMBRANE]
+				counts[mk] = int(counts.get(mk, 0)) + 1
+				if depth == 8.6 or depth == 17.6:
+					continue
+			if not m.biomes.is_base(m.biomes.biome_at(q)):
+				continue
+			var dk := int(depth * 10.0)
+			base_n[dk] = int(base_n.get(dk, 0)) + 1
+			var k := "%d:%d" % [dk, m._world_tissue(q)]
 			counts[k] = int(counts.get(k, 0)) + 1
-	_assert(int(counts.get("50:0", 0)) > 200, "W20 the core shell is compressive tissue")
-	_assert(int(counts.get("130:4", 0)) > 200, "W20 the mantle shell is contractile tissue")
-	_assert(int(counts.get("210:1", 0)) == 300, "W20 the surface shell is nerve-dense tissue")
+	_assert(int(counts.get("50:0", 0)) > int(base_n.get(50, 0)) * 2 / 3, "W20 the core shell is compressive tissue")
+	_assert(int(counts.get("130:4", 0)) > int(base_n.get(130, 0)) * 2 / 3, "W20 the mantle shell is contractile tissue")
+	_assert(int(base_n.get(210, 0)) > 100 and int(counts.get("210:1", 0)) == int(base_n.get(210, 0)), "W20 the surface shell is nerve-dense tissue")
 	_assert(int(counts.get("86:3", 0)) == 300 and int(counts.get("176:3", 0)) == 300, "W21 a membrane band marks both shell boundaries")
 	var mixed := 0
 	var core_blade := 0

@@ -77,14 +77,19 @@ func show_line(line_id: String) -> bool:
 	return true
 
 const DATA_PATH := "res://main/data/vent_lines.json"
+## The being's remarks on the biomes and structures the player has been to
+## (same format, kept apart from the main line file).
+const BIOME_DATA_PATH := "res://main/data/vent_biome_lines.json"
 static var _data: Dictionary = {}
 static var _data_loaded := false
 
 static func line_text(line_id: String) -> String:
 	if not _data_loaded:
 		_data_loaded = true
-		if FileAccess.file_exists(DATA_PATH):
-			var parsed = JSON.parse_string(FileAccess.get_file_as_string(DATA_PATH))
+		for path in [BIOME_DATA_PATH, DATA_PATH]:
+			if not FileAccess.file_exists(path):
+				continue
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
 			if parsed is Dictionary:
 				for l in parsed.get("lines", []):
 					if l is Dictionary and l.has("id"):

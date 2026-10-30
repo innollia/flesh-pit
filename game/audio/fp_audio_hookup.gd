@@ -151,6 +151,16 @@ func _on_canary_chirp(urgency: float) -> void:
 	_chirp_cool = 2.5
 	play_event("canary_warn" if urgency > 0.6 else "canary_chirp")
 
+## The bed for where the player stands outside the restroom: the biome's own
+## (read from main.biome_life) when the manifest has it, else the shell's.
+func _body_bed() -> String:
+	var life = main.get("biome_life")
+	if life != null and life.has_method("current_bed"):
+		var b := String(life.current_bed())
+		if b != "" and director.bank != null and director.bank.beds.has(b):
+			return b
+	return director.body_bed_for_shell()
+
 func _hook(sig: String, cb: Callable) -> void:
 	if main.has_signal(sig):
 		main.connect(sig, cb)
@@ -178,6 +188,10 @@ func _process_inner(_delta: float) -> void:
 		director.set_shell(int((player as Node3D).global_position.distance_to(center) / thick))
 	elif director.shell < 0:
 		director.set_shell(0)
+	# out in the flesh the biome's bed layers over the shell's (biomes.json "bed")
+	var want := "restroom" if in_room else _body_bed()
+	if want != director.current_bed:
+		director.set_bed(want, 2.0)
 	# mutation stage from how much of the body has changed (0..1, as the hands)
 	var prog = main.get("progression")
 	if prog != null and prog.has_method("mutation_amount"):

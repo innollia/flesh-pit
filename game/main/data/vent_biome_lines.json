@@ -1,0 +1,181 @@
+{
+ "source": "docs/content/vent-lines.md",
+ "_안내": "환풍구 존재가 플레이어가 처음 다녀온 바이옴(13)·구조물(14)을 두고 하는 혼잣말. ko가 빈 줄은 말하지 않는다. 대사 작성은 안티그래비티에 맡김(2026-10-30 할당량 초과로 비어 있음).",
+ "lines": [
+  {
+   "id": "biome.fat_caves.1",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.fat_caves.2",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.fat_caves.3",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.rib_vault.1",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.rib_vault.2",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.rib_vault.3",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.gut_folds.1",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.gut_folds.2",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.gut_folds.3",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.cloth_wads.1",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.cloth_wads.2",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.cloth_wads.3",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.hair_thicket.1",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.hair_thicket.2",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "biome.hair_thicket.3",
+   "section": "13",
+   "ko": ""
+  },
+  {
+   "id": "struct.boiler_room.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.boiler_room.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.phone_booth.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.phone_booth.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.subway_turnstile.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.subway_turnstile.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.elevator_car.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.elevator_car.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.school_lockers.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.school_lockers.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.fountain_alcove.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.fountain_alcove.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.bus_shelter.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.bus_shelter.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.laundromat.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.laundromat.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.street_lamp.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.street_lamp.2",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.barber_chair.1",
+   "section": "14",
+   "ko": ""
+  },
+  {
+   "id": "struct.barber_chair.2",
+   "section": "14",
+   "ko": ""
+  }
+ ]
+}
