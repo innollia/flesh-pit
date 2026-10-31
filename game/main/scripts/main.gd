@@ -704,6 +704,14 @@ func _setup_environment() -> void:
 		sun.light_energy = 0.12
 		sun.light_color = Color(0.96, 0.97, 1.0)
 
+## The door stands open on the flesh and no cell has ever been torn: the
+## eat button shows (2026-10-31 play: the open door gave no cue to dig).
+func _first_eat_waiting() -> bool:
+	if excavated_cells > 0 or lever_settled or _settling or _seated or restroom.door_open_amount() < 0.5:
+		return false
+	var door_center := restroom.global_position + Vector3(0.0, 1.0, FPRestroom.HALF.z)
+	return player.global_position.distance_to(door_center) < 3.0
+
 func _is_dark_atmosphere(p: Vector3) -> bool:
 	var inside := restroom.contains(p)
 	var door_center := restroom.global_position + Vector3(0.0, 1.0, FPRestroom.HALF.z)
@@ -853,7 +861,9 @@ func _build_settle_camera() -> void:
 	settle_camera.name = "SettleCamera"
 	settle_camera.fov = 66.0
 	settle_camera.near = 0.02
-	settle_camera.cull_mask &= ~FPMirrorReflection.MIRROR_BODY_LAYER
+	# the standing body (waist, legs) and its own hands stay where the player
+	# stood; seen from the bowl they read as a second person beside it
+	settle_camera.cull_mask &= ~FPMirrorReflection.MIRROR_BODY_LAYER & ~BODY_LAYER & ~FPMirrorReflection.HANDS_ROOM_LAYER
 	add_child(settle_camera)
 	var bowl := restroom.bowl_center
 	settle_camera.global_position = bowl + Vector3(-0.06, 0.34, 0.2)
@@ -985,10 +995,14 @@ func _process(delta: float) -> void:
 	# shown everywhere they taught emptying the stomach out in the flesh
 	var settle_spot := _near_toilet() or _near_rest_point() >= 0
 	vomit_button.shown = not _settling and settle_spot and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
-	opening_view.hints.vomit_hint = not _settling and settle_spot and stomach.fill_ratio() >= 1.0
+	# before the first settlement any mouthful is worth bringing back: the key
+	# shows at the bowl however full (2026-10-31 play: back half full, no cue)
+	opening_view.hints.vomit_hint = not _settling and settle_spot and (stomach.fill_ratio() >= 1.0 or (not lever_settled and stomach.fill > 0.0))
+	opening_view.hints.eat_hint = _first_eat_waiting()
 	hands_rig.set_mutation(progression.mutation_amount())
 	hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
 	vent.tick(delta)
+	vent.watch_bowl(delta, toilet.has_contents() and restroom.contains(player.global_position))
 	hand_motions.check_cancel()
 	_watch_tank_lean(delta)
 	hand_motions.tick(delta)

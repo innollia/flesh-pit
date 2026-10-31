@@ -42,6 +42,7 @@ func _process(_d: float) -> bool:
     _trade()
     _more()
     _reactions()
+    _bowl()
     _m.queue_free()
     print("--- %d passed, %d failed ---" % [_passed, _failures])
     quit(1 if _failures > 0 else 0)
@@ -235,6 +236,35 @@ func _hairs() -> void:
     _assert(t.hairs("core") == 1, "hairs: the carried fraction survives a save")
 
 # --- W05 -----------------------------------------------------------------------
+
+## Vomit left in the bowl: the being says to flush (guide.flush.*), muttering
+## before it has heard a flush, telling the player once it has.
+func _bowl() -> void:
+    var g = JSON.parse_string(FileAccess.get_file_as_string("res://main/data/vent_guide_lines.json"))
+    var text := {}
+    for l in g["lines"]:
+        text[String(l["id"])] = String(l["ko"])
+    var v := _new_vent()
+    v.instant_voice = true
+    v.watch_bowl(2.9, true)
+    _assert(v.spoken.is_empty(), "BOWL quiet for the first seconds")
+    v.watch_bowl(0.2, true)
+    _assert(v.spoken.size() == 1 and v.spoken[0] == "guide.flush.unmet.1", "BOWL unmet mutter at 3 s: %s" % [v.spoken])
+    v.watch_bowl(8.0, true)
+    _assert(v.spoken.size() == 2 and v.spoken[1] == "guide.flush.unmet.2", "BOWL second mutter at 11 s")
+    v.watch_bowl(60.0, true)
+    _assert(v.spoken.size() == 2, "BOWL stops after two")
+    v.watch_bowl(0.1, false)
+    v.on_flush()
+    var before := v.spoken.size()
+    v.watch_bowl(3.1, true)
+    _assert(v.spoken.size() == before + 1 and v.spoken[-1] in ["guide.flush.met.1", "guide.flush.met.2"], "BOWL met order after a flush: %s" % [v.spoken[-1]])
+    v.watch_bowl(8.0, true)
+    _assert(v.spoken[-1] == "guide.flush.met.3", "BOWL met second order")
+    for id in v.spoken:
+        if String(id).begins_with("guide."):
+            _assert(text.get(id, "") != "" and FPSubtitles.line_text(id) == text[id], "BOWL line has text: " + id)
+    v.queue_free()
 
 func _new_vent() -> FPVent:
     var v := FPVent.new()

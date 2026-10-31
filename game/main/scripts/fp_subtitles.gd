@@ -80,13 +80,16 @@ const DATA_PATH := "res://main/data/vent_lines.json"
 ## The being's remarks on the biomes and structures the player has been to
 ## (same format, kept apart from the main line file).
 const BIOME_DATA_PATH := "res://main/data/vent_biome_lines.json"
+## The being telling the player what to do next (guide.*, e.g. flush the
+## vomit waiting in the bowl), kept apart the same way.
+const GUIDE_DATA_PATH := "res://main/data/vent_guide_lines.json"
 static var _data: Dictionary = {}
 static var _data_loaded := false
 
 static func line_text(line_id: String) -> String:
 	if not _data_loaded:
 		_data_loaded = true
-		for path in [BIOME_DATA_PATH, DATA_PATH]:
+		for path in [GUIDE_DATA_PATH, BIOME_DATA_PATH, DATA_PATH]:
 			if not FileAccess.file_exists(path):
 				continue
 			var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))

@@ -425,6 +425,34 @@ func _empty_open() -> void:
     else:
         _say(_pick(AWARE))
 
+# --- vomit left in the bowl ---------------------------------------------------
+
+## Seconds of vomit waiting in the bowl (player in the room) before each
+## "flush it" line (guide.flush.*, main/data/vent_guide_lines.json). Before
+## the first flush the being does not know anyone is there and only mutters
+## at the retching below; once it has heard a flush it tells the player.
+const BOWL_NAG_AT := [3.0, 11.0]
+var _bowl_t: float = 0.0
+var _bowl_step: int = 0
+
+func watch_bowl(delta: float, waiting: bool) -> void:
+    if not waiting:
+        _bowl_t = 0.0
+        _bowl_step = 0
+        return
+    _bowl_t += delta
+    if _bowl_step >= BOWL_NAG_AT.size() or _bowl_t < float(BOWL_NAG_AT[_bowl_step]):
+        return
+    _bowl_step += 1
+    if absent_left > 0.0 or final_trade:
+        return
+    if not _first_flush_heard and not _met:
+        _say("guide.flush.unmet.%d" % _bowl_step)
+    elif _bowl_step == 1:
+        _say("guide.flush.met.%d" % (1 + _rand(2)))
+    else:
+        _say("guide.flush.met.3")
+
 ## Conversation milestones survive Continue; transient offers do not become payments.
 func serialize_progress() -> Dictionary:
     return {"met": _met, "first_flush_heard": _first_flush_heard, "paid_ever": _paid_ever, "trade_paid": trade_paid + pile}
