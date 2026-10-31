@@ -12,6 +12,14 @@ var action: String = "fp_interact":
 		if action != value:
 			action = value
 			queue_redraw()
+## The target also takes the right button (fp_pick: tank teeth, lever,
+## vent): with a mouse the glyph is that button, not the side button many
+## mice lack (2026-10-31 play: nobody knew how to take the teeth).
+var pick_ok: bool = false:
+	set(value):
+		if pick_ok != value:
+			pick_ok = value
+			queue_redraw()
 ## "keyboard" | "pad" | "mouse" — follows the last input device used.
 var device: String = "keyboard"
 var _a: float = 0.0
@@ -65,6 +73,7 @@ func _draw() -> void:
 			_draw_pad(p)
 		"mouse":
 			if action == "fp_vomit": _draw_key(p, _key_label())
+			elif pick_ok: _draw_right_button(p)
 			else: _draw_mouse(p)
 		_:
 			_draw_key(p, _key_label())
@@ -108,6 +117,15 @@ func _draw_mouse(p: Vector2) -> void:
 	draw_line(p + Vector2(0, -9), p + Vector2(0, -3), Color(INK, 0.6 * _a), 1.0)
 	draw_line(p + Vector2(-6, -3), p + Vector2(6, -3), Color(INK, 0.6 * _a), 1.0)
 	draw_rect(Rect2(p + Vector2(-8.5, -1), Vector2(3, 5)), Color(INK, 0.95 * _a), true)
+
+func _draw_right_button(p: Vector2) -> void:
+	# Mouse from above, right button filled.
+	var body := Rect2(p - Vector2(7, 10), Vector2(14, 20))
+	draw_rect(body, Color(DARK, 0.55 * _a), true)
+	draw_rect(Rect2(p + Vector2(0, -10), Vector2(7, 8)), Color(INK, 0.95 * _a), true)
+	draw_rect(body, Color(INK, 0.85 * _a), false, 1.5)
+	draw_line(p + Vector2(0, -10), p + Vector2(0, -2), Color(INK, 0.6 * _a), 1.0)
+	draw_line(p + Vector2(-7, -2), p + Vector2(7, -2), Color(INK, 0.6 * _a), 1.0)
 
 func _key_label() -> String:
 	if InputMap.has_action(action):

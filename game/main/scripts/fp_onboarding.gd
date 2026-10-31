@@ -11,6 +11,10 @@ var vomit_hint := false
 var vomit_learned := false
 ## The open door's cue to dig (main sets it until the first cell is torn).
 var eat_hint := false
+## Screen spot of the flush lever before the first flush (INF = none): a
+## pulsing ring with the right button beside it. The being cannot say it:
+## it does not know anyone is there until it hears that flush.
+var lever_at := Vector2.INF
 var _time := 0.0
 
 func _ready() -> void:
@@ -54,6 +58,11 @@ func _draw() -> void:
 	var pulse := 0.45 + 0.55 * (sin(_time * 5.0) * 0.5 + 0.5)
 	if vomit_hint and not vomit_learned:
 		_icon(Vector2(size.x * 0.5, size.y * 0.88), _key("fp_vomit", "V"), pulse)
+	if lever_at.is_finite():
+		var r := 15.0 + 4.0 * pulse
+		draw_arc(lever_at, r + 2.0, 0.0, TAU, 40, Color(0.08, 0.07, 0.07, 0.6 * pulse), 5.0, true)
+		draw_arc(lever_at, r, 0.0, TAU, 40, Color(0.96, 0.93, 0.88, pulse), 2.5, true)
+		_mouse(lever_at + Vector2(r + 26.0, 22.0), false, true, pulse, true)
 	elif eat_hint and not waiting:
 		# above the subtitle band: the being may be talking while the door opens
 		_mouse(Vector2(size.x * 0.5, size.y * 0.68), true, false, pulse, true)

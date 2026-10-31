@@ -5,6 +5,10 @@ const K := preload("res://main/art/fp_art_kit.gd")
 const LEAF_W := 0.40
 const HH := 0.60
 const CY := 1.78
+## Cabinet centre along the wall (local x; the sink is at 0, the toilet at
+## about -1.0). It hangs over the sink only: reaching over the toilet it put
+## the leaning head inside it and hid the tank (2026-10-31 play).
+const CABINET_X := 0.05
 var door_pivot: Node3D
 var door_pivot_right: Node3D
 var door_surface: Node3D
@@ -17,8 +21,8 @@ func _ready() -> void:
 	var ceramic := K.mat("tex_ceramic_128.png", 0.3, false)
 	var st := K.begin()
 	var white := Color(0.94, 0.94, 0.91)
-	# Two mirror doors reach from over the toilet to the shower corner.
-	var cabinet_center := -0.60
+	# Two mirror doors over the basin.
+	var cabinet_center := CABINET_X
 	for xx in [-0.81, 0.81]:
 		K.rbox(st, K.T(Vector3(xx + cabinet_center, CY, 0.11)), Vector3(0.012, HH, 0.11), 0.004, white)
 	for yy in [CY - HH, CY, CY + HH]:
@@ -41,9 +45,10 @@ func _ready() -> void:
 		st = K.begin()
 		K.quad(st, Transform3D.IDENTITY, Vector3(-LEAF_W, CY-HH, 0.01), Vector3(LEAF_W, CY-HH, 0.01), Vector3(LEAF_W, CY+HH, 0.01), Vector3(-LEAF_W, CY+HH, 0.01), Vector3.BACK, Color(0.7, 0.76, 0.8))
 		K.add_mesh(leaf, "Glass", K.finish(st), chrome)
-	# Full ledge follows the left wall under the cabinet as in Photo A.
+	# Ledge under the cabinet, over the basin only (it used to run on over
+	# the toilet tank and hide its lid).
 	st = K.begin()
-	K.rbox(st, K.T(Vector3(cabinet_center, 0.92, 0.07)), Vector3(0.80, 0.016, 0.075), 0.008, white)
+	K.rbox(st, K.T(Vector3(0.0, 0.92, 0.07)), Vector3(0.42, 0.016, 0.075), 0.008, white)
 	K.add_mesh(self, "WallLedge", K.finish(st), ceramic)
 	# Tall single-lever faucet, not separate knob cylinders.
 	st = K.begin()
@@ -64,7 +69,7 @@ func set_focus(_on: bool) -> void:
 	pass
 
 func mirror_center() -> Vector3:
-	return Vector3(-0.6, CY, 0.25)
+	return Vector3(CABINET_X, CY, 0.25)
 
 func reflection_surface() -> Node3D:
 	return door_surface

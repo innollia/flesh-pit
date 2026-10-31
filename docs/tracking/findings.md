@@ -83,3 +83,7 @@
 ## `run_settle_vent_tests.gd` 4건 실패 — 2026-10-31
 
 - "W04 standing up without the lever settles nothing", "hairs: vomiting outside loses the pending hairs", "B4 walking off with teeth: 그 손 이리 와", "B4 put back: ......아."가 실패한다. 첫 순환 넛지 변경을 빼고 돌려도 같은 4건이 실패한다(169 통과/4 실패). B4 두 건은 커밋 안 된 `vent_lines.json` 문구 수정과 관련 있어 보인다. 확인하지 않았다.
+
+## 그 밖의 기존 실패 — 2026-10-31
+
+- `run_interaction_component_tests.gd`는 노드 실행기에서 1초 안에 실패하고, `run_continuation_tests.gd`는 `Belt/Canary/Waistband`가 없다는 스크립트 오류로 끝난다. `run_squeeze_tests.gd`는 "rare spikes stay bounded" 1건, `run_mutation_tests.gd`는 팔뚝 인형 자리 4건이 실패한다. 모두 물통·거울·자세 변경을 빼고 돌려도 같다.

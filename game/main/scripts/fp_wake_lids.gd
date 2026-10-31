@@ -4,6 +4,8 @@ extends CanvasLayer
 ## the eyes start shut, the room is red light through the lids for a
 ## heartbeat or two, then they open with a slow, heavy blink. Same lids as
 ## the Esc screen (fp_pause_lids.gdshader). Input passes through.
+## Also the start screen: the title opens out of shut eyes (play(false):
+## no held beat, no second blink), as it does coming back from Esc.
 
 const HOLD := 0.9
 const OPEN := 0.55
@@ -13,9 +15,11 @@ var lids: ColorRect
 var _mat: ShaderMaterial
 var _t := -1.0
 var _beat := 0.0
+var _hold := HOLD
+var _reblink := REBLINK
 
 func _ready() -> void:
-	layer = 34
+	layer = 37 # over the title (34) and the Esc lids (36)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	lids = ColorRect.new()
 	lids.name = "WakeLids"
@@ -30,7 +34,9 @@ func _ready() -> void:
 func set_eyes(ids: Array, field_angle: float = 0.0) -> void:
 	FPPauseMenu.apply_eyes(_mat, ids, field_angle)
 
-func play() -> void:
+func play(heavy: bool = true) -> void:
+	_hold = HOLD if heavy else 0.25
+	_reblink = REBLINK if heavy else 0.0
 	_t = 0.0
 	_beat = 0.0
 	visible = true
@@ -41,14 +47,14 @@ func playing() -> bool:
 
 ## 1 shut .. 0 open: held shut, opens, half closes again heavily, opens.
 func shut_at(t: float) -> float:
-	if t < HOLD:
+	if t < _hold:
 		return 1.0
-	t -= HOLD
+	t -= _hold
 	if t < OPEN:
 		return 1.0 - smoothstep(0.0, 1.0, t / OPEN)
 	t -= OPEN
-	if t < REBLINK * 2.0:
-		return 0.55 * sin(PI * t / (REBLINK * 2.0))
+	if t < _reblink * 2.0:
+		return 0.55 * sin(PI * t / (_reblink * 2.0))
 	return 0.0
 
 func _process(delta: float) -> void:
@@ -56,7 +62,7 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 	_beat += delta
-	if _t >= HOLD + OPEN + REBLINK * 2.0:
+	if _t >= _hold + OPEN + _reblink * 2.0:
 		_t = -1.0
 		visible = false
 		return

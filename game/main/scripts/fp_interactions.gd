@@ -47,10 +47,10 @@ static func get_candidates(main: Node3D) -> Array:
 	if not main.has_canary:
 		candidates.append(["canary", main.canary_hole_point(), 10.0, 1.25])
 	if main.tank_lid != null and main.tank_lid.can_pick():
-		candidates.append(["tank_lid", main.tank_lid.lid.global_position, 8.0, 1.25])
+		candidates.append(["tank_lid", main.tank_lid.lid.global_position, FPTankLid.AIM_DEGREES, FPTankLid.AIM_REACH])
 	var tank_open: bool = main.tank_lid != null and not main.tank_lid.on_tank
 	if tank_open and (main.progression.teeth > 0 or main.progression.teeth_in_hand > 0):
-		candidates.append(["tank_teeth", main.restroom.tank_art.to_global(Vector3(0, 0.3, 0)), 10.0, 1.25])
+		candidates.append(["tank_teeth", main.restroom.tank_art.to_global(Vector3(0, 0.3, 0)), FPTankLid.AIM_DEGREES + 2.0, FPTankLid.AIM_REACH])
 	var can: Node3D = main.nearest_rest_can(1.4)
 	if can != null:
 		candidates.append(["rest_can", can.global_position, 12.0, 1.4])
@@ -94,8 +94,15 @@ static func handle_settling_input(main: Node3D, entry_frame: int, _entry_action:
 			fresh.append(action)
 	if fresh.is_empty():
 		return "none"
+	# Over the bowl the lever is out of view: the right hand (R / right
+	# click) reaches back and presses it, as it does seated. F presses it
+	# only when the cursor is on it; anything else stands up.
+	for action in ["fp_pick", "key_r", "mouse_right"]:
+		if fresh.has(action):
+			main.flush()
+			return "flush"
 	if is_lever_aimed(main, main.settle_camera):
-		for action in ["fp_interact", "fp_pick", "key_f", "key_r", "mouse_right"]:
+		for action in ["fp_interact", "key_f"]:
 			if fresh.has(action):
 				main.flush()
 				return "flush"

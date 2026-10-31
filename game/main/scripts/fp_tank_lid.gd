@@ -18,14 +18,19 @@ func setup(m: Node3D) -> void:
 func can_pick() -> bool:
 	return not held and main.carried_flesh <= 0.0 and not main.progression.tumor_in_hand() and main.progression.hands.right == ""
 
+## How far off and how wide the tank and its lid read as a target (it was
+## 8 degrees at 1.25 m: players never noticed they could reach it).
+const AIM_DEGREES := 12.0
+const AIM_REACH := 1.6
+
 func aimed() -> bool:
-	return not held and main._interaction_aim(lid.global_position, 8.0, 1.25)
+	return not held and main._interaction_aim(lid.global_position, AIM_DEGREES, AIM_REACH)
 
 func is_aiming_tank() -> bool:
 	if main == null or main.restroom == null or main.restroom.tank_art == null:
 		return false
 	var tank_top: Vector3 = main.restroom.tank_art.to_global(Vector3(0, 0.34, 0))
-	return main._interaction_aim(tank_top, 8.0, 1.25)
+	return main._interaction_aim(tank_top, AIM_DEGREES, AIM_REACH)
 
 func pick() -> bool:
 	if not can_pick():

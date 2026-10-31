@@ -237,8 +237,8 @@ func _hairs() -> void:
 
 # --- W05 -----------------------------------------------------------------------
 
-## Vomit left in the bowl: the being says to flush (guide.flush.*), muttering
-## before it has heard a flush, telling the player once it has.
+## Vomit left in the bowl: once the being has heard a flush it says to
+## flush (guide.flush.*); before that it says nothing.
 func _bowl() -> void:
     var g = JSON.parse_string(FileAccess.get_file_as_string("res://main/data/vent_guide_lines.json"))
     var text := {}
@@ -246,14 +246,8 @@ func _bowl() -> void:
         text[String(l["id"])] = String(l["ko"])
     var v := _new_vent()
     v.instant_voice = true
-    v.watch_bowl(2.9, true)
-    _assert(v.spoken.is_empty(), "BOWL quiet for the first seconds")
-    v.watch_bowl(0.2, true)
-    _assert(v.spoken.size() == 1 and v.spoken[0] == "guide.flush.unmet.1", "BOWL unmet mutter at 3 s: %s" % [v.spoken])
-    v.watch_bowl(8.0, true)
-    _assert(v.spoken.size() == 2 and v.spoken[1] == "guide.flush.unmet.2", "BOWL second mutter at 11 s")
-    v.watch_bowl(60.0, true)
-    _assert(v.spoken.size() == 2, "BOWL stops after two")
+    v.watch_bowl(30.0, true)
+    _assert(v.spoken.is_empty(), "BOWL silent before the first flush (the flush startles it)")
     v.watch_bowl(0.1, false)
     v.on_flush()
     var before := v.spoken.size()

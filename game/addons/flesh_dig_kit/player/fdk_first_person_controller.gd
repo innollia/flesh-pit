@@ -44,6 +44,10 @@ var move_locked: bool = false
 ## back as room returns. Only when even the tightest body has no room is the
 ## motion refused. The capsule really changes, so collision, the host's
 ## movement_filter and any crush check all see the same body.
+## The host turns squeezing off where the room is built, not felt (a
+## furnished room: its fixtures read as a tight gap and twisted the body,
+## the head swaying, by a toilet). The body straightens back up there.
+var squeeze_enabled: bool = true
 var duck: float = 0.0 ## 0..1 lower than the requested stand/crouch height
 var twist: float = 0.0 ## 0..1 hips turned sideways: a thinner capsule
 ## The body's own radius (a game sets it, e.g. mutations); -1 = scene's.
@@ -313,6 +317,10 @@ func _update_posture(motion: Vector3, delta: float) -> void:
 	last_posture_us = Time.get_ticks_usec() - started
 
 func _update_posture_inner(motion: Vector3, delta: float) -> void:
+	if not squeeze_enabled:
+		if squeeze() > 0.0 and not _try_posture(0.0, 0.0):
+			_relax_toward(Vector2.ZERO, delta)
+		return
 	_wall_t = maxf(0.0, _wall_t - delta)
 	_relax_t -= delta
 	var moving := not motion.is_zero_approx()

@@ -1,17 +1,7 @@
 {
  "source": "docs/content/vent-lines.md",
- "_안내": "환풍구 존재가 변기에 토해 둔 것을 물 내리라고 하는 말(fp_vent.gd watch_bowl). unmet은 첫 물내림 전(아직 사람이 있는 줄 모름), met은 그 뒤. ko가 빈 줄은 말하지 않는다. 대사 작성은 안티그래비티에 맡김.",
+ "_안내": "환풍구 존재가 변기에 토해 둔 것을 물 내리라고 하는 말(fp_vent.gd watch_bowl). 첫 물내림 전에는 말하지 않는다(그때는 사람이 있는 줄 모르고, 첫 물내림에 놀란다). ko가 빈 줄은 말하지 않는다. 대사 작성은 안티그래비티에 맡김.",
  "lines": [
-  {
-   "id": "guide.flush.unmet.1",
-   "section": "guide",
-   "ko": "......(뒤척) 토했으면 변기 물 내려야지...... 봉......"
-  },
-  {
-   "id": "guide.flush.unmet.2",
-   "section": "guide",
-   "ko": "......(긁는 소리) 변기 물 왜 안 내려? 레버 소리가 안 나......"
-  },
   {
    "id": "guide.flush.met.1",
    "section": "guide",

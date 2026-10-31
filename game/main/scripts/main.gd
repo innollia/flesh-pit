@@ -704,6 +704,31 @@ func _setup_environment() -> void:
 		sun.light_energy = 0.12
 		sun.light_color = Color(0.96, 0.97, 1.0)
 
+## Where the lever is on screen while the first vomit waits in the bowl and
+## nothing was ever flushed (INF otherwise). Over the bowl the cursor is free
+## and the right button there flushes; standing, the eye must find it.
+func _first_lever_spot() -> Vector2:
+	if lever_settled or vent._first_flush_heard or not toilet.has_contents() or not restroom.contains(player.global_position):
+		return Vector2.INF
+	var rect := get_viewport().get_visible_rect()
+	var cam: Camera3D = settle_camera if _settling else player.camera
+	var p := lever_point()
+	if not cam.is_position_behind(p) and rect.grow(-40.0).has_point(cam.unproject_position(p)):
+		return cam.unproject_position(p)
+	if not _settling:
+		return Vector2.INF
+	# over the bowl the lever is out of view (R reaches back for it): the
+	# hint sits on the screen edge toward it
+	var local := cam.global_basis.inverse() * (p - cam.global_position)
+	var dir := Vector2(local.x, -local.y)
+	if dir.length() < 0.001:
+		dir = Vector2.UP
+	dir = dir.normalized()
+	var c := rect.get_center()
+	var half := rect.size * 0.5 - Vector2(70.0, 60.0)
+	var k := minf(half.x / maxf(absf(dir.x), 0.001), half.y / maxf(absf(dir.y), 0.001))
+	return c + dir * k
+
 ## The door stands open on the flesh and no cell has ever been torn: the
 ## eat button shows (2026-10-31 play: the open door gave no cue to dig).
 func _first_eat_waiting() -> bool:
@@ -990,6 +1015,9 @@ func _process(delta: float) -> void:
 	_update_restroom_front()
 	_update_hands_room_layer()
 	player.climb_enabled = can_climb_at(player.global_position)
+	# the restroom's fixtures are not flesh to squeeze past (2026-10-31 play:
+	# walking up to the tank twisted the body and swayed the head)
+	player.squeeze_enabled = not restroom.contains(player.global_position)
 	stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
 	# the vomit key and mouth show only where vomiting settles (decision 0009):
 	# shown everywhere they taught emptying the stomach out in the flesh
@@ -999,6 +1027,7 @@ func _process(delta: float) -> void:
 	# shows at the bowl however full (2026-10-31 play: back half full, no cue)
 	opening_view.hints.vomit_hint = not _settling and settle_spot and (stomach.fill_ratio() >= 1.0 or (not lever_settled and stomach.fill > 0.0))
 	opening_view.hints.eat_hint = _first_eat_waiting()
+	opening_view.hints.lever_at = _first_lever_spot()
 	hands_rig.set_mutation(progression.mutation_amount())
 	hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
 	vent.tick(delta)
@@ -1256,7 +1285,8 @@ func step_world(delta: float) -> void:
 		FPProfile.begin("interact_ring")
 		var target := interact_target()
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else "fp_interact")
-		interact_ring.set("shown", target != "")
+		interact_ring.set("shown", target != "" and not _settling)
+		interact_ring.set("pick_ok", target in ["tank_teeth", "lever"] or (target == "vent" and vent.is_open))
 		FPProfile.end("interact_ring")
 	FPProfile.begin("death_drop")
 	_step_death_drop(delta)
@@ -1506,7 +1536,7 @@ func _pick() -> void:
 		else: reach_into_vent()
 
 func mirror_point() -> Vector3:
-	return restroom.mirror_art.to_global(Vector3(-0.6, 1.65, 0.24))
+	return restroom.mirror_art.to_global(Vector3((restroom.mirror_art.call("mirror_center") as Vector3).x, 1.65, 0.24))
 
 func sink_point() -> Vector3:
 	return Vector3(-FPRestroom.HALF.x + 0.3, 0.95, FPRestroom.SINK_Z)
@@ -1721,6 +1751,9 @@ func show_title() -> void:
 	mirror_view_right.sync(false, has_canary)
 	title_screen.has_save = has_save_file()
 	title_screen.open()
+	# the start screen opens out of shut eyes, as the Esc screen closes them
+	wake_lids.set_eyes(progression.all_mutations(), restroom_field_angle())
+	wake_lids.play(false)
 	hands_rig.visible = false
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1747,6 +1780,7 @@ func continue_game() -> bool:
 	_begin_opening()
 	if not load_from_disk():
 		return false
+	opening_view.set_eyes(progression.all_mutations(), restroom_field_angle())
 	if ended:
 		# A completed slot must not reload into an inert ending flag.
 		# Keep the run's progress and resume in the restroom.
