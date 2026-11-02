@@ -106,6 +106,9 @@ static var APPRAISE: Array[String] = _pool("APPRAISE", ["appraise.1", "appraise.
 static var UNAWARE: Array[String] = _pool("UNAWARE", ["empty.unaware1", "empty.unaware2", "empty.unaware3", "empty.unaware4", "empty.unaware5"])
 static var AWARE: Array[String] = _pool("AWARE", ["empty.aware1", "empty.aware2", "empty.aware3"])
 static var TAKE: Array[String] = _pool("TAKE", ["pick.take1", "pick.take2", "pick.take3"])
+static var OPEN_HAND: Array[String] = _pool("OPEN_HAND", ["open.hand1", "open.hand2", "open.hand3"])
+## open.teeth2 ("오늘은 빨리 열었네") only this soon after the flush.
+const QUICK_OPEN := 15.0
 
 var is_open: bool = false
 var offers: Array[String] = []
@@ -147,6 +150,9 @@ var _first_flush_heard: bool = false
 var _chain: Array[String] = []
 var _chain_step: int = 0
 var _nag_t: float = 0.0
+## Calling lines voiced through the shut grate since the flush (an open
+## grate hears the flush line, which is not being ignored).
+var _nagged: int = 0
 var _chain_first: bool = false
 var _open_times: Array[float] = []
 var _clock: float = 0.0
@@ -214,11 +220,12 @@ func _say(id: String) -> void:
         return
     if is_chatter(id):
         # chatter never queues behind anything and never interrupts
-        if not _pending.is_empty() or _clock - _voiced_t < CHATTER_QUIET:
+        var steer := is_steering(id) and not _chatter_t.has(id)
+        if not _pending.is_empty() or _clock - _voiced_t < (STEER_QUIET if steer else CHATTER_QUIET):
             return
         if _clock - float(_chatter_t.get(id, -INF)) < CHATTER_REPEAT:
             return
-        if _rand(1000) >= int(CHATTER_CHANCE * 1000.0):
+        if not steer and _rand(1000) >= int(CHATTER_CHANCE * 1000.0):
             return
         _chatter_t[id] = _clock
     else:
@@ -231,6 +238,13 @@ func _say(id: String) -> void:
     if not _pending.is_empty():
         at = maxf(at, float(_pending[_pending.size() - 1][1]) + LINE_GAP)
     _pending.append([id, at])
+
+## Chatter that steers the player back to the teeth (sink, mirror, door,
+## sitting, standing idle): the first time each is said it skips the chance
+## and only needs a short quiet (2026-11-02 play: wandering got no word).
+static var STEER_QUIET: float = _num("STEER_QUIET", 5.0)
+static func is_steering(id: String) -> bool:
+    return id.begins_with("distract.")
 
 static func is_chatter(id: String) -> bool:
     for p in CHATTER_PREFIXES:
@@ -256,8 +270,15 @@ func _ev(key: String, fallback: String) -> String:
     var ids := _pool_raw(e, "대사", [fallback])
     return fallback if ids.is_empty() else ids[_rand(ids.size())] if ids.size() > 1 else ids[0]
 
+## A random line of a pool, never the one this pool gave last time.
+var _last_pick: Dictionary = {}
 func _pick(arr: Array[String]) -> String:
-    return arr[_rand(arr.size())]
+    var key := arr[0] if not arr.is_empty() else ""
+    var id := arr[_rand(arr.size())]
+    if arr.size() > 1 and id == _last_pick.get(key, ""):
+        id = arr[(arr.find(id) + 1 + _rand(arr.size() - 1)) % arr.size()]
+    _last_pick[key] = id
+    return id
 
 # --- time --------------------------------------------------------------------
 
@@ -281,6 +302,7 @@ func tick(delta: float) -> void:
             _nag_t = 0.0
             _say(_chain[_chain_step])
             _chain_step += 1
+            _nagged += 1
     if is_open and pile > 0:
         _pile_t += delta
         if _pile_t >= APPRAISE_DELAY:
@@ -321,6 +343,7 @@ func on_flush() -> void:
         return
     _since_flush = 0.0
     _nag_t = 0.0
+    _nagged = 0
     _chain_step = 0
     _chain_first = not _met and not _first_flush_heard
     if final_trade:
@@ -343,8 +366,9 @@ func on_flush() -> void:
             _say(_chain[0])
             _chain_step = 1
 
-## Open the grate. `teeth_available` = teeth in the tank or in hand.
-func open(teeth_available: int = 0) -> void:
+## Open the grate. `teeth_available` = teeth in the tank or in hand;
+## `in_hand` of them already in the hand; `lid_off` = the tank stands open.
+func open(teeth_available: int = 0, in_hand: int = 0, lid_off: bool = false) -> void:
     if is_open:
         return
     is_open = true
@@ -395,10 +419,17 @@ func open(teeth_available: int = 0) -> void:
         return
     if not _met:
         _met = true
-        _say(_ev("첫_열기", "first.open") if _chain_step <= 1 else _ev("첫_열기_늦게", "first.open_late"))
+        # "open the tank" only when the teeth are still shut in it
+        if in_hand > 0:
+            _say(_ev("첫_열기_손에", "first.open_hand"))
+        elif lid_off:
+            _say(_ev("첫_열기_뚜껑", "first.open_lid"))
+        else:
+            _say(_ev("첫_열기", "first.open") if _chain_step <= 1 else _ev("첫_열기_늦게", "first.open_late"))
         _chain_step = _chain.size()
         return
-    var ignored_all := not _chain.is_empty() and _chain_step >= _chain.size() and _chain_step > 1
+    # every calling line went unanswered through the shut grate
+    var ignored_all := _chain.size() > 1 and _nagged >= _chain.size() - 1
     _chain = []
     _chain_step = 0
     if teeth_available <= 0:
@@ -409,8 +440,13 @@ func open(teeth_available: int = 0) -> void:
         _say(_ev("무시후_열기", "flush.a_late"))
     elif _since_flush < OPEN_EARLY:
         _say(_ev("바로_열기", "open.early"))
+    elif in_hand > 0:
+        _say(_pick(OPEN_HAND))
     else:
-        _say(_pick(OPEN_TEETH))
+        var pool := OPEN_TEETH.duplicate()
+        if _since_flush >= QUICK_OPEN and pool.size() > 1:
+            pool.erase("open.teeth2")
+        _say(_pick(pool))
 
 func _empty_open() -> void:
     _empty_streak += 1
@@ -646,7 +682,9 @@ func _place_line(kind: String, biome_id: String) -> String:
 ## lid_close, grab, walk_with, put_back, walk_away, left_room, returned,
 ## near_vent, spray, hand_in.
 func notice(event: String) -> void:
-    if event != "tank_far" and event != "tank_near":
+    # standing about (near or far from things, under the grate) is not doing
+    # something; it must not keep resetting the idle clock every frame
+    if event not in ["tank_far", "tank_near", "near_vent"]:
         _idle_t = 0.0
     match event:
         "spray":

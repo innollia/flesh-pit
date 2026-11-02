@@ -1,6 +1,6 @@
 {
  "source": "docs/content/vent-lines.md",
- "_안내": "환풍구 존재가 변기에 토해 둔 것을 물 내리라고 하는 말(fp_vent.gd watch_bowl). 첫 물내림 전에는 말하지 않는다(그때는 사람이 있는 줄 모르고, 첫 물내림에 놀란다). ko가 빈 줄은 말하지 않는다. 대사 작성은 안티그래비티에 맡김.",
+ "_안내": "vent_lines.json 밖에 둔 환풍구 존재 대사. guide.flush.met.*: 변기에 토해 둔 것을 물 내리라고 하는 말(fp_vent.gd watch_bowl, 첫 물내림 전에는 말하지 않는다). place.first·first.open_hand·first.open_lid·open.hand*: 2026-11-02 상황 맞춤 대사(vent_rules.json 사건/대사묶음). ko가 빈 줄은 말하지 않는다. 대사 작성은 안티그래비티에 맡김.",
  "lines": [
   {
    "id": "guide.flush.met.1",
@@ -16,6 +16,36 @@
    "id": "guide.flush.met.3",
    "section": "guide",
    "ko": "(쾅 쾅) 왜 물 안 내려?! 변기 레버 당겨! 봉 달라고, 봉!"
+  },
+  {
+   "id": "place.first",
+   "section": "4",
+   "ko": "......하아. (숨 들이켜는 소리) 그래! 봉이다...... 진짜 봉이야."
+  },
+  {
+   "id": "first.open_hand",
+   "section": "1",
+   "ko": "좋아! 좋아... 어? 손에 벌써 봉을 쥐고 있잖아! 얼른, 이리 줘, 응?"
+  },
+  {
+   "id": "first.open_lid",
+   "section": "1",
+   "ko": "좋아! 좋아... 어? 뚜껑 벌써 열려 있네! 거기 든 봉 얼른 집어 와, 응?"
+  },
+  {
+   "id": "open.hand1",
+   "section": "3",
+   "ko": "봉! 봉봉! 손에 꽉 쥐고 왔네! 좋아, 좋아. 그 손 얼른 이리 줘!"
+  },
+  {
+   "id": "open.hand2",
+   "section": "3",
+   "ko": "(달그락) 손에 쥔 거 봉이지? 다 보여. 쥐고만 있지 말고 얼른 줘!"
+  },
+  {
+   "id": "open.hand3",
+   "section": "3",
+   "ko": "이제 알아서 손에 봉 쥐고 오네? 착하다, 착해. 자, 얼른 이리 줘!"
   }
  ]
 }

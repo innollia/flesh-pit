@@ -260,8 +260,11 @@ func _run_params() -> void:
 	_assert(gaps_ok, "replies keep their order")
 	FPVent.CHATTER_CHANCE = 0.0
 	vv.tick(FPVent.CHATTER_REPEAT)
-	vv._say("distract.door")
+	vv._say("tank.approach")
 	_assert(vv.pending_lines().is_empty(), "chatter that loses the chance roll stays unsaid")
+	# steering the player back (distract.*) skips the roll the first time
+	vv._say("distract.door")
+	_assert(vv.pending_lines() == ["distract.door"], "a first steering line is said despite the roll")
 	FPVent.CHATTER_CHANCE = chance
 	vv.queue_free()
 	# the last trade opens only right before the outermost shell

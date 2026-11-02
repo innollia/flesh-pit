@@ -713,7 +713,8 @@ func _first_lever_spot() -> Vector2:
 	var rect := get_viewport().get_visible_rect()
 	var cam: Camera3D = settle_camera if _settling else player.camera
 	var p := lever_point()
-	if not cam.is_position_behind(p) and rect.grow(-40.0).has_point(cam.unproject_position(p)):
+	var inner := rect.grow(-40.0) if rect.size.x > 100.0 and rect.size.y > 100.0 else rect
+	if not cam.is_position_behind(p) and inner.has_point(cam.unproject_position(p)):
 		return cam.unproject_position(p)
 	if not _settling:
 		return Vector2.INF
@@ -725,7 +726,7 @@ func _first_lever_spot() -> Vector2:
 		dir = Vector2.UP
 	dir = dir.normalized()
 	var c := rect.get_center()
-	var half := rect.size * 0.5 - Vector2(70.0, 60.0)
+	var half := (rect.size * 0.5 - Vector2(70.0, 60.0)).max(Vector2.ONE)
 	var k := minf(half.x / maxf(absf(dir.x), 0.001), half.y / maxf(absf(dir.y), 0.001))
 	return c + dir * k
 
@@ -2072,10 +2073,15 @@ func try_pick_tank_item() -> bool:
 
 func use_vent() -> void:
 	if not vent.is_open:
-		vent.open(progression.teeth + progression.teeth_in_hand)
+		vent.open(progression.teeth + progression.teeth_in_hand, progression.teeth_in_hand, tank_lid != null and not tank_lid.on_tank)
 	elif progression.teeth_in_hand > 0:
 		_start_tooth_op("place", "fp_interact")
-	elif vent.offers.is_empty() and progression.tumors.carried_count() > 0:
+	elif not vent.offers.is_empty():
+		# F takes the offer the eye is nearest, as the right button does
+		# (2026-11-02 play: F on the offered items did nothing). Leaving
+		# them is walking off (the being holds them for next time).
+		take_vent_offer()
+	elif progression.tumors.carried_count() > 0:
 		vent.place_weird("tumor") # it will not take it; the tumor stays in hand
 	elif vent.offers.is_empty():
 		vent.close()

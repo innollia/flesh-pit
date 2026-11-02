@@ -180,4 +180,14 @@
 
 종류: boiler_room, phone_booth, subway_turnstile, elevator_car, school_lockers, fountain_alcove, bus_shelter, laundromat, street_lamp, barber_chair.
 
-13·14의 대사 글은 안티그래비티에 맡긴다. 2026-10-30 요청은 할당량 초과로 실패해 줄 자리만 있고 글이 비어 있다. 빈 줄은 말하지 않는다.
+13·14의 대사 글은 안티그래비티가 썼다(2026-11-02). 글은 `vent_biome_lines.json`에만 있다.
+
+## 15. 상황 맞춤 (vent_guide_lines.json)
+
+`vent_lines.json` 밖에 둔 줄이다. 글은 안티그래비티가 썼고 `game/main/data/vent_guide_lines.json`에만 있다.
+
+- `guide.flush.met.1~3`: 변기에 토해 둔 채 물을 안 내리면 3초·11초에 재촉한다. 첫 물내림 전에는 말하지 않는다(그 물내림에 처음 놀라야 하므로).
+- `place.first`: 처음 이빨을 받은 순간의 기쁨만. 값은 바로 뒤의 5절 줄이 매긴다(옛 `place.accept`는 값까지 말해 뒤 줄과 겹쳤다).
+- `first.open_hand`, `first.open_lid`: 첫 만남에 이빨을 이미 손에 쥐었거나 물통 뚜껑이 이미 열려 있을 때. "물통 열어"를 하지 않는다.
+- `open.hand1~3`: 이빨을 손에 들고 열었을 때(3절 대신).
+

@@ -8,6 +8,12 @@ var _passed := 0
 var _m: Node3D
 var _frame := 0
 var _ids: Dictionary = {}
+## Every line id the being may say (vent_lines.json plus the guide and biome
+## files); _ids is vent_lines.json alone, whose ids must all be reached.
+var _known: Dictionary = {}
+## Ids left in vent_lines.json that nothing says any more: place.accept gave
+## way to place.first (vent_guide_lines.json) on 2026-11-02.
+const RETIRED := ["place.accept"]
 ## Line ids reached by the B4 interaction tests.
 var _extra_used: Dictionary = {}
 
@@ -20,9 +26,12 @@ func _assert(c: bool, msg: String) -> void:
 
 func _init() -> void:
     print("=== flesh-pit settlement + vent tests ===")
-    var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://main/data/vent_lines.json"))
-    for l in j["lines"]:
-        _ids[String(l["id"])] = true
+    for path in ["res://main/data/vent_lines.json", "res://main/data/vent_guide_lines.json", "res://main/data/vent_biome_lines.json"]:
+        var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+        for l in j["lines"]:
+            _known[String(l["id"])] = true
+            if path.ends_with("/vent_lines.json") and not String(l["id"]) in RETIRED:
+                _ids[String(l["id"])] = true
     _m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
     get_root().add_child(_m)
 
@@ -43,6 +52,7 @@ func _process(_d: float) -> bool:
     _more()
     _reactions()
     _bowl()
+    _f_take()
     _m.queue_free()
     print("--- %d passed, %d failed ---" % [_passed, _failures])
     quit(1 if _failures > 0 else 0)
@@ -85,7 +95,7 @@ func _more() -> void:
     var bad := 0
     for k in ev.keys():
         for id in ev[k]["대사"]:
-            if not _ids.has(String(id)):
+            if not _known.has(String(id)):
                 bad += 1
     _assert(bad == 0, "B4 every event line id exists")
     var room_c: Vector3 = m.restroom.toilet.global_position
@@ -260,6 +270,25 @@ func _bowl() -> void:
             _assert(text.get(id, "") != "" and FPSubtitles.line_text(id) == text[id], "BOWL line has text: " + id)
     v.queue_free()
 
+## F on the offered items takes one (2026-11-02 play: it did nothing).
+func _f_take() -> void:
+    var m = _m
+    if m.vent.is_open:
+        m.vent.close()
+    m.progression.teeth_in_hand = 20
+    m.use_vent()
+    m.place_teeth_at_vent()
+    var before: Array = m.vent.offers.duplicate()
+    _assert(not before.is_empty(), "FTAKE the being offers something")
+    var junk: int = m.progression.junk_taken
+    var feed: int = m.progression.canary_feed
+    var barriers: int = m.progression.barriers
+    m.use_vent()
+    _assert(m.vent.offers.is_empty(), "FTAKE F takes an offer and the rest go back")
+    var got: bool = m.progression.junk_taken > junk or m.progression.canary_feed > feed or m.progression.barriers > barriers         or m.progression.sprays.count() > 0 or m.progression.tools.owned_ids().size() > 0 or m.progression.has_bag
+    _assert(got, "FTAKE the item really arrives")
+    m.vent.close()
+
 func _new_vent() -> FPVent:
     var v := FPVent.new()
     get_root().add_child(v)
@@ -360,7 +389,7 @@ func _trade() -> void:
 
 func _all_known(v: FPVent) -> bool:
     for id in v.spoken:
-        if not _ids.has(id):
+        if not _known.has(id):
             print("  unknown line id: " + id)
             return false
     return true
@@ -416,7 +445,7 @@ func _reactions() -> void:
     _assert(v2.last_line == "lid.put_back", "W06 putting the teeth back")
     # first payment, then appraisal and amounts
     v2.place_teeth(4, p)
-    _assert("place.accept" in v2.spoken, "W06 the first payment line")
+    _assert("place.first" in v2.spoken, "W06 the first payment line")
     _assert(v2.last_line in ["amount.fair", "amount.lots", "amount.little"], "W06 an amount line follows (%s)" % v2.last_line)
     v2.notice("hover")
     _assert(v2.last_line == "pick.hover", "W06 hovering over offers")
