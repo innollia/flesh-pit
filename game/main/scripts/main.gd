@@ -2832,12 +2832,8 @@ func reach_ending() -> void:
 
 func _on_cell_torn(world_pos: Vector3) -> void:
 	var shell := shell_at(world_pos)
-	excavated_cells += 1
 	_chew_target = Vector3.INF
 	_chew_contact = Vector3.INF
-	tissue_tools.on_cell_torn(world_pos)
-	terrain.queue_visible_tear(world_pos)
-	show_tear(world_pos)
 	# the chewer already put chewer.last_units in the stomach unless carrying
 	if carry_mode and progression.equipped() == "big_saw":
 		swallow_torn(shell, chewer.last_units) # a saw stroke cannot be held (06-tools.md)
@@ -2845,6 +2841,26 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 		add_carried(shell, chewer.last_units)
 	else:
 		progression.on_flesh_eaten(shell, chewer.last_units)
+	tear_effects(world_pos)
+
+## The centre of the terrain cell holding p: where a tear of that cell lands
+## (the chewer reports its cell this way; the M22 alien hand snaps to it).
+func cell_center(p: Vector3) -> Vector3:
+	var cs: float = terrain_config.cell_size
+	return (Vector3(floorf(p.x / cs), floorf(p.y / cs), floorf(p.z / cs)) + Vector3(0.5, 0.5, 0.5)) * cs
+
+## Everything one real tear does to the game past its own cell's dig and
+## flesh, the same for the chewer (_on_cell_torn) and the M22 alien hand
+## (fp_mutation_apply.alien_tear), called once per tear: the dug count, the
+## tool's and mutations' extra cells (big saw, tear_cells), the published hole
+## and what it shows, the nerve it touches and the nerve that grows in after.
+## The caller has already removed the cell's density and booked its flesh.
+func tear_effects(world_pos: Vector3) -> void:
+	var shell := shell_at(world_pos)
+	excavated_cells += 1
+	tissue_tools.on_cell_torn(world_pos)
+	terrain.queue_visible_tear(world_pos)
+	show_tear(world_pos)
 	_update_nerve_anchors()
 	var near := _nearest_nerve(world_pos, 0.7)
 	if near != null:
@@ -2861,6 +2877,8 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 			# Current continuous density validates the root even when a
 			# published collider is stale while excavation is pending.
 			_spawn_nerve(hit.position, terrain._eye_surface_outward(hit))
+	if mutation_apply != null:
+		mutation_apply.on_torn(world_pos)
 
 # --- save/load ------------------------------------------------------------------------
 

@@ -7,6 +7,10 @@ extends SceneTree
 ## - 1-9 M29: a crush death with dormancy sleeps curled up with the eyes shut
 ##   for 30 s, then the eyes open and the body uncurls; no game input acts
 ##   meanwhile, Esc still pauses.
+## - M22 parity (findings 2026-11-03): an alien-hand tear changes the game
+##   exactly as a chewer tear of the same cell does -- dug count, stomach and
+##   hair, nerve touch and regrowth, extra cells, terrain -- in two identical
+##   worlds tearing fat, flesh, nerve and rib cells.
 ## Isolated save (never the player's slot).
 ## Run: godot_console --headless --path game --script res://tests/run_mutation_wire_tests.gd
 
@@ -41,13 +45,181 @@ func _process(_d: float) -> bool:
 		return false # the keys pressed asleep stay "just pressed" this frame
 	if _frame < 9:
 		return false
-	_run_dormancy_wake()
-	_run_plain_crush_not_dormant()
+	if _frame == 9:
+		_run_dormancy_wake()
+		_run_plain_crush_not_dormant()
+		_m.queue_free()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test-mutation-wire.bin"))
+		_m = _new_world()
+		return false
+	# M22 parity: the same tears by the chewer in one world, by the alien
+	# hand in an identical second world
+	if _frame == 11 or _frame == 17:
+		_m.finish_opening()
+		return false
+	if _frame == 15:
+		_chewer_deltas = _run_parity_tears(false)
+		_m.queue_free()
+		_m = _new_world()
+		return false
+	if _frame < 21:
+		return false
+	_compare_parity(_chewer_deltas, _run_parity_tears(true))
 	_m.queue_free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test-mutation-wire.bin"))
 	print("--- %d passed, %d failed ---" % [_passed, _failures])
 	quit(1 if _failures > 0 else 0)
 	return true
+
+var _chewer_deltas: Array = []
+const PARITY_KINDS := [FDKTissueRules.COMPRESSIVE, FDKTissueRules.FAT, FDKTissueRules.COMPRESSIVE, FDKTissueRules.NERVE, FDKTissueRules.CARTILAGE, FDKTissueRules.FAT, FDKTissueRules.COMPRESSIVE, FDKTissueRules.NERVE, FDKTissueRules.CARTILAGE, FDKTissueRules.COMPRESSIVE]
+const PARITY_NAMES := ["flesh at a nerve-regrowth spot", "fat", "flesh", "nerve", "rib", "fat 2", "flesh 2", "nerve 2", "rib 2", "flesh+M07"]
+const PARITY_REGROW := 0 ## the tear aimed where main.tear_effects grows a nerve back
+
+func _new_world() -> Node3D:
+	var w: Node3D = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	w.save_path = "user://test-mutation-wire.bin"
+	w.rest_seed = 1337
+	get_root().add_child(w)
+	return w
+
+## The game state a tear can change, around the torn cell.
+func _game_state(at: Vector3) -> Dictionary:
+	var m = _m
+	var prog: FPProgression = m.progression
+	var cs: float = m.terrain_config.cell_size
+	var cell := Vector3i(floori(at.x / cs), floori(at.y / cs), floori(at.z / cs))
+	var dens := 0.0
+	for z in range(-7, 9):
+		for y in range(-7, 9):
+			for x in range(-7, 9):
+				dens += m.terrain.corner_density_global(cell + Vector3i(x, y, z))
+	return {
+		"dug": float(m.excavated_cells),
+		"stomach": float(m.stomach.fill),
+		"carried": float(m.carried_flesh),
+		"deepest": float(prog.deepest_shell),
+		"hair_common": float(prog.hair_carry.get(FPProgression.COMMON, 0.0)),
+		"hair_pools": float(prog.hair_carry.size()),
+		"points": float(prog.mutation_tree.points(FPProgression.COMMON)),
+		"nerves": float(m.nerves.size()),
+		"nerves_touched": float(m._nerve_cool.size()),
+		"hazards": float(m._hazards.size()),
+		"density": dens,
+		"hole_corners": float(m.terrain._visible_tear_corners.size()),
+	}
+
+## Ten tears into the same wall: flesh where a nerve grows back, fat, flesh,
+## nerve and rib cartilage twice, then flesh with M07 (a second cell behind). A fresh nerve stands at
+## each contact point and the dug count is past the regrowth threshold, so
+## nerve touch and nerve regrowth can both happen. Returns each tear's deltas.
+func _run_parity_tears(alien: bool) -> Array:
+	var m = _m
+	var ma: FPMutationApply = m.mutation_apply
+	var prog: FPProgression = m.progression
+	_place_facing_flesh()
+	m.excavated_cells = 8
+	var out: Array = []
+	var kinds := PARITY_KINDS
+	for i in range(kinds.size()):
+		if i == kinds.size() - 1:
+			prog.mutation_tree._purchased["M07"] = true
+		# each tear into an untouched spot of the wall
+		m.terrain.remesh_all()
+		if i == PARITY_REGROW:
+			_aim_at_regrowth_spot()
+		else:
+			_aim(0.25 * float((i - 1) % 5 - 2), -0.15 + (0.3 if i >= 6 else 0.0))
+		var target: Vector3 = ma._alien_target()
+		_assert(target != Vector3.INF, "parity fixture: a cell in reach (%s, tear %d)" % ["alien" if alien else "chewer", i])
+		if target == Vector3.INF:
+			return out
+		var at: Vector3 = _cell_center(target)
+		var rc: Array = m.terrain.world_to_cell(at)
+		(m.terrain.get_or_create_chunk(rc[0]) as FDKChunk).set_tissue_at_cell(rc[1].x, rc[1].y, rc[1].z, kinds[i])
+		# a nerve rooted in the flesh right beside the cell (its root stays in
+		# flesh after the tear), in reach of the tear's nerve touch
+		var dir: Vector3 = m.player.get_look_ray()[1]
+		var side: Vector3 = dir.cross(Vector3.UP).normalized()
+		var up: Vector3 = side.cross(dir).normalized()
+		var cs: float = m.terrain_config.cell_size
+		for off in [side, -side, -up, up]:
+			var root: Vector3 = at + (off as Vector3) * cs * 1.3
+			if m.terrain.density_at(root - dir * 0.15) >= 0.9 and m.terrain.density_at(root + dir * 0.15) >= 0.9:
+				# as main._spawn_nerve sets one up, but in the tree at once
+				var n := FDKNerveStalk.new()
+				n.length = 0.5
+				n.terrain = m.terrain
+				n.place(root, -dir)
+				if n.is_anchored():
+					m.add_child(n)
+					n.disturbed.connect(m._on_nerve_disturbed)
+					m.nerves.append(n)
+					break
+				n.free()
+		var s0 := _game_state(at)
+		if alien:
+			_assert(ma.alien_tear(), "parity: the alien hand tears tear %d" % i)
+		else:
+			var torn: Array = []
+			var cb := func(p: Vector3) -> void: torn.append(p)
+			m.chewer.cell_torn.connect(cb)
+			m.chewer.try_start(at)
+			m.chewer.process_chew(1000.0)
+			m.chewer.stop()
+			m.chewer.cell_torn.disconnect(cb)
+			_assert(torn.size() == 1 and torn[0].distance_to(at) < 0.001, "parity: the chewer tears tear %d at the same cell" % i)
+		var s1 := _game_state(at)
+		var d := {}
+		for k in s0.keys():
+			d[k] = float(s1[k]) - float(s0[k])
+		out.append(d)
+	prog.mutation_tree._purchased.erase("M07")
+	return out
+
+func _cell_center(p: Vector3) -> Vector3:
+	var cs: float = _m.terrain_config.cell_size
+	return (Vector3(floorf(p.x / cs), floorf(p.y / cs), floorf(p.z / cs)) + Vector3(0.5, 0.5, 0.5)) * cs
+
+func _aim(yaw: float, pitch: float) -> void:
+	_m.player.rotation.y = PI + yaw
+	_m.player.camera_pivot.rotation.x = pitch
+	_m.player.force_update_transform()
+
+## The first tear: a cell whose spot (hash) grows a nerve once past the dug
+## threshold, with a small pocket carved into the flesh beside it, on the
+## side main.tear_effects looks for a wall to root the new nerve in.
+func _aim_at_regrowth_spot() -> void:
+	var m = _m
+	_aim(-0.5, -0.15)
+	var t: Vector3 = m.mutation_apply._alien_target()
+	if t == Vector3.INF:
+		return
+	var at: Vector3 = _cell_center(t)
+	var dir := Vector3(1, 0, 0) if FDKLowPoly.hash3(int(at.z * 2.0), 1, 2) > 0.5 else Vector3(-1, 0, 0)
+	m.terrain.carve_sphere(at + dir * 1.75, 0.75)
+	m.terrain.remesh_all()
+
+func _compare_parity(chew: Array, alien: Array) -> void:
+	var nt := PARITY_KINDS.size()
+	_assert(chew.size() == nt and alien.size() == nt, "parity: %d tears in each world (%d / %d)" % [nt, chew.size(), alien.size()])
+	var names := PARITY_NAMES
+	var touched := 0.0
+	var grown := 0.0
+	for i in range(mini(chew.size(), alien.size())):
+		var c: Dictionary = chew[i]
+		var a: Dictionary = alien[i]
+		touched += float(c.nerves_touched)
+		if i == PARITY_REGROW:
+			grown = float(c.nerves)
+		_assert(float(c.dug) == 1.0 and float(c.stomach) > 0.0, "parity reference: the chewer's %s tear digs one cell and feeds the stomach" % names[i])
+		for k in c.keys():
+			_assert(absf(float(c[k]) - float(a[k])) <= 1e-4 * maxf(1.0, absf(float(c[k]))), "M22 parity %s: %s changes the same (chewer %.4f, alien %.4f)" % [names[i], k, float(c[k]), float(a[k])])
+	_assert(touched > 0.0, "parity fixture: at least one tear touched a nerve (%d)" % int(touched))
+	_assert(grown > 0.0, "parity fixture: the regrowth-spot tear grew a nerve back (%d)" % int(grown))
+	if chew.size() == nt:
+		_assert(float(chew[nt - 1].stomach) > float(chew[2].stomach) * 1.5, "parity fixture: M07 took a second cell (%.2f vs %.2f)" % [float(chew[nt - 1].stomach), float(chew[2].stomach)])
+	print("parity: nerves grown %d, touched %d" % [int(grown), int(touched)])
 
 ## What a tear shows, before -> after (deltas).
 func _tear_marks() -> Dictionary:
@@ -107,7 +279,7 @@ func _run_alien_tear_gore() -> void:
 	var d := _tear_marks()
 	_assert(is_equal_approx(d.blood - c.blood, b.blood - a.blood), "M22 the alien tear bloodies the hands like a chewer tear (%.3f vs %.3f)" % [d.blood - c.blood, b.blood - a.blood])
 	_assert(d.gore - c.gore == b.gore - a.gore, "M22 the alien tear sprays the same gore burst (%d vs %d)" % [d.gore - c.gore, b.gore - a.gore])
-	_assert(d.snap == 0.0 and d.jolt == 0.0 and _has_wound_at(at), "M22 the alien tear snaps the rim, jolts the view and leaves the wound")
+	_assert(d.snap == 0.0 and d.jolt == 0.0 and _has_wound_at(_cell_center(at)), "M22 the alien tear snaps the rim, jolts the view and leaves the wound")
 	_assert(d.strands >= c.strands and d.strands > 0, "M22 the alien tear snaps strands")
 	# one and the same dig: eaten units = removed density, hole published
 	var units: float = m.stomach_config.units_for_removed(sum0 - m.terrain.cell_corner_sum(at))

@@ -347,12 +347,12 @@ func _run_alien_hand() -> void:
 	# M07: the extra cell behind the chewer's cell is published the same way
 	prog.mutation_tree._purchased["M07"] = true
 	var dir: Vector3 = m.player.get_look_ray()[1]
+	m.terrain.remesh_all() # the collider shows the M22 hole (the target skips air)
 	var first: Vector3 = ma._alien_target()
 	var extra: Vector3 = first + dir * m.terrain_config.cell_size
 	_assert(first != Vector3.INF and m.terrain.density_at(extra) >= 0.5, "M07 fixture: two cells of flesh in a row")
-	m.terrain.remesh_all()
 	m.terrain.dig_at(first, 1.0)
-	ma._on_torn(first)
+	ma.on_torn(first)
 	_assert(m.terrain.density_at(extra) < 0.5 and _tear_queued(m, extra), "M07 the extra cell is torn and published at the first tear render")
 	prog.mutation_tree._purchased.erase("M07")
 	m.player.global_position = pos0

@@ -54,7 +54,6 @@ func setup(main: Node3D) -> void:
 	m.player.config = m.player.config.duplicate()
 	var c: Resource = m.player.config
 	_base_speed = {"walk_speed": c.walk_speed, "crouch_speed": c.crouch_speed, "climb_speed": c.climb_speed}
-	m.chewer.cell_torn.connect(_on_torn)
 	m.died.connect(_on_died)
 	codex = (load("res://main/art/fp_tumor_codex.gd") as GDScript).new()
 	codex.name = "TumorCodex"
@@ -431,17 +430,24 @@ func _alien_target() -> Vector3:
 		return Vector3.INF
 	var dir: Vector3 = m.player.get_look_ray()[1]
 	var at: Vector3 = hit.position + dir * m.terrain_config.cell_size * 0.5
-	return at if m.terrain.is_edible_at(at) else Vector3.INF
+	# like the chewer, only a cell that still has flesh (the collider can lag
+	# a fresh hole until the next publish)
+	if m.terrain.density_at(at) < m.terrain_config.iso_level or not m.terrain.is_edible_at(at):
+		return Vector3.INF
+	return at
 
 ## M22 / tests: tear one cell in reach with the left hand, even when full.
+## The cell goes straight down (spec: it eats), then the tear does to the
+## game exactly what a chewer tear does (main.tear_effects: dug count, extra
+## cells, published hole and its gore, nerve touch and regrowth); the sound
+## hangs off alien_hand_tore in game/audio.
 func alien_tear() -> bool:
 	var at := _alien_target()
 	if at == Vector3.INF:
 		return false
+	at = m.cell_center(at) # where the chewer reports the same cell's tear
 	m.swallow_torn(m.shell_at(at), m.eat_cell_at(at))
-	# the same bloody hole and hands a chewer tear shows (the sound hangs off
-	# alien_hand_tore in game/audio)
-	m.show_tear(at)
+	m.tear_effects(at)
 	alien_tears += 1
 	alien_since_tear = 0.0
 	alien_hand_tore.emit()
@@ -457,8 +463,9 @@ func gulp() -> void:
 	_gulp_t = -1.0
 	gulped.emit()
 
-## tear_cells > 1 (M07, M14): each tear also takes the next cells behind it.
-func _on_torn(world_pos: Vector3) -> void:
+## tear_cells > 1 (M07, M14): each tear also takes the next cells behind it
+## (main.tear_effects, for the chewer's and the alien hand's tears alike).
+func on_torn(world_pos: Vector3) -> void:
 	if _extra_tearing:
 		return
 	var n: int = m.progression.tear_cells() - 1
