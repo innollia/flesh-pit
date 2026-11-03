@@ -1180,15 +1180,16 @@ func can_climb_at(at: Vector3) -> bool:
 
 func _handle_actions() -> void:
 	if tank_lid.held:
+		# the lid fills the right hand: F (or that hand, FPHandActions) puts it down
 		if Input.is_action_just_pressed("fp_interact"):
-			tank_lid.drop()
+			FPInteractions.press(self, FPInteractions.SOURCE_INTERACT)
 		return
 	if Input.is_action_just_pressed("fp_carry"):
 		toggle_carry()
 	if Input.is_action_just_pressed("fp_vomit"):
 		request_vomit()
 	if Input.is_action_just_pressed("fp_interact"):
-		_interact()
+		FPInteractions.press(self, FPInteractions.SOURCE_INTERACT)
 	if Input.is_action_just_pressed("fp_barrier"):
 		place_barrier()
 	if Input.is_action_just_pressed("fp_eat_tumor"):
@@ -1216,7 +1217,11 @@ func _chew_step(delta: float) -> void:
 		terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
+		set_hand_reach(Vector3.INF)
 		return
+	# The hands reach the flesh actually held, wherever it sits on screen
+	# (looking down they used to clench at a fixed spot, or swung aside).
+	set_hand_reach(hit.position)
 	# A locked grab must still have real unoccluded contact. Nearby collider
 	# motion is allowed without restarting progress on the same cell.
 	if chewer.is_chewing() and _chew_target != Vector3.INF and _chew_contact != Vector3.INF and _looking_at(_chew_contact, 12.0, progression.reach()) and terrain.density_at(_chew_target) >= terrain_config.iso_level and _chew_target.distance_to(hit.position) <= terrain_config.cell_size * 1.5:
@@ -1234,6 +1239,20 @@ func _chew_step(delta: float) -> void:
 	else:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
+
+## Point both hand rigs (plain and mutation) at the grabbed flesh, or clear
+## it with Vector3.INF. The rig only reads the point; it never decides a tear.
+func set_hand_reach(world_pos: Vector3) -> void:
+	var rigs: Array = [hands_rig]
+	if art_hookup != null and art_hookup.mut_hands != null:
+		rigs.append(art_hookup.mut_hands.call("rig"))
+	for rig in rigs:
+		if rig == null:
+			continue
+		if world_pos == Vector3.INF:
+			rig.clear_reach_point()
+		else:
+			rig.set_reach_point(world_pos)
 
 ## Tear out the cell at p and return the flesh units that came away (never
 ## more than its corners actually lost, see FDKStomachConfig). Publishes the
@@ -1294,9 +1313,12 @@ func step_world(delta: float) -> void:
 	if interact_ring != null:
 		FPProfile.begin("interact_ring")
 		var target := interact_target()
-		interact_ring.set("action", "fp_vomit" if target == "toilet" else "fp_interact")
+		# the glyph names the input that acts (FPInteractions.plan): the belt
+		# hooks take only the hand buttons; every other target takes F and
+		# the right button alike
+		interact_ring.set("action", "fp_vomit" if target == "toilet" else ("fp_pick" if target == "belt" else "fp_interact"))
 		interact_ring.set("shown", target != "" and not _settling)
-		interact_ring.set("pick_ok", target in ["tank_teeth", "lever"] or (target == "vent" and vent.is_open))
+		interact_ring.set("pick_ok", target != "" and target != "toilet")
 		FPProfile.end("interact_ring")
 	FPProfile.begin("death_drop")
 	_step_death_drop(delta)
@@ -1505,12 +1527,30 @@ func _looking_at(p: Vector3, deg: float, dist: float) -> bool:
 		return false
 	return to.normalized().dot(ray[1]) > cos(deg_to_rad(deg))
 
+## F on whatever is aimed (tests and old callers; normal input goes through
+## FPInteractions.press, which also applies the one-target-per-frame rule).
 func _interact() -> void:
 	var target := interact_target()
 	# F settles at the toilet like V does, standing by it without aiming
 	if target == "" and _near_toilet() and (stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents()):
 		start_settlement()
 		return
+	if target != "" and target != "belt":
+		activate_target(target, FPInteractions.SOURCE_INTERACT)
+
+## The right hand on whatever is aimed (same, for the right-hand button).
+func _pick() -> void:
+	var target := interact_target()
+	if target != "" and target != "belt":
+		activate_target(target, FPInteractions.SOURCE_RIGHT)
+
+## Act on one aimed target. `source` is FPInteractions.SOURCE_INTERACT (F)
+## or SOURCE_RIGHT (the right hand); they differ only where the hand itself
+## does the work: at the tank the right hand takes or puts back a tooth
+## without leaning in, and at the open vent it hands over teeth or takes
+## the offer.
+func activate_target(target: String, source: String) -> void:
+	var right := source == FPInteractions.SOURCE_RIGHT
 	match target:
 		"tank_lid":
 			if tank_lid.held: tank_lid.drop()
@@ -1520,11 +1560,20 @@ func _interact() -> void:
 			vent.notice("mirror")
 		"canary": begin_canary_pull()
 		"tank_teeth":
-			# lean in over the tank, then pick teeth one at a time
-			hand_motions.play_tank_lean()
-			_start_tooth_op("take", "fp_interact")
+			if right:
+				_start_tooth_op("back" if progression.teeth_in_hand > 0 else "take", "fp_pick")
+			else:
+				# lean in over the tank, then pick teeth one at a time
+				hand_motions.play_tank_lean()
+				_start_tooth_op("take", "fp_interact")
 		"lever": pull_lever()
-		"vent": use_vent()
+		"vent":
+			if right and vent.is_open:
+				if progression.teeth_in_hand > 0: _start_tooth_op("place", "fp_pick")
+				elif not vent.offers.is_empty(): take_vent_offer()
+				else: reach_into_vent()
+			else:
+				use_vent()
 		"sink": wash_hands()
 		"toilet":
 			if stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents():
@@ -1533,17 +1582,6 @@ func _interact() -> void:
 		"door": restroom.set_door_open(not restroom.is_door_open())
 		"tumor": pick_up_tumor()
 		"rest_can": take_rest_can()
-
-func _pick() -> void:
-	var target := interact_target()
-	if target == "lever":
-		pull_lever()
-	elif target == "tank_teeth":
-		_start_tooth_op("back" if progression.teeth_in_hand > 0 else "take", "fp_pick")
-	elif target == "vent" and vent.is_open:
-		if progression.teeth_in_hand > 0: _start_tooth_op("place", "fp_pick")
-		elif not vent.offers.is_empty(): take_vent_offer()
-		else: reach_into_vent()
 
 func mirror_point() -> Vector3:
 	return restroom.mirror_art.to_global(Vector3((restroom.mirror_art.call("mirror_center") as Vector3).x, 1.65, 0.24))
@@ -1982,7 +2020,7 @@ func scoop_teeth() -> int:
 	if n > 0 and first:
 		vent.notice("grab")
 		if not hand_motions.tank_leaning():
-			hand_motions.play_scoop()
+			hand_motions.play_scoop(restroom.tank_art.to_global(Vector3(0, 0.3, 0)) if restroom.tank_art != null else Vector3.INF)
 	return n
 
 ## One tooth from the hand back into the tank.

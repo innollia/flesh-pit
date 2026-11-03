@@ -402,9 +402,13 @@ func _run_session_e(m) -> void:
     var eye0: float = m.player.camera_pivot.position.y
     _assert(not m.has_canary and m.begin_canary_pull() and m.is_pulling_canary(), "W03 looking at the hole starts the prone pull")
     var lowest := eye0
-    for i in range(40):
+    # the pull is FPCanaryPull.DURATION (5.6 s since the prone retrieval),
+    # not the old 1.6 s: step it to the end instead of a fixed 2 s
+    var steps := 0
+    while m.is_pulling_canary() and steps < int(ceil(FPCanaryPull.DURATION / 0.05)) + 10:
         m._step_canary_pull(0.05)
         lowest = minf(lowest, m.player.camera_pivot.position.y)
+        steps += 1
     _assert(lowest < eye0 - 0.3, "W03 the eye sinks to the floor while pulling (%.2f -> %.2f)" % [eye0, lowest])
     _assert(m.has_canary and not m.is_pulling_canary() and absf(m.player.camera_pivot.position.y - eye0) < 0.01, "W03 the canary is pocketed and the player gets back up")
     _assert(not m.begin_canary_pull(), "W03 only one canary at a time")

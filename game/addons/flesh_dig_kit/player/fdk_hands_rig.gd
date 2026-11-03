@@ -75,7 +75,20 @@ const GRIP_RAISE_TIME := 0.26
 ## Where the hand goes below the frame to take or leave the tool.
 const GRIP_DROP := Vector3(-0.04, -0.34, 0.08)
 ## 0..1: both hands swing out to the lower sides (looking down at the belt).
+## Only the resting hands go aside: a grab, tear or slip comes back in to
+## the flesh it works on (looking down at the floor used to tear it with
+## both hands swung out below the screen).
 var aside: float = 0.0
+## The grabbed point (world), set by the game while a grab holds real
+## contact (Vector3.INF = none). The leading hand reaches toward it and
+## tears from there instead of a fixed spot in front of the camera.
+var _reach_world: Vector3 = Vector3.INF
+## Hand root to fingertip in the grab pose (m): the root stops this far short
+## of the point so the curled fingers, not the wrist, meet the flesh.
+const REACH_TIP := 0.16
+## Root depth range in front of the eye for a reach (m), the arm's span.
+const REACH_MIN := 0.3
+const REACH_MAX := 0.56
 const ASIDE_OFFSET := Vector3(0.2, -0.16, 0.14)
 ## Base/max scale of the carried-pile mesh (built at radius ~0.09/0.05/0.045m
 ## in _build_pile). 0.42 keeps the base pile within a hand's width and under
@@ -165,6 +178,42 @@ func on_grab_refused() -> void:
     state = HandState.SLIP
     _state_time = 0.0
     _chew = 0.0
+
+## Where the grab touches the flesh (world). Call every frame the contact is
+## real; clear_reach_point() when the grab ends. The rig never reads the
+## terrain itself.
+func set_reach_point(world_pos: Vector3) -> void:
+    _reach_world = world_pos
+
+func clear_reach_point() -> void:
+    _reach_world = Vector3.INF
+
+func has_reach_point() -> bool:
+    return _reach_world != Vector3.INF
+
+## Rig-local root position for a hand reaching the grabbed point, or INF.
+func reach_goal(side: float, is_lead: bool) -> Vector3:
+    if _reach_world == Vector3.INF or not is_inside_tree():
+        return Vector3.INF
+    var local := to_local(_reach_world)
+    var d := local.length()
+    if d < 0.01 or local.z > -0.05:
+        return Vector3.INF
+    var dir := local / d
+    var goal := dir * clampf(d - REACH_TIP, REACH_MIN, REACH_MAX) + Vector3(0.05 * side, -0.06, 0.0)
+    if not is_lead:
+        # the other hand braces beside it, a little behind
+        goal = goal.lerp(Vector3(0.12 * side, -0.1, -0.47), 0.6)
+    return goal
+
+## 1 while the hands rest (they may swing aside), 0 while they work flesh.
+func _aside_weight(t: float) -> float:
+    match state:
+        HandState.GRAB, HandState.TEAR, HandState.SLIP:
+            return 0.0
+        HandState.RELEASE:
+            return _ease(t / RELEASE_TIME)
+    return 1.0
 
 func animate_chew(ratio: float, cell: Vector3i) -> void:
     on_chew_progress(ratio, cell)
@@ -314,7 +363,10 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["wrist_pitch"] = lerpf(idle["wrist_pitch"], 62.0, reach)
             p["wrist_yaw"] = lerpf(idle["wrist_yaw"], 6.0 * side, reach)
             p["wrist_roll"] = lerpf(idle["wrist_roll"], -12.0 * side, reach)
-            var pos: Vector3 = (idle["pos"] as Vector3).lerp(Vector3(0.12 * side, -0.1, -0.47), reach)
+            var goal := reach_goal(side, is_lead)
+            if goal == Vector3.INF:
+                goal = Vector3(0.12 * side, -0.1, -0.47)
+            var pos: Vector3 = (idle["pos"] as Vector3).lerp(goal, reach)
             var r := _chew * reach
             p["f1"] += 14.0 * r
             p["f2"] += 12.0 * r
@@ -343,7 +395,11 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["wrist_yaw"] = 6.0 * side
             p["wrist_roll"] = -14.0 * side - 22.0 * side * jerk
             var lead_scale := 1.0 if is_lead else 0.35
-            p["pos"] = Vector3(0.135 * side, -0.12, -0.4) + Vector3(0.035 * side, -0.06, 0.125) * jerk * lead_scale
+            # torn from where the hand held it, not from a fixed spot
+            var held := reach_goal(side, is_lead)
+            if held == Vector3.INF:
+                held = Vector3(0.135 * side, -0.12, -0.4)
+            p["pos"] = held + Vector3(0.035 * side, -0.06, 0.125) * jerk * lead_scale
         HandState.SLIP:
             var st := clampf(t / SLIP_TIME, 0.0, 1.0)
             var lead_k := 1.0 if is_lead else 0.6
@@ -375,7 +431,8 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["pos"] = Vector3(0.15 * side, -0.14, -0.44).lerp(idle["pos"], e)
             p["wrist_pitch"] = lerpf(45.0, idle["wrist_pitch"], e)
     var bob: Vector3 = _bob * bob_follow
-    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side - bob.x * 0.6, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside
+    var away := aside * _aside_weight(t)
+    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side - bob.x * 0.6, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * away
     if side < 0.0 and hold_left:
         # the empty hand drops out of view to take the tool
         p["pos"] = (p["pos"] as Vector3) + GRIP_DROP * _ease(_grip_t)

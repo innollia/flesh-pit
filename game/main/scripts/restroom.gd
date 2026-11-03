@@ -30,6 +30,10 @@ const CANARY_HOLE := Vector3(-HALF.x, 0.09, SINK_Z - 0.21)
 const CANARY_HOLE_HALF := Vector2(0.065, 0.07) # half width (z), half height
 ## Bottom edge of the ceramic apron under the basin.
 const APRON_BOTTOM := 0.34
+## Collision of the visible basin bowl: from the wall out to its rim, and
+## down to where its rounded underside is still most of the bowl's width.
+const SINK_BOWL_OUT := 0.47
+const SINK_BOWL_BOTTOM := 0.62
 ## Render layer of every restroom mesh (layer 11 only, not the default 1).
 ## Lights that must stay out of the room (the rest containers' green lamps,
 ## which sit in the flesh just past the thin -X / +X walls and have no
@@ -722,7 +726,11 @@ func _build_collision() -> void:
         [Vector3((h.x + DOOR_HALF_W) * 0.5, h.y, h.z + t * 0.5), Vector3(h.x - DOOR_HALF_W, 2 * h.y, t)],
         [Vector3(0, (DOOR_H + 2 * h.y) * 0.5, h.z + t * 0.5), Vector3(2 * DOOR_HALF_W, 2 * h.y - DOOR_H, t)],
         [toilet.transform * Vector3(0, 0.4, 0.2), Vector3(0.5, 0.8, 0.45)],
-        [Vector3(-h.x + 0.30, (APRON_BOTTOM + 0.9) * 0.5, SINK_Z), Vector3(0.60, 0.9 - APRON_BOTTOM, 0.65)],
+        # the wall-hung basin's bowl (fp_mirror Basin: rim 0.885 m, 0.46 m out
+        # from the wall, 0.34 m each side). The ceramic apron that once hung
+        # to APRON_BOTTOM is no longer built; its full-height box stayed and,
+        # unseen, hid the canary hole from every crouched aim in front of it.
+        [Vector3(-h.x + SINK_BOWL_OUT * 0.5, (SINK_BOWL_BOTTOM + 0.9) * 0.5, SINK_Z), Vector3(SINK_BOWL_OUT, 0.9 - SINK_BOWL_BOTTOM, 0.68)],
         [Vector3(-h.x + 0.11, 1.78, SINK_Z - 0.05), Vector3(0.22, 1.20, 1.65)], # fp_mirror CABINET_X
         [Vector3(bath_right - BATH_LENGTH * 0.5, 0.28, -h.z + 0.43), Vector3(BATH_LENGTH, 0.56, 0.86)],
     ]

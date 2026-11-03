@@ -4,7 +4,9 @@ var m: Node3D
 var passed := 0
 var failed := 0
 func _init() -> void:
-	if not OS.get_user_data_dir().contains("flesh-pit-restoration-"):
+	# The node runner's isolated copy sets its own save path before Main joins.
+	var isolated_runner: bool = str(get_script().resource_path).replace("\\", "/").contains("/.dryforge/evidence/checks/")
+	if not OS.get_user_data_dir().contains("flesh-pit-restoration-") and not isolated_runner:
 		quit(2)
 		return
 	m = load("res://main/scenes/main.tscn").instantiate()

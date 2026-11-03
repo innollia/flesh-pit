@@ -1,9 +1,24 @@
 class_name FPHandActions
 extends RefCounted
 
+## The two hand buttons (LMB/E left, RMB/R right). What a fresh press does
+## is decided in one place, FPInteractions.plan/press (lid, belt hook, aimed
+## target, held item, dig, in that order). A press that acted on the lid,
+## the belt or a target keeps its hand blocked until released, so holding
+## the button never turns into digging or a second action; so does a used
+## item (a spent can leaves a bare hand that must not start digging), except
+## the blender, which charges while held.
+
 var m: Node3D
 var blocked := [false, false]
+## Process frame of the press each hand last acted on: one press, one action,
+## however often tick runs in that frame.
+var _press_frame := [-1, -1]
+## A tick saw the button up since that press (a new press in the same frame
+## is then a real second press, as tests drive it).
+var _released := [true, true]
 const ACTIONS := ["fdk_eat", "fp_pick"]
+const SOURCES := [FPInteractions.SOURCE_LEFT, FPInteractions.SOURCE_RIGHT]
 
 func _init(main: Node3D) -> void:
 	m = main
@@ -12,26 +27,29 @@ func tick(delta: float) -> void:
 	var chewing := false
 	for hand in range(2):
 		var action: String = ACTIONS[hand]
-		if not Input.is_action_pressed(action):
+		# a quick click can press and release between two frames: it still
+		# counts once (it used to be dropped when the frame came late)
+		var down := Input.is_action_pressed(action)
+		var fresh: bool = Input.is_action_just_pressed(action) and (_press_frame[hand] != Engine.get_process_frames() or (down and _released[hand]))
+		if not down and not fresh:
 			blocked[hand] = false
+			_released[hand] = true
 			continue
-		if blocked[hand] or m.tank_lid.held or m.belt_swap.busy():
+		if blocked[hand] or m.belt_swap.busy():
 			continue
-		if Input.is_action_just_pressed(action) and m.belt_swap.aimed_hook() >= 0:
-			m.belt_swap.begin(hand)
-			blocked[hand] = true
-			continue
+		# the item in this hand is the one a use or dig applies to
 		var id: String = m.progression.activate_hand(hand)
-		if Input.is_action_just_pressed(action):
-			match id:
-				"spray_cheap", "spray_deep": m.use_spray(id == "spray_deep")
-				"blender": m.use_blender()
-				"canary_feed": m.feed_canary()
-				"barrier": m.place_barrier()
-				"":
-					if hand == FDKToolKit.Hand.RIGHT:
-						m._pick()
-		if id in ["", "knife", "big_saw"] and not chewing:
+		if fresh:
+			_press_frame[hand] = Engine.get_process_frames()
+			_released[hand] = false
+			var verb := FPInteractions.press(m, SOURCES[hand])
+			if FPInteractions.blocks_hand(verb):
+				blocked[hand] = true
+				m.progression.refresh_equipment()
+				continue
+		if m.tank_lid.held:
+			continue
+		if id in FPInteractions.DIG_ITEMS and not chewing:
 			if m.hands_rig.state in [FDKHandsRig.HandState.IDLE, FDKHandsRig.HandState.RELEASE]:
 				m.hands_rig._lead = 1 - hand
 			m._chew_step(delta)
@@ -40,6 +58,7 @@ func tick(delta: float) -> void:
 	if not chewing:
 		m.chewer.stop()
 		m.terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
+		m.set_hand_reach(Vector3.INF)
 
 func charging() -> bool:
 	for hand in range(2):

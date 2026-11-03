@@ -34,6 +34,8 @@ FDKChewer.try_start(world_pos)는 세계 위치를 받아 같은 셀을 이어 �
 
 grab_started(target_cell: Vector3i)는 셀을 새로 잡을 때, chew_progress(ratio: float,target_cell: Vector3i)는 진행0~1을, cell_torn(world_pos: Vector3)는 실제 제거 완료 세계 위치를 전달한다. released()는 잡던 상태에서 놓는 전환에 한 번 발생한다. 손과 소리는 신호를 구독하며 Chewer가 손 mesh 구조를 읽지 않는다.
 
+FDKHandsRig.set_reach_point(world_pos)는 실제 접촉이 유지되는 동안 게임이 매 프레임 주는 잡은 지점이다. 앞장선 손은 그 방향으로 손끝이 닿게 뻗고 거기서 뜯으며, clear_reach_point() 뒤에는 원래의 고정 위치를 쓴다. 손 리그는 이 점만 읽고 지형을 읽거나 뜯기를 정하지 않는다. aside(허리 쪽으로 비킨 손)는 쉬는 손에만 적용된다.
+
 잡기가 거절되면 Chewer는 시작하지 않으므로 신호가 없다. 게임이 FDKHandsRig.on_grab_refused()를 불러 손이 오므렸다 미끄러져 돌아오는 SLIP 상태(0.5 s)를 보인다. 게임 쪽 거절 신호는 Main.grab_refused(tissue: int, world_pos: Vector3)이고 소리 연결이 구독한다. 첫 레버 정산 전 밖의 헛구역질은 Main.dry_heaved()로 알리고 소리 연결이 구독한다.
 
 한 손 도구(믹서기)는 FDKHandsRig.hold_left로 왼손에 쥔다. 손은 빈 채로 화면 아래로 내려갔다가 도구를 쥐고 올라오며, 내려놓을 때는 반대로 간다. 게임은 도구를 왼손 Wrist 자식으로 달고 left_grip_shown()이 참일 때만 보인다. 도구를 카메라 공간에 따로 두면 손보다 먼저 나타나고 걷기 흔들림을 따르지 않는다(2026-11-03).

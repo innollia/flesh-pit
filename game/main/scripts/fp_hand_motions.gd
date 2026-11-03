@@ -110,8 +110,20 @@ func _start(k: String) -> void:
     if m.art_hookup != null and m.art_hookup.mut_hands != null:
         m.art_hookup.mut_hands.call("rig").set("pose_hook", self)
 
-func play_scoop() -> void:
+## Reach into the open tank at `world_pos` (rig-local, clamped to the arm),
+## fingers open, close on the teeth and bring them back to the held cup.
+func play_scoop(world_pos: Vector3 = Vector3.INF) -> void:
     _start("scoop")
+    var rig: Node3D = m.hands_rig
+    var local := Vector3(0.08, -0.26, -0.5) # no tank given: forward and down
+    if world_pos != Vector3.INF and rig != null and rig.is_inside_tree():
+        local = rig.to_local(world_pos)
+        # the root stops a hand's length short so the fingertips go in
+        var d := local.length()
+        if d > 0.01:
+            local = local / d * clampf(d - 0.14, 0.32, 0.56)
+        local += Vector3(0.03, -0.04, 0.0)
+    _target = local
 
 func play_pour(teeth: int) -> void:
     _start("pour")
@@ -499,7 +511,7 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
         p = alien
     p = _hold_item(rig, side, p)
     if side > 0.0 and kind != "tank_lean":
-        p = _cup_teeth(p)
+        p = _cup_teeth(rig, p)
     elif side < 0.0:
         p = _hold_compass(p)
     var w := weight()
@@ -519,15 +531,40 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
             out[key] = lerpf(float(p[key]), float(q[key]), w)
     return out
 
-## Holding teeth the right hand is cupped palm-up (the rig's carry pose) so
-## they stay in it and show; empty-handed it is the rig's own pose.
-func _cup_teeth(p: Dictionary) -> Dictionary:
-    if m.progression == null or m.progression.teeth_in_hand <= 0:
+## Holding teeth the right hand is cupped palm-up so they stay in it and
+## show; empty-handed it is the rig's own pose. Away from the tank lean the
+## cup is a relaxed hand turned up about as far as a forearm turns
+## (HOLD_TEETH_ROLL), the wrist straight (2026-11-03 play: right click at
+## the tank bent the hand to a strange angle and it stayed bent). While the
+## hands work flesh (grab, tear, slip, release) the cup gives way and the
+## hand does that work; it comes back once they rest.
+func _cup_teeth(rig: Node3D, p: Dictionary) -> Dictionary:
+    if m.progression == null or m.progression.teeth_in_hand <= 0 or _hands_working(rig):
         return p
     var q := p.duplicate()
-    _cup_fingers(q)
-    q["pos"] = Vector3(0.11, -0.22, -0.38)
+    _hold_teeth_fingers(q)
+    q["pos"] = HOLD_TEETH_POS
     return q
+
+## The hands are busy with flesh (the rig's own grab/tear/slip/release).
+static func _hands_working(rig: Node3D) -> bool:
+    return rig != null and int(rig.get("state")) != FDKHandsRig.HandState.IDLE
+
+const HOLD_TEETH_POS := Vector3(0.1, -0.2, -0.36)
+## Root roll for teeth held away from the tank (radians): palm up, a
+## forearm's real turn, not the lean's deeper CUP_ROLL.
+const HOLD_TEETH_ROLL := 1.5
+static func _hold_teeth_fingers(q: Dictionary) -> void:
+    q["wrist_roll"] = 0.0
+    q["wrist_pitch"] = 8.0
+    q["wrist_yaw"] = -6.0
+    q["f1"] = 26.0
+    q["f2"] = 34.0
+    q["f3"] = 20.0
+    q["t1"] = 12.0
+    q["t2"] = 16.0
+    q["t3"] = 12.0
+    q["t_opp"] = 22.0
 
 ## Items the hand closes round (FPConsumable cans and packs, the knife): the
 ## fingers wrap it and the fist turns thumb-up a little, so the item shows
@@ -594,16 +631,20 @@ static func _cup_fingers(q: Dictionary) -> void:
 ## up for holding teeth; eased in and out by _cup_w.
 const CUP_ROLL := 2.4
 var _cup_w := 0.0
+var _cup_roll := HOLD_TEETH_ROLL
 ## The same for the left hand holding the compass: a half turn, palm up.
 const COMPASS_ROLL := PI
 var _cup_wl := 0.0
 var _compass_rolled := false
 
 func _apply_cup_root(delta: float) -> void:
-    var want := 1.0 if (m.progression != null and m.progression.teeth_in_hand > 0) or tank_leaning() else 0.0
-    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"]:
+    var holding: bool = m.progression != null and m.progression.teeth_in_hand > 0 and not _hands_working(m.hands_rig)
+    var want := 1.0 if holding or tank_leaning() else 0.0
+    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag", "scoop"]:
         want = 0.0
-    _cup_w = move_toward(_cup_w, want, delta * 4.0)
+    # give way quickly when the hand goes to work, settle back gently
+    _cup_w = move_toward(_cup_w, want, delta * (8.0 if want < _cup_w else 4.0))
+    _cup_roll = move_toward(_cup_roll, CUP_ROLL if tank_leaning() else HOLD_TEETH_ROLL, delta * 3.0)
     var want_l := 1.0 if m.progression != null and m.progression.hands.left == "compass" else 0.0
     if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"] or m._mirror_open:
         want_l = 0.0
@@ -617,7 +658,7 @@ func _apply_cup_root(delta: float) -> void:
             continue
         var rr: Node3D = rig.call("get_hand_root", "right")
         if rr != null:
-            rr.basis = Basis(Vector3.FORWARD, CUP_ROLL * _cup_w) if _cup_w > 0.0 else Basis.IDENTITY
+            rr.basis = Basis(Vector3.FORWARD, _cup_roll * _cup_w) if _cup_w > 0.0 else Basis.IDENTITY
     _apply_compass_roll()
 
 ## Left root roll for the held compass. The Tab watch pose (_apply_watch_arm)
@@ -729,11 +770,16 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
         "scoop":
             if not right:
                 return {}
-            var reach := seg(u, 0.0, 0.4) * (1.0 - seg(u, 0.6, 1.0))
-            _fingers(q, seg(u, 0.38, 0.6))
-            q["wrist_pitch"] = lerpf(48.0, 72.0, reach)
-            q["wrist_roll"] = -8.0
-            q["pos"] = idle.lerp(Vector3(0.1, -0.32, -0.44), reach)
+            # out to the tank mouth palm down, fingers open; they close on
+            # the teeth at the bottom, then the hand comes back to the cup
+            var reach := seg(u, 0.0, 0.4) * (1.0 - seg(u, 0.62, 1.0))
+            var grip := seg(u, 0.36, 0.56)
+            _fingers(q, 0.05 + 0.55 * grip)
+            q["wrist_pitch"] = lerpf(float(p["wrist_pitch"]), 58.0, reach)
+            q["wrist_yaw"] = lerpf(float(p["wrist_yaw"]), 4.0, reach)
+            q["wrist_roll"] = lerpf(float(p["wrist_roll"]), -6.0, reach)
+            var dip := Vector3(0.0, -0.03, 0.0) * sin(clampf((u - 0.3) / 0.3, 0.0, 1.0) * PI)
+            q["pos"] = idle.lerp(_target + dip, reach)
         "tank_lean":
             var d := sin(clampf(_dip_t / DIP_TIME, 0.0, 1.0) * PI)
             if right:
