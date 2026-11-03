@@ -2,9 +2,12 @@ class_name FPEnding
 extends CanvasLayer
 
 ## Ending signal (docs/spec/00-overview.md): breaking through the outermost shell.
-## A white flash, then the player lands on an empty city street in bright
-## daylight while the building-sized meat sphere rolls away down it
-## (main/art fp_ending_street), then a credits card. `voice_layers` tells
+## A white flash, then a bird's-eye view of a city in bright daylight:
+## the meat sphere, far larger than any building, rolls away across it
+## flattening a swath of blocks (main/art fp_ending_street), while the
+## camera climbs and pulls back; then a credits card. Every frame is an
+## overhead view: never a street-level boulevard between buildings (owner
+## 2026-11). `voice_layers` tells
 ## the audio layer how many song voices to play.
 
 signal finished
@@ -28,15 +31,20 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fade)
 	_credits = Label.new()
-	# centred on screen in the title's face
+	# in the title's face, centred in the upper part of the screen above the ball
 	_credits.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_credits.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_credits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_credits.anchor_bottom = 0.55
 	_credits.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_credits.add_theme_font_override("font", FPMenuKit.FONT)
-	_credits.add_theme_font_size_override("font_size", 46)
 	_credits.text = "flesh-pit"
-	_credits.modulate = Color(0.2, 0.2, 0.2, 0)
+	# centred and outlined: it sits over the busy overhead city, not a plain sky
+	_credits.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_credits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_credits.add_theme_font_size_override("font_size", 56)
+	_credits.add_theme_color_override("font_color", Color(1, 1, 1))
+	_credits.add_theme_color_override("font_outline_color", Color(0.12, 0.1, 0.1))
+	_credits.add_theme_constant_override("outline_size", 12)
+	_credits.modulate = Color(1, 1, 1, 0)
 	add_child(_credits)
 	visible = false
 
@@ -58,39 +66,64 @@ func _build_street() -> void:
 	street.position = STREET_AT
 	var art: Node3D = (load("res://main/art/fp_ending_street.tscn") as PackedScene).instantiate()
 	art.name = "Street"
+	# the city is built a column per frame during the white flash
+	# (finish_build at the reveal completes anything left)
+	art.set("build_over_frames", true)
 	street.add_child(art)
 	art.call("set_roll", 0.0)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-50, 35, 0)
+	sun.rotation_degrees = Vector3(-55, -50, 0)
 	sun.light_energy = 1.3
 	sun.light_color = Color(1.0, 0.96, 0.88)
+	# the ball's shadow over the blocks is what sells its size from above
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 900.0
 	street.add_child(sun)
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.62, 0.78, 0.95)
+	env.background_color = HAZE
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.75, 0.78, 0.85)
 	env.ambient_light_energy = 0.8
+	# far blocks fade into a light haze so the city has no visible edge
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_light_color = HAZE
+	env.fog_depth_begin = 380.0
+	env.fog_depth_end = 900.0
+	env.fog_depth_curve = 1.0
 	street_camera = Camera3D.new()
 	street_camera.name = "StreetCamera"
 	street_camera.environment = env
-	street_camera.fov = 65.0
-	street_camera.far = 600.0
+	street_camera.fov = 60.0
+	street_camera.near = 1.0
+	street_camera.far = 2000.0
 	street.add_child(street_camera)
 	_pose_camera(0.0)
 
-## Lands from a short drop onto the road, then looks up the street at the
-## sphere rolling away.
-func _pose_camera(k: float) -> void:
+const HAZE := Color(0.74, 0.8, 0.88)
+## Overhead camera path, `s` = seconds since the reveal. The camera starts
+## behind the ball's start, off the avenue's axis (so the grid reads as a
+## map, never as a corridor), climbs from 160 m to 290 m and backs off while
+## trailing the ball at a fraction of its speed, so the ball visibly rolls
+## away from it yet the view stays steep. The lowest it ever is (160 m) is
+## five times the tallest building, and it always looks down >= 55 deg.
+func _pose_camera(s: float) -> void:
 	if street_camera == null:
 		return
-	var e := 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 3.0)
-	# After landing the camera slowly pulls back up the street (W41) while
-	# the ball rolls away, so the whole ball and the blocks stay in frame.
-	var back := clampf((k - 1.0) / 5.0, 0.0, 1.0)
-	back = back * back * (3.0 - 2.0 * back)
-	street_camera.position = Vector3(0.4, lerpf(7.0, 1.3, e) + back * 5.0, 2.0 + back * 34.0)
-	street_camera.look_at(street.global_position + Vector3(0, lerpf(-2.0, 34.0, e), -110.0), Vector3.UP)
+	var a := clampf(s / 6.8, 0.0, 1.0)
+	var e := 1.0 - pow(1.0 - a, 2.0)
+	var ball := (street.get_node("Street") as Node3D).call("sphere") as Node3D
+	var ball_local := ball.global_position - street.global_position
+	var yaw := deg_to_rad(lerpf(32.0, 44.0, e))
+	var dist := lerpf(60.0, 100.0, e)
+	var hgt := lerpf(160.0, 290.0, e)
+	var follow := ball_local.z * 0.6
+	street_camera.position = Vector3(sin(yaw) * dist, hgt, follow + cos(yaw) * dist)
+	# aim a little ahead of the ball: it sits below the frame centre, under
+	# the credits, with the blocks it is about to flatten in view
+	var target := ball.global_position + Vector3(0, -float(ball.get("radius")) * 0.5, -30.0)
+	street_camera.look_at(target, Vector3.UP)
 
 func tick(delta: float) -> void:
 	if not active:
@@ -100,10 +133,11 @@ func tick(delta: float) -> void:
 		_fade.color.a = clampf(_t / REVEAL_AT, 0.0, 1.0)
 	else:
 		if street_camera != null and not street_camera.current:
+			(street.get_node("Street") as Node3D).call("finish_build")
 			street_camera.current = true
 			(street.get_node("Street") as Node3D).call("play_roll_away", 14.0)
 		_fade.color.a = clampf(1.0 - (_t - REVEAL_AT) / 1.6, 0.0, 1.0)
-		_pose_camera((_t - REVEAL_AT) / 1.4)
+		_pose_camera(_t - REVEAL_AT)
 	_credits.modulate.a = clampf((_t - 5.0) / 1.5, 0.0, 1.0)
 	if _t >= 8.0 and _t - delta < 8.0:
 		finished.emit()
