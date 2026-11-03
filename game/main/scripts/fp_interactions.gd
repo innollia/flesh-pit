@@ -40,6 +40,10 @@ static func get_candidates(main: Node3D) -> Array:
 	if main.vent.is_open and not main.vent.offers.is_empty():
 		# the being's hand holds the offer out below the grate
 		candidates.append(["vent", main.vent.offer_center(), 12.0, 2.0])
+		# one hand per offered item, spread in front of the eye: each item is
+		# an aim point of its own so the outer hands can be taken too
+		for n in main.vent.offer_nodes():
+			candidates.append(["vent", (n as Node3D).global_position, 9.0, 2.0])
 	var pivot: Node3D = main.restroom.door_pivot
 	var width := 2.0 * FPRestroom.DOOR_HALF_W - 0.01
 	candidates.append(["door", pivot.to_global(Vector3(width - 0.095, 0.995, 0)), 30.0, 1.6])

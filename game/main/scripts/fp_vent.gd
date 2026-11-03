@@ -2,9 +2,10 @@ class_name FPVent
 extends Node3D
 
 ## Ceiling vent shop (spec 03-restroom 7, content/vent-lines.md). No UI.
-## Open the grate: two eyes in the dark. The being wants "BONG" (teeth).
-## Trade: open the tank lid, scoop a handful, place handfuls at the vent,
-## the being pushes out a few items, take one by hand, the rest go back.
+## Open the grate: only the dark shows, never the being's eyes (user
+## 2026-11-03). The being wants "BONG" (teeth). Trade: open the tank lid,
+## scoop a handful, place handfuls at the vent, the being holds a few items
+## out, one hand per item; take one by hand, the rest go back.
 ## Prices are never shown and there is no change. Leaving without picking
 ## keeps the teeth and the same offer comes back next time.
 ## Every reaction is a line id from main/data/vent_lines.json, emitted on
@@ -141,7 +142,6 @@ var absent_left: float = 0.0
 
 var _since_flush: float = INF
 var _since_paid: float = INF
-var _eyes: Node3D
 var _offer_root: Node3D
 var art: Node3D
 
@@ -200,10 +200,6 @@ func _ready() -> void:
     FPRestroom.tag_room_layer(art)
     art.call("set_open", 0.0)
     art.call("set_eyes", false)
-    _eyes = Node3D.new()
-    _eyes.name = "Eyes"
-    add_child(_eyes)
-    _eyes.visible = false
     _offer_root = Node3D.new()
     _offer_root.name = "Offers"
     add_child(_offer_root)
@@ -372,7 +368,6 @@ func open(teeth_available: int = 0, in_hand: int = 0, lid_off: bool = false) -> 
     if is_open:
         return
     is_open = true
-    _eyes.visible = true
     if art != null:
         art.call("play_open")
         art.call("set_eyes", absent_left <= 0.0)
@@ -507,7 +502,6 @@ func close() -> void:
         appraise() # teeth on the lip are paid even if the grate shuts
     var was_open := is_open
     is_open = false
-    _eyes.visible = false
     # chatter about the open grate no longer applies once it is shut
     _pending = _pending.filter(func(p): return not is_chatter(String(p[0])))
     if was_open and not offers.is_empty():
