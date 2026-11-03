@@ -83,3 +83,9 @@
 ## 그 밖의 기존 실패 — 2026-10-31
 
 - `run_interaction_component_tests.gd`는 노드 실행기에서 1초 안에 실패하고, `run_continuation_tests.gd`는 `Belt/Canary/Waistband`가 없다는 스크립트 오류로 끝난다. `run_squeeze_tests.gd`는 "rare spikes stay bounded" 1건, `run_mutation_tests.gd`는 팔뚝 인형 자리 4건이 실패한다. 모두 물통·거울·자세 변경을 빼고 돌려도 같다.
+
+## 큰 톱이 손에 쥐어지지 않음 — 2026-11-03
+
+- 재현: `capture_blender.gd`의 held_big_saw. 벨트에서 큰 톱을 들면 톱이 카메라 공간(`fp_art_hookup.gd` `_put(saw, rig, ...)`)에 따로 떠 있고 두 손은 빈 대기 자세로 톱 손잡이를 잡지 않는다. 걷기 흔들림 때 손만 움직이고 톱은 고정된다.
+- 원인: 믹서기와 같은 부착 문제(손 Wrist가 아니라 rig 자체에 붙음)이며, 두 손이 각각 양쪽 손잡이를 쥐는 자세가 rig에 없다.
+- 범위: 믹서기는 왼손 Wrist 부착과 쥐기/꺼내기 동작으로 고쳤다. 큰 톱은 두 손 쥐기 자세 설계(어느 손에 달고 다른 손을 어떻게 맞출지)가 필요해 이번 범위 밖으로 남긴다.

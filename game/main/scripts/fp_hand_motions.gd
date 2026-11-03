@@ -505,6 +505,9 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
     var w := weight()
     if w <= 0.0 or kind == "vomit_toilet":
         return p
+    # a hand holding the blender keeps it: no two-handed reach for a box
+    if side < 0.0 and kind == "take2" and bool(rig.get("hold_left")):
+        return p
     var q := _motion_pose(side, p)
     if q.is_empty():
         return p

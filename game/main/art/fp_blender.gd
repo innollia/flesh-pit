@@ -5,7 +5,9 @@ extends Node3D
 ## with a pour cap. Contents (blended flesh) fill 0..1.
 ## Public: set_fill(0..1), set_spin(bool), play_drink() (tilt to the mouth
 ## and drain), set_tilt(0..1), hand_grip() -> Vector3 (where the left hand
-## wraps the jar).
+## wraps the jar). The handle is on the jar's left seen from the front
+## (-X), so the left hand holds it with the dial and the charge lamps
+## turned toward the player.
 
 const K := preload("res://main/art/fp_art_kit.gd")
 var _jar: Node3D
@@ -15,9 +17,10 @@ var _fill := 0.0
 var _spin := false
 var _time := 0.0
 var _jar_base := Vector3.INF
-## -1 when the blender is mounted turned 180 degrees about Y (handle on the
-## outer side for the left hand), so drinking still tips it toward the mouth.
+## Sign of the drinking tilt: +1 tips the top toward the front (+Z).
 var tilt_dir := 1.0
+## The holder's placement while a drink tilt runs (null at rest).
+var _tilt_rest: Variant = null
 
 func _ready() -> void:
     var st := K.begin()
@@ -37,7 +40,7 @@ func _ready() -> void:
     var glass := Color(0.62, 0.72, 0.72)
     K.lathe(st, Transform3D.IDENTITY, [Vector2(0.045, 0.0), Vector2(0.05, 0.02), Vector2(0.062, 0.1), Vector2(0.072, 0.19), Vector2(0.074, 0.2)], 8, [glass], 0.0)
     # handle
-    K.tube(st, Transform3D.IDENTITY, [Vector3(0.06, 0.17, 0), Vector3(0.11, 0.16, 0), Vector3(0.115, 0.08, 0), Vector3(0.056, 0.05, 0)], [0.012, 0.014, 0.014, 0.012], 6, [glass])
+    K.tube(st, Transform3D.IDENTITY, [Vector3(-0.06, 0.17, 0), Vector3(-0.11, 0.16, 0), Vector3(-0.115, 0.08, 0), Vector3(-0.056, 0.05, 0)], [0.012, 0.014, 0.014, 0.012], 6, [glass])
     # lid + cap
     K.lathe(st, K.T(Vector3(0, 0.2, 0)), [Vector2(0.078, 0.0), Vector2(0.078, 0.012), Vector2(0.03, 0.016), Vector2(0.026, 0.03), Vector2(0.0, 0.032)], 8, [dark, dark, Color(0.3, 0.3, 0.3)])
     var jm := StandardMaterial3D.new()
@@ -126,8 +129,21 @@ func set_spin(on: bool) -> void:
     _spin = on
 
 func set_tilt(t: float) -> void:
-    # tip the whole blender toward the viewer (+Z) and up, as when drinking
-    rotation_degrees.x = 115.0 * clampf(t, 0.0, 1.0) * tilt_dir
+    # tip the whole blender toward the viewer (+Z) and up, as when drinking,
+    # turning about the handle so the hand that holds it keeps holding it
+    t = clampf(t, 0.0, 1.0)
+    if _tilt_rest == null:
+        if t <= 0.0:
+            return
+        _tilt_rest = transform
+    var rest: Transform3D = _tilt_rest
+    if t <= 0.0:
+        transform = rest
+        _tilt_rest = null
+        return
+    var g: Vector3 = rest * hand_grip()
+    var b := Basis((rest.basis * Vector3.RIGHT).normalized(), deg_to_rad(115.0 * t * tilt_dir))
+    transform = Transform3D(b * rest.basis, g + b * (rest.origin - g))
 
 func play_drink() -> void:
     var tw := create_tween()
@@ -136,7 +152,7 @@ func play_drink() -> void:
     tw.tween_method(set_tilt, 1.0, 0.0, 0.4)
 
 func hand_grip() -> Vector3:
-    return Vector3(0.11, 0.23, 0.0)
+    return Vector3(-0.112, 0.23, 0.0)
 
 ## Where a nerve strand enters (centre of the socket under the base).
 func socket_point() -> Vector3:

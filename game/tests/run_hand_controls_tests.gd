@@ -91,8 +91,52 @@ func _run() -> void:
 	var restored := FPProgression.new()
 	restored.deserialize(saved)
 	check(restored.hands.left == "blender" and restored.hands.right == "knife", "both held tools survive save/load")
-	m.art_hookup._process(0.0)
-	check(m.art_hookup.knife.visible and m.art_hookup.blender.visible, "both held props visible")
+	# 2026-11-03: the blender lives on the left wrist. It is not shown until
+	# the empty hand has dropped out of view and it comes up in that hand,
+	# so it never appears apart from the hand.
+	var ah: FPArtHookup = m.art_hookup
+	var rig: FDKHandsRig = ah._rig
+	var lw := rig.get_node("HandLeft/Wrist") as Node3D
+	ah._process(0.0)
+	check(ah.blender.get_parent() == lw, "held blender hangs on the left wrist")
+	check(not ah.blender.visible and not rig.left_grip_shown(), "blender not shown before the hand has it")
+	var seen_apart := false
+	var rel0 := Transform3D()
+	var rel_ok := true
+	for i in range(40):
+		rig.step(1.0 / 60.0)
+		ah._process(1.0 / 60.0)
+		if ah.blender.visible and not rig.left_grip_shown():
+			seen_apart = true
+		if ah.blender.visible:
+			var rel: Transform3D = lw.global_transform.affine_inverse() * ah.blender.global_transform
+			if rel0 == Transform3D():
+				rel0 = rel
+			elif not rel.is_equal_approx(rel0):
+				rel_ok = false
+	check(not seen_apart, "blender shows only while the hand grips it")
+	var cam: Camera3D = m.player.camera
+	var first_seen: Vector2 = cam.unproject_position(lw.global_position)
+	check(ah.knife.visible and ah.blender.visible, "both held props visible")
+	# walking bob: the hand bobs and the blender goes with it, same offset
+	var at_rest: Vector3 = ah.blender.global_position - lw.global_position
+	rig.apply_bob(Vector3(0.01, 0.03, 0.0))
+	for i in range(30):
+		rig.step(1.0 / 60.0)
+	var hand_moved: float = rig.get_hand_root("left").position.distance_to(FDKHandsRig.HOLD_LEFT_POS)
+	var rel_bob: Transform3D = lw.global_transform.affine_inverse() * ah.blender.global_transform
+	check(hand_moved > 0.02 and rel_ok and rel_bob.is_equal_approx(rel0), "walking bob moves the hand and the blender together (hand %.3f m)" % hand_moved)
+	rig.apply_bob(Vector3.ZERO)
+	check(first_seen.y > 0.0 and at_rest.length() < 0.3, "blender sits at the left hand")
+	# a believable size: about 0.28 m tall, handle about one hand wide
+	var tall: float = (ah.blender.global_basis * Vector3(0, 0.347, 0)).length()
+	check(tall > 0.24 and tall < 0.34, "held blender is hand-held size (%.2f m tall)" % tall)
+	# the hand grips an upright handle: the jar stands up in the view and
+	# its forearm comes in from the lower left, not flat across the screen
+	var up_cam: Vector3 = cam.global_basis.inverse() * (ah.blender.global_basis * Vector3.UP).normalized()
+	check(up_cam.y > 0.85, "held blender stands upright in the view (%.2f)" % up_cam.y)
+	var hold := FDKHandsRig.HOLD_LEFT_POS
+	check(rad_to_deg(atan2(-hold.y, -hold.x)) > 30.0, "left forearm comes up from the lower left (%.0f deg)" % rad_to_deg(atan2(-hold.y, -hold.x)))
 	m.mirror_view._sync_live_details()
 	check(m.mirror_view._held["knife"].visible and m.mirror_view._held["blender"].visible, "mirror shows both held tools")
 	m.mirror_view._sync_live_details()

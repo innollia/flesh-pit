@@ -438,10 +438,11 @@ func _main_tests(m) -> void:
 	tools.plug_in(nerve_at)
 	for i in range(30):
 		ah._process(1.0 / 60.0)
-	var rig := ah.blender.get_parent() as Node3D
+	# the strand is built in its own parent's frame; the jar hangs on the wrist
+	var rig := ah.nerve_strand.get_parent() as Node3D
 	var base_plugged: float = (ah.blender.global_basis * Vector3.DOWN).normalized().dot((nerve_at - ah.blender.global_position).normalized())
 	_assert(ah.plug_k == 1.0 and ah.nerve_strand.visible and base_plugged > base_rest + 0.2, "W25 plug: the base turns toward the nerve (%.2f -> %.2f)" % [base_rest, base_plugged])
-	var socket: Vector3 = ah.blender.transform * (ah.blender.call("socket_point") as Vector3)
+	var socket: Vector3 = rig.to_local(ah.blender.global_transform * (ah.blender.call("socket_point") as Vector3))
 	var strand_box: AABB = ah.nerve_strand.mesh.get_aabb().grow(0.03)
 	_assert(strand_box.has_point(rig.to_local(nerve_at)) and strand_box.has_point(socket), "W25 plug: the nerve strand runs from the wall into the socket")
 	var hold_pose := {"pos": FDKHandsRig.HOLD_LEFT_POS, "wrist_pitch": 4.0, "wrist_yaw": -8.0, "wrist_roll": 60.0, "f1": 62.0, "f2": 78.0, "f3": 56.0, "t1": 20.0, "t2": 30.0, "t3": 30.0, "t_opp": 36.0}

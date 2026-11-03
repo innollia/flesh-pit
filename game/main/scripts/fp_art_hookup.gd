@@ -24,6 +24,16 @@ const COMPASS_WAIST_ANGLE := 0.45 ## rad round the waist from the front centre
 const COMPASS_ON_PALM := Vector3(0.0, -0.021, -0.05)
 ## A held can or pack, in the wrist frame: inside the closed fingers.
 const HELD_ITEM_POS := Vector3(0.0, -0.03, -0.075)
+## The blender hangs on the left wrist (2026-11-03 user: it showed up on
+## its own before the hand, stood still while the walking hand bobbed, and
+## was too small). Its handle sits in the curled fingers of the rig's hold
+## pose: BLENDER_GRIP is the middle of that finger loop in the wrist frame,
+## the handle runs along the knuckles (+X, thumb side, = up with the thumb
+## on top), the jar stands off the palm side (-Y) and its front faces back
+## along the forearm (+Z, toward the camera).
+const BLENDER_SCALE := 0.8 ## ~0.28 m tall, handle about one hand wide
+const BLENDER_GRIP := Vector3(0.0, -0.03, -0.08)
+const BLENDER_IN_WRIST := Basis(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1))
 const KNIFE_IN_FIST_YAW := 90.0
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
@@ -87,7 +97,6 @@ func setup(main: Node3D) -> void:
 	scissors.scale = Vector3.ONE * 0.8
 	blender = BlenderScene.instantiate()
 	blender.name = "HeldBlender"
-	blender.scale = Vector3.ONE * 0.55
 	nerve_strand = MeshInstance3D.new()
 	nerve_strand.name = "NerveStrand"
 	# self-lit pale yellow so the strand reads against a veined nerve wall
@@ -162,17 +171,11 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(hand_tumor, rw, Vector3(0, -0.06, -0.08))
 	_put(held_teeth, rw, Vector3.ZERO)
 	_put(scissors, lw, Vector3(0, -0.012, -0.07))
-	# the blender hangs in camera space low on the left, handle turned
-	# outward, and the rig's left hand grips that handle (hold_left), so
-	# the whole jar reads on screen instead of a corner under the wrist
-	blender.rotation_degrees = Vector3(0, 180, 0)
-	blender.set("tilt_dir", -1.0)
-	var grip: Vector3 = (Basis(Vector3.UP, PI) * (blender.call("hand_grip") as Vector3)) * blender.scale.x
-	# grip spot pushed out to the lower-left corner so the jar sits clear of
-	# the flesh pile in the middle of the view (the left hand follows it)
-	FDKHandsRig.HOLD_LEFT_POS = Vector3(-0.30, -0.10, -0.38)
-	var hold: Vector3 = FDKHandsRig.HOLD_LEFT_POS
-	_put(blender, rig, hold + Vector3(0.028, 0.01, -0.05) - grip)
+	# the blender rides the left wrist with its handle in the fingers, so it
+	# comes, goes, bobs and swings only with the hand (rig hold_left)
+	var bb := BLENDER_IN_WRIST.scaled(Vector3.ONE * BLENDER_SCALE)
+	_put(blender, lw, BLENDER_GRIP - bb * (blender.call("hand_grip") as Vector3))
+	blender.basis = bb
 	_blender_rest = blender.transform
 	plug_k = 0.0
 	plug_offset = Vector3.ZERO
@@ -242,9 +245,13 @@ func _process_inner(_delta: float) -> void:
 			_put(knife, wrist, HELD_ITEM_POS)
 			knife.rotation_degrees = Vector3(0, KNIFE_IN_FIST_YAW, 0)
 	scissors.visible = prog.hands.right == "knife" and prog.hands.left == "" and m.carried_flesh <= 0.0
-	blender.visible = prog.hands.holds("blender")
+	# the rig takes the blender out of view and brings it up in the hand; it
+	# shows only while that hand has it. The Tab arm (B pose) rises without
+	# it, like the compass, and takes it again once the arm is back down.
+	var tab_arm: bool = m._mirror_open or (m.hand_motions != null and m.hand_motions.watch_raised() > 0.0)
 	if _rig != null:
-		_rig.set("hold_left", blender.visible)
+		_rig.set("hold_left", prog.hands.holds("blender") and not tab_arm)
+	blender.visible = _rig != null and bool(_rig.call("left_grip_shown")) and not tab_arm
 	saw.visible = prog.hands.holds("big_saw")
 	var compass_held := prog.hands.left == "compass"
 	waist_compass.visible = not prog.hands.holds("compass")
@@ -394,24 +401,29 @@ func _physics_process(_d: float) -> void:
 
 func _sync_plug(delta: float) -> void:
 	var tt: FPTissueTools = m.tissue_tools
-	var on := tt != null and tt.plugged and blender.visible
+	var on: bool = tt != null and tt.plugged and m.progression.hands.holds("blender")
 	if not on and plug_k <= 0.0:
 		return
 	if on:
 		_plug_world = tt.plug_point
 	plug_k = move_toward(plug_k, 1.0 if on else 0.0, delta / PLUG_TIME)
 	var e := plug_k * plug_k * (3.0 - 2.0 * plug_k)
-	var rig := blender.get_parent() as Node3D
-	# turn about the handle the hand holds, so the hand stays on it
+	# The hand carries the handle toward the nerve (plug_offset, rig frame,
+	# FPHandMotions.shape_pose) and the jar, hung on that wrist, turns about
+	# the handle in the wrist frame so its base swings out to the nerve.
+	var wrist := blender.get_parent() as Node3D
 	var grip: Vector3 = _blender_rest * (blender.call("hand_grip") as Vector3)
-	var to_nerve := rig.to_local(_plug_world) - grip
+	var to_rig := _rig.to_local(_plug_world) - _rig.to_local(wrist.to_global(grip))
+	plug_offset = (to_rig.normalized() if to_rig.length() > 0.01 else Vector3.FORWARD) * PLUG_PUSH * e
+	var to_nerve := wrist.to_local(_plug_world) - grip
 	var d := to_nerve.normalized() if to_nerve.length() > 0.01 else Vector3.FORWARD
-	var turn := Quaternion.IDENTITY.slerp(Quaternion(Vector3.DOWN, d), PLUG_TURN * e)
-	plug_offset = d * PLUG_PUSH * e
+	var down := (_blender_rest.basis * Vector3.DOWN).normalized()
+	var turn := Quaternion.IDENTITY.slerp(Quaternion(down, d), PLUG_TURN * e)
 	var b := Basis(turn)
-	blender.transform = Transform3D(b * _blender_rest.basis, grip + plug_offset + b * (_blender_rest.origin - grip))
+	blender.transform = Transform3D(b * _blender_rest.basis, grip + b * (_blender_rest.origin - grip))
 	_strand_t += delta
-	_build_strand(rig.to_local(_plug_world), blender.transform * (blender.call("socket_point") as Vector3), e)
+	var strand_space := nerve_strand.get_parent() as Node3D
+	_build_strand(strand_space.to_local(_plug_world), strand_space.to_local(blender.global_transform * (blender.call("socket_point") as Vector3)), e)
 
 ## The strand comes out of the wall and reaches the socket as e goes 0 -> 1;
 ## it sags a little and swells in a slow pulse while charging.

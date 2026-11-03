@@ -38,7 +38,8 @@ const SECOND_HAND_DELAY := 0.09
 ## four-finger block + thumb read as a hand silhouette (the old pose showed
 ## the hand edge-on, like a plank). pitch, yaw, roll, f1, f2, f3, t1, t2, t3, t_opp
 static var IDLE_POSE := [48.0, 14.0, -12.0, 12.0, 16.0, 12.0, -6.0, 6.0, 10.0, 0.0]
-static var IDLE_POS := Vector3(0.16, -0.175, -0.31)
+## 2026-11-03 user: the arms come down a little lower on the screen.
+static var IDLE_POS := Vector3(0.16, -0.205, -0.31)
 
 @export var skin_color: Color = Color(0.88, 0.72, 0.62)
 @export var palm_color: Color = Color(0.9, 0.68, 0.6)
@@ -53,8 +54,26 @@ var mutation: float = 0.0
 var carry_amount: float = 0.0
 ## Left hand grips a held one-handed tool (the blender) at HOLD_LEFT_POS,
 ## low on the left of the screen, instead of following idle/carry/chew.
+## Taking it, the empty hand first drops out of view and comes back up
+## holding it; putting it away runs the other way. The holder shows the
+## tool only while left_grip_shown(), and hangs it on the left wrist so it
+## moves, bobs and swings exactly with the hand.
 var hold_left: bool = false
-static var HOLD_LEFT_POS := Vector3(-0.27, -0.15, -0.35)
+## Wrist root of the gripping hand: low left, so the forearm runs in from
+## the lower-left corner like the idle arms instead of lying flat across.
+static var HOLD_LEFT_POS := Vector3(-0.22, -0.165, -0.37)
+## Grip on an upright handle: thumb up (roll past the free wrist limit, as
+## a forearm turns), knuckles round the handle, the back of the hand to the
+## camera. pitch, yaw, roll, f1, f2, f3, t1, t2, t3, t_opp
+static var HOLD_LEFT_POSE := [4.0, -16.0, 88.0, 62.0, 78.0, 56.0, 40.0, 62.0, 62.0, 55.0]
+## Wrist roll allowed while the left hand holds a tool (thumb up).
+const HOLD_ROLL_LIMIT := 95.0
+## Seconds for the empty hand to drop out of view, and to come back up
+## with the tool (and the reverse when it is put away).
+const GRIP_DROP_TIME := 0.12
+const GRIP_RAISE_TIME := 0.26
+## Where the hand goes below the frame to take or leave the tool.
+const GRIP_DROP := Vector3(-0.04, -0.34, 0.08)
 ## 0..1: both hands swing out to the lower sides (looking down at the belt).
 var aside: float = 0.0
 const ASIDE_OFFSET := Vector3(0.2, -0.16, 0.14)
@@ -66,6 +85,9 @@ const PILE_SCALE_BASE := 0.38
 const PILE_SCALE_MAX := 0.56
 
 var _hands: Array = []
+## Left-hand grip progress: 0 free, 0..1 the empty hand drops away, 1..2 it
+## comes up holding the tool, 2 held. Putting it away goes 2 -> 1 -> 0.
+var _grip_t: float = 0.0
 var _time: float = 0.0
 var _state_time: float = 0.0
 var _chew: float = 0.0
@@ -155,6 +177,25 @@ func set_carry(amount: float) -> void:
 func is_carrying() -> bool:
     return carry_amount > 0.001
 
+## True while the left hand has the held tool in it (see hold_left).
+func left_grip_shown() -> bool:
+    return _grip_t > 1.0
+
+func _step_grip(delta: float) -> void:
+    if hold_left:
+        if _grip_t < 1.0:
+            _grip_t = minf(1.0, _grip_t + delta / GRIP_DROP_TIME)
+            if _grip_t >= 1.0:
+                _grip_t = 1.0001 # out of view: the tool is in the hand now
+        else:
+            _grip_t = minf(2.0, _grip_t + delta / GRIP_RAISE_TIME)
+    elif _grip_t > 1.0:
+        _grip_t -= delta / GRIP_DROP_TIME
+        if _grip_t <= 1.0:
+            _grip_t = 0.0 # left below the frame; the empty hand comes back
+    else:
+        _grip_t = 0.0
+
 # --- animation -----------------------------------------------------------
 
 func step(delta: float) -> void:
@@ -180,6 +221,7 @@ func step(delta: float) -> void:
     _wet = maxf(0.0, _wet - delta * 0.08)
     _material.set_shader_parameter("wet", _wet)
     _material.set_shader_parameter("tint", Color(1, 1, 1).lerp(Color(0.78, 0.5, 0.55), mutation))
+    _step_grip(delta)
     var k := 1.0 - exp(-delta * 22.0)
     for i in range(_hands.size()):
         var h: Dictionary = _hands[i]
@@ -226,13 +268,16 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
         p["f3"] = 20.0
         p["t_opp"] = 8.0
         p["pos"] = Vector3(0.1 * side, -0.24, -0.38)
-    if hold_left and side < 0.0:
-        # fingers wrapped round the jar handle, palm turned inward, thumb on top
+    if side < 0.0 and _grip_t > 1.0:
+        # fingers wrapped round the upright handle, thumb on top, rising from
+        # below the frame while the tool is being taken
+        var gb: Vector3 = _bob * bob_follow
+        var up := _ease(_grip_t - 1.0)
         return {
-            "wrist_pitch": 4.0 + breathe * 0.5, "wrist_yaw": -8.0, "wrist_roll": 60.0,
-            "f1": 62.0, "f2": 78.0, "f3": 56.0,
-            "t1": 20.0, "t2": 30.0, "t3": 30.0, "t_opp": 36.0,
-            "pos": HOLD_LEFT_POS + Vector3(0.0, _bob.y * bob_follow * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside,
+            "wrist_pitch": HOLD_LEFT_POSE[0] + breathe * 0.5, "wrist_yaw": HOLD_LEFT_POSE[1], "wrist_roll": HOLD_LEFT_POSE[2],
+            "f1": HOLD_LEFT_POSE[3], "f2": HOLD_LEFT_POSE[4], "f3": HOLD_LEFT_POSE[5],
+            "t1": HOLD_LEFT_POSE[6], "t2": HOLD_LEFT_POSE[7], "t3": HOLD_LEFT_POSE[8], "t_opp": HOLD_LEFT_POSE[9],
+            "pos": HOLD_LEFT_POS + GRIP_DROP * (1.0 - up) + Vector3(gb.y * 0.5 * side - gb.x * 0.6, gb.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside,
         }
     match state:
         HandState.GRAB:
@@ -312,17 +357,23 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["wrist_pitch"] = lerpf(45.0, idle["wrist_pitch"], e)
     var bob: Vector3 = _bob * bob_follow
     p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side - bob.x * 0.6, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside
+    if side < 0.0 and hold_left:
+        # the empty hand drops out of view to take the tool
+        p["pos"] = (p["pos"] as Vector3) + GRIP_DROP * _ease(_grip_t)
     return p
 
-func _clamp_joint(joint: String, value: float) -> float:
+func _clamp_joint(joint: String, value: float, wide_roll: bool = false) -> float:
     var lim: Array = LIMITS_DEG[joint]
+    if wide_roll and joint == "wrist_roll":
+        return clampf(value, -HOLD_ROLL_LIMIT, HOLD_ROLL_LIMIT)
     return clampf(value, lim[0], lim[1])
 
 func _apply_pose(h: Dictionary, target: Dictionary, k: float) -> void:
     var cur: Dictionary = h["pose"]
+    var wide := float(h["side"]) < 0.0 and _grip_t > 0.0
     for joint in JOINT_NAMES:
         var v: float = lerpf(cur.get(joint, target[joint]), target[joint], k)
-        cur[joint] = _clamp_joint(joint, v)
+        cur[joint] = _clamp_joint(joint, v, wide)
     var cur_pos: Vector3 = cur.get("pos", target["pos"])
     cur["pos"] = cur_pos.lerp(target["pos"], k)
     var ts: float = h["thumb_side"]

@@ -36,6 +36,8 @@ grab_started(target_cell: Vector3i)는 셀을 새로 잡을 때, chew_progress(r
 
 잡기가 거절되면 Chewer는 시작하지 않으므로 신호가 없다. 게임이 FDKHandsRig.on_grab_refused()를 불러 손이 오므렸다 미끄러져 돌아오는 SLIP 상태(0.5 s)를 보인다. 게임 쪽 거절 신호는 Main.grab_refused(tissue: int, world_pos: Vector3)이고 소리 연결이 구독한다. 첫 레버 정산 전 밖의 헛구역질은 Main.dry_heaved()로 알리고 소리 연결이 구독한다.
 
+한 손 도구(믹서기)는 FDKHandsRig.hold_left로 왼손에 쥔다. 손은 빈 채로 화면 아래로 내려갔다가 도구를 쥐고 올라오며, 내려놓을 때는 반대로 간다. 게임은 도구를 왼손 Wrist 자식으로 달고 left_grip_shown()이 참일 때만 보인다. 도구를 카메라 공간에 따로 두면 손보다 먼저 나타나고 걷기 흔들림을 따르지 않는다(2026-11-03).
+
 ## 지형 수정
 
 FDKTerrainField.dig_at(world_pos: Vector3,amount: float)는 실제 셀과 이웃 공유 모서리 밀도를 제거하고 게시할 지형을 표시한다. 반환값은 없으며 부작용 결과는 밀도·메시·충돌에서 확인한다. serialize()/deserialize(Dictionary)는 청크 상태를 주고받는다. 소비자는 복원 뒤 실제 화면이 필요한 시점에 게시를 준비해야 하며 데이터 적용만으로 첫 화면 준비를 단정하지 않는다.
