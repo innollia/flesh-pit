@@ -83,3 +83,13 @@
 ## 그 밖의 기존 실패 — 2026-10-31
 
 - `run_interaction_component_tests.gd`는 노드 실행기에서 1초 안에 실패하고, `run_continuation_tests.gd`는 `Belt/Canary/Waistband`가 없다는 스크립트 오류로 끝난다. `run_squeeze_tests.gd`는 "rare spikes stay bounded" 1건, `run_mutation_tests.gd`는 팔뚝 인형 자리 4건이 실패한다. 모두 물통·거울·자세 변경을 빼고 돌려도 같다.
+
+## 토하기 화면의 V·F·R 직접 키 읽기 — 2026-11-03
+
+- 재현: 키 설정에서 토하기(V)·상호작용(F)·오른손(R)을 다른 키로 바꾸고 변기 앞 토하기 화면에 들어간다. `FPInputModes.settlement_inputs()`가 `KEY_V`/`KEY_F`/`KEY_R`을 키 코드로 직접 읽으므로 옛 V는 일어서기로, 옛 F·R은 레버 누르기로 여전히 먹힌다(`fp_interactions.gd`의 `key_f`·`key_r`).
+- 범위: 감사 1-11(이동·웅크리기·위로 파기)에서는 W/A/S/D/Space만 행동으로 옮겼다. V·F·R은 키 설정에 이미 있던 행동이고 레버 조준 판정과 얽혀 있어 따로 고친다.
+
+## 키 파일을 격리하지 않는 검사·캡처 — 2026-11-03
+
+- `tests/capture_seat_keys.gd`는 `reset_keybinds()`로 `user://keybinds.json`을 지우고 저장 경로도 격리하지 않는다. `run_live_interactions_tests.gd`는 사용자 키 파일을 읽으므로 사용자가 W·F·V·R을 바꿨으면 실패한다.
+- 범위: 이제 `main.user_keybinds_path`를 ready 전에 바꾸면 된다. 이번에는 `run_settle_vent_tests.gd`만 옮겼다.

@@ -5,6 +5,9 @@ extends Object
 ## without any manual Input Map setup, while still letting a game override
 ## bindings normally (via Project Settings > Input Map, or by calling
 ## register_defaults() before adding its own events to the same action).
+## A default key is only added to an action that has no keyboard key yet, so
+## calling this again (another controller's _ready) never brings back a key
+## the game rebound away.
 ##
 ## Actions:
 ##   fdk_move_forward / fdk_move_back / fdk_move_left / fdk_move_right
@@ -30,16 +33,12 @@ static func register_defaults() -> void:
 	for action_name in ACTIONS.keys():
 		if not InputMap.has_action(action_name):
 			InputMap.add_action(action_name)
+		if _has_key(action_name):
+			continue
 		for keycode in ACTIONS[action_name]:
-			var already_bound := false
-			for event in InputMap.action_get_events(action_name):
-				if event is InputEventKey and event.physical_keycode == keycode:
-					already_bound = true
-					break
-			if not already_bound:
-				var ev := InputEventKey.new()
-				ev.physical_keycode = keycode
-				InputMap.action_add_event(action_name, ev)
+			var ev := InputEventKey.new()
+			ev.physical_keycode = keycode
+			InputMap.action_add_event(action_name, ev)
 
 	if not InputMap.has_action("fdk_eat"):
 		InputMap.add_action("fdk_eat")
@@ -53,12 +52,13 @@ static func register_defaults() -> void:
 		mev.button_index = MOUSE_BUTTON_LEFT
 		InputMap.action_add_event("fdk_eat", mev)
 	# Keyboard-only fallback for players without a mouse button held down easily.
-	var has_e_key := false
-	for event in InputMap.action_get_events("fdk_eat"):
-		if event is InputEventKey and event.physical_keycode == KEY_E:
-			has_e_key = true
-			break
-	if not has_e_key:
+	if not _has_key("fdk_eat"):
 		var kev := InputEventKey.new()
 		kev.physical_keycode = KEY_E
 		InputMap.action_add_event("fdk_eat", kev)
+
+static func _has_key(action_name: String) -> bool:
+	for event in InputMap.action_get_events(action_name):
+		if event is InputEventKey:
+			return true
+	return false

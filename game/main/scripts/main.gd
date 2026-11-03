@@ -482,15 +482,18 @@ func _register_inputs() -> void:
 ## user://keybinds.json (same shape) and win over the defaults.
 const KEYBINDS_PATH := "res://main/data/keybinds.json"
 const USER_KEYBINDS_PATH := "user://keybinds.json"
+## Where this player's keys are read and written. Tests point it at their own
+## file before ready (like save_path) so they never touch the player's keys.
+var user_keybinds_path: String = USER_KEYBINDS_PATH
 
 func _register_keybinds() -> void:
 	var binds: Dictionary = {}
-	for path in [KEYBINDS_PATH, USER_KEYBINDS_PATH]:
+	for path in [KEYBINDS_PATH, user_keybinds_path]:
 		if FileAccess.file_exists(path):
 			var d = JSON.parse_string(FileAccess.get_file_as_string(path))
 			if d is Dictionary:
 				for k in d.get("키", {}):
-					if path == USER_KEYBINDS_PATH and not binds.has(k):
+					if path == user_keybinds_path and not binds.has(k):
 						continue
 					var merged: Dictionary = binds.get(k, {}).duplicate()
 					merged.merge(d["키"][k], true)
@@ -526,8 +529,8 @@ func rebind_key(action: String, key_name: String) -> bool:
 	if code == KEY_NONE or not InputMap.has_action(action):
 		return false
 	var d: Dictionary = {"키": {}}
-	if FileAccess.file_exists(USER_KEYBINDS_PATH):
-		var old = JSON.parse_string(FileAccess.get_file_as_string(USER_KEYBINDS_PATH))
+	if FileAccess.file_exists(user_keybinds_path):
+		var old = JSON.parse_string(FileAccess.get_file_as_string(user_keybinds_path))
 		if old is Dictionary:
 			d = old
 	var pad := -1
@@ -535,7 +538,7 @@ func rebind_key(action: String, key_name: String) -> bool:
 		if e is InputEventJoypadButton:
 			pad = e.button_index
 	d["키"][action] = {"키보드": key_name, "패드": pad}
-	var f := FileAccess.open(USER_KEYBINDS_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(user_keybinds_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(d, " "))
 	f.close()
 	_register_keybinds()
@@ -1993,8 +1996,8 @@ func keybind_defaults() -> Dictionary:
 
 ## Forget the player's own keys: back to keybinds.json.
 func reset_keybinds() -> void:
-	if FileAccess.file_exists(USER_KEYBINDS_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_KEYBINDS_PATH))
+	if FileAccess.file_exists(user_keybinds_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(user_keybinds_path))
 	_register_keybinds()
 
 func settle_at_rest_point() -> Dictionary:

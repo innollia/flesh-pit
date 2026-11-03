@@ -80,14 +80,15 @@ static func _add(action: String, ev: InputEvent) -> void:
 				return
 	InputMap.action_add_event(action, ev)
 
-## R03: checks if any of the settlement exit inputs were pressed (V, WASD, Space, F, Esc, LMB, RMB, gamepad).
+## R03: checks if any of the settlement exit inputs were pressed (V, move keys, climb key, F, Esc, LMB, RMB, gamepad).
 static func settlement_inputs() -> Dictionary:
 	var state := {}
 	for action in ["fp_vomit", "fp_interact", "fp_pick", "fdk_eat", "fdk_jump", "ui_cancel",
 		"fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right"]:
 		state[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
-	var keys := {"key_v": KEY_V, "key_f": KEY_F, "key_r": KEY_R, "key_w": KEY_W,
-		"key_a": KEY_A, "key_s": KEY_S, "key_d": KEY_D, "key_space": KEY_SPACE, "key_escape": KEY_ESCAPE}
+	# Movement and Space are read only through their (rebindable) actions
+	# above: a key the player moved away must not stand them up any more.
+	var keys := {"key_v": KEY_V, "key_f": KEY_F, "key_r": KEY_R, "key_escape": KEY_ESCAPE}
 	for id in keys:
 		state[id] = Input.is_key_pressed(keys[id]) or Input.is_physical_key_pressed(keys[id])
 	state["mouse_left"] = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
@@ -110,8 +111,8 @@ static func is_settle_exit_requested(entry_frame: int = -1, entry_action: String
 			continue
 		if InputMap.has_action(action) and Input.is_action_just_pressed(action):
 			return true
-	# Direct keyboard Space / Escape fallbacks
-	if Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ESCAPE):
+	# Direct Escape fallback (Space is fdk_jump above, which can be rebound)
+	if Input.is_key_pressed(KEY_ESCAPE):
 		return true
 	# Gamepad stick deflection
 	var sx := Input.get_joy_axis(0, JOY_AXIS_LEFT_X)

@@ -22,6 +22,8 @@ const TURN := {
 	"fp_vomit": -40.0, "fp_interact": -50.0, "fp_carry": -40.0, "fp_barrier": -45.0,
 	"fp_eat_tumor": -40.0, "fp_tool_next": -35.0, "fp_tool_prev": 35.0,
 	"fp_mutate": 40.0, "fdk_eat": 50.0, "fp_pick": -50.0,
+	"fdk_move_forward": -70.0, "fdk_move_back": -70.0, "fdk_move_left": -10.0,
+	"fdk_move_right": -10.0, "fdk_crouch": 55.0, "fdk_jump": -30.0,
 }
 
 var view: SubViewport
@@ -316,6 +318,12 @@ func _process(delta: float) -> void:
 			"fp_mutate": _watch_forearm()
 			"fdk_eat": _tear("l")
 			"fp_pick": _tear("r")
+			"fdk_move_forward": _walk(Vector3.BACK)
+			"fdk_move_back": _walk(Vector3.FORWARD)
+			"fdk_move_left": _walk(Vector3.LEFT)
+			"fdk_move_right": _walk(Vector3.RIGHT)
+			"fdk_crouch": _crouch_dig()
+			"fdk_jump": _climb_up()
 			_: _wait(world)
 	_step_drops(delta)
 
@@ -432,6 +440,43 @@ func _tear(s: String) -> void:
 	_wall.position = Vector3(sgn * 0.16, 1.32, 0.95)
 	var lump := _lump_r if s == "r" else _lump_l
 	lump.visible = _w > 0.6 and tear > 0.2 and back > 0.3
+
+## Walk a few steps toward `dir` (body space: the mirror body faces +Z and
+## its right hand is on +X), then step back to the mark more slowly.
+func _walk(dir: Vector3) -> void:
+	var ph := fmod(_t, 2.6) / 2.6
+	var out := smoothstep(0.05, 0.5, ph) * (1.0 - smoothstep(0.6, 0.98, ph))
+	var going := ph < 0.55
+	var back_step := dir.z < 0.0
+	var phase := _t * 9.0 * (1.0 if going != back_step else -1.0)
+	body.set_posture(0.0, phase, _w * (1.0 if going else 0.6), -0.05 * _w)
+	body.position += body.basis * (dir * 0.32 * out * _w)
+
+## Crouch, then the left hand digs down at the floor (crouch + left hand =
+## dig down inside the flesh); stand again.
+func _crouch_dig() -> void:
+	var ph := fmod(_t, 3.0) / 3.0
+	var down := _win(ph, 0.02, 0.25, 0.85, 0.98)
+	var dig := _win(ph, 0.35, 0.5, 0.7, 0.82)
+	body.set_posture(down * _w, 0.0, 0.0, -0.3 * down * _w)
+	_nod(0.3 * down)
+	_arm("l", 0.5 * down + 0.25 * dig, 0.08, 0.4 * down + 0.6 * dig + 0.25 * sin(_t * 12.0) * dig)
+	_arm("r", 0.2 * down, 0.1, 0.9 * down)
+	_lump_l.visible = _w > 0.6 and dig > 0.3
+
+## Dig straight up: both hands claw overhead in turn and the body rises a
+## little each pull, then sinks back to the mark.
+func _climb_up() -> void:
+	var ph := fmod(_t, 2.4) / 2.4
+	var claw := 0.5 + 0.5 * sin(_t * 7.0)
+	var rise := smoothstep(0.05, 0.7, ph) * (1.0 - smoothstep(0.75, 0.98, ph))
+	body.set_posture(0.0, 0.0, 0.0, 0.0)
+	_nod(-0.35)
+	_arm("r", 2.5 + 0.45 * claw, 0.15, 0.2 + 0.9 * (1.0 - claw))
+	_arm("l", 2.5 + 0.45 * (1.0 - claw), 0.15, 0.2 + 0.9 * claw)
+	body.position.y += 0.16 * rise * _w
+	_lump_r.visible = _w > 0.6 and claw < 0.3
+	_lump_l.visible = _w > 0.6 and claw > 0.7
 
 func _step_drops(delta: float) -> void:
 	var keep: Array = []

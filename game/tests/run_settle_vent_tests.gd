@@ -33,6 +33,8 @@ func _init() -> void:
             if path.ends_with("/vent_lines.json") and not String(l["id"]) in RETIRED:
                 _ids[String(l["id"])] = true
     _m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+    # the key checks rebind and reset: never the player's own user://keybinds.json
+    _m.user_keybinds_path = "user://keybinds_test_settle_vent.json"
     get_root().add_child(_m)
 
 func _process(_d: float) -> bool:
@@ -682,7 +684,7 @@ func _keys() -> void:
     (menu.buttons["fp_interact"] as Button).pressed.emit()
     _assert(menu.waiting == "fp_interact", "keys: clicking a key waits for the new key")
     menu._input(_key_ev(KEY_K))
-    _assert(FPKeybindMenu.key_of("fp_interact") == "K" and FileAccess.file_exists(m.USER_KEYBINDS_PATH), "keys: the new key is used and saved")
+    _assert(FPKeybindMenu.key_of("fp_interact") == "K" and FileAccess.file_exists(m.user_keybinds_path), "keys: the new key is used and saved")
     # a key already used swaps
     menu.assign("fp_interact", "V")
     _assert(FPKeybindMenu.key_of("fp_interact") == "V" and FPKeybindMenu.key_of("fp_vomit") == "K", "keys: taking a used key swaps the two")
@@ -694,7 +696,7 @@ func _keys() -> void:
     menu._input(_key_ev(KEY_J))
     _assert(FPKeybindMenu.key_of("fp_carry") == "J", "keys: keyboard alone rebinds")
     menu.reset_button.pressed.emit()
-    _assert(FPKeybindMenu.key_of("fp_interact") == "F" and FPKeybindMenu.key_of("fp_vomit") == "V" and FPKeybindMenu.key_of("fp_carry") == "Q" and not FileAccess.file_exists(m.USER_KEYBINDS_PATH), "keys: 기본값 되돌리기 restores keybinds.json")
+    _assert(FPKeybindMenu.key_of("fp_interact") == "F" and FPKeybindMenu.key_of("fp_vomit") == "V" and FPKeybindMenu.key_of("fp_carry") == "Q" and not FileAccess.file_exists(m.user_keybinds_path), "keys: 기본값 되돌리기 restores keybinds.json")
     var ev := InputEventAction.new()
     ev.action = "ui_cancel"
     ev.pressed = true
