@@ -439,6 +439,9 @@ func alien_tear() -> bool:
 	if at == Vector3.INF:
 		return false
 	m.swallow_torn(m.shell_at(at), m.eat_cell_at(at))
+	# the same bloody hole and hands a chewer tear shows (the sound hangs off
+	# alien_hand_tore in game/audio)
+	m.show_tear(at)
 	alien_tears += 1
 	alien_since_tear = 0.0
 	alien_hand_tore.emit()
@@ -483,7 +486,22 @@ func extra_regen_blockers() -> Array:
 	return []
 
 ## M29: a crush death only curls the body up; 30 s later it wakes in the
-## restroom with everything but the stomach flesh.
+## restroom with everything but the stomach flesh. main.die() has already
+## moved the body to the restroom with the eyes shut (FPWakeLids): they stay
+## shut, the heart slow, the body curled on the floor, fists to the chest
+## (FPHandMotions), for DORMANT_WAKE s. Then the eyes open heavily on the
+## curled body and it uncurls and stands. Nothing the player presses acts
+## until then (main.gd); Esc still pauses.
+const DORMANT_BEAT := 0.4 ## heartbeat rate behind the shut lids, asleep
+const DORMANT_LID_HOLD := 0.3 ## s the lids stay shut once waking starts
+const DORMANT_RISE_AT := 0.9 ## s after waking starts the body uncurls
+const DORMANT_RISE := 1.4 ## s to uncurl and stand
+const DORMANT_EYE := 0.8 ## m above the feet, curled up (the crouched eye)
+const DORMANT_PITCH := -1.05 ## head bent down to the knees
+const DORMANT_ROLL := 0.35 ## and lying a little to one side
+var _dormant_woke := false
+var _dormant_look := true
+
 func _on_died(cause: String) -> void:
 	var p: FPProgression = m.progression
 	if cause != "crush" or not p.has_mutation("M29"):
@@ -496,18 +514,74 @@ func _on_died(cause: String) -> void:
 	dd.active = false
 	dd.visible = false
 	_dormant_t = 0.0
-	m.player.set_physics_process(false)
+	_dormant_woke = false
+	var pl: Node3D = m.player
+	_dormant_look = pl.is_processing_unhandled_input()
+	pl.set_physics_process(false)
+	pl.set_process_unhandled_input(false) # mouse look would snap on waking
+	pl.velocity = Vector3.ZERO
+	m.chewer.stop()
+	m.hand_motions.cancel()
+	# the legs drawn up: the body's own crouch, nothing squeezing it here
+	pl.set("duck", 0.0)
+	pl.set("twist", 0.0)
+	pl.set("_is_crouching", true)
+	pl.call("_apply_crouch_height")
+	if m.wake_lids != null:
+		m.wake_lids.hold_shut(0.0, DORMANT_BEAT)
+	_apply_curl()
 
 func is_dormant() -> bool:
 	return _dormant_t >= 0.0
+
+## 1 curled up asleep .. 0 standing (not dormant).
+func dormant_curl() -> float:
+	if _dormant_t < 0.0:
+		return 0.0
+	var rise := FPProgression.DORMANT_WAKE + DORMANT_RISE_AT
+	return 1.0 - smoothstep(rise, rise + DORMANT_RISE, _dormant_t)
 
 func _step_dormant(delta: float) -> void:
 	if _dormant_t < 0.0:
 		return
 	_dormant_t += delta
-	if _dormant_t >= FPProgression.DORMANT_WAKE:
+	if _dormant_t < FPProgression.DORMANT_WAKE:
+		if m.wake_lids != null:
+			m.wake_lids.hold_shut(delta, DORMANT_BEAT)
+	elif not _dormant_woke:
+		_dormant_woke = true
+		if m.wake_lids != null:
+			m.wake_lids.play(true, DORMANT_LID_HOLD)
+	if _dormant_t >= FPProgression.DORMANT_WAKE + DORMANT_RISE_AT + DORMANT_RISE:
 		_dormant_t = -1.0
-		m.player.set_physics_process(true)
+		_end_dormancy()
+		return
+	_apply_curl()
+
+## The curled body seen from inside: the eye low on the floor, bent to the
+## knees and tipped to one side; uncurling lifts it back to standing.
+func _apply_curl() -> void:
+	var pl: Node3D = m.player
+	var k := dormant_curl()
+	var feet: float = -pl.config.stand_height * 0.5
+	var stand_eye: float = feet + pl.config.eye_height
+	if k < 1.0 and bool(pl.get("_is_crouching")):
+		pl.set("_is_crouching", false)
+		pl.call("_apply_stand_height")
+	var eye := lerpf(stand_eye, feet + DORMANT_EYE, k)
+	pl.set("_pivot_base_y", eye) # the belt and legs fold with it (fp_art_hookup)
+	pl.camera_pivot.position = Vector3(0.0, eye, 0.0)
+	pl.camera_pivot.rotation = Vector3(lerpf(float(pl.get("_pitch")), DORMANT_PITCH, k), 0.0, DORMANT_ROLL * k)
+
+func _end_dormancy() -> void:
+	var pl: Node3D = m.player
+	if bool(pl.get("_is_crouching")):
+		pl.set("_is_crouching", false)
+	pl.call("_apply_stand_height")
+	pl.camera_pivot.position = Vector3(0.0, float(pl.get("_pivot_base_y")), 0.0)
+	pl.camera_pivot.rotation = Vector3(float(pl.get("_pitch")), 0.0, 0.0)
+	pl.set_process_unhandled_input(_dormant_look)
+	pl.set_physics_process(true)
 
 func _step_codex() -> void:
 	# session B posts a paper per settled tumor (main.drawing_nodes): dress

@@ -1078,6 +1078,14 @@ func _process(delta: float) -> void:
 		return
 	if Input.is_action_just_pressed("ui_cancel") and handle_esc() != "":
 		return
+	if mutation_apply != null and mutation_apply.is_dormant():
+		# M29: the body sleeps curled up and wakes on its own (05-mutations.md);
+		# the world goes on, no action of the player's does anything until then
+		chewer.stop()
+		step_world(delta)
+		_guard_terrain_eye(false)
+		tick_autosave(delta)
+		return
 	if InputMap.has_action("fp_mutate") and Input.is_action_just_pressed("fp_mutate") and Engine.get_process_frames() != _mutate_guard_frame:
 		open_mirror()
 		return
@@ -1266,6 +1274,15 @@ func eat_cell_at(p: Vector3) -> float:
 	terrain.dig_at(p, 1.0)
 	terrain.queue_visible_tear(p)
 	return stomach_config.units_for_removed(before - terrain.cell_corner_sum(p))
+
+## What every real tear shows, the chewer's and the M22 alien hand's
+## (fp_mutation_apply.alien_tear): blood on the hands, and the fresh hole --
+## strands snap, the rim springs back, bits and blood spray toward the eater,
+## the view jolts (fp_tear_feel.gd). Visual only: the caller has already
+## removed the density and queued the hole (eat_cell_at / the chewer).
+func show_tear(world_pos: Vector3) -> void:
+	hand_blood = minf(1.0, hand_blood + 0.05)
+	tear_feel.on_tear(world_pos, player.camera.global_position)
 
 ## Torn flesh that goes to the hands instead of the stomach.
 func add_carried(shell: int, units: float) -> void:
@@ -2815,15 +2832,12 @@ func reach_ending() -> void:
 
 func _on_cell_torn(world_pos: Vector3) -> void:
 	var shell := shell_at(world_pos)
-	hand_blood = minf(1.0, hand_blood + 0.05)
 	excavated_cells += 1
 	_chew_target = Vector3.INF
 	_chew_contact = Vector3.INF
 	tissue_tools.on_cell_torn(world_pos)
 	terrain.queue_visible_tear(world_pos)
-	# the fresh hole: strands snap, the rim springs back, bits and blood
-	# spray toward the eater, the view jolts (visual only; fp_tear_feel.gd)
-	tear_feel.on_tear(world_pos, player.camera.global_position)
+	show_tear(world_pos)
 	# the chewer already put chewer.last_units in the stomach unless carrying
 	if carry_mode and progression.equipped() == "big_saw":
 		swallow_torn(shell, chewer.last_units) # a saw stroke cannot be held (06-tools.md)

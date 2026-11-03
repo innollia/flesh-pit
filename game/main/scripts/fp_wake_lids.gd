@@ -17,6 +17,7 @@ var _t := -1.0
 var _beat := 0.0
 var _hold := HOLD
 var _reblink := REBLINK
+var _held := false
 
 func _ready() -> void:
 	layer = 37 # over the title (34) and the Esc lids (36)
@@ -34,13 +35,34 @@ func _ready() -> void:
 func set_eyes(ids: Array, field_angle: float = 0.0) -> void:
 	FPPauseMenu.apply_eyes(_mat, ids, field_angle)
 
-func play(heavy: bool = true) -> void:
-	_hold = HOLD if heavy else 0.25
+## hold: s the lids stay shut first (default HOLD, 0.25 when not heavy).
+func play(heavy: bool = true, hold: float = -1.0) -> void:
+	_hold = hold if hold >= 0.0 else (HOLD if heavy else 0.25)
 	_reblink = REBLINK if heavy else 0.0
 	_t = 0.0
-	_beat = 0.0
+	if not _held:
+		_beat = 0.0 # waking from M29 the heart keeps its beat
+	_held = false
 	visible = true
+	lids.visible = true
 	_apply()
+
+## M29 dormancy (fp_mutation_apply.gd): called every frame the body sleeps.
+## The eyes stay shut, the heartbeat behind them runs at `rate`; play()
+## then opens them. While the game is paused the Esc lids show instead.
+func hold_shut(delta: float, rate: float = 1.0) -> void:
+	_t = -1.0
+	_held = true
+	_beat += delta * rate
+	visible = true
+	lids.visible = true
+	_mat.set_shader_parameter("close", 1.0)
+	_mat.set_shader_parameter("beat", _beat)
+	_mat.set_shader_parameter("rect_size", lids.get_viewport_rect().size / maxf(lids.get_viewport_rect().size.y / 720.0, 0.5))
+	_mat.set_shader_parameter("glow", 0.0)
+
+func held_shut() -> bool:
+	return _held
 
 func playing() -> bool:
 	return _t >= 0.0
@@ -58,6 +80,10 @@ func shut_at(t: float) -> float:
 	return 0.0
 
 func _process(delta: float) -> void:
+	if _held:
+		# the Esc screen (layer 36) closes its own lids under these
+		lids.visible = not get_tree().paused
+		return
 	if _t < 0.0:
 		return
 	_t += delta

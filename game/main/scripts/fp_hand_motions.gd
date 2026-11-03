@@ -489,6 +489,31 @@ func _apply_cams(u: float, reset: bool = false) -> void:
 ## `p` = the rig's own target pose for one hand; returns it blended toward
 ## the motion pose. `rig` tells the main hands from the bowl-rim hands.
 func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
+    var q := _shape_pose(rig, side, p)
+    var ma: FPMutationApply = m.mutation_apply
+    var curl := ma.dormant_curl() if ma != null and rig != rim_rig else 0.0
+    if curl <= 0.0:
+        return q
+    return _blend_pose(q, _curled_pose(side), curl)
+
+## M29 dormancy: asleep curled up, both fists drawn in under the chin.
+func _curled_pose(side: float) -> Dictionary:
+    var c := {"pos": Vector3(0.12 * signf(side), -0.27, -0.25), "wrist_pitch": 70.0, "wrist_yaw": -20.0 * signf(side), "wrist_roll": 30.0 * signf(side)}
+    _fingers(c, 1.0)
+    return c
+
+static func _blend_pose(p: Dictionary, q: Dictionary, w: float) -> Dictionary:
+    var out := p.duplicate()
+    for key in q:
+        if not p.has(key):
+            continue
+        if key == "pos":
+            out["pos"] = (p["pos"] as Vector3).lerp(q["pos"], w)
+        else:
+            out[key] = lerpf(float(p[key]), float(q[key]), w)
+    return out
+
+func _shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
     if m.is_pulling_canary() and m.canary_pull != null:
         return m.canary_pull.hand_pose(rig, side, p)
     if rig == rim_rig:
