@@ -1226,19 +1226,24 @@ func _chew_step(delta: float) -> void:
 	# motion is allowed without restarting progress on the same cell.
 	if chewer.is_chewing() and _chew_target != Vector3.INF and _chew_contact != Vector3.INF and _looking_at(_chew_contact, 12.0, progression.reach()) and terrain.density_at(_chew_target) >= terrain_config.iso_level and _chew_target.distance_to(hit.position) <= terrain_config.cell_size * 1.5:
 		if tissue_tools.chew_at(_chew_target, hit.position, dir, delta):
-			terrain.set_press(hit.position, -dir, _chew_ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
-			tear_feel.on_chew(_chew_ratio, hit.position, -dir)
+			_show_pull(hit.position, dir, _chew_ratio)
 		return
 	var target := _terrain_target(hit, dir)
 	_chew_target = target
 	_chew_contact = hit.position
 	# hardness per tissue, membrane only with a blade (fp_tissue_tools.gd)
 	if tissue_tools.chew_at(target, hit.position, dir, delta):
-		terrain.set_press(hit.position, -dir, _chew_ratio if chewer.is_chewing() and hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
-		tear_feel.on_chew(_chew_ratio if chewer.is_chewing() else 0.0, hit.position, -dir)
+		_show_pull(hit.position, dir, _chew_ratio if chewer.is_chewing() else 0.0)
 	else:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
+
+## The pull on the held flesh at `at` (look direction `dir`, progress
+## `ratio`): the terrain's press, released while the hands show the tear,
+## and the tear feel's weeping drops. Visual only.
+func _show_pull(at: Vector3, dir: Vector3, ratio: float) -> void:
+	terrain.set_press(at, -dir, ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
+	tear_feel.on_chew(ratio, at, -dir)
 
 ## Point both hand rigs (plain and mutation) at the grabbed flesh, or clear
 ## it with Vector3.INF. The rig only reads the point; it never decides a tear.
