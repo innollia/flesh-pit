@@ -85,6 +85,10 @@ func _ready() -> void:
 	director.name = "AudioDirector"
 	director.manifest_path = MANIFEST
 	add_child(director)
+	# background music per place, never in the flesh (audio/fp_music.gd)
+	var music: Node = preload("res://audio/fp_music.gd").new()
+	music.name = "Music"
+	add_child(music)
 	call_deferred("_wire")
 
 func _wire() -> void:

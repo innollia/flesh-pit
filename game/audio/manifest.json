@@ -590,6 +590,41 @@
     "res://audio/sfx/ui_deny_v4.wav"
    ],
    "spatial": false
+  },
+  "mus_title": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_title.wav"
+   ],
+   "loop_seconds": 87.04
+  },
+  "mus_restroom": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_restroom.wav"
+   ],
+   "loop_seconds": 96.0
+  },
+  "mus_vent": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_vent.wav"
+   ],
+   "loop_seconds": 64.0
+  },
+  "mus_pause": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_pause.wav"
+   ],
+   "loop_seconds": 87.273
+  },
+  "mus_keybind": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_keybind.wav"
+   ],
+   "loop_seconds": 86.4
   }
  },
  "beds": {

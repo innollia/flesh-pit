@@ -36,6 +36,12 @@
 
 큰 톱이 카메라 공간에 떠 있고 두 손은 빈 채였던 문제를 믹서기와 같은 방식으로 고쳤다. 톱은 오른손 Wrist에 달리고 `FDKHandsRig.hold_both`가 두 손을 거울 자세로 양쪽 손잡이에 감는다. 들 때는 두 손이 화면 아래로 내려갔다가 톱을 쥐고 올라오고, 내려놓을 때나 Tab 때는 톱을 든 채 내려간다. 걷기 흔들림, 톱질(`fp_big_saw.gd` stroke만큼 두 손이 옆으로 밀림), 잡기 누르기를 두 손이 똑같이 받아 왼손도 손잡이에서 떨어지지 않는다(쥔 상태 간격 0 mm, 올라오는 중 화면 안 최대 7 mm). 검사는 `run_saw_grip_tests.gd`(기본 목록에 추가, 수정 전 12건 실패, 수정 후 17/17). 캡처는 `tests/capture_saw.gd`.
 
+## 2026-11-03 배경음악 다섯 곡
+
+사용자 요청("관련 툴로 배경음악도 여럿")으로 `tools/build_music.py`가 엔딩 노래의 MELODY/HARMONY로 반복음 다섯 개(`mus_title` 87 s, `mus_restroom` 96 s, `mus_vent` 64 s, `mus_pause` 87 s, `mus_keybind` 86 s)를 결정적으로 합성해 manifest에 등록한다. 모두 마디 단위 무봉합 루프이고 true peak -9~-21 dBFS, 루프 이음 jump ratio 0.0~0.5다. `audio/fp_music.gd`(hookup 자식, 일시정지 중에도 돈다)가 곳을 골라 Music 버스로 튼다: 시작 화면, 키 설정, Esc, 환풍구가 열린 동안, 화장실(눈부심이 가시고 6초 뒤부터 8초에 걸쳐). 살 속(08 §3), 쉼터(살 속), 엔딩(엔딩 허밍)에는 틀지 않는다. 정산은 몇 초짜리 순간이라 따로 곡을 두지 않았고 화장실 곡이 이어진다. 엔딩 크레딧은 8초 뒤 시작 화면으로 돌아가므로 따로 곡을 두지 않았고 시작 화면 곡이 이어받는다.
+
+검사 `run_music_tests.gd` 25/25(변경 전에는 첫 항목에서 실패). 실제 게임 녹음 `tests/capture_music.gd`. CLAP: 원본·게임 녹음 모두 시작 화면·Esc·환풍구·화장실은 의도 문구가 1위다. 키 설정 왈츠는 원본에서 1위지만 "ice cream truck jingle"과 근소하고, 게임 녹음에서는 grand piano/ice cream truck 다음 3위다(같은 오르골 계열의 오인). 화장실은 처음 도자기 두드림이 CLAP에서 doorbell로 들려 젖은 손끝 테두리 음으로 바꿨다.
+
 ## 2026-11-03 기획 대조 D03·D05 소리 연결
 
 2026-10-06 대조표의 남은 항목을 다시 확인했다. D10(M22 왼손 뜯기 동작)과 D11(M07·M14 추가 셀, M22 뜯김의 첫 렌더 게시)은 2026-10-12 반영(d0a3e7b)에 이미 있었다. `eat_cell_at()`이 `queue_visible_tear()`를 부르고, `FPHandMotions`가 `alien_reach`/`alien_since_tear`로 왼손을 움직이며, `run_mutation_tests.gd`의 `_run_alien_hand`가 검사한다. 새로 고치지 않았다.
