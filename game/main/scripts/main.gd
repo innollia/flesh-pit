@@ -1532,16 +1532,16 @@ func _looking_at(p: Vector3, deg: float, dist: float) -> bool:
 func _interact() -> void:
 	var target := interact_target()
 	# F settles at the toilet like V does, standing by it without aiming
-	if target == "" and _near_toilet() and (stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents()):
+	if target == "" and _near_toilet() and has_settle_contents():
 		start_settlement()
 		return
-	if target != "" and target != "belt":
+	if FPInteractions.acts_on(target):
 		activate_target(target, FPInteractions.SOURCE_INTERACT)
 
 ## The right hand on whatever is aimed (same, for the right-hand button).
 func _pick() -> void:
 	var target := interact_target()
-	if target != "" and target != "belt":
+	if FPInteractions.acts_on(target):
 		activate_target(target, FPInteractions.SOURCE_RIGHT)
 
 ## Act on one aimed target. `source` is FPInteractions.SOURCE_INTERACT (F)
@@ -1576,7 +1576,7 @@ func activate_target(target: String, source: String) -> void:
 				use_vent()
 		"sink": wash_hands()
 		"toilet":
-			if stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents():
+			if has_settle_contents():
 				start_settlement()
 			else: sit_down()
 		"door": restroom.set_door_open(not restroom.is_door_open())
@@ -1598,6 +1598,11 @@ func canary_hole_point() -> Vector3:
 
 func _near_toilet() -> bool:
 	return player.global_position.distance_to(restroom.toilet.to_global(Vector3(0, 0.9, 0.5))) < 1.3
+
+## Something to give at the toilet: a stomach to empty, tumors carried or
+## a bowl not yet flushed.
+func has_settle_contents() -> bool:
+	return stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents()
 
 func _near_rest_point() -> int:
 	for i in range(rest_points.size()):

@@ -111,6 +111,11 @@ static func source_hand(source: String) -> int:
 		SOURCE_RIGHT: return FDKToolKit.Hand.RIGHT
 	return -1
 
+## An aimed target F or the right hand acts on (the belt hooks take only
+## the hand buttons, through the belt swap).
+static func acts_on(target: String) -> bool:
+	return target != "" and target != "belt"
+
 ## What a fresh press of `source` would do now, without doing it:
 ## "lid_down", "belt", "target:<name>", "item:<id>", "dig", "settle" or "none".
 static func plan(main: Node3D, source: String) -> String:
@@ -123,10 +128,10 @@ static func plan(main: Node3D, source: String) -> String:
 		return "belt"
 	if source != SOURCE_LEFT:
 		var target: String = main.interact_target()
-		if target != "" and target != "belt":
+		if acts_on(target):
 			return "target:" + target
 	if hand < 0:
-		if main._near_toilet() and (main.stomach.fill > 0.0 or main.progression.tumors.carried_count() > 0 or main.toilet.has_contents()):
+		if main._near_toilet() and main.has_settle_contents():
 			return "settle"
 		return "none"
 	var id: String = main.progression.hands.item(hand)
