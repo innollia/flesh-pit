@@ -336,13 +336,12 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
     if side < 0.0 and _grip_t > 1.0:
         # fingers wrapped round the upright handle, thumb on top, rising from
         # below the frame while the tool is being taken
-        var gb: Vector3 = _bob * bob_follow
         var up := _ease(_grip_t - 1.0)
         return {
             "wrist_pitch": HOLD_LEFT_POSE[0] + breathe * 0.5, "wrist_yaw": HOLD_LEFT_POSE[1], "wrist_roll": HOLD_LEFT_POSE[2],
             "f1": HOLD_LEFT_POSE[3], "f2": HOLD_LEFT_POSE[4], "f3": HOLD_LEFT_POSE[5],
             "t1": HOLD_LEFT_POSE[6], "t2": HOLD_LEFT_POSE[7], "t3": HOLD_LEFT_POSE[8], "t_opp": HOLD_LEFT_POSE[9],
-            "pos": HOLD_LEFT_POS + GRIP_DROP * (1.0 - up) + Vector3(gb.y * 0.5 * side - gb.x * 0.6, gb.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * aside,
+            "pos": _sway(HOLD_LEFT_POS + GRIP_DROP * (1.0 - up), side, aside),
         }
     match state:
         HandState.GRAB:
@@ -430,13 +429,17 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["t1"] = lerpf(-8.0, idle["t1"], e)
             p["pos"] = Vector3(0.15 * side, -0.14, -0.44).lerp(idle["pos"], e)
             p["wrist_pitch"] = lerpf(45.0, idle["wrist_pitch"], e)
-    var bob: Vector3 = _bob * bob_follow
-    var away := aside * _aside_weight(t)
-    p["pos"] = (p["pos"] as Vector3) + Vector3(bob.y * 0.5 * side - bob.x * 0.6, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * away
+    p["pos"] = _sway(p["pos"] as Vector3, side, aside * _aside_weight(t))
     if side < 0.0 and hold_left:
         # the empty hand drops out of view to take the tool
         p["pos"] = (p["pos"] as Vector3) + GRIP_DROP * _ease(_grip_t)
     return p
+
+## `pos` carried by the walk bob and swung aside by `away` (0..1) for the
+## hand on `side`.
+func _sway(pos: Vector3, side: float, away: float) -> Vector3:
+    var bob: Vector3 = _bob * bob_follow
+    return pos + Vector3(bob.y * 0.5 * side - bob.x * 0.6, bob.y * 1.1, 0.0) + Vector3(ASIDE_OFFSET.x * side, ASIDE_OFFSET.y, ASIDE_OFFSET.z) * away
 
 func _clamp_joint(joint: String, value: float, wide_roll: bool = false) -> float:
     var lim: Array = LIMITS_DEG[joint]
