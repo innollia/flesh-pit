@@ -371,19 +371,17 @@ func _to_rig(n: Node3D) -> Transform3D:
 
 # --- mesh building ---------------------------------------------------------
 
-## Slim, clean low-poly hands (2026-11-02: "a woman's hand, slender and
-## clean"): four separate fingers, each a thin six-sided tube, on the one
-## joint chain (Finger1..3 bend all four together). Across the hand from the
-## thumb side: index, middle, ring, little; x centre, half width, and how
-## long the last segment runs (middle longest, little shortest).
-const FINGERS := [
-    [0.0285, 0.0074, 0.94],
-    [0.0095, 0.0078, 1.0],
-    [-0.0095, 0.0075, 0.95],
-    [-0.0280, 0.0063, 0.76],
+## Cross-section of the fused finger block: four rounded fingers side by
+## side, with grooves between them on the back AND the palm side.
+## Grooves are deep (|y| ~0.3) so the four fingers read as four rounded
+## ridges under the flat PS1 shading, not as one plank.
+const FINGER_PROFILE := [
+    Vector2(1.0, -0.1), Vector2(0.97, 0.6), Vector2(0.75, 1.0), Vector2(0.5, 0.3),
+    Vector2(0.25, 1.0), Vector2(0.0, 0.32), Vector2(-0.25, 1.0), Vector2(-0.5, 0.3),
+    Vector2(-0.75, 0.97), Vector2(-0.97, 0.55), Vector2(-1.0, -0.15), Vector2(-0.95, -0.75),
+    Vector2(-0.75, -1.0), Vector2(-0.5, -0.38), Vector2(-0.25, -1.0), Vector2(0.0, -0.38),
+    Vector2(0.25, -1.0), Vector2(0.5, -0.38), Vector2(0.75, -1.0), Vector2(0.95, -0.75),
 ]
-## The little finger also sits a little lower down the palm.
-const LITTLE_SET_BACK := 0.006
 
 func _build_hand(side: float) -> Dictionary:
     var thumb_side := -side
@@ -397,21 +395,22 @@ func _build_hand(side: float) -> Dictionary:
     _add_mesh(wrist, "Palm", _palm_mesh(thumb_side))
 
     var palm_len := 0.088
-    var f_len := [0.047, 0.031, 0.026]
+    var f_len := [0.044, 0.031, 0.025]
+    var f_half := [Vector2(0.047, 0.025), Vector2(0.044, 0.0228), Vector2(0.041, 0.0205)]
     var f1 := _joint(wrist, "Finger1", Vector3(0, 0.001, -palm_len))
-    _add_mesh(f1, "Seg", _finger_mesh(0, f_len[0], 1.0, 0.92, thumb_side))
+    _add_mesh(f1, "Seg", _finger_mesh(f_len[0], f_half[0], f_half[1], thumb_side, false))
     var f2 := _joint(f1, "Finger2", Vector3(0, 0, -f_len[0]))
-    _add_mesh(f2, "Seg", _finger_mesh(1, f_len[1], 0.92, 0.85, thumb_side))
+    _add_mesh(f2, "Seg", _finger_mesh(f_len[1], f_half[1], f_half[2], thumb_side, false))
     var f3 := _joint(f2, "Finger3", Vector3(0, 0, -f_len[1]))
-    _add_mesh(f3, "Seg", _finger_mesh(2, f_len[2], 0.85, 0.7, thumb_side))
+    _add_mesh(f3, "Seg", _finger_mesh(f_len[2], f_half[2], f_half[2] * 0.8, thumb_side, true))
 
-    var t_len := [0.038, 0.029, 0.025]
-    var t1 := _joint(wrist, "Thumb1", Vector3(thumb_side * 0.03, -0.007, -0.016))
-    _add_mesh(t1, "Seg", _thumb_mesh(t_len[0], Vector2(0.0145, 0.0125), Vector2(0.0122, 0.0108), false))
+    var t_len := [0.04, 0.03, 0.025]
+    var t1 := _joint(wrist, "Thumb1", Vector3(thumb_side * 0.036, -0.008, -0.016))
+    _add_mesh(t1, "Seg", _thumb_mesh(t_len[0], Vector2(0.02, 0.0175), Vector2(0.0175, 0.0155), false))
     var t2 := _joint(t1, "Thumb2", Vector3(0, 0, -t_len[0]))
-    _add_mesh(t2, "Seg", _thumb_mesh(t_len[1], Vector2(0.0122, 0.0108), Vector2(0.0108, 0.0094), false))
+    _add_mesh(t2, "Seg", _thumb_mesh(t_len[1], Vector2(0.0175, 0.0155), Vector2(0.0155, 0.0135), false))
     var t3 := _joint(t2, "Thumb3", Vector3(0, 0, -t_len[1]))
-    _add_mesh(t3, "Seg", _thumb_mesh(t_len[2], Vector2(0.0108, 0.0094), Vector2(0.0088, 0.0074), true))
+    _add_mesh(t3, "Seg", _thumb_mesh(t_len[2], Vector2(0.0155, 0.0135), Vector2(0.013, 0.011), true))
 
     var thumb_base := Basis(Vector3.UP, deg_to_rad(-38.0) * thumb_side) * Basis(Vector3.FORWARD, deg_to_rad(-55.0) * thumb_side) * Basis(Vector3.RIGHT, deg_to_rad(-12.0))
 
@@ -464,66 +463,79 @@ func _forearm_mesh() -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var prof := FDKLowPoly.round_profile(8, 0.15)
-    # a slender forearm narrowing to a fine wrist
     var rings := [
-        FDKLowPoly.ring(prof, 0.34, Vector2(0.031, 0.026), Vector2(0, -0.004)),
-        FDKLowPoly.ring(prof, 0.18, Vector2(0.028, 0.023), Vector2(0, -0.003)),
-        FDKLowPoly.ring(prof, 0.06, Vector2(0.023, 0.017), Vector2(0, -0.001)),
-        FDKLowPoly.ring(prof, 0.008, Vector2(0.021, 0.0145)),
+        FDKLowPoly.ring(prof, 0.34, Vector2(0.037, 0.031), Vector2(0, -0.004)),
+        FDKLowPoly.ring(prof, 0.18, Vector2(0.034, 0.028), Vector2(0, -0.003)),
+        FDKLowPoly.ring(prof, 0.06, Vector2(0.029, 0.022), Vector2(0, -0.001)),
+        FDKLowPoly.ring(prof, 0.008, Vector2(0.026, 0.018)),
     ]
-    FDKLowPoly.loft(st, rings, [skin_color.darkened(0.1), skin_color.darkened(0.04), skin_color], true, true)
+    FDKLowPoly.loft(st, rings, [skin_color.darkened(0.12), skin_color.darkened(0.05), skin_color], true, true)
     return st.commit()
 
 func _palm_mesh(thumb_side: float) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var prof := FDKLowPoly.round_profile(8, 0.35)
+    var prof := FDKLowPoly.round_profile(10, 0.35)
     var rings := [
-        FDKLowPoly.ring(prof, 0.014, Vector2(0.022, 0.0145)),
-        FDKLowPoly.ring(prof, -0.022, Vector2(0.032, 0.0165), Vector2(thumb_side * 0.002, 0)),
-        FDKLowPoly.ring(prof, -0.058, Vector2(0.037, 0.0165)),
-        FDKLowPoly.ring(prof, -0.084, Vector2(0.038, 0.0155), Vector2(0, 0.001)),
-        FDKLowPoly.ring(prof, -0.092, Vector2(0.035, 0.0135), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, 0.014, Vector2(0.03, 0.022)),
+        FDKLowPoly.ring(prof, -0.022, Vector2(0.043, 0.026), Vector2(thumb_side * 0.002, 0)),
+        FDKLowPoly.ring(prof, -0.058, Vector2(0.049, 0.027)),
+        FDKLowPoly.ring(prof, -0.086, Vector2(0.05, 0.027), Vector2(0, 0.001)),
+        FDKLowPoly.ring(prof, -0.093, Vector2(0.048, 0.026), Vector2(0, 0.001)),
     ]
     FDKLowPoly.loft(st, rings, [skin_color, skin_color, skin_color.lightened(0.04), skin_color], true, true)
-    # one soft pad at the thumb's root, no heavy hypothenar
-    FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.017, -0.009, -0.03), Vector3(0.012, 0.007, 0.02), 0.12, 3, palm_color, palm_color.darkened(0.06))
+    FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.02, -0.011, -0.03), Vector3(0.017, 0.011, 0.026), 0.18, 3, palm_color, palm_color.darkened(0.08))
+    FDKLowPoly.add_blob(st, Vector3(-thumb_side * 0.024, -0.01, -0.035), Vector3(0.013, 0.008, 0.028), 0.15, 5, palm_color, palm_color.darkened(0.06))
     return st.commit()
 
-## One segment of all four fingers: `seg` 0..2 from the knuckles, widths
-## scaled from `w0` to `w1` of each finger's own; the last segment rounds
-## off into a fingertip with a clean, slightly long nail on the back.
-func _finger_mesh(seg: int, length: float, w0: float, w1: float, _thumb_side: float) -> Mesh:
+func _finger_mesh(length: float, half_start: Vector2, half_end: Vector2, thumb_side: float, tip: bool) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var prof := FDKLowPoly.round_profile(6, 0.2)
-    for f in FINGERS:
-        var x: float = f[0]
-        var hw: float = f[1]
-        var reach: float = f[2]
-        var lo := length * (reach if seg == 2 else 1.0)
-        var back := LITTLE_SET_BACK if (seg == 0 and hw < 0.007) else 0.0
-        var h0 := Vector2(hw * w0, hw * w0 * 1.05)
-        var h1 := Vector2(hw * w1, hw * w1 * 1.0)
-        var r0 := FDKLowPoly.ring(prof, 0.004 + back, h0 * 1.06, Vector2(x, 0))
-        var r1 := FDKLowPoly.ring(prof, -lo * 0.5, (h0 + h1) * 0.5 * 0.94, Vector2(x, 0))
-        var r2 := FDKLowPoly.ring(prof, -lo, h1, Vector2(x, 0))
-        if seg == 2:
-            var r3 := FDKLowPoly.ring(prof, -lo - hw * 0.7, h1 * Vector2(0.72, 0.5), Vector2(x, hw * 0.12))
-            FDKLowPoly.loft(st, [r0, r1, r2, r3], [skin_color, skin_color.lightened(0.03), nail_color], false, true)
-        else:
-            FDKLowPoly.loft(st, [r0, r1, r2], [skin_color, skin_color.lightened(0.02)], false, false)
+    var prof := PackedVector2Array(FINGER_PROFILE)
+    # knuckle bulge at the joint, slimmer in the middle of the segment
+    var r0 := FDKLowPoly.ring(prof, 0.007, half_start * Vector2(1.02, 1.07), Vector2(0, half_start.y * 0.03))
+    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 0.97))
+    var r2 := FDKLowPoly.ring(prof, -length, half_end * Vector2(1.0, 1.08))
+    if tip:
+        _shape_tip(r0, prof, thumb_side, -0.007, 0.0)
+        _shape_tip(r1, prof, thumb_side, length * 0.5, 0.35)
+        _shape_tip(r2, prof, thumb_side, length, 1.0)
+        var r3 := FDKLowPoly.ring(prof, -length - 0.007, half_end * Vector2(0.9, 0.55), Vector2(0, -0.001))
+        _shape_tip(r3, prof, thumb_side, length + 0.007, 1.0)
+        # notch the tip between fingers so the silhouette ends in four
+        # rounded fingertips instead of one straight edge
+        _notch_tip(r2, prof, 0.003)
+        _notch_tip(r3, prof, 0.009)
+        FDKLowPoly.loft(st, [r0, r1, r2, r3], [skin_color, skin_color.lightened(0.03), nail_color], false, true)
+    else:
+        FDKLowPoly.loft(st, [r0, r1, r2], [skin_color, skin_color.lightened(0.02)], false, false)
     return st.commit()
+
+func _shape_tip(r: PackedVector3Array, prof: PackedVector2Array, thumb_side: float, depth: float, amount: float) -> void:
+    for i in range(r.size()):
+        var u := prof[i].x * thumb_side
+        var f := 1.0 - 0.28 * smoothstep(-0.2, -1.0, u) - 0.07 * smoothstep(0.4, 1.0, u)
+        var p := r[i]
+        p.z = -depth * lerpf(1.0, f, amount)
+        r[i] = p
+
+func _notch_tip(r: PackedVector3Array, prof: PackedVector2Array, back: float) -> void:
+    for i in range(r.size()):
+        var q: Vector2 = prof[i]
+        if absf(q.y) < 0.5 and absf(q.x) < 0.9:
+            var p := r[i]
+            p.z += back
+            r[i] = p
 
 func _thumb_mesh(length: float, half_start: Vector2, half_end: Vector2, tip: bool) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var prof := FDKLowPoly.round_profile(6, 0.2)
-    var r0 := FDKLowPoly.ring(prof, 0.006, half_start * 1.08)
-    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 1.02))
+    var prof := FDKLowPoly.round_profile(7, 0.25)
+    var r0 := FDKLowPoly.ring(prof, 0.006, half_start * 1.12)
+    var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 1.05))
     var r2 := FDKLowPoly.ring(prof, -length, half_end)
     if tip:
-        var r3 := FDKLowPoly.ring(prof, -length - 0.008, half_end * Vector2(0.72, 0.5), Vector2(0, half_end.y * 0.1))
+        var r3 := FDKLowPoly.ring(prof, -length - 0.007, half_end * Vector2(0.75, 0.55))
         FDKLowPoly.loft(st, [r0, r1, r2, r3], [skin_color, skin_color, nail_color], true, true)
     else:
         FDKLowPoly.loft(st, [r0, r1, r2], [skin_color, skin_color], true, false)
