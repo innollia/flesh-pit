@@ -67,7 +67,51 @@ func _ready() -> void:
 		_foot[s] = foot
 	for mi in find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# body hair (grown with the arm hair) and blood, as on the mirror legs
+	_marks = FPBodyMarks.make_material()
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		var spec: Array = MARKS.get(String(mi.name), [])
+		if not spec.is_empty():
+			FPBodyMarks.paint(mi, _marks, spec[0], spec[1])
 	set_pose(0.95, 0.0, 0.0, 0.0)
+
+## Per leg mesh: [blood reach (1 = first), hair weight] (fp_mirror_body MARKS).
+const MARKS := {"Thigh": [0.28, 0.75], "Shin": [0.15, 0.85], "Foot": [0.12, 0.25]}
+## Strands per arm hair point on each leg mesh.
+const STRANDS := {"Thigh": 0.8, "Shin": 0.8}
+var _marks: ShaderMaterial
+var _hair_key := ""
+
+## Blood running down the legs (the hand blood amount, 0..1).
+func set_blood(amount: float) -> void:
+	if _marks != null:
+		_marks.set_shader_parameter("blood", clampf(amount, 0.0, 1.0))
+
+## Leg hair from the arm hair counts {common, core, mantle, surface}.
+func set_body_hair(counts: Dictionary) -> void:
+	var kl := FPBodyHair.kinds(counts)
+	if _marks != null:
+		_marks.set_shader_parameter("hair", FPBodyMarks.hair_density(kl.size()))
+	var key := ",".join(PackedStringArray(kl))
+	if key == _hair_key:
+		return
+	_hair_key = key
+	var seed := 0
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		var m3 := mi as MeshInstance3D
+		if not STRANDS.has(String(m3.name)):
+			continue
+		seed += 1
+		var n := int(round(float(kl.size()) * float(STRANDS[m3.name])))
+		var mesh := FPBodyHair.grow(m3.mesh, n, kl, 500 + seed * 17, func(_p: Vector3, nrm: Vector3) -> float: return 1.0 if nrm.y > -0.6 else 0.0, Vector3.DOWN, 0.022, 0.0012)
+		var hair := m3.get_node_or_null("BodyHair") as MeshInstance3D
+		if hair == null:
+			hair = K.add_mesh(m3, "BodyHair", mesh, _skin_mat)
+			hair.layers = m3.layers
+			hair.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		else:
+			hair.mesh = mesh
+		hair.visible = n > 0
 
 func _pivot(parent: Node3D, n: String, at: Vector3) -> Node3D:
 	var p := Node3D.new()

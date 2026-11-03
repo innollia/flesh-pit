@@ -55,6 +55,9 @@ var arm_hair: Node3D
 ## on the left palm while it is held. Both needles point at the restroom.
 var waist_compass: Node3D
 var hand_compass: Node3D
+## The same arm hair on the right forearm (mirrored): the hair currency grows
+## on both arms, and the body hair follows it (FPBodyHair / FPBodyMarks).
+var arm_hair_right: Node3D
 var belt: Node3D
 var bag: Node3D
 var hand_tumor: Node3D
@@ -122,6 +125,8 @@ func setup(main: Node3D) -> void:
 	hand_compass.set("target", m.RESTROOM_CENTER)
 	hand_compass.set("on_top", true) # the hand's squashed depth would hide it
 	held_teeth = _make_held_teeth()
+	arm_hair_right = HairScene.instantiate()
+	arm_hair_right.name = "ArmHairRight"
 	_attach_to_rig(_rig)
 	# mutation hands: a second rig with the tumor-mutation parts, swapped in
 	# once any of those mutations is owned
@@ -139,6 +144,7 @@ func setup(main: Node3D) -> void:
 	# waist: belt with sprays + canary in briefs, tumor bag on the left hip
 	belt = BeltScene.instantiate()
 	belt.spray_cast_shadows = false
+	belt.cast_body_shadow = false
 	belt.name = "Belt"
 	belt.position = Vector3(0, 0.05, 0.02)
 	m.player.add_child(belt)
@@ -186,6 +192,11 @@ func _attach_to_rig(rig: Node3D) -> void:
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
 	_put(hand_compass, lw, COMPASS_ON_PALM)
 	hand_compass.basis = Basis(Vector3.FORWARD, PI)
+	_put(arm_hair_right, rig.get_node("HandRight") as Node3D, Vector3(0, 0.0, 0.34))
+	arm_hair_right.scale = Vector3(-1, 1, 1)
+	var right_arm := arm_hair_right.get_node_or_null("Forearm") as Node3D
+	if right_arm != null:
+		right_arm.visible = false
 	# Keep the original watch geometry throughout raise and release, on both
 	# rig forearms so their existing mutation transforms still affect it.
 	var hair_arm := arm_hair.get_node_or_null("Forearm") as MeshInstance3D
@@ -294,6 +305,10 @@ func _process_inner(_delta: float) -> void:
 	_sync_plug(_delta)
 	_sync_hairs(prog)
 	_sync_mutations(prog)
+	var body_blood := maxf(m.hand_blood, m.hand_motions.blood_visual() if m.hand_motions != null else 0.0)
+	belt.call("set_blood", body_blood)
+	if legs != null:
+		legs.call("set_blood", body_blood)
 	var sp := prog.sprays
 	belt.call("set_spray_count", sp.count_of_tier(FDKSprayCan.Tier.CHEAP) - int(prog.hands.holds("spray_cheap")), sp.count_of_tier(FDKSprayCan.Tier.DEEP) - int(prog.hands.holds("spray_deep")))
 	belt.call("set_supplies", prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
@@ -351,10 +366,14 @@ func _sync_hairs(prog: FPProgression) -> void:
 	var biome := {"core": prog.hairs("core"), "mantle": prog.hairs("mantle"), "surface": prog.hairs("surface")}
 	var total := prog.hairs(FPProgression.COMMON) + int(biome["core"]) + int(biome["mantle"]) + int(biome["surface"])
 	var shown: int = arm_hair.call("hair_total")
-	if before != "" and total < shown:
-		arm_hair.call("drop_hairs", shown - total)
-	else:
-		arm_hair.call("set_hair", prog.hairs(FPProgression.COMMON), biome)
+	for arm in [arm_hair, arm_hair_right]:
+		if before != "" and total < shown:
+			arm.call("drop_hairs", shown - total)
+		else:
+			arm.call("set_hair", prog.hairs(FPProgression.COMMON), biome)
+	belt.call("set_body_hair", FPBodyHair.counts_of(prog))
+	if legs != null:
+		legs.call("set_body_hair", FPBodyHair.counts_of(prog))
 
 func _sync_mutations(prog: FPProgression) -> void:
 	var all: Array = prog.all_mutations()

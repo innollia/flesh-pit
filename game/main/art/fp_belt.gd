@@ -38,6 +38,12 @@ var _cans: Array = []
 ## First-person holsters must not project detached-looking rings onto the room.
 ## Mirror and Tab bodies retain their ordinary shadows.
 var spray_cast_shadows := true
+## The first-person waist casts no shadow at all: the whole body's shadow,
+## belt included, comes from FPShadowBody (a full shadow-only body), so this
+## band must not add a second, floating belt ring to it.
+var cast_body_shadow := true
+var _marks: ShaderMaterial
+var _hair_key := ""
 var _supplies := {}
 var _spray_counts := Vector2i(-1, -1)
 var _canary: Node3D
@@ -115,6 +121,11 @@ func _ready() -> void:
     var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), _skin_mat())
     # the body must not shade itself dark under the ceiling tube
     torso_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    # body hair (grown with the arm hair) and blood over the bare belly and
+    # the briefs; the belly front is -Z here
+    _marks = FPBodyMarks.make_material()
+    FPBodyMarks.paint(torso_mi, _marks, 0.4, 0.8, -1.0, 2.0)
+    FPBodyMarks.paint(trousers_mi, _marks, 0.3, 0.0, -1.0, 0.0)
     # belt band: a thick leather loop right round the waist
     st = K.begin()
     var leather := Color(0.44, 0.26, 0.13)
@@ -156,6 +167,48 @@ func _ready() -> void:
     # this must not default to visible, or a fresh run shows the canary
     # before it is ever caught (형님 2026-09-30).
     set_canary(false)
+    if not cast_body_shadow:
+        _no_shadow(self)
+        get_tree().node_added.connect(_on_node_added)
+
+func _no_shadow(n: Node) -> void:
+    if n is GeometryInstance3D:
+        (n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    for c in n.get_children():
+        _no_shadow(c)
+
+## Tools hung later, rebuilt cans, the tumor bag and its tumor join the
+## waist without a shadow of their own.
+func _on_node_added(n: Node) -> void:
+    if n is GeometryInstance3D and is_ancestor_of(n):
+        (n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## Blood over the belly and briefs (the hand blood amount, 0..1).
+func set_blood(amount: float) -> void:
+    if _marks != null:
+        _marks.set_shader_parameter("blood", clampf(amount, 0.0, 1.0))
+
+## Belly hair from the arm hair counts {common, core, mantle, surface}:
+## painted density plus strands down the navel trail.
+func set_body_hair(counts: Dictionary) -> void:
+    var kl := FPBodyHair.kinds(counts)
+    if _marks != null:
+        _marks.set_shader_parameter("hair", FPBodyMarks.hair_density(kl.size()))
+    var key := ",".join(PackedStringArray(kl))
+    var torso := get_node_or_null("Torso") as MeshInstance3D
+    if key == _hair_key or torso == null:
+        return
+    _hair_key = key
+    var n := int(round(float(kl.size()) * 0.5))
+    var mesh := FPBodyHair.grow(torso.mesh, n, kl, 911, func(p: Vector3, _nrm: Vector3) -> float: return (1.0 if absf(p.x) < 0.035 else 0.2) if p.z < -0.04 and p.y < 0.1 else 0.0, Vector3.DOWN, 0.024, 0.0012)
+    var hair := torso.get_node_or_null("BodyHair") as MeshInstance3D
+    if hair == null:
+        hair = K.add_mesh(torso, "BodyHair", mesh, _skin_mat())
+        hair.layers = torso.layers
+        hair.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    else:
+        hair.mesh = mesh
+    hair.visible = n > 0
 
 func _build_canary() -> void:
     var st := K.begin()

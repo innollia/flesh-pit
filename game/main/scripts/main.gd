@@ -151,6 +151,7 @@ var drawing_nodes: Array[Node3D] = []
 var mirror: FPMirror ## forearm hologram mutation screen (fp_mutate key)
 var mirror_view_right: FPMirrorReflection
 var mirror_view: FPMirrorReflection ## the restroom mirror: reflection only
+var shadow_body: FPShadowBody ## the whole body as a shadow-only caster
 var _mutate_guard_frame := -1
 var ending: FPEnding
 var art_hookup: FPArtHookup
@@ -872,6 +873,11 @@ func _build_ui() -> void:
 	mirror_view_right.name = "MirrorViewRight"
 	add_child(mirror_view_right)
 	mirror_view_right.attach(restroom.mirror_art.door_surface_right, player, player.camera, progression, mirror_view.body)
+	# the player's shadow: a whole shadow-only body wearing the belt
+	shadow_body = FPShadowBody.new()
+	shadow_body.name = "ShadowBodyCaster"
+	add_child(shadow_body)
+	shadow_body.setup(self)
 	keybind_menu = FPKeybindMenu.new()
 	keybind_menu.name = "KeybindMenu"
 	add_child(keybind_menu)

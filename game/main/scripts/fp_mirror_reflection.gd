@@ -172,7 +172,7 @@ func sync(body_ok: bool = true, has_canary: bool = false) -> void:
 func _signature() -> String:
 	if prog == null:
 		return ""
-	return "%s|%d|%s|%s" % [str(prog.all_mutations()), prog.belly_bumps(), str(prog.has_belt), str(_has_canary)]
+	return "%s|%d|%s|%s|%s" % [str(prog.all_mutations()), prog.belly_bumps(), str(prog.has_belt), str(_has_canary), str(FPBodyHair.counts_of(prog))]
 
 func refresh() -> void:
 	if not _owns_body:
@@ -181,6 +181,7 @@ func refresh() -> void:
 		return
 	_sig = _signature()
 	body.apply(prog.all_mutations(), prog.belly_bumps())
+	body.set_body_hair(FPBodyHair.counts_of(prog))
 	if body._belt != null:
 		body._belt.call("set_worn", prog.has_belt)
 		body._belt.call("set_canary", _has_canary)
@@ -204,15 +205,17 @@ func _build_live_details() -> void:
 		swollen.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	_brief_meshes.append(swollen)
 	# Reflection uses depth-tested blood so it cannot paint through the body.
+	# The hands keep the first-person hand blood; the forearms and the rest
+	# of the body carry the body's own hair-and-blood marks (FPBodyMarks).
 	_blood = ShaderMaterial.new()
 	var shader := Shader.new()
 	shader.code = FPHandBlood.SHADER.replace("depth_test_disabled, ", "")
 	_blood.shader = shader
 	for side in ["right_hand", "left_hand"]:
 		for mesh in body.part_node(side).find_children("*", "MeshInstance3D", true, false):
-			if mesh.name in ["Forearm", "Palm", "Fingers"]:
+			if mesh.name in ["Palm", "Fingers"]:
 				mesh.material_overlay = _blood
-				mesh.set_instance_shader_parameter("along", 0.1 if mesh.name == "Forearm" else 0.8)
+				mesh.set_instance_shader_parameter("along", 0.8)
 	var flesh := SphereMesh.new()
 	flesh.radius = 0.035
 	flesh.height = 0.055
@@ -237,6 +240,7 @@ func _sync_live_details() -> void:
 	var main := player.get_parent()
 	_briefs.mesh = _brief_meshes[1 if main.has_canary else 0]
 	FPHandBlood.set_amount(_blood, float(main.get("hand_blood")))
+	body.set_blood(float(main.get("hand_blood")))
 	var scenes := {"knife": "fp_knife", "blender": "fp_blender", "big_saw": "fp_big_saw", "tumor": "fp_tumor", "scissors": "fp_scissors"}
 	for id in scenes:
 		var shown: bool = prog.tumor_in_hand() if id == "tumor" else prog.hands.holds(id)
@@ -299,6 +303,16 @@ func _sync_live_details() -> void:
 func _sync_body_posture() -> void:
 	if body == null or player == null or not is_instance_valid(player):
 		return
+	pose_body(body, player)
+	var main := player.get_parent()
+	if main.is_pulling_canary() and main.canary_pull != null:
+		main.canary_pull.pose_reflection(body)
+
+## Stands `b` (an FPMirrorBody under the player) on the player's real feet
+## in the capsule's real posture: crouch, walk gait, head pitch and the prone
+## canary pull. Shared by the reflection body and the shadow body.
+static func pose_body(b: FPMirrorBody, player: Node3D, force_crouch: float = -1.0) -> void:
+	var body := b
 	var feet_y := -0.9
 	if player.has_method("get_feet_position"):
 		feet_y = player.to_local(player.call("get_feet_position")).y
@@ -310,6 +324,8 @@ func _sync_body_posture() -> void:
 		# eye height here makes a standing walker repeatedly bend their knees.
 		crouch = 1.0 if bool(player.get("_is_crouching")) else 0.0
 		pitch = pivot.rotation.x
+	if force_crouch >= 0.0:
+		crouch = force_crouch
 	var walk_phase := float(player.get("_bob_time")) if player.get("_bob_time") != null else 0.0
 	var walk_weight := float(player.get("_bob_weight")) if player.get("_bob_weight") != null else 0.0
 	body.transform = Transform3D(Basis().scaled(Vector3(1, 1, -1)), Vector3(0, feet_y, 0))
@@ -321,8 +337,6 @@ func _sync_body_posture() -> void:
 		crouch *= 1.0 - prone
 	if body.has_method("set_posture"):
 		body.call("set_posture", crouch, walk_phase, walk_weight, pitch)
-	if main.is_pulling_canary() and main.canary_pull != null:
-		main.canary_pull.pose_reflection(body)
 
 ## Where a world point appears on screen in the mirror (its image across
 ## the glass plane, projected by the eye camera).

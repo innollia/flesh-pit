@@ -254,6 +254,11 @@ func refresh() -> void:
 	if prog == null:
 		return
 	body.apply(prog.all_mutations(), prog.belly_bumps())
+	# the doll is the player's body: the same arm-hair-grown body hair and
+	# the same blood as the mirror reflection
+	body.set_body_hair(FPBodyHair.counts_of(prog))
+	if get_parent() != null and get_parent().get("hand_blood") != null:
+		body.set_blood(float(get_parent().get("hand_blood")))
 	if body._belt != null:
 		body._belt.call("set_worn", prog.has_belt)
 	tag_layer(body, HOLO_LAYER)

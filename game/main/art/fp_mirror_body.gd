@@ -301,7 +301,111 @@ func build() -> void:
 			s2.visible = false
 			(mi as MeshInstance3D).add_child(s2)
 			_shim[part].append(s2)
+	_paint_marks()
 	_capture_rest_pose()
+
+# --- whole-body hair and blood ----------------------------------------------
+
+## Per skin mesh: [blood reach (1 = bloodied first), hair weight, pattern
+## (FPBodyMarks shape)]. Hands bleed first (reflection keeps its own hand
+## blood on Palm/Fingers), then mouth, forearms, chest, belly, legs, feet.
+const MARKS := {
+	"Head": [0.7, 0.0, 3.0],
+	"Neck": [0.5, 0.15, 0.0],
+	"Chest": [0.45, 0.9, 1.0],
+	"Shoulders": [0.4, 0.2, 0.0],
+	"Belly": [0.38, 0.8, 2.0],
+	"UpperArm": [0.4, 0.5, 0.0],
+	"Forearm": [0.55, 1.0, 0.0],
+	"Palm": [0.95, 0.1, 0.0],
+	"Fingers": [1.0, 0.05, 0.0],
+	"Briefs": [0.3, 0.0, 0.0],
+	"Thigh": [0.28, 0.75, 0.0],
+	"Shin": [0.15, 0.85, 0.0],
+	"Foot": [0.12, 0.25, 0.0],
+}
+## Strands per arm hair point on each part mesh (both sides each), strand
+## length and where on the part they grow.
+const STRANDS := {
+	"Forearm": 0.5,
+	"UpperArm": 0.3,
+	"Thigh": 0.8,
+	"Shin": 0.8,
+	"Chest": 0.6,
+	"Belly": 0.4,
+}
+const STRAND_LEN := 0.03
+const STRAND_R := 0.0022
+var _marks: ShaderMaterial
+var _face_marks: ShaderMaterial
+var _hair_key := ""
+var hair_points := 0 ## arm hair points the body hair is grown from
+
+func _paint_marks() -> void:
+	_marks = FPBodyMarks.make_material()
+	_face_marks = FPBodyMarks.make_material()
+	_face_marks.set_shader_parameter("face", true)
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		var m3 := mi as MeshInstance3D
+		var spec: Array = MARKS.get(String(m3.name), [])
+		if spec.is_empty() or not is_ancestor_of(m3) or _belt.is_ancestor_of(m3):
+			continue
+		FPBodyMarks.paint(m3, _face_marks if m3.name == "Head" else _marks, spec[0], spec[1], 1.0, spec[2])
+
+## Blood amount (the hand blood, 0..1) over the whole body.
+func set_blood(amount: float) -> void:
+	for mat in [_marks, _face_marks]:
+		if mat != null:
+			mat.set_shader_parameter("blood", clampf(amount, 0.0, 1.0))
+
+func blood_amount() -> float:
+	return float(_marks.get_shader_parameter("blood")) if _marks != null else 0.0
+
+## Body hair grown from the arm hair counts {common, core, mantle, surface}:
+## painted density everywhere plus strands on arms, chest, belly and legs.
+func set_body_hair(counts: Dictionary) -> void:
+	var kl := FPBodyHair.kinds(counts)
+	hair_points = kl.size()
+	if _marks != null:
+		_marks.set_shader_parameter("hair", FPBodyMarks.hair_density(hair_points))
+	var key := ",".join(PackedStringArray(kl))
+	if key == _hair_key:
+		return
+	_hair_key = key
+	var seed := 0
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		var m3 := mi as MeshInstance3D
+		if not STRANDS.has(String(m3.name)) or _belt.is_ancestor_of(m3):
+			continue
+		seed += 1
+		var old := m3.get_node_or_null("BodyHair") as MeshInstance3D
+		var n := int(round(float(hair_points) * float(STRANDS[m3.name])))
+		var mesh := FPBodyHair.grow(m3.mesh, n, kl, 700 + seed * 13, _hair_filter(String(m3.name)), Vector3.DOWN, STRAND_LEN, STRAND_R)
+		if old == null:
+			old = K.add_mesh(m3, "BodyHair", mesh, _skin)
+		else:
+			old.mesh = mesh
+		old.visible = n > 0
+
+func body_hair_strands() -> int:
+	var n := 0
+	for mi in find_children("BodyHair", "MeshInstance3D", true, false):
+		var mesh := (mi as MeshInstance3D).mesh
+		if mesh != null and mesh.get_surface_count() > 0 and (mi as MeshInstance3D).visible:
+			n += mesh.surface_get_array_len(0)
+	return n
+
+func _hair_filter(part: String) -> Callable:
+	match part:
+		"Chest":
+			# a patch across the middle of the chest, front only
+			return func(p: Vector3, _n: Vector3) -> float: return 1.0 if p.z > 0.03 and absf(p.x) < 0.12 and p.y < 0.08 else 0.0
+		"Belly":
+			# the trail from the navel down, a few strands either side
+			return func(p: Vector3, _n: Vector3) -> float: return (1.0 if absf(p.x) < 0.035 else 0.25) if p.z > 0.04 else 0.0
+		"Forearm", "UpperArm":
+			return func(_p: Vector3, _n: Vector3) -> float: return 1.0
+	return func(_p: Vector3, n: Vector3) -> float: return 1.0 if n.y > -0.6 else 0.0
 
 ## PS1-style matte: texture times vertex paint, no gloss, nearest filtering.
 func _matte(tex: String, tex_amount: float) -> StandardMaterial3D:
@@ -545,6 +649,9 @@ func apply(ids: Array, bumps: int = 0) -> void:
 	face_mat.set_shader_parameter("eye_scale", Vector2(_sub["eyes"].scale.x, _sub["eyes"].scale.y))
 	face_mat.set_shader_parameter("jaw_scale", _sub["jaw"].scale)
 	face_mat.set_shader_parameter("jaw_offset", _sub["jaw"].position - _sub["jaw"].get_meta("base_pos"))
+	if _face_marks != null:
+		_face_marks.set_shader_parameter("jaw_scale", _sub["jaw"].scale)
+		_face_marks.set_shader_parameter("jaw_offset", _sub["jaw"].position - _sub["jaw"].get_meta("base_pos"))
 	var mutated_eyes := "M24" in applied or "T5" in applied
 	face_mat.set_shader_parameter("hide_eyes", mutated_eyes)
 	for mesh in _sub["eyes"].get_children():
@@ -605,6 +712,7 @@ func ghost(id: String) -> Node3D:
 		var on := (not any) or show.has(p)
 		for mi in (g._parts[p] as Node3D).find_children("*", "MeshInstance3D", true, false):
 			var m3 := mi as MeshInstance3D
+			m3.material_overlay = null
 			if m3.name == "Shimmer":
 				m3.visible = false
 				continue
