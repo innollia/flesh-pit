@@ -550,6 +550,46 @@
     "res://audio/loops/magnet_hum.wav"
    ],
    "loop_seconds": 8.0
+  },
+  "hair_rustle": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/hair_rustle_v1.wav",
+    "res://audio/sfx/hair_rustle_v2.wav",
+    "res://audio/sfx/hair_rustle_v3.wav",
+    "res://audio/sfx/hair_rustle_v4.wav"
+   ],
+   "spatial": false
+  },
+  "gulp_whole": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/gulp_whole_v1.wav",
+    "res://audio/sfx/gulp_whole_v2.wav",
+    "res://audio/sfx/gulp_whole_v3.wav",
+    "res://audio/sfx/gulp_whole_v4.wav"
+   ],
+   "spatial": false
+  },
+  "vent_spill": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/vent_spill_v1.wav",
+    "res://audio/sfx/vent_spill_v2.wav",
+    "res://audio/sfx/vent_spill_v3.wav",
+    "res://audio/sfx/vent_spill_v4.wav"
+   ],
+   "spatial": true
+  },
+  "ui_deny": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/ui_deny_v1.wav",
+    "res://audio/sfx/ui_deny_v2.wav",
+    "res://audio/sfx/ui_deny_v3.wav",
+    "res://audio/sfx/ui_deny_v4.wav"
+   ],
+   "spatial": false
   }
  },
  "beds": {

@@ -116,6 +116,12 @@ func _buses() -> void:
     var hit := AudioStreamPlayer3D.new()
     FPSettings.route_player(hit)
     _assert(bed.bus == &"Music" and hit.bus == &"SFX", "beds -> Music, the rest -> SFX")
+    # the song and M03 hum layers are music too (the 배경음 slider)
+    var layer := AudioStreamPlayer.new()
+    layer.name = "Layer_song_melody"
+    FPSettings.route_player(layer)
+    _assert(layer.bus == &"Music", "steady song/hum layers -> Music")
+    layer.free()
     bed.free()
     hit.free()
 

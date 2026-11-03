@@ -1,5 +1,16 @@
 # 현재 상태
 
+## 2026-11-03 소리 연결 (감사 1-2·1-3·1-4·1-5·1-6·1-7·1-10, 브랜치 wire-sound)
+
+듣는 쪽이 없던 신호에 소리를 붙였다(`game/audio/fp_audio_hookup.gd`, 상태 읽기와 신호 구독만).
+- 1-6: `FPSettings.route_player`가 `Layer_*`(엔딩 노래 세 층, M03 자기장 윙)도 Music 버스로 보낸다. 설정의 배경음 음량을 따른다.
+- 1-7: `tank_rattle_started(duration, …)`부터 `tank_rattle_finished`까지 coin_drop이 0.22~0.45초마다 다시 난다. 종양을 던진 정산은 그만큼(+3.5초) 길게 달그락거린다. duration은 놓친 신호에 대비한 안전 정지로만 쓴다.
+- 1-3: M22 `alien_hand_tore`는 Chewer의 뜯기와 같은 소리(조직별 tear_*, 신경 움찔, 삼킴)를 낸다. 신호에 위치가 없어 조준점의 벽 위치로 조직을 읽는다. 고어·피는 다른 브랜치 몫이다.
+- 1-4·1-5·1-2·1-10: 새 효과음 `hair_rustle`(M23), `gulp_whole`(M15, 위장 swallow와 다른 CC0 녹음 chew2/fs0352를 0.88배로 늦춤), `vent_spill`(환풍구 `spilled`, 목록이 비면 소리 없음), `ui_deny`(거울 `denied`). 맞는 기존 거절음이 없어(ui_click은 클릭, grab_refuse는 살 미끄러짐) 새로 만들었다. `tools/build_wire_sounds.py`가 만들고 manifest에 등록한다. `build_audio.py`가 manifest를 다시 쓰면 이 빌더와 `build_song_layers.py`를 다시 돌려야 한다.
+- T1 `echo_pulsed`는 기획(05 T1, 08 1장)에 결과 소리가 없어 연결하지 않았다.
+
+검사: `run_audio_tests.gd`(실제 main에서 신호·`gulp()`·`vent.place_teeth()`·`mirror.buy_current()`·종양 레버 `flush()`로 확인)와 `run_menu_tests.gd`. 변경 전 13개·1개 실패, 변경 후 246/0, 65/0. CLAP(ear.py) 판정은 새 소리 네 개가 모두 의도 문구 1위다. 게임 믹스는 `tests/capture_wire_sounds.gd`로 녹음했다.
+
 ## 2026-11-03 변이 신호 연결 (감사 1-3·1-5·1-9)
 
 - M22 외계인 손이 스스로 뜯은 셀도 손 뜯기와 같은 것을 보인다. 손의 피(+0.05), 구멍 가장자리의 되튐, 끊어지는 가닥, 살점·피 튐, 시야 흔들림이다. `main.show_tear()`를 Chewer 뜯기(`_on_cell_torn`)와 `alien_tear()`가 함께 쓴다. 표시만 더했고, 먹은 양·제거 밀도·게시 구멍은 그대로 `eat_cell_at()` 하나의 굴착이다. 소리는 game/audio 담당이 `alien_hand_tore`에 연결한다.

@@ -58,7 +58,26 @@ const EVENT_SOUNDS := {
 	"echo_click": "echo_click",
 	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
 	"squeeze": "chew_strain", "grab_refuse": "grab_refuse", "gag": "gag_dry",
+	# one clink of the settlement rattle (repeated for the rattle's length)
+	"tank_rattle": "coin_drop",
+	# M23: the stiff arm hairs shiver before a squeeze
+	"hair_shiver": "hair_rustle",
+	# M15: the whole pile goes down in one gulp (not the stomach swallow)
+	"gulp": "gulp_whole",
+	# an absurd overpay: early items tumble out of the vent
+	"vent_spill": "vent_spill",
+	# the mirror refuses a part the hairs cannot pay for
+	"mirror_denied": "ui_deny",
 }
+
+## Settlement rattle (spec 03 6): teeth keep clattering into the tank for
+## the whole rattle the toilet reports (a whole tumor adds
+## FPToiletSettlement.RATTLE_TUMOR_EXTRA), one clink every RATTLE_GAP s,
+## until tank_rattle_finished. The duration is only a safety stop.
+const RATTLE_GAP := Vector2(0.22, 0.45)
+var _rattle_left := 0.0
+var _rattle_next := 0.0
+var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	main = get_parent()
@@ -120,10 +139,25 @@ func _wire() -> void:
 		tf.connect("contraction_warning", func(pos): director.play("regen_creak", pos))
 	# teeth rattling down into the tank
 	if toilet != null and toilet.has_signal("tank_rattle_started"):
-		toilet.connect("tank_rattle_started", func(_d, _tumor): director.play("coin_drop", _toilet_pos()))
+		toilet.connect("tank_rattle_started", _on_rattle_started)
+	if toilet != null and toilet.has_signal("tank_rattle_finished"):
+		toilet.connect("tank_rattle_finished", _on_rattle_finished)
 	# T1: every echolocation pulse starts with the tongue click
 	if ma != null and ma.has_signal("echo_click"):
 		ma.connect("echo_click", func(): play_event("echo_click"))
+	# (echo_pulsed, the pulse's sorted result, has no sound of its own in the
+	# spec: 05 T1 / 08 1 only show it, so it stays unheard)
+	# M22: the left hand tears on its own; it sounds like any other tear
+	if ma != null and ma.has_signal("alien_hand_tore"):
+		ma.connect("alien_hand_tore", _on_alien_tore)
+	if ma != null and ma.has_signal("hair_shiver_started"):
+		ma.connect("hair_shiver_started", func(): play_event("hair_shiver"))
+	if ma != null and ma.has_signal("gulped"):
+		ma.connect("gulped", func(): play_event("gulp"))
+	if vent != null and vent.has_signal("spilled"):
+		vent.connect("spilled", _on_vent_spilled)
+	if mirror != null and mirror.has_signal("denied"):
+		mirror.connect("denied", func(_part): play_event("mirror_denied"))
 	_hook("spray_used", func(pos): on_spray(pos))
 	_hook("blender_drunk", on_blender_drink)
 	_hook("scissors_snipped", on_scissors)
@@ -262,6 +296,7 @@ func _process_inner(_delta: float) -> void:
 	if prog != null and prog.has_method("mutation_amount"):
 		director.set_mutation_stage(int(clampf(float(prog.mutation_amount()), 0.0, 0.999) * 3.0))
 	_step_layers(_delta)
+	_step_rattle(_delta)
 	_chirp_cool = maxf(0.0, _chirp_cool - _delta)
 	_squeeze_cool = maxf(0.0, _squeeze_cool - _delta)
 	if player != null and player.has_method("squeeze") and not in_room:
@@ -317,6 +352,48 @@ func play_event(event_name: String, world_pos: Variant = null) -> void:
 	if OS.is_debug_build() and OS.get_environment("FP_AUDIO_LOG") != "":
 		print("[audio] play_event ", event_name)
 	director.play(String(EVENT_SOUNDS.get(event_name, event_name)), world_pos)
+
+## Early items tumble out of the vent on an absurd overpay (FPVent.spilled).
+func _on_vent_spilled(ids: Array) -> void:
+	if not ids.is_empty():
+		play_event("vent_spill", _node_pos(main.get("vent")))
+
+func _on_rattle_started(duration: float, _tumor: bool) -> void:
+	_rattle_left = duration + 0.5
+	_rattle_next = _rng.randf_range(RATTLE_GAP.x, RATTLE_GAP.y)
+	play_event("tank_rattle", _toilet_pos())
+
+func _on_rattle_finished() -> void:
+	_rattle_left = 0.0
+
+func _step_rattle(delta: float) -> void:
+	if _rattle_left <= 0.0:
+		return
+	_rattle_left -= delta
+	_rattle_next -= delta
+	if _rattle_next <= 0.0 and _rattle_left > 0.0:
+		_rattle_next = _rng.randf_range(RATTLE_GAP.x, RATTLE_GAP.y)
+		play_event("tank_rattle", _toilet_pos())
+
+## Whether teeth are still clattering into the tank (tests read it).
+func is_rattling() -> bool:
+	return _rattle_left > 0.0
+
+## M22 tore a cell without the chewer: the same tear (by tissue, nerve
+## twitch, the swallow after) as a chewer tear, where the hand is reaching.
+func _on_alien_tore(world_pos: Variant = null) -> void:
+	played_events.append("alien_tear")
+	var at: Variant = world_pos if world_pos is Vector3 else _look_point()
+	director._on_cell_torn(at if at is Vector3 else Vector3.ZERO)
+
+## Where the player looks within reach (the wall just behind a fresh tear).
+func _look_point() -> Variant:
+	if main.has_method("_look_hit"):
+		var hit = main.call("_look_hit")
+		if hit is Dictionary and hit.has("position"):
+			return hit.position
+	var player = main.get("player")
+	return (player as Node3D).global_position if player is Node3D else null
 
 func on_tumor_eaten() -> void: play_event("tumor_eat")
 func on_spray(world_pos: Variant = null) -> void: play_event("spray", world_pos)

@@ -100,14 +100,16 @@ static func _set_bus(bus_name: String, lin: float) -> void:
     AudioServer.set_bus_volume_db(i, linear_to_db(maxf(lin, 0.0001)))
     AudioServer.set_bus_mute(i, lin <= 0.001)
 
-## Beds (the long ambience layers) go to Music, the rest on Master to SFX.
+## Beds (the long ambience layers) and the steady song/hum layers
+## (fp_audio_hookup Layer_*) go to Music, the rest on Master to SFX.
 static func route_player(n: Node) -> void:
     if not is_instance_valid(n):
         return
     if n is AudioStreamPlayer or n is AudioStreamPlayer3D or n is AudioStreamPlayer2D:
         if String(n.get("bus")) != "Master":
             return
-        n.set("bus", &"Music" if String(n.name).begins_with("Bed_") else &"SFX")
+        var nm := String(n.name)
+        n.set("bus", &"Music" if nm.begins_with("Bed_") or nm.begins_with("Layer_") else &"SFX")
 
 static func apply_look(s: Dictionary, player: Node) -> void:
     if player == null:

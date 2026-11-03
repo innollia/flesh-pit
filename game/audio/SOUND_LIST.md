@@ -56,3 +56,17 @@
 | settle_tick | sfx | 정산 숫자 올라갈 때 | 기계 키 딸깍 |
 | ui_click | sfx | 화면 버튼 누를 때 | 작은 버튼 클릭 |
 | echo_click | sfx | 반향정위(T1) 파동이 나갈 때 | 혀를 입천장에서 떼는 딸깍 |
+
+## 신호 연결 소리 (2026-11-03, `tools/build_wire_sounds.py`)
+
+| id | 종류 | 언제 | 느낌 |
+|---|---|---|---|
+| hair_rustle | sfx | M23 감각털이 수축 1.5초 전 떨기 시작할 때(`hair_shiver_started`) | 뻣뻣한 팔 털이 빠르게 떨며 바스락, 축축함 없음 |
+| gulp_whole | sfx | M15 살 더미를 통째로 삼킬 때(`gulped`) | 입 안 출렁임 → 크게 한 번 꿀떡(위장 삼키기와 다른 녹음, 더 낮고 김) → 콧숨 |
+| vent_spill | sfx 3D | 터무니없는 과지불에 환풍구에서 물건이 쏟아질 때(`spilled`) | 금속·플라스틱 물건이 타일에 우르르 떨어져 튀고 하나가 구름 |
+| ui_deny | sfx | 털이 모자라 거울이 부위를 거절할 때(`denied`) | 낮게 내려가는 둔한 두 음 |
+
+- M22 외계인 손의 자동 뜯기(`alien_hand_tore`)는 Chewer의 뜯기와 같은 소리(조직별 tear_*, 신경 움찔, 0.3초 뒤 swallow)를 낸다.
+- 물탱크 달그락(`tank_rattle_started`)은 coin_drop을 0.22~0.45초마다 다시 내며 흔들림이 끝날 때(`tank_rattle_finished`)까지 이어진다. 종양을 던진 정산은 3.5초 더 길다.
+- song_melody·song_hum·song_voice2·magnet_hum(`Layer_*`)은 배경음(Music) 버스로 가서 설정의 배경음 음량을 따른다.
+- T1 `echo_pulsed`(파동 결과 집계)는 기획(05 T1, 08 1장)에 소리가 없어서 연결하지 않았다. 혀 차는 소리는 echo_click이 맡는다.

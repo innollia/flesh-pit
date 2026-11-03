@@ -60,7 +60,7 @@ func _process(_delta: float) -> bool:
 			if not d.bank.has(String(events[ev])) or d.last_played != String(events[ev]):
 				all_ok = false
 				print("  missing event sound: ", ev)
-		_ok(all_ok and events.size() == 21, "all 21 event sounds (stage 5, the T1 tongue click, the canary, squeezing past flesh, a refused grip, a dry heave) load and play (%d)" % events.size())
+		_ok(all_ok and events.size() == 26, "all 26 event sounds (stage 5, the T1 tongue click, the canary, squeezing past flesh, a refused grip, a dry heave, the tank rattle, M23 hairs, the M15 gulp, the vent spill, the mirror refusal) load and play (%d)" % events.size())
 		_main.emit_signal("died", "test")
 		_ok(d.last_played == "player_death", "main.died plays the death sound (%s)" % d.last_played)
 		var mirror = _main.get("mirror")
@@ -86,6 +86,33 @@ func _process(_delta: float) -> bool:
 		_ok(d.last_played == "regen_creak", "a wall about to squeeze creaks first (%s)" % d.last_played)
 		_main.toilet.tank_rattle_started.emit(0.5, false)
 		_ok(d.last_played == "coin_drop", "teeth rattle down into the tank (%s)" % d.last_played)
+		_main.toilet.tank_rattle_finished.emit()
+		# wire-sound 2026-11-03: signals that had no listener now sound
+		var ma = _main.mutation_apply
+		var pe: Array = _hook.get("played_events")
+		ma.alien_hand_tore.emit()
+		_ok(d.last_played.begins_with("tear_") and pe.back() == "alien_tear", "1-3 M22 the alien hand's own tear sounds like a tear (%s)" % d.last_played)
+		ma.hair_shiver_started.emit()
+		_ok(d.last_played == "hair_rustle", "1-4 M23 the stiff arm hairs rustle before a squeeze (%s)" % d.last_played)
+		# M15: the real gulp of a carried pile (the stomach swallow is another sound)
+		_main.carried_flesh = 1.0
+		_main.carried_units = {0: 1.0}
+		ma.gulp()
+		_ok(pe.has("gulp") and d.played_log.has("gulp_whole") and d.bank.has("gulp_whole") and not (d.bank.sounds["gulp_whole"]["files"] as Array).has(d.bank.sounds["swallow"]["files"][0]), "1-5 M15 a whole pile goes down with its own gulp (%s)" % d.last_played)
+		# an absurd overpay at the real vent: early items tumble out
+		var prog = _main.progression
+		_main.vent.open()
+		var spilled_ids: Array = []
+		_main.vent.spilled.connect(func(ids): spilled_ids.append_array(ids))
+		_main.vent.place_teeth(prog.vent_absurd_threshold(), prog)
+		_ok(not spilled_ids.is_empty() and pe.back() == "vent_spill" and d.last_played == "vent_spill", "1-2 an absurd overpay spills items with a clatter (%s, %s)" % [str(spilled_ids), d.last_played])
+		_main.vent.close()
+		# the mirror refuses a part the hairs cannot pay for
+		_main.open_mirror()
+		_main.mirror.focus_part("face")
+		var bought: String = _main.mirror.buy_current()
+		_ok(bought == "" and d.last_played == "ui_deny" and pe.back() == "mirror_denied", "1-10 the mirror's refusal has its own short sound (%s)" % d.last_played)
+		_main.mirror.close()
 		_ok(_hook.call("_regrowing_spot") == null, "no creak without flesh really growing back nearby")
 		_main.flush()
 		_ok(_hook.get("played_events").has("settle_tick"), "the lever's flush ticks the settle sound")
@@ -118,8 +145,9 @@ func _layer_steps(delta: float) -> bool:
 		return _finish()
 	if _layer_t >= 0.0:
 		_layer_t += delta
-		if _layer_t < LAYER_WAIT:
+		if _layer_t < _step_wait:
 			return false
+		_step_wait = LAYER_WAIT
 	var lv := func(id: String) -> float: return float(_hook.call("layer_level", id))
 	var c: Vector3 = _main.RESTROOM_CENTER
 	var prog = _main.progression
@@ -128,6 +156,7 @@ func _layer_steps(delta: float) -> bool:
 			for id in ["magnet_hum", "song_melody", "song_hum", "song_voice2"]:
 				var pl = _hook.get_node_or_null("Layer_" + id)
 				_ok(pl is AudioStreamPlayer and (pl as AudioStreamPlayer).playing, "steady layer %s is loaded and running" % id)
+				_ok(pl is AudioStreamPlayer and (pl as AudioStreamPlayer).bus == &"Music", "1-6 steady layer %s follows the music slider (bus %s)" % [id, (pl as AudioStreamPlayer).bus if pl is AudioStreamPlayer else &"-"])
 			_ok(lv.call("magnet_hum") == 0.0 and lv.call("song_melody") == 0.0 and lv.call("song_hum") == 0.0, "in the restroom without M03 every steady layer is silent")
 			_main.set_process(false)
 			_main.set_physics_process(false)
@@ -178,12 +207,39 @@ func _layer_steps(delta: float) -> bool:
 				if dd.is_bed_layer_running(layer):
 					loud = maxf(loud, dd.bed_layer_db(layer))
 			_ok(loud < -12.0, "D05 the body drone fades out under the ending hum (%.1f dB)" % loud)
+			_main.ending.active = false
+			# 1-7: a whole tumor in the bowl, the real lever: the clatter
+			# lasts as long as the tank shakes and stops with it
+			_main.toilet.bowl_tumors.append("core_knot")
+			_rattle_from = _rattle_count()
+			_rattle = float(_main.flush().get("rattle", 0.0))
+			_ok(_rattle > FPToiletSettlement.RATTLE_TUMOR_EXTRA, "a thrown tumor makes the rattle much longer (%.2f s)" % _rattle)
+			_step_wait = _rattle - 0.4
+		7:
+			var n := _rattle_count() - _rattle_from
+			_ok(_main.toilet.is_rattling() and _hook.has_method("is_rattling") and _hook.call("is_rattling"), "1-7 the clatter still sounds near the end of the long rattle")
+			_ok(n >= int(_rattle / RATTLE_GAP_MAX) - 1, "1-7 teeth keep clattering for the whole tumor rattle (%d clinks in %.1f s)" % [n, _rattle - 0.4])
+			_rattle_from = _rattle_count()
+			_step_wait = 0.8
+		8:
+			_ok(not _main.toilet.is_rattling() and _hook.has_method("is_rattling") and not bool(_hook.call("is_rattling")), "1-7 the clatter ends with tank_rattle_finished")
+			_rattle_from = _rattle_count()
+			_step_wait = 0.8
+		9:
+			_ok(_rattle_count() == _rattle_from, "1-7 no clink after the tank is still")
 			return _finish()
 	_layer_step += 1
 	_layer_t = 0.0
 	return false
 
 var _layer_near := 0.0
+var _rattle := 0.0
+var _rattle_from := 0
+var _step_wait := LAYER_WAIT
+const RATTLE_GAP_MAX := 0.45
+
+func _rattle_count() -> int:
+	return (_hook.get("played_events") as Array).count("tank_rattle")
 
 func _ok(cond: bool, msg: String) -> void:
 	if cond:
