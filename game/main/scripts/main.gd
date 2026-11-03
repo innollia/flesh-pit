@@ -1335,7 +1335,7 @@ func step_world(delta: float) -> void:
 		var target := interact_target()
 		# the glyph names the input that acts (FPInteractions.plan): the belt
 		# hooks take only the hand buttons; every other target takes F and
-		# the right button alike
+		# either hand button alike (the glyph shows F)
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else ("fp_pick" if target == "belt" else "fp_interact"))
 		interact_ring.set("shown", target != "" and not _settling)
 		interact_ring.set("pick_ok", target != "" and target != "toilet")
@@ -1564,13 +1564,22 @@ func _pick() -> void:
 	if FPInteractions.acts_on(target):
 		activate_target(target, FPInteractions.SOURCE_RIGHT)
 
-## Act on one aimed target. `source` is FPInteractions.SOURCE_INTERACT (F)
-## or SOURCE_RIGHT (the right hand); they differ only where the hand itself
-## does the work: at the tank the right hand takes or puts back a tooth
-## without leaning in, and at the open vent it hands over teeth or takes
-## the offer.
+## Act on one aimed target. `source` is FPInteractions.SOURCE_INTERACT (F),
+## SOURCE_RIGHT or SOURCE_LEFT (a hand button). The hand that pressed does
+## the reaching (left click the left hand; F and right click the right).
+## They differ only where the right hand itself does the work: at the tank
+## it takes or puts back a tooth without leaning in, and at the open vent it
+## hands over teeth or takes the offer. The left hand does what F does there,
+## going on one tooth at a time while its own button stays held.
 func activate_target(target: String, source: String) -> void:
 	var right := source == FPInteractions.SOURCE_RIGHT
+	var left := source == FPInteractions.SOURCE_LEFT
+	var hold_action := "fdk_eat" if left else "fp_interact"
+	hand_motions.acting_side = -1.0 if left else 1.0
+	_activate_target(target, right, hold_action)
+	hand_motions.acting_side = 1.0
+
+func _activate_target(target: String, right: bool, hold_action: String) -> void:
 	match target:
 		"tank_lid":
 			if tank_lid.held: tank_lid.drop()
@@ -1585,23 +1594,32 @@ func activate_target(target: String, source: String) -> void:
 			else:
 				# lean in over the tank, then pick teeth one at a time
 				hand_motions.play_tank_lean()
-				_start_tooth_op("take", "fp_interact")
-		"lever": pull_lever()
+				_start_tooth_op("take", hold_action)
+		"lever":
+			hand_motions.play_press(lever_point(), true)
+			pull_lever()
 		"vent":
 			if right and vent.is_open:
 				if progression.teeth_in_hand > 0: _start_tooth_op("place", "fp_pick")
 				elif not vent.offers.is_empty(): take_vent_offer()
 				else: reach_into_vent()
 			else:
-				use_vent()
+				use_vent(hold_action)
 		"sink": wash_hands()
 		"toilet":
 			if has_settle_contents():
 				start_settlement()
 			else: sit_down()
-		"door": restroom.set_door_open(not restroom.is_door_open())
+		"door":
+			hand_motions.play_press(door_handle_point(), false)
+			restroom.set_door_open(not restroom.is_door_open())
 		"tumor": pick_up_tumor()
 		"rest_can": take_rest_can()
+
+## The door's handle in world space (where a hand opening it takes hold).
+func door_handle_point() -> Vector3:
+	var width := 2.0 * FPRestroom.DOOR_HALF_W - 0.01
+	return restroom.door_pivot.to_global(Vector3(width - 0.095, 0.995, 0))
 
 func mirror_point() -> Vector3:
 	return restroom.mirror_art.to_global(Vector3((restroom.mirror_art.call("mirror_center") as Vector3).x, 1.65, 0.24))
@@ -2143,11 +2161,13 @@ func try_pick_tank_item() -> bool:
 
 # --- vent ------------------------------------------------------------------------
 
-func use_vent() -> void:
+## `hold_action`: the input that keeps placing teeth while held (F, or the
+## left hand button when the left hand pressed).
+func use_vent(hold_action: String = "fp_interact") -> void:
 	if not vent.is_open:
 		vent.open(progression.teeth + progression.teeth_in_hand, progression.teeth_in_hand, tank_lid != null and not tank_lid.on_tank)
 	elif progression.teeth_in_hand > 0:
-		_start_tooth_op("place", "fp_interact")
+		_start_tooth_op("place", hold_action)
 	elif not vent.offers.is_empty():
 		# F takes the offer the eye is nearest, as the right button does
 		# (2026-11-02 play: F on the offered items did nothing). Leaving

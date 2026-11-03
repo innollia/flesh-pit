@@ -3,7 +3,11 @@ extends SceneTree
 ## Interaction order and hand fixes, through real input events and the
 ## normal Main process (2026-11-03 play):
 ## - one place decides a press (FPInteractions.plan/press): lid, belt hook,
-##   aimed target (F or the right hand, one per frame), held item, dig
+##   aimed target (F or either hand, one per frame), held item, dig
+## - left click acts on the aimed door, lever, lid like right click, with the
+##   left hand reaching (2026-11-04 decision); with nothing aimed it digs;
+##   a left hand holding a load (blender, big saw, flesh pile) still acts but
+##   does not let go of it to reach
 ## - the canary hole in front of the sink takes F and the right button
 ## - right click at the tank leaves no bent hand: the held-teeth cup gives
 ##   way while the hands work flesh and comes back when they rest
@@ -24,10 +28,13 @@ func check(ok: bool, label: String) -> void:
 		failed += 1
 		print("FAIL: ", label)
 
+## c physics and c process frames: a press parsed now is seen by Main's
+## process within the wait (one process frame after c physics frames was
+## not always enough when several physics steps ran in one process frame).
 func frames(c: int) -> void:
 	for i in range(c):
 		await physics_frame
-	await process_frame
+		await process_frame
 
 func key(code: Key, down: bool) -> void:
 	var e := InputEventKey.new()
@@ -41,6 +48,14 @@ func mouse(button: int, down: bool) -> void:
 	e.button_index = button
 	e.pressed = down
 	Input.parse_input_event(e)
+
+## Up to `limit` frames for `cond` (input events land on a frame boundary
+## that physics and process frames do not share).
+func until(cond: Callable, limit: int = 12) -> void:
+	for i in range(limit):
+		if cond.call():
+			return
+		await frames(1)
 
 func tap_key(code: Key) -> void:
 	key(code, true)
@@ -216,13 +231,49 @@ func run() -> void:
 	var door_mid: Vector3 = m.restroom.door_pivot.to_global(Vector3(width * 0.5, FPRestroom.DOOR_H * 0.5, 0))
 	await aim(door_mid)
 	check(m.interact_target() == "door", "aiming at the door")
-	check(FPInteractions.plan(m, "left") == "dig", "the left hand never acts on a target")
+	check(FPInteractions.plan(m, "left") == "target:door", "the left hand acts on the aimed door")
+	var lh: Node3D = m.hands_rig.get_hand_root("left")
+	var rh: Node3D = m.hands_rig.get_hand_root("right")
+	var l0: Vector3 = lh.position
+	var r0: Vector3 = rh.position
+	mouse(MOUSE_BUTTON_LEFT, true)
+	await until(func(): return m.hand_motions.kind != "")
+	check(m.hand_motions.kind == "press" and m.hand_motions.hand_side < 0.0, "left click: the left hand reaches for the door (%s %.0f)" % [m.hand_motions.kind, m.hand_motions.hand_side])
+	var l_reach := 0.0
+	var r_move := 0.0
+	for i in range(20):
+		await frames(1)
+		l_reach = maxf(l_reach, lh.position.distance_to(l0))
+		r_move = maxf(r_move, rh.position.distance_to(r0))
+	check(m.hand_actions.blocked[0] and not m.chewer.is_chewing(), "holding left click on the door does not dig")
+	mouse(MOUSE_BUTTON_LEFT, false)
+	await frames(30)
+	check(m.restroom.is_door_open(), "left click opens the aimed door")
+	check(l_reach > 0.1 and r_move < 0.05, "the left hand goes out, the right stays (left %.2f, right %.2f)" % [l_reach, r_move])
+	check(not m.hand_actions.blocked[0], "release frees the left hand")
+	await aim(door_mid)
+	var before_close := "%s/%s" % [m.interact_target(), FPInteractions.plan(m, "left")]
 	await tap_mouse(MOUSE_BUTTON_LEFT)
 	await frames(30)
-	check(not m.restroom.is_door_open(), "left click does not open the door")
+	check(not m.restroom.is_door_open(), "left click closes it again (%s)" % before_close)
+	await aim(door_mid)
 	await tap_mouse(MOUSE_BUTTON_RIGHT)
+	check(m.hand_motions.kind == "press" and m.hand_motions.hand_side > 0.0, "right click: the right hand reaches for the door")
 	await frames(45)
 	check(m.restroom.is_door_open(), "right click opens the aimed door like F")
+	# left and right click in the same frame: one toggle, neither hand digs
+	await aim(door_mid)
+	mouse(MOUSE_BUTTON_LEFT, true)
+	mouse(MOUSE_BUTTON_RIGHT, true)
+	await frames(3)
+	check(m.hand_actions.blocked[0] and m.hand_actions.blocked[1] and not m.chewer.is_chewing(), "both hand buttons on one target: both hands held off digging")
+	mouse(MOUSE_BUTTON_LEFT, false)
+	mouse(MOUSE_BUTTON_RIGHT, false)
+	await frames(45)
+	check(not m.restroom.is_door_open(), "left and right click together toggle the door once")
+	await tap_mouse(MOUSE_BUTTON_RIGHT)
+	await frames(45)
+	check(m.restroom.is_door_open(), "the door is open again for the next steps")
 	await aim(door_mid)
 	# F and right click in the same frame: one press, one action
 	key(KEY_F, true)
@@ -263,9 +314,83 @@ func run() -> void:
 	check(m.tank_lid.held, "right click lifts the aimed lid")
 	face(m.player._yaw + 1.2, -0.4)
 	await frames(4)
-	check(FPInteractions.plan(m, "left") == "none", "the left hand does nothing while the right holds the lid")
+	check(FPInteractions.plan(m, "left") == "lid_down", "the left hand button also puts the held lid down")
 	await tap_mouse(MOUSE_BUTTON_RIGHT)
 	check(not m.tank_lid.held and not m.tank_lid.on_tank, "right click puts the held lid down")
+	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	await aim(m.tank_lid.lid.global_position)
+	await tap_mouse(MOUSE_BUTTON_LEFT)
+	check(m.tank_lid.held, "left click lifts the aimed lid (into the right hand, as always) (%s, %s)" % [m.interact_target(), FPInteractions.plan(m, "left")])
+	face(m.player._yaw + 1.2, -0.4)
+	await frames(4)
+	await tap_mouse(MOUSE_BUTTON_LEFT)
+	check(not m.tank_lid.held, "left click puts the held lid down")
+
+	# --- the lever: left click pulls it with the left hand --------------------
+	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	m.toilet.bowl_flesh = 5.0
+	var flushes := [0]
+	m.flushed.connect(func(_t, _h): flushes[0] += 1)
+	await aim(m.lever_point())
+	check(m.interact_target() == "lever", "aiming at the lever (%s)" % m.interact_target())
+	check(FPInteractions.plan(m, "left") == "target:lever", "the left hand plans the lever")
+	mouse(MOUSE_BUTTON_LEFT, true)
+	await until(func(): return flushes[0] > 0)
+	check(flushes[0] == 1, "left click pulls the lever (flushes %d)" % flushes[0])
+	check(m.hand_motions.kind == "press" and m.hand_motions.hand_side < 0.0, "the left hand pulls it")
+	await frames(20)
+	check(not m.chewer.is_chewing() and flushes[0] == 1, "holding the button pulls it once and digs nothing")
+	mouse(MOUSE_BUTTON_LEFT, false)
+	await frames(30)
+
+	# --- left click with nothing aimed digs, as before ------------------------
+	await fresh_game(Vector3(0.0, 0.9, 1.25))
+	m.restroom.set_door_open(true, true)
+	face(PI, -0.3)
+	await frames(10)
+	check(m.interact_target() == "", "nothing aimed at the flesh past the door (%s)" % m.interact_target())
+	check(FPInteractions.plan(m, "left") == "dig", "with nothing aimed the left hand digs")
+	var torn_l := [0]
+	var on_tear_l := func(_p: Vector3): torn_l[0] += 1
+	m.chewer.cell_torn.connect(on_tear_l)
+	mouse(MOUSE_BUTTON_LEFT, true)
+	for i in range(80):
+		await frames(1)
+		face(PI, -0.3)
+	mouse(MOUSE_BUTTON_LEFT, false)
+	await frames(3)
+	check(torn_l[0] > 0, "left click on flesh tears it (%d)" % torn_l[0])
+	check(m.hand_motions.kind != "press", "digging is not a press")
+	m.chewer.cell_torn.disconnect(on_tear_l)
+
+	# --- a busy left hand: the door still answers, the hand keeps its load ----
+	for load_kind in ["blender", "big_saw", "pile"]:
+		await fresh_game(Vector3(0, 0.9, 0.8))
+		if load_kind == "pile":
+			m.carried_flesh = 12.0
+		else:
+			m.progression.grant_item(load_kind)
+			if load_kind == "blender":
+				m.equip_hand("blender", FDKToolKit.Hand.LEFT)
+			else:
+				m.equip_tool("big_saw")
+		await frames(40)
+		check(m.progression.hands.holds(load_kind) if load_kind != "pile" else m.hands_rig.is_carrying(), "%s is in hand" % load_kind)
+		await aim(door_mid)
+		check(FPInteractions.plan(m, "left") == "target:door", "%s: the target comes before the held load" % load_kind)
+		var hl: Node3D = m.hands_rig.get_hand_root("left")
+		var h0: Vector3 = hl.position
+		var moved := 0.0
+		mouse(MOUSE_BUTTON_LEFT, true)
+		for i in range(20):
+			await frames(1)
+			moved = maxf(moved, hl.position.distance_to(h0))
+		check(m.hand_motions.kind != "press", "%s: the left hand does not let go to reach" % load_kind)
+		check(m.blender_charge <= 0.0 and not m.chewer.is_chewing(), "%s: nothing charges or digs" % load_kind)
+		mouse(MOUSE_BUTTON_LEFT, false)
+		await frames(30)
+		check(m.restroom.is_door_open(), "%s: left click still opens the door" % load_kind)
+		check(moved < 0.05, "%s: the left hand stays on its load (%.2f)" % [load_kind, moved])
 	# the belt: hand buttons only
 	await fresh_game(Vector3(0, 0.95, 0))
 	m.progression.has_belt = true

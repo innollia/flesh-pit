@@ -10,7 +10,8 @@ extends RefCounted
 ## nothing comes out), wash (turn the tap, rub under the stream with laced
 ## fingers, shake, turn it off; the blood fades while rubbing), belt (reach
 ## down, hang the held tool, grab the other, bring it up) and cycle (a short
-## dip for Tab / wheel). The hands rig asks shape_pose() every frame; the
+## dip for Tab / wheel) and press (one hand reaches for the aimed door
+## handle or lever, takes hold, pulls and comes back). The hands rig asks shape_pose() every frame; the
 ## motion weight eases in and out, and cancel() fades it out so the hands
 ## glide back to where they were. Game rules never wait on a motion.
 
@@ -18,6 +19,7 @@ const DUR := {
     "scoop": 0.55, "pour": 0.85, "take": 1.15, "take2": 1.25,
     "vomit_toilet": 2.4, "vomit_floor": 2.4, "gag": 1.3, "wash": 2.6,
     "belt": 0.75, "cycle": 0.35, "watch": 1.0e9, "tank_lean": 1.0e9,
+    "press": 0.6,
 }
 const CANCEL_TIME := 0.25
 ## Take (progress): the fingers close on the item, and it is in the belt.
@@ -68,6 +70,12 @@ var _settle_base := Transform3D.IDENTITY
 var _settle_saved := false
 var rim_rig: Node3D
 var _target := Vector3.ZERO ## take: rig-local point of the item
+## Which hand a one-hand reach (take, press) uses: -1 left, 1 right. The
+## caller sets acting_side for the press that starts the motion (main:
+## activate_target, left click = left hand) and puts it back to 1.
+var acting_side := 1.0
+var hand_side := 1.0
+var _press_down := false
 var _held_mesh: Node3D
 var _wash_from := 0.0
 var _stream: MeshInstance3D
@@ -105,6 +113,7 @@ func _start(k: String) -> void:
     _heaves_done = 0
     _poured = false
     _swung = false
+    hand_side = acting_side
     for rig in rigs_of(m):
         rig.set("pose_hook", self)
 
@@ -144,11 +153,48 @@ func play_take(world_pos: Vector3, art_kind: String) -> void:
         _held_mesh = FPItemArt.make(art_kind)
         _held_mesh.name = "TakenItem"
         _held_mesh.visible = false
-        var hand: Node3D = rig.call("get_hand_root", "right")
+        var hand: Node3D = rig.call("get_hand_root", "left" if hand_side < 0.0 else "right")
         hand.add_child(_held_mesh)
         # in the curled fingers, below the palm, drawn in front of the skin
-        _held_mesh.position = Vector3(-0.01, -0.035, -0.085)
+        _held_mesh.position = Vector3(-0.01 * hand_side, -0.035, -0.085)
         FPItemArt.squash(_held_mesh, 0.18)
+
+## One hand (acting_side) reaches for the aimed door handle or lever at
+## `world_pos`, closes on it, pulls (the lever down) and comes back. A hand
+## that holds a load does not let go of it to reach: the left hand on the
+## blender, both hands on the big saw or under a carried flesh pile. The
+## target still acts (the action never waits on a motion); returns whether
+## the hand moves.
+func play_press(world_pos: Vector3, pull_down: bool) -> bool:
+    if not hand_free_to_reach(acting_side):
+        return false
+    _start("press")
+    _press_down = pull_down
+    var rig: Node3D = m.hands_rig
+    var local: Vector3 = rig.to_local(world_pos) if rig != null and rig.is_inside_tree() else Vector3(0.0, -0.05, -0.55)
+    # as the tearing hand reaches flesh (FDKHandsRig.reach_goal): the wrist
+    # stops a hand short of the point, a little below and to its own side,
+    # so the fingers close on it and the forearm does not cover the view
+    var d := local.length()
+    if d > 0.01:
+        local = local / d * clampf(d - FDKHandsRig.REACH_TIP, FDKHandsRig.REACH_MIN, FDKHandsRig.REACH_MAX)
+    local += Vector3(0.05 * hand_side, -0.06, 0.0)
+    local.z = minf(local.z, -0.3)
+    # the hand stays on its own side of the body
+    local.x = clampf(local.x, -0.45, -0.02) if hand_side < 0.0 else clampf(local.x, 0.02, 0.45)
+    _target = local
+    return true
+
+## Whether the hand on `side` (-1 left, 1 right) is free to reach for a door
+## or lever: not holding the blender (left), the big saw (both) or the
+## carried flesh pile (both).
+func hand_free_to_reach(side: float) -> bool:
+    var rig: Node3D = m.hands_rig
+    if rig == null:
+        return true
+    if bool(rig.get("hold_both")) or bool(rig.call("is_carrying")):
+        return false
+    return not (side < 0.0 and bool(rig.get("hold_left")))
 
 ## A dry heave: before the first lever settlement nothing comes up outside
 ## (decision 0009). Standing, two retches, a hand to the mouth, no spill.
@@ -539,7 +585,8 @@ func _shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
     if w <= 0.0 or kind == "vomit_toilet":
         return p
     # a hand holding the blender keeps it: no two-handed reach for a box
-    if side < 0.0 and kind == "take2" and bool(rig.get("hold_left")):
+    # (and the left hand holding it takes nothing one-handed either)
+    if side < 0.0 and (kind == "take2" or (kind == "take" and hand_side < 0.0)) and bool(rig.get("hold_left")):
         return p
     var q := _motion_pose(side, p)
     if q.is_empty():
@@ -836,7 +883,7 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["pos"] = idle.lerp(Vector3(0.05, -0.02, -0.55), reach2) + shake
         "take", "take2":
             var two := kind == "take2"
-            if not right and not two:
+            if side * hand_side < 0.0 and not two:
                 return {}
             # reach and close (u 0-0.26), pull it back into view (to 0.48),
             # down to the hip (to 0.72), let go there, hand back up (to 1)
@@ -848,11 +895,26 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["wrist_roll"] = (-20.0 if two else -8.0) * side * (1.0 - stow) - 15.0 * side * stow
             q["wrist_yaw"] = (-18.0 if two else 0.0) * side
             var goal := _target + Vector3(0.07 * side if two else 0.0, -0.04, 0.05)
-            var back := Vector3(0.1 * side if two else 0.1, -0.15, -0.38)
+            var back := Vector3(0.1 * side, -0.15, -0.38)
             var hip := idle + Vector3(0.05 * side, -0.3, 0.16)
             var held := seg(u, TAKE_GRIP + 0.04, 0.48) * (1.0 - seg(u, TAKE_STOWED + 0.06, 1.0))
             var at := idle.lerp(goal, reach3).lerp(back, held)
             q["pos"] = at.lerp(hip, stow)
+        "press":
+            if side * hand_side < 0.0:
+                return {}
+            # out to the handle / lever (to 0.38), fingers close on it, the
+            # pull (lever down, door drawn), let go, back (from 0.7)
+            var reach4 := seg(u, 0.0, 0.38) * (1.0 - seg(u, 0.7, 1.0))
+            var grip2 := seg(u, 0.26, 0.4) * (1.0 - seg(u, 0.64, 0.76))
+            var act := seg(u, 0.4, 0.58) * (1.0 - seg(u, 0.66, 0.82))
+            _fingers(q, 0.1 + 0.62 * grip2)
+            # the tearing grab's wrist (FDKHandsRig GRAB), bending further on the lever
+            q["wrist_pitch"] = lerpf(float(p["wrist_pitch"]), 62.0, reach4) + (18.0 * act if _press_down else 0.0)
+            q["wrist_yaw"] = lerpf(float(p["wrist_yaw"]), 6.0 * side, reach4)
+            q["wrist_roll"] = lerpf(float(p["wrist_roll"]), -12.0 * side, reach4)
+            var pull := Vector3(0.0, -0.06, 0.01) if _press_down else Vector3(0.0, -0.01, 0.05)
+            q["pos"] = idle.lerp(_target, reach4) + pull * act
         "vomit_floor":
             var bow := seg(u, 0.05, 0.3) * (1.0 - seg(u, 0.82, 1.0))
             var h := _heave(u)

@@ -87,11 +87,13 @@ static func is_lever_aimed(main: Node3D, camera: Camera3D = null) -> bool:
 # "조작 우선순위"). Modal states (opening, seated, settling, Tab, canary
 # pull, menus) own every input before this runs (main._process). A press of
 # one source does exactly one thing, the first that applies:
-#   1. a held tank lid: F or the right hand holding it puts it down
+#   1. a held tank lid: F or either hand button puts it down
 #   2. the aimed belt hook (looking down): that hand swaps with it; F does not
 #   3. the aimed fixture or object, nearest the crosshair (interact_target):
-#      F or the right hand acts on it; the left hand never does. Only one
-#      target action per frame, whichever source comes first (F before R).
+#      F or either hand acts on it, whatever that hand holds; the hand that
+#      pressed reaches for it (left click the left hand, right click and F
+#      the right). Only one target action per frame, whichever source comes
+#      first; the later press of that frame still keeps its hand off digging.
 #   4. the item in that hand: spray, blender, feed, barrier
 #   5. otherwise a bare, knife or saw hand digs while held; F settles when
 #      standing by the toilet with something to give.
@@ -104,6 +106,9 @@ const SOURCE_RIGHT := "right"
 const ITEM_VERBS := ["spray_cheap", "spray_deep", "blender", "canary_feed", "barrier"]
 const DIG_ITEMS := ["", "knife", "big_saw"]
 const TARGET_FRAME_META := "fp_target_frame"
+## press() result when another source already acted on a target this frame:
+## nothing happens, but the hand stays blocked like a target press.
+const TARGET_TAKEN := "target_taken"
 
 static func source_hand(source: String) -> int:
 	match source:
@@ -111,7 +116,7 @@ static func source_hand(source: String) -> int:
 		SOURCE_RIGHT: return FDKToolKit.Hand.RIGHT
 	return -1
 
-## An aimed target F or the right hand acts on (the belt hooks take only
+## An aimed target F or a hand button acts on (the belt hooks take only
 ## the hand buttons, through the belt swap).
 static func acts_on(target: String) -> bool:
 	return target != "" and target != "belt"
@@ -121,15 +126,14 @@ static func acts_on(target: String) -> bool:
 static func plan(main: Node3D, source: String) -> String:
 	var hand := source_hand(source)
 	if main.tank_lid != null and main.tank_lid.held:
-		return "none" if source == SOURCE_LEFT else "lid_down"
+		return "lid_down"
 	if main.belt_swap != null and main.belt_swap.busy():
 		return "none"
 	if hand >= 0 and main.belt_swap != null and main.belt_swap.aimed_hook() >= 0:
 		return "belt"
-	if source != SOURCE_LEFT:
-		var target: String = main.interact_target()
-		if acts_on(target):
-			return "target:" + target
+	var target: String = main.interact_target()
+	if acts_on(target):
+		return "target:" + target
 	if hand < 0:
 		if main._near_toilet() and main.has_settle_contents():
 			return "settle"
@@ -149,7 +153,7 @@ static func press(main: Node3D, source: String) -> String:
 	if verb.begins_with("target:"):
 		var frame := Engine.get_process_frames()
 		if int(main.get_meta(TARGET_FRAME_META, -1)) == frame:
-			return "none"
+			return TARGET_TAKEN
 		main.set_meta(TARGET_FRAME_META, frame)
 		main.activate_target(verb.substr(7), source)
 		return verb
@@ -174,7 +178,7 @@ static func press(main: Node3D, source: String) -> String:
 static func blocks_hand(verb: String) -> bool:
 	if verb == "item:blender":
 		return false # it charges while the button is held
-	return verb in ["lid_down", "belt"] or verb.begins_with("target:") or verb.begins_with("item:")
+	return verb in ["lid_down", "belt", TARGET_TAKEN] or verb.begins_with("target:") or verb.begins_with("item:")
 
 static func begin_settlement(main: Node3D) -> void:
 	main.set_meta(ENTRY_INPUT_META, INPUT_MODES.settlement_inputs())
@@ -199,7 +203,8 @@ static func handle_settling_input(main: Node3D, entry_frame: int, _entry_action:
 			main.flush()
 			return "flush"
 	if is_lever_aimed(main, main.settle_camera):
-		for action in ["fp_interact", "key_f"]:
+		# the left hand button (left click / E) on the aimed lever, as F
+		for action in ["fp_interact", "key_f", "fdk_eat"]:
 			if fresh.has(action):
 				main.flush()
 				return "flush"
