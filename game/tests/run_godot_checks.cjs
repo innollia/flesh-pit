@@ -12,6 +12,17 @@ const suites = process.env.FP_CHECK_SUITES
     'run_spray_attachment_tests.gd', 'run_live_interactions_tests.gd'];
 const evidence = path.join(root, '.dryforge/evidence/checks');
 fs.mkdirSync(evidence, { recursive: true });
+// Godot's Main::start reads the Windows system CA store when no bundle is
+// set; under CPU load that call sometimes never returns (idle hang before
+// the first frame, ~3-8% of suite runs). The game uses no TLS, so the project
+// points the setting at its own one-certificate file (engineering-notes.md).
+test('startup never reads the system certificate store', () => {
+  const project = fs.readFileSync(path.join(root, 'game/project.godot'), 'utf8');
+  const m = project.match(/^\[network\][^[]*^tls\/certificate_bundle_override="res:\/\/([^"]+)"/m);
+  assert.ok(m, 'project.godot sets network/tls/certificate_bundle_override to a res:// file');
+  const pem = fs.readFileSync(path.join(root, 'game', m[1]), 'utf8');
+  assert.match(pem, /-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/);
+});
 for (const suite of suites) {
   test(suite, () => {
     assert.match(suite, /^run_[a-z0-9_]+\.gd$/);

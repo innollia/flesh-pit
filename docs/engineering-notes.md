@@ -92,3 +92,7 @@ HUD 층(22)과 메뉴 층(30번대)은 PS1 후처리(층 20) 위에 있어 디�
 ## 팔 검사 기준
 
 승인된 B 자세는 원래 Forearm을 표시하고 중복 ArmHair/Forearm을 감춘다. 과거 검사가 숨겨야 하는 hair arm을 확인하여 수정 전에도 실패했다. 자세를 새로 만들지 않고 검사 대상을 승인된 부품에 맞춘다. 오른팔의 뒤쪽 퇴장·왼팔 상승·엄지·어깨 연결은 실제 입력 검사로 함께 확인한다.
+
+## 시작 때 인증서 저장소
+
+Godot는 TLS 묶음이 지정되지 않으면 `Main::start`(스크립트 `_init` 직후, 첫 프레임 전)에서 Windows 시스템 CA 저장소를 읽는다. CPU가 바쁠 때 이 호출이 가끔 돌아오지 않아 프로세스가 CPU 0%로 멈췄다(동시 16개 부하에서 검사 실행의 약 3~8%, `run_motion_tests` 단독 반복에서 "약 4회 중 1회"로 보고됨). `--verbose`는 타이밍을 바꿔 증상을 숨긴다. 게임은 TLS를 쓰지 않으므로 `project.godot`의 `network/tls/certificate_bundle_override`를 프로젝트 안의 인증서 하나(`main/data/offline_ca.crt`, 개인 키는 버림)로 고정한다. 이 설정을 지우면 `run_godot_checks.cjs`의 시작 인증서 검사가 실패한다. 나중에 실제 HTTPS가 필요하면 이 파일 대신 실제 CA 묶음을 넣는다.
