@@ -87,7 +87,7 @@ static var TOGGLE_HIDE: float = _num("TOGGLE_HIDE", 20.0)
 static var REMARK_COOLDOWN: float = _num("REMARK_COOLDOWN", 90.0)
 ## Voice gate (2026-10-19 play: it talked too much and spoke the instant a
 ## condition matched). The being still decides a line at once (spoken,
-## last_line: its memory, saved); line_spoken (subtitles, voice) comes after
+## last_line: its memory; last_line is saved); line_spoken (subtitles, voice) comes after
 ## a reaction delay. Room chatter about what the player is doing is voiced
 ## only after a quiet spell, only sometimes, and not the same line again soon.
 static var VOICE_DELAY_MIN: float = _num("VOICE_DELAY_MIN", 0.7)
@@ -127,8 +127,9 @@ var _pile_prog: FPProgression
 var shell: int = 0
 ## The last trade before the outermost shell (spec 12 마지막 거래).
 var final_trade: bool = false
-## Line ids the being has decided to say, oldest first (its memory; saved).
+## Line ids the being has decided to say, oldest first (this session only).
 var spoken: Array[String] = []
+## The last line decided; saved, so it survives Continue.
 var last_line: String = ""
 ## Line ids actually voiced (line_spoken), oldest first.
 var voiced: Array[String] = []
@@ -484,14 +485,25 @@ func watch_bowl(delta: float, waiting: bool) -> void:
         _say("guide.flush.met.3")
 
 ## Conversation milestones survive Continue; transient offers do not become payments.
+## The offer left unpicked (held, or still held out when the game was saved)
+## comes back on the next open after a load, as it would without one
+## (spec 03-restroom §7: 다음에 같은 물건을 다시 내민다).
 func serialize_progress() -> Dictionary:
-    return {"met": _met, "first_flush_heard": _first_flush_heard, "paid_ever": _paid_ever, "trade_paid": trade_paid + pile}
+    var keep: Array[String] = offers if is_open and not offers.is_empty() else _held
+    return {"met": _met, "first_flush_heard": _first_flush_heard, "paid_ever": _paid_ever, "trade_paid": trade_paid + pile, "held": keep.duplicate(), "last_line": last_line}
 
 func restore_progress(data: Dictionary, has_trade_belt: bool) -> void:
     _met = bool(data.get("met", has_trade_belt))
     _paid_ever = bool(data.get("paid_ever", has_trade_belt))
     _first_flush_heard = bool(data.get("first_flush_heard", _met or _paid_ever))
     trade_paid = int(data.get("trade_paid", 0))
+    # older saves have neither: no held offer, nothing said yet
+    _held = []
+    for id in data.get("held", []):
+        if id is String and (FPProgression.PRICE_UNITS.has(id) or id == "junk"):
+            _held.append(id)
+    _left_at = -1.0
+    last_line = str(data.get("last_line", ""))
     pile = 0
     _chain.clear()
     _chain_step = 0
@@ -576,6 +588,7 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
         var sp := prog.vent_spill()
         for id in sp:
             prog.grant_item(id)
+        _show_spill(sp)
         spilled.emit(sp)
     else:
         _say(_ev("첫_이빨", "place.accept") if first_pay else _pick(APPRAISE))
@@ -591,6 +604,19 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
         _maybe_remark()
     _set_offers(ids)
     return ids
+
+## The granted spill tumbles out of the duct onto the floor and is then
+## swept to the player's waist (art play_spill).
+func _show_spill(ids: Array[String]) -> void:
+    if art == null or ids.is_empty() or not art.has_method("play_spill"):
+        return
+    var kinds: Array = []
+    for id in ids:
+        kinds.append(ART_KIND.get(id, "junk"))
+    # the room floor (y = 0) in the vent's frame; main puts the vent just
+    # under the ceiling at FPRestroom.VENT_CENTER
+    var drop := position.y if position.y > 0.5 else FPRestroom.VENT_CENTER.y - 0.03
+    art.call("play_spill", kinds, -drop)
 
 ## Take one offered item; the others are pulled back.
 func take(id: String, prog: FPProgression) -> bool:

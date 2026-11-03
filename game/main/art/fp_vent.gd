@@ -10,7 +10,7 @@ const K := preload("res://main/art/fp_art_kit.gd")
 ## eye, cradled in the hook of the fingers.
 ## Public: set_open(0..1), play_open(), play_offer(), play_withdraw(),
 ## set_offer_items(kinds), take_item(i), item_node(i), hand_count(),
-## set_pile(n). set_eyes(), blink() and set_eye_mood() stay callable for the
+## set_pile(n), play_spill(kinds, floor_y). set_eyes(), blink() and set_eye_mood() stay callable for the
 ## vent logic: the eyes never show, the mood only makes the fingers fidget.
 
 const SIZE := 0.26
@@ -483,6 +483,8 @@ func _hand_to(target: float, secs: float, ease_type: Tween.EaseType) -> void:
 
 func _process(delta: float) -> void:
     _time += delta
+    if not _spill.is_empty():
+        step_spill(delta)
     if _arms != null and _arms.visible:
         _place_hands(delta)
         _pose_fingers()
@@ -696,6 +698,112 @@ func play_offer() -> void:
 
 func play_withdraw() -> void:
     _hand_to(0.0, 0.4, Tween.EASE_IN)
+
+# --- absurd overpay: things spill out -------------------------------------------
+
+## "큭 켘." and early items spill out of the duct (spec 03-restroom §7 거래
+## 규칙). They are the player's at once (FPVent grants them before this), so
+## each one tumbles out of the black, bounces on the floor under the vent,
+## lies there a moment and is then swept to the player's waist, the way a
+## taken item goes to the belt. Real size, no collision with the room.
+const SPILL_GAP := 0.16
+const SPILL_GRAVITY := 9.8
+const SPILL_BOUNCE := 0.32
+## Seconds an item lies on the floor before it goes to the waist.
+const SPILL_REST := 1.5
+const SPILL_STOW := 0.45
+## The waist below the eye, where the item is swept to.
+const SPILL_WAIST := 0.72
+## Pitch that lays an item down on the floor: items are modelled to face out
+## of the being's palm (+Z), so a knife would otherwise stand on its edge.
+const SPILL_LIE := {"knife": -PI * 0.5}
+var _spill: Array = []
+var _spill_root: Node3D
+var _spill_floor := -2.57
+
+## Item kinds as for set_offer_items; `floor_y` is the room floor in this
+## node's frame (the vent face is y = 0).
+func play_spill(kinds: Array, floor_y: float) -> void:
+    _spill_floor = floor_y
+    if _spill_root == null:
+        _spill_root = K.pivot(self, "Spill")
+    var eye := _eye()
+    var toward := Vector3(eye.x, 0.0, eye.z)
+    toward = toward.normalized() if toward.length() > 0.05 else Vector3(0, 0, 1)
+    for i in range(kinds.size()):
+        var item := FPItemArt.make(str(kinds[i]), 40 + i)
+        item.name = "Spilled%d" % _spill.size()
+        _spill_root.add_child(item)
+        FPItemArt.set_layers(item, _black_cover.layers)
+        item.visible = false
+        # out of the dark above the lip, a little apart, each kicked a bit
+        # toward the player and to its own side
+        var side := Vector3(-toward.z, 0.0, toward.x) * (K.h(i, 7) - 0.5) * 1.4
+        var start := Vector3((K.h(i, 3) - 0.5) * 0.24, 0.18, (K.h(i, 5) - 0.5) * 0.24)
+        var vel := toward * (0.35 + 0.45 * K.h(i, 9)) + side + Vector3(0, -0.2, 0)
+        var spin := Vector3(K.h(i, 11) - 0.5, K.h(i, 13) - 0.5, K.h(i, 17) - 0.5) * 18.0
+        item.position = start
+        item.rotation = Vector3(K.h(i, 19), K.h(i, 23), K.h(i, 29)) * TAU
+        _spill.append({"node": item, "vel": vel, "spin": spin, "wait": float(i) * SPILL_GAP, "state": "fall", "t": 0.0, "bounced": false, "lie": float(SPILL_LIE.get(str(kinds[i]), 0.0))})
+
+## Items still on their way (falling, lying or going to the waist).
+func spill_count() -> int:
+    return _spill.size()
+
+func spill_nodes() -> Array:
+    var out: Array = []
+    for s in _spill:
+        out.append(s["node"])
+    return out
+
+## Advance the spill by `delta` (called from _process; tests call it directly).
+func step_spill(delta: float) -> void:
+    var rest_y := _spill_floor + 0.03
+    for s in _spill:
+        var n: Node3D = s["node"]
+        if s["wait"] > 0.0:
+            s["wait"] = float(s["wait"]) - delta
+            continue
+        n.visible = true
+        match String(s["state"]):
+            "fall":
+                var v: Vector3 = s["vel"]
+                v.y -= SPILL_GRAVITY * delta
+                n.position += v * delta
+                n.rotation += (s["spin"] as Vector3) * delta
+                if n.position.y <= rest_y and v.y < 0.0:
+                    n.position.y = rest_y
+                    if not s["bounced"] and -v.y > 1.0:
+                        s["bounced"] = true
+                        v = Vector3(v.x * 0.5, -v.y * SPILL_BOUNCE, v.z * 0.5)
+                        s["spin"] = (s["spin"] as Vector3) * 0.4
+                    else:
+                        # lies flat where it stopped, its own way round
+                        s["state"] = "rest"
+                        s["t"] = 0.0
+                        n.rotation = Vector3(float(s["lie"]), n.rotation.y, 0.0)
+                        s["from"] = n.position
+                s["vel"] = v
+            "rest":
+                s["t"] = float(s["t"]) + delta
+                if float(s["t"]) >= SPILL_REST:
+                    s["state"] = "stow"
+                    s["t"] = 0.0
+                    s["from"] = n.position
+            "stow":
+                s["t"] = float(s["t"]) + delta
+                var u := clampf(float(s["t"]) / SPILL_STOW, 0.0, 1.0)
+                var waist := _eye() - Vector3(0, SPILL_WAIST, 0)
+                var e := u * u
+                n.position = (s["from"] as Vector3).lerp(waist, e) + Vector3(0, sin(u * PI) * 0.25, 0)
+                n.scale = Vector3.ONE * lerpf(1.0, 0.35, e)
+                if u >= 1.0:
+                    s["state"] = "done"
+    for i in range(_spill.size() - 1, -1, -1):
+        if String(_spill[i]["state"]) == "done":
+            var gone: Node3D = _spill[i]["node"]
+            _spill.remove_at(i)
+            gone.queue_free()
 
 func capture_setup() -> Dictionary:
     set_open(1.0)
