@@ -377,9 +377,7 @@ func _new_rig(index: int) -> Dictionary:
     td.rotation_degrees = Vector3(-14, 0, 12)
     K.add_mesh(td, "Bone", _meshes["thumb_d"], skin)
     var slot := K.pivot(hand, "Offer%d" % index, HOLD)
-    var lit := _black_cover.layers
-    for n in root.find_children("*", "VisualInstance3D", true, false):
-        (n as VisualInstance3D).layers = lit
+    # render layers: set_offer_items, the only caller, tags every arm after
     return {"root": root, "upper": upper, "fore": fore, "elbow": elbow, "hand": hand, "slot": slot, "fingers": fingers, "thumb": [tp, td], "rot": Quaternion.IDENTITY, "mirror": 1.0, "roll": sin(float(index) * 2.3 + 0.4) * 0.16}
 
 func item_node(index: int) -> Node3D:

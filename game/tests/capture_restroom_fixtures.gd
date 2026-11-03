@@ -131,9 +131,6 @@ func run() -> void:
 	await player_look(Vector3(0.3, 0.9, 4.2), Vector3(0.0, 1.0, 1.5))
 	await frames(4)
 	await shot("passage_door_light_only_toward")
-	var spill = m.restroom.get_node_or_null("DoorSpill")
-	var fill = m.restroom.get_node_or_null("DoorSpillFill")
-	print("DOORLIGHT spill=", spill != null and spill.visible and spill.light_energy > 0.0, " fill=", fill != null and fill.visible and fill.light_energy > 0.0)
 	m.player_lamp.visible = true
 	m.body_fill.visible = true
 	# --- returning after a long dark dwell: real controller arming, then step in
