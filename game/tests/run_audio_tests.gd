@@ -8,6 +8,10 @@ const MANIFEST := "res://audio/manifest.json"
 var _passed := 0
 var _failed := 0
 
+## run_godot_checks.cjs puts the isolated save path in here.
+func _init() -> void:
+	pass
+
 func _initialize() -> void:
 	print("=== flesh-pit audio tests ===")
 	_test_manifest_files()
@@ -29,6 +33,8 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	if _frames < 90:
 		return false
+	if _frames > 90:
+		return _layer_steps(_delta)
 	_hook = _main.get_node_or_null("AudioHookup")
 	_ok(_hook != null, "main.gd adds the audio hookup itself")
 	if _hook == null:
@@ -85,11 +91,99 @@ func _process(_delta: float) -> bool:
 		_ok(_hook.get("played_events").has("settle_tick"), "the lever's flush ticks the settle sound")
 		_main.vomit_button.pressed.emit()
 		_ok(d.last_played == "ui_click" or _hook.get("played_events").back() == "ui_click", "the vomit button clicks")
+	return _layer_steps(_delta)
+
+## Steady layers (D03 M03 magnet hum, D05 ending song): the game state is set
+## once per step and the hookup's own _process follows it for LAYER_WAIT s.
+## Main's own process is held still so the player standing in solid flesh is
+## not crushed back to the restroom between steps.
+const LAYER_WAIT := 1.0
+var _layer_step := 0
+var _layer_t := -1.0
+
+func _finish() -> bool:
 	_main.free()
 	FDKPs1Material.clear_cache()
 	print("--- %d passed, %d failed ---" % [_passed, _failed])
 	quit(1 if _failed > 0 else 0)
 	return true
+
+func _face(target: Vector3) -> void:
+	var pl: Node3D = _main.player
+	var flat := Vector3(target.x, pl.global_position.y, target.z)
+	pl.look_at(flat, Vector3.UP)
+
+func _layer_steps(delta: float) -> bool:
+	if _hook == null or _hook.get("director") == null:
+		return _finish()
+	if _layer_t >= 0.0:
+		_layer_t += delta
+		if _layer_t < LAYER_WAIT:
+			return false
+	var lv := func(id: String) -> float: return float(_hook.call("layer_level", id))
+	var c: Vector3 = _main.RESTROOM_CENTER
+	var prog = _main.progression
+	match _layer_step:
+		0:
+			for id in ["magnet_hum", "song_melody", "song_hum", "song_voice2"]:
+				var pl = _hook.get_node_or_null("Layer_" + id)
+				_ok(pl is AudioStreamPlayer and (pl as AudioStreamPlayer).playing, "steady layer %s is loaded and running" % id)
+			_ok(lv.call("magnet_hum") == 0.0 and lv.call("song_melody") == 0.0 and lv.call("song_hum") == 0.0, "in the restroom without M03 every steady layer is silent")
+			_main.set_process(false)
+			_main.set_physics_process(false)
+			_main.player.set_physics_process(false)
+			prog.mutation_tree._purchased["M03"] = true
+			_main.player.global_position = c + Vector3(0, 0, -6.0)
+			_face(c)
+		1:
+			var want: float = _main.mutation_apply.magnet_hum_level()
+			_ok(want > 0.5 and absf(lv.call("magnet_hum") - want) < 0.01, "D03 M03 facing the restroom hums in the ears (%.2f, game %.2f)" % [lv.call("magnet_hum"), want])
+			_ok((_hook.get_node("Layer_magnet_hum") as AudioStreamPlayer).volume_db > -6.0, "D03 the hum player is audible (%.1f dB)" % (_hook.get_node("Layer_magnet_hum") as AudioStreamPlayer).volume_db)
+			var m1: float = lv.call("song_melody")
+			_ok(m1 > 0.0 and absf(m1 - _main.melody_level() * _hook.MELODY_IN_FLESH) < 0.01, "D05 just outside the restroom the melody is faint (%.3f)" % m1)
+			_face(c + Vector3(0, 0, -20.0))
+		2:
+			_ok(lv.call("magnet_hum") == 0.0, "D03 facing away from the restroom the hum stops (%.2f)" % lv.call("magnet_hum"))
+			_layer_near = float(lv.call("song_melody"))
+			_main.player.global_position = c + Vector3(0, 0, -_main.OUTER_RADIUS * 0.95)
+			_face(c)
+		3:
+			var far: float = lv.call("song_melody")
+			_ok(far > _layer_near and far <= _hook.MELODY_IN_FLESH + 0.001, "D05 the melody grows toward the outer shell and stays faint (%.3f -> %.3f)" % [_layer_near, far])
+			_ok(lv.call("magnet_hum") > 0.0, "D03 the hum works from the outer shell too")
+			prog.mutation_tree._purchased.erase("M03")
+		4:
+			_ok(lv.call("magnet_hum") == 0.0, "D03 without M03 facing the restroom is silent")
+			_ok(lv.call("song_hum") == 0.0 and lv.call("song_voice2") == 0.0, "D05 no humming before the ending")
+			# the real breakthrough: main starts the ending with 1 + codex voices
+			_main.player.global_position = c + Vector3(0, 0, _main.OUTER_RADIUS)
+			_main.step_world(0.016)
+			_ok(_main.ending.active and _main.ending.voice_layers == 1, "the breakthrough starts the ending with one voice (codex not complete)")
+		5:
+			_ok(lv.call("song_hum") > 0.99 and lv.call("song_melody") == 0.0, "D05 at the ending the hum takes the tune over from the tine")
+			_ok(lv.call("song_voice2") == 0.0, "D05 an incomplete codex adds no second voice")
+			_ok((_hook.get("director") as FDKAudioDirector).current_bed == "ending", "D05 on the street the body bed is let go")
+			var pos := []
+			for id in ["song_melody", "song_hum", "song_voice2"]:
+				pos.append((_hook.get_node("Layer_" + id) as AudioStreamPlayer).get_playback_position())
+			_ok(absf(pos[0] - pos[1]) < 0.1 and absf(pos[0] - pos[2]) < 0.1, "D05 the song layers play in step %s" % str(pos))
+			# a complete codex: main passes two voices (1 + codex_complete)
+			_main.ending.active = false
+			_main.ending.start(2)
+		6:
+			_ok(lv.call("song_voice2") > 0.99 and lv.call("song_hum") > 0.99, "D05 a complete codex adds the second voice")
+			var dd: FDKAudioDirector = _hook.get("director")
+			var loud := -80.0
+			for layer in ["amb_body_a", "amb_heart_a", "amb_body_b", "amb_heart_b"]:
+				if dd.is_bed_layer_running(layer):
+					loud = maxf(loud, dd.bed_layer_db(layer))
+			_ok(loud < -12.0, "D05 the body drone fades out under the ending hum (%.1f dB)" % loud)
+			return _finish()
+	_layer_step += 1
+	_layer_t = 0.0
+	return false
+
+var _layer_near := 0.0
 
 func _ok(cond: bool, msg: String) -> void:
 	if cond:

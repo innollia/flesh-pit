@@ -31,6 +31,20 @@ var _squeeze_cool := 0.0
 var _squeeze_was := 0.0
 ## Every play_event name so far, in order (tests and the run log read it).
 var played_events: Array[String] = []
+## Steady layers the game only reports as levels (tools/build_song_layers.py):
+## the M03 magnet hum (mutation_apply.magnet_hum_level) and the ending song
+## (docs/spec/00-overview.md), whose melody is faint in the flesh and louder
+## outward (main.melody_level), hummed at the ending, with a second voice
+## when the codex is complete (ending.voice_layers). The three song layers
+## start together so they stay in step.
+const LAYER_IDS := ["magnet_hum", "song_melody", "song_hum", "song_voice2"]
+## The in-flesh melody stays faint; at the ending the hum takes the tune
+## over and the tine fades out (under the hum the two read as a siren).
+const MELODY_IN_FLESH := 0.35
+## Level change per second toward the wanted level.
+const LAYER_GLIDE := 3.0
+var _layers := {}
+var _layer_level := {}
 
 ## Stage-5 events that the game has no signal for yet. The game calls
 ## play_event(<name>) (or the named helper below); nothing else is needed.
@@ -123,6 +137,49 @@ func _wire() -> void:
 	_hook("grab_refused", func(_tissue, pos): play_event("grab_refuse", pos))
 	# V out in the flesh before the first settlement: retching, nothing comes up
 	_hook("dry_heaved", func(): play_event("gag"))
+	for id in LAYER_IDS:
+		_start_layer(id)
+
+func _start_layer(id: String) -> void:
+	if _layers.has(id) or director.bank == null or not director.bank.has(id):
+		return
+	var p := AudioStreamPlayer.new()
+	p.name = "Layer_" + id
+	p.bus = director.bus
+	p.stream = director.bank.stream(id, 0)
+	p.volume_db = FDKAudioDirector.SILENT_DB
+	add_child(p)
+	p.play()
+	_layers[id] = p
+	_layer_level[id] = 0.0
+
+## The level each steady layer wants now (0..1), read from the game.
+func _layer_target(id: String) -> float:
+	var ending = main.get("ending")
+	var ended: bool = ending != null and bool(ending.get("active"))
+	match id:
+		"magnet_hum":
+			var ma = main.get("mutation_apply")
+			return 0.0 if ended or ma == null or not ma.has_method("magnet_hum_level") else float(ma.magnet_hum_level())
+		"song_melody":
+			if ended:
+				return 0.0
+			return float(main.melody_level()) * MELODY_IN_FLESH if main.has_method("melody_level") else 0.0
+		"song_hum":
+			return 1.0 if ended else 0.0
+		"song_voice2":
+			return 1.0 if ended and int(ending.get("voice_layers")) >= 2 else 0.0
+	return 0.0
+
+func _step_layers(delta: float) -> void:
+	for id in _layers.keys():
+		var lv: float = move_toward(float(_layer_level[id]), _layer_target(id), LAYER_GLIDE * delta)
+		_layer_level[id] = lv
+		(_layers[id] as AudioStreamPlayer).volume_db = FDKAudioDirector.SILENT_DB if lv <= 0.0001 else maxf(linear_to_db(lv), FDKAudioDirector.SILENT_DB)
+
+## Current 0..1 level of a steady layer (tests read it), -1 when absent.
+func layer_level(id: String) -> float:
+	return float(_layer_level.get(id, -1.0))
 
 func _remember_torn(pos: Vector3) -> void:
 	_torn.append(pos)
@@ -190,12 +247,18 @@ func _process_inner(_delta: float) -> void:
 		director.set_shell(0)
 	# out in the flesh the biome's bed layers over the shell's (biomes.json "bed")
 	var want := "restroom" if in_room else _body_bed()
+	# out on the street (ending): no bed is named "ending", so the body's
+	# drone fades out under the hum
+	var ending = main.get("ending")
+	if ending != null and bool(ending.get("active")):
+		want = "ending"
 	if want != director.current_bed:
 		director.set_bed(want, 2.0)
 	# mutation stage from how much of the body has changed (0..1, as the hands)
 	var prog = main.get("progression")
 	if prog != null and prog.has_method("mutation_amount"):
 		director.set_mutation_stage(int(clampf(float(prog.mutation_amount()), 0.0, 0.999) * 3.0))
+	_step_layers(_delta)
 	_chirp_cool = maxf(0.0, _chirp_cool - _delta)
 	_squeeze_cool = maxf(0.0, _squeeze_cool - _delta)
 	if player != null and player.has_method("squeeze") and not in_room:

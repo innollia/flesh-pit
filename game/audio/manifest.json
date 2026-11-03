@@ -522,6 +522,34 @@
     "res://audio/loops/amb_hair_thicket.wav"
    ],
    "loop_seconds": 8.0
+  },
+  "song_melody": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/song_melody.wav"
+   ],
+   "loop_seconds": 16.0
+  },
+  "song_hum": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/song_hum.wav"
+   ],
+   "loop_seconds": 16.0
+  },
+  "song_voice2": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/song_voice2.wav"
+   ],
+   "loop_seconds": 16.0
+  },
+  "magnet_hum": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/magnet_hum.wav"
+   ],
+   "loop_seconds": 8.0
   }
  },
  "beds": {
