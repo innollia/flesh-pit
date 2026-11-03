@@ -35,6 +35,17 @@ const BLENDER_SCALE := 0.8 ## ~0.28 m tall, handle about one hand wide
 const BLENDER_GRIP := Vector3(0.0, -0.03, -0.08)
 const BLENDER_IN_WRIST := Basis(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1))
 const KNIFE_IN_FIST_YAW := 90.0
+## The big saw is held by both hands, one on each upright handle (2026-11-03:
+## it used to float in camera space with the hands idle under it). It hangs
+## on the RIGHT wrist with its right handle in that hand's finger loop
+## (SAW_GRIP, the same loop as BLENDER_GRIP); the rig's mirrored two-handed
+## hold (FDKHandsRig.hold_both) puts the left finger loop on the left handle.
+## The blade lies across the view, teeth down, tipped SAW_TILT_DEG away.
+const SAW_SCALE := 0.5 ## blade ~0.62 m, handles ~0.64 m apart
+const SAW_GRIP := Vector3(0.0, -0.03, -0.08)
+const SAW_TILT_DEG := -8.0
+## How far a stroke slides the saw and both hands along the blade (m).
+const SAW_STROKE_SLIDE := 0.08
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
@@ -117,7 +128,7 @@ func setup(main: Node3D) -> void:
 	hand_tumor.call("set_pulse", false)
 	saw = SawScene.instantiate()
 	saw.name = "HeldSaw"
-	saw.scale = Vector3.ONE * 0.5
+	saw.set("moves_self", false)
 	arm_hair = HairScene.instantiate()
 	arm_hair.name = "ArmHair"
 	hand_compass = CompassArt.new()
@@ -187,7 +198,20 @@ func _attach_to_rig(rig: Node3D) -> void:
 	plug_offset = Vector3.ZERO
 	_put(nerve_strand, rig, Vector3.ZERO)
 	nerve_strand.visible = false
-	_put(saw, rig, Vector3(0, -0.2, -0.5))
+	# the saw rides the right wrist, right handle in the curled fingers; the
+	# rig's two-handed hold is set wide enough for the left hand to close on
+	# the left handle, so it comes, goes, bobs and strokes with both hands
+	var hw := FDKHandsRig.hold_both_wrist_basis()
+	var sb := (hw.inverse() * Basis(Vector3.RIGHT, deg_to_rad(SAW_TILT_DEG))).scaled(Vector3.ONE * SAW_SCALE)
+	_put(saw, rw, SAW_GRIP - sb * (saw.call("grip_right") as Vector3))
+	saw.basis = sb
+	var hp: Vector3 = rig.get("hold_both_pos")
+	hp.x = (saw.call("grip_right") as Vector3).x * SAW_SCALE - (hw * SAW_GRIP).x
+	rig.set("hold_both_pos", hp)
+	if _rig != null and _rig != rig:
+		# the rig being swapped out lets go of what it held
+		_rig.set("hold_left", false)
+		_rig.set("hold_both", false)
 	# arm hairs ride the left forearm (elbow at +0.34 behind the wrist)
 	_put(arm_hair, lroot, Vector3(0, 0.0, 0.34))
 	_put(hand_compass, lw, COMPASS_ON_PALM)
@@ -263,7 +287,12 @@ func _process_inner(_delta: float) -> void:
 	if _rig != null:
 		_rig.set("hold_left", prog.hands.holds("blender") and not tab_arm)
 	blender.visible = _rig != null and bool(_rig.call("left_grip_shown")) and not tab_arm
-	saw.visible = prog.hands.holds("big_saw")
+	# the same for the saw with both hands: both drop out of view, and come
+	# up together holding it by its two handles
+	if _rig != null:
+		_rig.set("hold_both", prog.hands.holds("big_saw") and not tab_arm)
+		_rig.set("hold_shift", Vector3(SAW_STROKE_SLIDE * float(saw.get("stroke")), 0.0, 0.0))
+	saw.visible = _rig != null and bool(_rig.call("both_grip_shown")) and not tab_arm
 	var compass_held := prog.hands.left == "compass"
 	waist_compass.visible = not prog.hands.holds("compass")
 	# the Tab screen raises this arm with its doll: the compass stays out of it

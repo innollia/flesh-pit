@@ -54,13 +54,27 @@ func _ready() -> void:
         K.lathe(st, K.T(base + Vector3(sx * 0.018, 0.205, 0)), [Vector2(0.0, -0.006), Vector2(0.017, -0.006), Vector2(0.013, 0.008), Vector2(0.0, 0.01)], 8, [wood.darkened(0.3)])
     K.add_mesh(self, "Grips", K.finish(st, 8.0), K.mat("tex_fixture_64.png", 0.2, true))
 
+## Last stroke offset (-1..1). With moves_self off the saw stays put and a
+## holder moves the hands (and so the saw) by it instead (fp_art_hookup:
+## the held saw rides the right wrist, both hands slide with the stroke).
+var stroke := 0.0
+var moves_self := true
+
 func set_stroke(s: float) -> void:
-    position.x = 0.12 * clampf(s, -1.0, 1.0)
+    stroke = clampf(s, -1.0, 1.0)
+    if moves_self:
+        position.x = 0.12 * stroke
+
+var _stroke_tw: Tween
 
 func play_stroke() -> void:
+    if _stroke_tw != null and _stroke_tw.is_valid():
+        _stroke_tw.kill()
     var tw := create_tween().set_loops(2)
+    _stroke_tw = tw
     tw.tween_method(set_stroke, -1.0, 1.0, 0.35).set_trans(Tween.TRANS_SINE)
     tw.tween_method(set_stroke, 1.0, -1.0, 0.35).set_trans(Tween.TRANS_SINE)
+    tw.finished.connect(set_stroke.bind(0.0))
 
 func grip_left() -> Vector3:
     return Vector3(-L - 0.02, 0.1, 0)

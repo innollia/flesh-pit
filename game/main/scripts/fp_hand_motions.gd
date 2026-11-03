@@ -493,6 +493,10 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
         return m.canary_pull.hand_pose(rig, side, p)
     if rig == rim_rig:
         return _rim_pose(side, p)
+    # both hands on the big saw keep it: no one-hand motion pulls a hand off
+    # the rigid saw (it would leave the other handle in the air)
+    if rig.has_method("both_grip_shown") and bool(rig.call("both_grip_shown")):
+        return p
     # the blender swung out to a nerve: the gripping hand goes with it
     var plug: Vector3 = m.art_hookup.plug_offset if m.art_hookup != null else Vector3.ZERO
     if side < 0.0 and plug != Vector3.ZERO and bool(rig.get("hold_left")):
@@ -690,7 +694,7 @@ func _alien_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
     var ma: FPMutationApply = m.mutation_apply
     if ma == null or side > 0.0 or not rig.is_visible_in_tree():
         return {}
-    var free := not bool(rig.get("hold_left"))
+    var free := not bool(rig.get("hold_left")) and not bool(rig.get("hold_both"))
     var since := ma.alien_since_tear
     var eating := since >= 0.0 and free
     _show_alien_chunk(rig, eating, since)
