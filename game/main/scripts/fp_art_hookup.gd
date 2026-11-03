@@ -22,6 +22,9 @@ const COMPASS_WAIST_ANGLE := 0.45 ## rad round the waist from the front centre
 ## Palm centre on the palm side (-Y of the wrist; the palm surface is at
 ## -0.0195 there), dial facing out of the palm.
 const COMPASS_ON_PALM := Vector3(0.0, -0.021, -0.05)
+## A held can or pack, in the wrist frame: inside the closed fingers.
+const HELD_ITEM_POS := Vector3(0.0, -0.03, -0.075)
+const KNIFE_IN_FIST_YAW := 90.0
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
@@ -154,7 +157,8 @@ func _attach_to_rig(rig: Node3D) -> void:
 	var rw := rig.get_node("HandRight/Wrist") as Node3D
 	var lw := rig.get_node("HandLeft/Wrist") as Node3D
 	var lroot := rig.get_node("HandLeft") as Node3D
-	_put(knife, rw, Vector3(0, -0.015, -0.06))
+	_put(knife, rw, HELD_ITEM_POS)
+	knife.rotation_degrees = Vector3(0, KNIFE_IN_FIST_YAW, 0)
 	_put(hand_tumor, rw, Vector3(0, -0.06, -0.08))
 	_put(held_teeth, rw, Vector3.ZERO)
 	_put(scissors, lw, Vector3(0, -0.012, -0.07))
@@ -234,7 +238,9 @@ func _process_inner(_delta: float) -> void:
 	if knife.visible and _rig != null:
 		var wrist: Node3D = _rig.get_node("HandLeft/Wrist" if prog.hands.left == "knife" else "HandRight/Wrist")
 		if knife.get_parent() != wrist:
-			_put(knife, wrist, Vector3(0, -0.015, -0.06))
+			# handle across the closed fist, blade out past the thumb
+			_put(knife, wrist, HELD_ITEM_POS)
+			knife.rotation_degrees = Vector3(0, KNIFE_IN_FIST_YAW, 0)
 	scissors.visible = prog.hands.right == "knife" and prog.hands.left == "" and m.carried_flesh <= 0.0
 	blender.visible = prog.hands.holds("blender")
 	if _rig != null:
@@ -255,7 +261,12 @@ func _process_inner(_delta: float) -> void:
 			var wrist: Node3D = _rig.get_node("HandLeft/Wrist" if hand == 0 else "HandRight/Wrist")
 			var prop: Node3D = _consumables[hand][id]
 			if prop.get_parent() != wrist:
-				_put(prop, wrist, Vector3(0, -0.025, -0.06))
+				# across the closed fingers, both ends out of the fist, drawn
+				# in front of the skin's pulled-in depth (fp_hand_motions _hold_item)
+				# a spray can stands out of the thumb side, nozzle first
+				_put(prop, wrist, HELD_ITEM_POS + (Vector3(-0.04 if hand == 1 else 0.04, 0, 0) if id.begins_with("spray_") else Vector3.ZERO))
+				prop.rotation_degrees = Vector3(0, 0, 90 if hand == 1 else -90)
+				FPItemArt.squash(prop, 0.18)
 			prop.visible = true
 	hand_tumor.visible = prog.tumor_in_hand()
 	var held_n := mini(prog.teeth_in_hand, HELD_TEETH_SHOWN)

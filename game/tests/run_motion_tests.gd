@@ -82,7 +82,7 @@ func _run() -> void:
     var at: Vector3 = _m.hands_rig.to_global(Vector3(0.05, 0.1, -0.7))
     hm.play_take(at, "spray_cheap")
     _assert(hm.kind == "take", "a spray is taken with one hand")
-    _step(FPHandMotions.DUR["take"] * 0.52)
+    _step(FPHandMotions.DUR["take"] * FPHandMotions.TAKE_GRIP)
     _assert(_right().z < r0.z - 0.15 and _left().distance_to(l0) < 0.03, "take: only the right hand reaches")
     var curl: float = _m.hands_rig.call("get_joint_angles", "right")["f2"]
     _assert(curl > 45.0, "take: the fingers curl round it (%.0f)" % curl)
@@ -91,7 +91,7 @@ func _run() -> void:
     _assert(not hm.busy() and _right().distance_to(r0) < 0.02, "take: pulled back to rest")
     hm.play_take(at, "saw_box")
     _assert(hm.kind == "take2", "a saw box needs both hands")
-    _step(FPHandMotions.DUR["take2"] * 0.45)
+    _step(FPHandMotions.DUR["take2"] * FPHandMotions.TAKE_GRIP)
     _assert(_left().z < l0.z - 0.15 and _right().z < r0.z - 0.15, "take2: both hands reach")
     _step(FPHandMotions.DUR["take2"])
     _settle()

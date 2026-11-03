@@ -96,12 +96,13 @@ func _run() -> void:
     _assert(prog.teeth == 0, "nothing is paid before the flush")
     var got: Dictionary = m.flush()
     _assert(prog.teeth == int(round(amount * FPProgression.TEETH_PER_FLESH)) and got["teeth"] == prog.teeth, "flush puts teeth in the tank (%d)" % prog.teeth)
-    _assert(prog.hairs(FPProgression.COMMON) == 0 and prog.hairs("core") == 0 and is_equal_approx(prog.hair_carry["core"], 10.0), "10 core units are below one hair; the fraction carries (04-economy 2)")
+    _assert(prog.hairs(FPProgression.COMMON) == 0 and prog.hairs("core") == 0 and is_equal_approx(prog.hair_carry["core"], 15.0), "15 core units (5 + 10) are below one hair; the fraction carries (04-economy 2)")
     _assert(not m.is_settling() and m.vent.mood() == "frantic", "the flush sets the vent being off")
     # shell multipliers
+    var common_before: float = prog.hair_carry[FPProgression.COMMON]
     prog.on_flesh_eaten(1, 1)
     prog.on_flesh_eaten(2, 1)
-    _assert(prog.pending_hairs["mantle"] == 2 and prog.pending_hairs["surface"] == 3 and prog.pending_hairs[FPProgression.COMMON] == 5, "shell multiplier x2 mantle, x3 surface")
+    _assert(is_equal_approx(prog.hair_carry["mantle"], 2.0) and is_equal_approx(prog.hair_carry["surface"], 3.0) and is_equal_approx(prog.hair_carry[FPProgression.COMMON] - common_before, 5.0), "shell multiplier x2 mantle, x3 surface")
     prog.discard_stomach()
     # membrane and flesh wall
     _assert(not m.terrain.is_edible_at(Vector3(FPRestroom.HALF.x + 0.2, 1.0, -0.5)), "restroom side wall membrane is inedible")
@@ -124,10 +125,11 @@ func _run() -> void:
         var target: Vector3 = hit.position + (ray[1] as Vector3) * m.terrain_config.cell_size * 0.5
         _assert(m.terrain.density_at(target) >= 0.5, "eat target (hit + half a cell) is solid tissue")
         var before: float = m.stomach.fill
+        var carry_before: float = prog.hair_carry["core"]
         m.chewer.try_start(target)
         for i in range(60):
             m.chewer.process_chew(0.05)
-        _assert(m.stomach.fill > before and prog.pending_hair_total() > 0, "chewing the door wall fills the stomach and grows pending hairs")
+        _assert(m.stomach.fill > before and prog.hair_carry["core"] > carry_before, "chewing the door wall fills the stomach and grows hair at once (R17)")
     # no flesh surface pokes into the restroom
     var inside := 0
     for ch in m.terrain.get_chunks():
@@ -373,7 +375,7 @@ func _run_death(m, prog: FPProgression) -> void:
     _assert(tm in FPProgression.TUMOR_MUTATIONS and prog.tumor_mutations.size() == 1, "tumor points buy a random tumor mutation T1-T7 (%s)" % tm)
     # --- save v3 round trip of the progression
     var saved: Dictionary = m.serialize()
-    _assert(int(saved["version"]) == 4 and int(saved["progression"]["version"]) == 3, "save is versioned (main 4, progression 3)")
+    _assert(int(saved["version"]) == m.SAVE_VERSION and int(saved["progression"]["version"]) == FPProgression.SAVE_VERSION, "save is versioned (main %d, progression %d)" % [m.SAVE_VERSION, FPProgression.SAVE_VERSION])
     var teeth_saved: int = prog.teeth
     prog.teeth = 0
     m.deserialize(saved)

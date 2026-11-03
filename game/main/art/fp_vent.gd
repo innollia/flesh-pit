@@ -4,8 +4,8 @@ const K := preload("res://main/art/fp_art_kit.gd")
 
 ## Ceiling vent (the shop). Local frame: the vent face lies on y=0 and the
 ## duct goes UP (+Y), so it is seen from below. Grate hinges down on its -X
-## edge. Two pale eyes sit in the dark duct and blink on their own; a long
-## grey arm reaches down out of the dark below the ceiling and turns its open
+## edge. Two pale eyes sit in the dark duct and blink on their own; a slender
+## woman's arm reaches down out of the dark below the ceiling and turns its open
 ## palm to whoever is below, the offered items lying in the hook of its fingers.
 ## Public: set_open(0..1), play_open(), blink(), set_eyes(visible),
 ## play_offer(), play_withdraw(), set_offer_items(kinds), take_item(i),
@@ -103,14 +103,20 @@ func _ready() -> void:
 
 ## Wrist height (vent frame) with the arm up in the black / held out below
 ## the ceiling where the room light falls on it, leaning REACH toward the
-## camera (still through the opening). The hand is bigger than a person's.
+## camera (still through the opening). The hand is a woman's, slender and
+## clean, low-poly (user, 2026-11-03), a little over life size.
 const HAND_UP := 0.62
 const HAND_DOWN := -0.3
 const REACH := 0.2
-const HAND_SCALE := 1.25
+const HAND_SCALE := 1.1
 ## Where each offered item lies on the open hand (palm frame: fingers point
-## down -Y, the palm faces +Z). The first sits in the finger hook.
-const HOLD := [Vector3(0.0, -0.178, 0.05), Vector3(0.0, -0.122, 0.045), Vector3(0.0, -0.066, 0.042)]
+## down -Y, the palm faces +Z). The first sits across the fingers.
+const HOLD := [Vector3(0.0, -0.13, 0.03), Vector3(0.004, -0.09, 0.034), Vector3(-0.004, -0.05, 0.036)]
+## Offered items at this share of their real size (they are what the hand
+## then carries to the belt), so the fingers still show round them.
+const ITEM_SCALE := 0.8
+## Fingers little to index: x at the knuckle, length, radius.
+const FINGERS := [[-0.026, 0.056, 0.0058], [-0.009, 0.07, 0.0064], [0.008, 0.077, 0.0066], [0.025, 0.069, 0.0063]]
 var _arm: Node3D
 var _palm: Node3D
 var _fingers: Array = []
@@ -123,52 +129,47 @@ var _tilt := 0.0
 
 func _build_hand() -> void:
     _arm = K.pivot(self, "BeingArm", Vector3(0, HAND_UP, 0.02))
-    var skin := K.mat("tex_skin_64.png", 0.25, false)
-    var pale := Color(0.74, 0.78, 0.7)
-    var grime := Color(0.5, 0.52, 0.45)
+    var skin := K.mat("tex_skin_64.png", 0.35, false)
+    var fair := Color(0.92, 0.84, 0.8)
+    var shade := Color(0.84, 0.74, 0.7)
     var st := K.begin()
-    # forearm, wrist at the pivot, running up past the top of the duct
-    K.tube(st, Transform3D.IDENTITY, [Vector3(0, 0.0, 0), Vector3(0, 0.06, -0.004), Vector3(0, 0.3, -0.012), Vector3(0.01, 0.62, -0.03), Vector3(0.02, 1.05, -0.04)], [0.02, 0.023, 0.027, 0.025, 0.029], 6, [pale, grime, pale, grime, Color(0.05, 0.05, 0.05)], false, 0.8)
-    # the knob of the wrist bone
-    K.blob(st, Transform3D.IDENTITY, Vector3(0.012, 0.03, -0.012), Vector3(0.012, 0.014, 0.01), 0.3, 7, pale, grime)
+    # a thin forearm, wrist at the pivot, running up past the top of the duct
+    K.tube(st, Transform3D.IDENTITY, [Vector3(0, 0.0, 0), Vector3(0, 0.06, -0.003), Vector3(0, 0.3, -0.01), Vector3(0.006, 0.62, -0.024), Vector3(0.012, 1.05, -0.034)], [0.015, 0.017, 0.021, 0.022, 0.024], 6, [fair, fair, shade, fair, Color(0.05, 0.05, 0.05)], false, 0.78)
     K.add_mesh(_arm, "Forearm", K.finish(st, 8.0), skin)
     _palm = K.pivot(_arm, "Palm")
     _palm.scale = Vector3.ONE * HAND_SCALE
     st = K.begin()
-    K.rbox(st, K.T(Vector3(0, -0.06, 0)), Vector3(0.06, 0.062, 0.013), 0.01, pale, grime)
-    # knuckle ridge on the back and a dirty crease across the palm
-    K.rbox(st, K.T(Vector3(0, -0.112, -0.008)), Vector3(0.058, 0.01, 0.009), 0.005, grime)
-    K.rbox(st, K.T(Vector3(0.004, -0.07, 0.012), Vector3(0, 0, 12)), Vector3(0.045, 0.003, 0.002), 0.001, Color(0.3, 0.24, 0.2))
+    # a narrow palm tapering a little to the wrist, one soft pad under the thumb
+    K.tube(st, Transform3D.IDENTITY, [Vector3(0, 0.002, 0), Vector3(0, -0.04, 0.001), Vector3(0, -0.092, 0.0)], [0.026, 0.035, 0.034], 6, [fair, fair, shade], true, 0.3)
+    K.blob(st, Transform3D.IDENTITY, Vector3(0.02, -0.03, 0.007), Vector3(0.013, 0.02, 0.006), 0.1, 5, fair, shade)
     K.add_mesh(_palm, "Hand", K.finish(st, 8.0), skin)
-    var lens := [0.1, 0.118, 0.112, 0.09]
-    for f in range(4):
-        var piv := K.pivot(_palm, "Finger%d" % f, Vector3(-0.045 + f * 0.03, -0.118, 0.0))
-        _build_finger(piv, lens[f], 0.0085, pale, grime, skin)
+    for f in FINGERS:
+        var piv := K.pivot(_palm, "Finger%d" % _fingers.size(), Vector3(f[0], -0.09, 0.0))
+        _build_finger(piv, f[1], f[2], fair, shade, skin)
         _fingers.append(piv)
-    var thumb := K.pivot(_palm, "Thumb", Vector3(0.062, -0.035, 0.006))
-    thumb.rotation_degrees = Vector3(0, 0, 34)
-    _build_finger(thumb, 0.075, 0.011, pale, grime, skin)
+    var thumb := K.pivot(_palm, "Thumb", Vector3(0.033, -0.028, 0.005))
+    thumb.rotation_degrees = Vector3(0, 0, 36)
+    _build_finger(thumb, 0.056, 0.0072, fair, shade, skin)
     _fingers.append(thumb)
     _arm.visible = false
 
-## A long three-jointed finger hanging down -Y, its tip hooked toward +Z,
-## with a long yellowed nail.
-func _build_finger(piv: Node3D, length: float, r: float, pale: Color, grime: Color, skin: Material) -> void:
+## A slender three-jointed finger hanging down -Y, bending gently toward the
+## palm (+Z), with a short clean nail on its back.
+func _build_finger(piv: Node3D, length: float, r: float, fair: Color, shade: Color, skin: Material) -> void:
     var st := K.begin()
-    var pts := [Vector3(0, 0.004, 0), Vector3(0, -length * 0.4, 0.004), Vector3(0, -length * 0.72, 0.016), Vector3(0, -length * 0.95, 0.04)]
-    K.tube(st, Transform3D.IDENTITY, pts, [r, r * 0.95, r * 0.85, r * 0.7], 5, [pale, grime, pale, grime], true)
-    # knuckle bumps
-    K.blob(st, Transform3D.IDENTITY, pts[1], Vector3.ONE * r * 1.15, 0.2, 3, grime, pale)
-    K.blob(st, Transform3D.IDENTITY, pts[2], Vector3.ONE * r * 1.05, 0.2, 4, grime, pale)
+    var pts := [Vector3(0, 0.004, 0), Vector3(0, -length * 0.45, 0.003), Vector3(0, -length * 0.78, 0.009), Vector3(0, -length, 0.017)]
+    K.tube(st, Transform3D.IDENTITY, pts, [r, r * 0.92, r * 0.82, r * 0.62], 6, [fair, shade, fair, fair], true)
     var tip: Vector3 = pts[3]
-    K.tube(st, Transform3D.IDENTITY, [tip + Vector3(0, 0.004, 0.002), tip + Vector3(0, -0.006, 0.014), tip + Vector3(0, -0.009, 0.026)], [r * 0.75, r * 0.55, r * 0.15], 4, [Color(0.6, 0.55, 0.32), Color(0.5, 0.43, 0.22), Color(0.3, 0.24, 0.12)], true, 0.6)
+    var back := Vector3(0, length * 0.09, -r * 0.62)
+    K.rbox(st, K.T(tip + back, Vector3(-14, 0, 0)), Vector3(r * 0.62, length * 0.1, r * 0.16), r * 0.12, Color(0.97, 0.86, 0.85), Color(0.9, 0.78, 0.77))
     K.add_mesh(piv, "Bone", K.finish(st, 10.0), skin)
 
 func item_node(index: int) -> Node3D:
     return _offers[index] if index >= 0 and index < _offers.size() else null
 
 ## Item kinds: spray_cheap, spray_expensive, barrier, knife, blender_box,
-## saw_box, junk (a crumpled useless thing). Replaces what is on the lip.
+## saw_box, canary_feed, tumor_bag, junk (FPItemArt models, the same the
+## player's hand carries to the belt). Replaces what is on the lip.
 ## An empty list sends the arm back up.
 func set_offer_items(kinds: Array) -> void:
     for i in range(_offers.size()):
@@ -178,9 +179,10 @@ func set_offer_items(kinds: Array) -> void:
             ch.queue_free()
         slot.visible = i < kinds.size()
         if i < kinds.size():
-            var mi := K.add_mesh(slot, "Item", _item_mesh(str(kinds[i]), i), K.mat("tex_fixture_64.png", 0.2, false))
+            var item := FPItemArt.make(str(kinds[i]), i)
+            slot.add_child(item)
             # the same render layers as the rest of the vent (the restroom tags them)
-            mi.layers = _black_cover.layers
+            FPItemArt.set_layers(item, _black_cover.layers)
     if kinds.is_empty():
         if _extend > 0.0 and is_inside_tree():
             _hand_to(0.0, 0.25, Tween.EASE_IN)
@@ -192,36 +194,6 @@ func set_offer_items(kinds: Array) -> void:
             var lit := _black_cover.layers
             for n in _arm.find_children("*", "VisualInstance3D", true, false):
                 (n as VisualInstance3D).layers = lit
-
-func _item_mesh(kind: String, seed: int) -> ArrayMesh:
-    var st := K.begin()
-    var I := Transform3D.IDENTITY
-    match kind:
-        "spray_cheap", "spray_expensive":
-            var exp := kind == "spray_expensive"
-            var body := Color(0.12, 0.1, 0.1) if exp else Color(0.9, 0.88, 0.8)
-            var band := Color(0.75, 0.08, 0.06) if exp else Color(0.9, 0.75, 0.1)
-            K.lathe(st, K.T(Vector3(0, 0.0, 0), Vector3(0, 0, 90)), [Vector2(0.0, -0.06), Vector2(0.026, -0.06), Vector2(0.026, 0.0), Vector2(0.026, 0.04), Vector2(0.012, 0.055), Vector2(0.0, 0.065)], 8, [body, band, body, Color(0.8, 0.8, 0.8)])
-        "barrier":
-            K.tube(st, I, [Vector3(-0.07, 0, 0), Vector3(0.07, 0, 0)], [0.028], 6, [Color(0.92, 0.72, 0.1), Color(0.1, 0.1, 0.1)])
-            K.lathe(st, K.T(Vector3(0.075, 0, 0), Vector3(0, 0, -90)), [Vector2(0.0, 0.0), Vector2(0.04, 0.0), Vector2(0.035, 0.012), Vector2(0.0, 0.014)], 6, [Color(0.5, 0.5, 0.5)])
-        "knife":
-            K.tube(st, I, [Vector3(-0.06, 0, 0), Vector3(0.0, 0, 0)], [0.012], 6, [Color(0.38, 0.22, 0.12)], true)
-            K.tube(st, I, [Vector3(0.0, 0, 0), Vector3(0.1, 0.0, 0)], [0.015, 0.001], 3, [Color(0.85, 0.86, 0.88)], true)
-        "canary_feed":
-            # a small paper bag of seed, folded at the top
-            K.rbox(st, I, Vector3(0.035, 0.05, 0.025), 0.006, Color(0.82, 0.74, 0.55), Color(0.7, 0.6, 0.42))
-            K.rbox(st, K.T(Vector3(0, 0.055, 0)), Vector3(0.036, 0.008, 0.012), 0.003, Color(0.75, 0.66, 0.46))
-        "tumor_bag":
-            # a deflated basketball-like sack with a drawstring
-            K.blob(st, I, Vector3.ZERO, Vector3(0.06, 0.045, 0.06), 0.25, 31, Color(0.62, 0.32, 0.18), Color(0.45, 0.22, 0.12))
-            K.tube(st, I, [Vector3(-0.03, 0.045, 0), Vector3(0, 0.07, 0), Vector3(0.03, 0.045, 0)], [0.004], 3, [Color(0.2, 0.15, 0.1)], false)
-        "blender_box", "saw_box":
-            K.rbox(st, I, Vector3(0.07, 0.05, 0.06), 0.01, Color(0.68, 0.55, 0.38), Color(0.55, 0.42, 0.28))
-            K.tube(st, I, [Vector3(-0.071, 0.051, 0), Vector3(0.071, 0.051, 0)], [0.004], 3, [Color(0.3, 0.1, 0.08)], false)
-        _:
-            K.blob(st, I, Vector3.ZERO, Vector3(0.035, 0.02, 0.03), 0.5, 60 + seed, Color(0.45, 0.42, 0.36), Color(0.3, 0.28, 0.25))
-    return K.finish(st, 6.0)
 
 ## Take the item in `index` (the player's hand picks it); the others are
 ## pulled back into the dark at once.
@@ -346,7 +318,8 @@ func set_offer_extend(t: float) -> void:
     for i in range(_offers.size()):
         var slot: Node3D = _offers[i]
         slot.position = HOLD[i]
-        slot.rotation_degrees = Vector3(0, 8.0 - i * 9.0, (i - 1) * 6.0)
+        slot.rotation_degrees = Vector3(0, 8.0 - i * 9.0, (i - 1) * 14.0)
+        slot.scale = Vector3.ONE * ITEM_SCALE
 
 ## Wrist down and toward the camera; the forearm leans back up into the duct
 ## and the palm keeps facing the camera.

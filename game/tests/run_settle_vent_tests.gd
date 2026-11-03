@@ -235,7 +235,7 @@ func _hairs() -> void:
     r.on_flesh_eaten(0, 100)
     r.discard_stomach()
     r.settle(0.0)
-    _assert(r.total_hairs() == 0, "hairs: vomiting outside loses the pending hairs")
+    _assert(r.hairs("core") == 2, "hairs: hairs grown while eating stay after vomiting outside (R17)")
     var s := FPProgression.new()
     s.on_flesh_eaten(0, 30)
     s.settle(0.0)
@@ -287,6 +287,22 @@ func _f_take() -> void:
     _assert(m.vent.offers.is_empty(), "FTAKE F takes an offer and the rest go back")
     var got: bool = m.progression.junk_taken > junk or m.progression.canary_feed > feed or m.progression.barriers > barriers         or m.progression.sprays.count() > 0 or m.progression.tools.owned_ids().size() > 0 or m.progression.has_bag
     _assert(got, "FTAKE the item really arrives")
+    # the hand carries the same model down to the waist, drawn in front of the skin
+    var held: Node3D = m.hand_motions.get("_held_mesh")
+    _assert(m.hand_motions.kind in ["take", "take2"] and held != null and held.get_parent() == m.hands_rig.call("get_hand_root", "right"), "FTAKE the hand carries the item")
+    var squashed := held != null
+    if held != null:
+        for mi in held.find_children("*", "MeshInstance3D", true, false):
+            var mat := (mi as MeshInstance3D).material_override as ShaderMaterial
+            squashed = squashed and mat != null and is_equal_approx(float(mat.get_shader_parameter("viewmodel_squash")), 0.18)
+    _assert(squashed, "FTAKE the carried item draws with the hands' pulled-in depth")
+    var hand_y0: float = m.hands_rig.call("get_hand_root", "right").position.y
+    var low := hand_y0
+    for i in range(int(FPHandMotions.DUR["take2"] * 60.0)):
+        m.hand_motions.tick(1.0 / 60.0)
+        m.hands_rig.step(1.0 / 60.0)
+        low = minf(low, m.hands_rig.call("get_hand_root", "right").position.y)
+    _assert(low < hand_y0 - 0.15 and not m.hand_motions.busy(), "FTAKE the hand takes it down to the waist")
     m.vent.close()
 
 func _new_vent() -> FPVent:

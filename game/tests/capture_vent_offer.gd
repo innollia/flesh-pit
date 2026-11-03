@@ -55,6 +55,19 @@ func _run() -> void:
 	await shot("vent_offer_far")
 	await stand(Vector3(-0.2, 0.9, -0.1))
 	await shot("vent_offer_under")
+	# the being's hand and what it holds, seen close (narrow lens)
+	await stand(Vector3(0.4, 0.9, 0.6))
+	look_at_point(m.vent.offer_center())
+	var fov: float = m.player.camera.fov
+	m.player.camera.fov = 20.0
+	await frames(3)
+	await shot("vent_offer_zoom")
+	for slot in m.vent.art.get("_offers"):
+		slot.visible = false
+	await shot("vent_hand_bare")
+	for slot in m.vent.art.get("_offers"):
+		slot.visible = true
+	m.player.camera.fov = fov
 	await stand(Vector3(0.1, 0.9, 0.2))
 	m.take_vent_offer()
 	await frames(20)

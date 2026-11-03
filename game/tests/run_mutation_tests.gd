@@ -382,6 +382,8 @@ func _run_mirror() -> void:
 	_assert((rp["pos"] as Vector3).y < -0.5, "the right hand drops out of view while looking")
 	var hair: Node3D = m.art_hookup.arm_hair
 	_assert(hair != null and hair.is_visible_in_tree(), "arm hairs stay visible in the watch look")
+	var hmat := (hair.get_node("Hairs") as MeshInstance3D).material_override as ShaderMaterial if hair != null else null
+	_assert(hmat != null and is_equal_approx(float(hmat.get_shader_parameter("squash")), 0.18), "arm hairs draw with the hand skin's pulled-in depth, not behind it")
 	var lroot: Node3D = m.hands_rig.call("get_hand_root", "left")
 	_assert((lroot.basis * Vector3.UP).z > 0.6 and (lroot.basis * Vector3.FORWARD).x > 0.6 and (lroot.basis * Vector3.FORWARD).z < -0.4, "watch look: the forearm runs in from the lower left toward the middle, hairy top to the camera")
 	# mirror 4: the elbow (arm-hair origin) sits past the frame edge, so the

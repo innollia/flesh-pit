@@ -15,11 +15,14 @@ extends RefCounted
 ## glide back to where they were. Game rules never wait on a motion.
 
 const DUR := {
-    "scoop": 0.55, "pour": 0.85, "take": 0.65, "take2": 0.75,
+    "scoop": 0.55, "pour": 0.85, "take": 1.15, "take2": 1.25,
     "vomit_toilet": 2.4, "vomit_floor": 2.4, "gag": 1.3, "wash": 2.6,
     "belt": 0.75, "cycle": 0.35, "watch": 1.0e9, "tank_lean": 1.0e9,
 }
 const CANCEL_TIME := 0.25
+## Take (progress): the fingers close on the item, and it is in the belt.
+const TAKE_GRIP := 0.26
+const TAKE_STOWED := 0.72
 ## Mirror look (watch): the left arm comes up like checking a wristwatch and
 ## stays up until release_watch() (the mirror closes on interact / move / Esc).
 const WATCH_RAISE := 0.3
@@ -65,7 +68,7 @@ var _settle_base := Transform3D.IDENTITY
 var _settle_saved := false
 var rim_rig: Node3D
 var _target := Vector3.ZERO ## take: rig-local point of the item
-var _held_mesh: MeshInstance3D
+var _held_mesh: Node3D
 var _wash_from := 0.0
 var _stream: MeshInstance3D
 ## Vomit lumps: a few textured blob shapes shared by every spill.
@@ -114,8 +117,11 @@ func play_pour(teeth: int) -> void:
     _start("pour")
     _spill_n = clampi(teeth, 3, 10)
 
-## `world_pos` = the aimed item, `item` = its art mesh to carry back.
-func play_take(world_pos: Vector3, art_kind: String, item: MeshInstance3D = null) -> void:
+## `world_pos` = the aimed item, `art_kind` its FPItemArt kind. The hand
+## closes on it (about 0.3 s in), pulls it back into view, then takes it
+## down to the waist where the belt keeps it (2026-11-03 play: a taken item
+## never seemed to reach the belt).
+func play_take(world_pos: Vector3, art_kind: String) -> void:
     _start("take2" if art_kind in BIG_ITEMS else "take")
     var rig: Node3D = m.hands_rig
     var local: Vector3 = rig.to_local(world_pos) if rig != null and rig.is_inside_tree() else Vector3(0, 0.1, -0.6)
@@ -124,17 +130,15 @@ func play_take(world_pos: Vector3, art_kind: String, item: MeshInstance3D = null
     local.z = minf(local.z, -0.3)
     _target = local
     _clear_held()
-    if item != null and item.mesh != null and rig != null:
-        _held_mesh = MeshInstance3D.new()
+    if rig != null:
+        _held_mesh = FPItemArt.make(art_kind)
         _held_mesh.name = "TakenItem"
-        _held_mesh.mesh = item.mesh
-        _held_mesh.material_override = item.material_override
-        for i in range(item.get_surface_override_material_count()):
-            _held_mesh.set_surface_override_material(i, item.get_surface_override_material(i))
         _held_mesh.visible = false
         var hand: Node3D = rig.call("get_hand_root", "right")
         hand.add_child(_held_mesh)
-        _held_mesh.position = Vector3(-0.02, -0.03, -0.1)
+        # in the curled fingers, below the palm, drawn in front of the skin
+        _held_mesh.position = Vector3(-0.01, -0.035, -0.085)
+        FPItemArt.squash(_held_mesh, 0.18)
 
 ## A dry heave: before the first lever settlement nothing comes up outside
 ## (decision 0009). Standing, two retches, a hand to the mouth, no spill.
@@ -252,7 +256,7 @@ func tick(delta: float) -> void:
     # a short motion (tool cycle) must not drop the compass roll it does not own
     _apply_compass_roll()
     if _held_mesh != null:
-        _held_mesh.visible = u >= 0.45 and weight() > 0.3
+        _held_mesh.visible = u >= TAKE_GRIP and u < TAKE_STOWED and weight() > 0.3
     if (cancelled and _cancel_w <= 0.0) or (not cancelled and t >= dur):
         _finish()
 
@@ -441,6 +445,9 @@ func _apply_cams(u: float, reset: bool = false) -> void:
             var w2 := weight()
             off = Vector3(0.0, -0.06, -0.03) * w2
             pitch = -0.22 * w2
+        elif not reset and (kind == "take" or kind == "take2"):
+            # a glance down toward the waist while the item goes there
+            pitch = -0.22 * seg(u, 0.45, 0.62) * (1.0 - seg(u, 0.78, 1.0)) * weight()
         elif not reset and kind == "belt":
             pitch = -0.06 * sin(progress() * PI) * weight()
         cam.position = _cam_pos + off
@@ -490,6 +497,7 @@ func shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
     var alien := _alien_pose(rig, side, p)
     if not alien.is_empty():
         p = alien
+    p = _hold_item(rig, side, p)
     if side > 0.0 and kind != "tank_lean":
         p = _cup_teeth(p)
     elif side < 0.0:
@@ -517,6 +525,30 @@ func _cup_teeth(p: Dictionary) -> Dictionary:
     _cup_fingers(q)
     q["pos"] = Vector3(0.11, -0.22, -0.38)
     return q
+
+## Items the hand closes round (FPConsumable cans and packs, the knife): the
+## fingers wrap it and the fist turns thumb-up a little, so the item shows
+## past the knuckles instead of hiding behind a flat open hand (2026-11-03
+## play: held items read as nothing in the hand).
+const GRIPPED := ["spray_cheap", "spray_deep", "canary_feed", "barrier", "knife"]
+func _hold_item(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
+    if m.progression == null:
+        return p
+    var id: String = m.progression.hands.item(FDKToolKit.Hand.RIGHT if side > 0.0 else FDKToolKit.Hand.LEFT)
+    if not id in GRIPPED:
+        return p
+    var q := p.duplicate()
+    # never looser than the fist the hand already makes (grabbing, tearing)
+    for j in ["f1", "f2", "f3", "t1", "t2", "t3", "t_opp"]:
+        q[j] = maxf(float(p[j]), float(HOLD_ITEM_FINGERS[j]))
+    if int(rig.get("state")) != FDKHandsRig.HandState.IDLE or bool(rig.call("is_carrying")):
+        return q
+    q["wrist_pitch"] = HOLD_ITEM_POSE.x
+    q["wrist_roll"] = HOLD_ITEM_POSE.y * side
+    q["wrist_yaw"] = HOLD_ITEM_POSE.z * side
+    return q
+const HOLD_ITEM_POSE := Vector3(20.0, -35.0, 0.0) ## wrist pitch, roll, yaw (deg)
+const HOLD_ITEM_FINGERS := {"f1": 58.0, "f2": 76.0, "f3": 52.0, "t1": 16.0, "t2": 30.0, "t3": 26.0, "t_opp": 40.0}
 
 ## Left hand holding the compass (decision 0009): palm up, fingers nearly
 ## straight, the compass lying flat in the middle of the palm. The palm is
@@ -728,16 +760,21 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             var two := kind == "take2"
             if not right and not two:
                 return {}
-            var reach3 := seg(u, 0.0, 0.45) * (1.0 - seg(u, 0.5, 1.0) * 0.8)
-            var grip := seg(u, 0.32, 0.5)
+            # reach and close (u 0-0.26), pull it back into view (to 0.48),
+            # down to the hip (to 0.72), let go there, hand back up (to 1)
+            var reach3 := seg(u, 0.0, TAKE_GRIP) * (1.0 - seg(u, TAKE_GRIP + 0.04, 0.48))
+            var grip := seg(u, TAKE_GRIP - 0.1, TAKE_GRIP) * (1.0 - seg(u, TAKE_STOWED - 0.02, TAKE_STOWED + 0.06))
+            var stow := seg(u, 0.48, TAKE_STOWED) * (1.0 - seg(u, TAKE_STOWED + 0.06, 1.0))
             _fingers(q, 0.12 + 0.6 * grip)
-            q["wrist_pitch"] = lerpf(48.0, 25.0, reach3)
-            q["wrist_roll"] = (-20.0 if two else -8.0) * side
+            q["wrist_pitch"] = lerpf(lerpf(48.0, 25.0, reach3), 70.0, stow)
+            q["wrist_roll"] = (-20.0 if two else -8.0) * side * (1.0 - stow) - 15.0 * side * stow
             q["wrist_yaw"] = (-18.0 if two else 0.0) * side
             var goal := _target + Vector3(0.07 * side if two else 0.0, -0.04, 0.05)
             var back := Vector3(0.1 * side if two else 0.1, -0.15, -0.38)
-            var at := idle.lerp(goal, reach3)
-            q["pos"] = at.lerp(back, seg(u, 0.5, 0.86))
+            var hip := idle + Vector3(0.05 * side, -0.3, 0.16)
+            var held := seg(u, TAKE_GRIP + 0.04, 0.48) * (1.0 - seg(u, TAKE_STOWED + 0.06, 1.0))
+            var at := idle.lerp(goal, reach3).lerp(back, held)
+            q["pos"] = at.lerp(hip, stow)
         "vomit_floor":
             var bow := seg(u, 0.05, 0.3) * (1.0 - seg(u, 0.82, 1.0))
             var h := _heave(u)

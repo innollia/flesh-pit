@@ -77,7 +77,22 @@ func _run() -> void:
 	await frames(3)
 	print("  target ", m.interact_target(), " pick_ok ", m.interact_ring.get("pick_ok"))
 	await press(take)
-	await frames(90)
+	# the item in the hand on its way (form, size, material), then the waist
+	var at := 0
+	for f in [18, 26, 34, 42, 50]:
+		await frames(f - at)
+		at = f
+		await shot("taking_%02d" % f)
+	await frames(60)
 	print("  after ", take, ": offers ", m.vent.offers, " | ", items(), " | hands ", m.progression.hands.left, "/", m.progression.hands.right)
 	await shot("taken")
+	m.player._pitch = -1.25
+	await frames(20)
+	await shot("belt")
+	var belt: Node3D = m.art_hookup.belt
+	var cam: Camera3D = m.player.camera
+	for i in range(3):
+		var c: Node3D = belt._cans[i]
+		var vis := c.get_child_count() > 0
+		print("  can %d filled %s visible %s screen %s behind %s" % [i, vis, c.is_visible_in_tree(), cam.unproject_position(c.global_position), cam.is_position_behind(c.global_position)])
 	quit(0)

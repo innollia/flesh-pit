@@ -621,6 +621,10 @@ func vent_spill() -> Array[String]:
 			out.append(id)
 	return out
 
+## Whether `id` would fit (belt and pockets not full).
+func can_hold(id: String) -> bool:
+	return not _maxed(id)
+
 func grant_item(id: String) -> bool:
 	if _maxed(id):
 		return false

@@ -127,7 +127,11 @@ func _ready() -> void:
     # 3 holster clips + cans on the right hip
     for i in range(3):
         var a: float = [-0.9, -0.13, -1.5][i]
-        var p := Vector3(cos(a) * (wx + 0.04), -0.05, sin(a) * (wzb + 0.04))
+        # outside the strap on the front-right, top above it: at the back
+        # depth and 5 cm down they sat inside the belly and only the cap
+        # showed, so a can taken from the vent never seemed to arrive
+        # (2026-11-03 play)
+        var p := Vector3(cos(a) * (wx + BAND_OUT + 0.04), -0.02, sin(a) * (wzf + BAND_OUT + 0.04))
         var holder := K.pivot(self, "Can%d" % i, p)
         holder.rotation.y = -a + PI * 0.5
         st = K.begin()
@@ -152,14 +156,6 @@ func _ready() -> void:
     # this must not default to visible, or a fresh run shows the canary
     # before it is ever caught (형님 2026-09-30).
     set_canary(false)
-
-func _can_mesh(expensive: bool) -> ArrayMesh:
-    var st := K.begin()
-    var body := Color(0.12, 0.1, 0.1) if expensive else Color(0.9, 0.88, 0.8)
-    var band := Color(0.75, 0.08, 0.06) if expensive else Color(0.9, 0.75, 0.1)
-    var metal := Color(0.75, 0.76, 0.78)
-    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -0.07), Vector2(0.028, -0.07), Vector2(0.031, -0.064), Vector2(0.031, -0.02), Vector2(0.031, 0.02), Vector2(0.031, 0.05), Vector2(0.024, 0.066), Vector2(0.012, 0.072), Vector2(0.012, 0.085), Vector2(0.0, 0.088)], 8, [metal, metal, body, band, body, metal, metal, Color(0.95, 0.95, 0.95)])
-    return K.finish(st, 8.0)
 
 func _build_canary() -> void:
     var st := K.begin()
@@ -362,7 +358,9 @@ func slot_point(i: int) -> Vector3:
     return global_transform * _supply_position(i == 5)
 
 func _supply_position(feed: bool) -> Vector3:
-    return Vector3(-wx + 0.10, 0.035, -wzf - 0.10) if feed else Vector3(-wx + 0.05, -0.22, -wzf - 0.13)
+    # the barrier pack sits on the strap at the front-left, beside the feed
+    # (it hung 22 cm under the belt, in front of the thigh)
+    return Vector3(-wx + 0.10, 0.035, -wzf - 0.10) if feed else Vector3(-wx + 0.01, 0.0, -wzf)
 
 func set_supplies(feed: bool, barrier: bool) -> void:
     for id in ["canary_feed", "barrier"]:
@@ -394,7 +392,7 @@ func set_spray_count(cheap: int, expensive: int) -> void:
         var deep := (i == 2 and e > 0) or (i == 1 and c <= 1 and e > 1)
         var cheap_slot := (i == 0 and c > 0) or (i == 1 and c > 1) or (i == 2 and c > 2)
         if deep or cheap_slot:
-            var can := K.add_mesh(slot, "CanMesh", _can_mesh(deep), K.mat("tex_chrome_64.png", 0.35, true))
+            var can := K.add_mesh(slot, "CanMesh", FPConsumable.item_mesh("spray_deep" if deep else "spray_cheap"), FPConsumable.item_material("spray_cheap"))
             can.layers = 1 << 11
             if not spray_cast_shadows:
                 can.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

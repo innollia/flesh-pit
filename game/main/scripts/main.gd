@@ -2108,13 +2108,10 @@ func take_vent_offer(id: String = "") -> bool:
 				best_dot = d
 				id = n.get_meta("offer_id")
 	var idx := vent.offers.find(id)
-	if idx >= 0 and idx < vent.offer_nodes().size():
-		var item: MeshInstance3D = null
-		var slots = vent.art.get("_offers") if vent.art != null else null
-		if slots is Array and idx < slots.size():
-			item = (slots[idx] as Node3D).get_node_or_null("Item") as MeshInstance3D
-		var at: Vector3 = item.global_position if item != null and item.is_inside_tree() else (vent.offer_nodes()[idx] as Node3D).global_position
-		hand_motions.play_take(at, str(FPVent.ART_KIND.get(id, "junk")), item)
+	# a full belt refuses it on the lip: no grab that comes back empty
+	if idx >= 0 and idx < vent.offer_nodes().size() and progression.can_hold(id):
+		var at: Vector3 = (vent.offer_nodes()[idx] as Node3D).global_position
+		hand_motions.play_take(at, str(FPVent.ART_KIND.get(id, "junk")))
 	return vent.take(id, progression)
 
 ## Handful back into the tank: the being sighs.
@@ -2535,8 +2532,10 @@ func take_rest_can() -> bool:
 	if c == null:
 		return false
 	var kind := String(c.get_meta("loot"))
-	var item := c.get_node_or_null("Item") as MeshInstance3D
-	hand_motions.play_take(c.global_position, kind, item)
+	if not progression.can_hold(kind):
+		emit_signal("belt_refused")
+		return false
+	hand_motions.play_take(c.global_position, kind)
 	if not progression.grant_item(kind):
 		emit_signal("belt_refused")
 		return false

@@ -31,6 +31,25 @@ const COLORS := {
     "surface": Color(0.86, 0.76, 0.12),  # nerve tissue: bile/nerve yellow
 }
 
+## The rig's skin draws with its depth pulled toward the eye (FDKHandsRig,
+## FDKSkinMaterial squash 0.18); hairs drawn at true depth sat behind that
+## skin and never showed (2026-11-03 play: "털이 안 자라"). They get the same
+## squash, without the skin's vertex snap that would collapse a strand.
+const SQUASH := 0.18
+const HAIR_SHADER := """shader_type spatial;
+render_mode cull_disabled, specular_disabled%s;
+uniform float squash = 1.0;
+void vertex() {
+    vec4 v = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
+    v.xyz *= squash;
+    POSITION = PROJECTION_MATRIX * v;
+}
+void fragment() {
+    ALBEDO = COLOR.rgb;
+    ROUGHNESS = 1.0;
+}
+"""
+
 var _hair_mi: MeshInstance3D
 ## Hairs a hovered mutation would cost blink (mut6): kind + count.
 var _blink_mi: MeshInstance3D
@@ -68,18 +87,17 @@ func _ready() -> void:
         var base := Vector3(sin(ang) * r, cos(ang) * r + sin(t * PI) * 0.006, -along)
         var normal := Vector3(sin(ang), cos(ang), 0).normalized()
         _slots.append([base, normal, K.h(i, 13)])
-    var hm := StandardMaterial3D.new()
-    hm.vertex_color_use_as_albedo = true
-    hm.roughness = 1.0
-    hm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
-    hm.cull_mode = BaseMaterial3D.CULL_DISABLED
-    _hair_mi = K.add_mesh(self, "Hairs", ArrayMesh.new(), hm)
-    var bm := StandardMaterial3D.new()
-    bm.vertex_color_use_as_albedo = true
-    bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-    bm.cull_mode = BaseMaterial3D.CULL_DISABLED
-    _blink_mi = K.add_mesh(self, "BlinkHairs", ArrayMesh.new(), bm)
+    _hair_mi = K.add_mesh(self, "Hairs", ArrayMesh.new(), _hair_material(false))
+    _blink_mi = K.add_mesh(self, "BlinkHairs", ArrayMesh.new(), _hair_material(true))
     set_hair(6, {"core": 3, "mantle": 2, "surface": 2})
+
+static func _hair_material(unshaded: bool) -> ShaderMaterial:
+    var sh := Shader.new()
+    sh.code = HAIR_SHADER % (", unshaded" if unshaded else "")
+    var mat := ShaderMaterial.new()
+    mat.shader = sh
+    mat.set_shader_parameter("squash", SQUASH)
+    return mat
 
 ## Tube through rings [centre, radius, colour]; every vertex gets its own
 ## radial normal so the arm shades round.
