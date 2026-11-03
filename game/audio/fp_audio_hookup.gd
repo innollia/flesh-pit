@@ -155,8 +155,7 @@ func _start_layer(id: String) -> void:
 
 ## The level each steady layer wants now (0..1), read from the game.
 func _layer_target(id: String) -> float:
-	var ending = main.get("ending")
-	var ended: bool = ending != null and bool(ending.get("active"))
+	var ended := _ending_active()
 	match id:
 		"magnet_hum":
 			var ma = main.get("mutation_apply")
@@ -168,8 +167,13 @@ func _layer_target(id: String) -> float:
 		"song_hum":
 			return 1.0 if ended else 0.0
 		"song_voice2":
-			return 1.0 if ended and int(ending.get("voice_layers")) >= 2 else 0.0
+			return 1.0 if ended and int(main.get("ending").get("voice_layers")) >= 2 else 0.0
 	return 0.0
+
+## The ending (main.ending, FPEnding) is playing.
+func _ending_active() -> bool:
+	var ending = main.get("ending")
+	return ending != null and bool(ending.get("active"))
 
 func _step_layers(delta: float) -> void:
 	for id in _layers.keys():
@@ -249,8 +253,7 @@ func _process_inner(_delta: float) -> void:
 	var want := "restroom" if in_room else _body_bed()
 	# out on the street (ending): no bed is named "ending", so the body's
 	# drone fades out under the hum
-	var ending = main.get("ending")
-	if ending != null and bool(ending.get("active")):
+	if _ending_active():
 		want = "ending"
 	if want != director.current_bed:
 		director.set_bed(want, 2.0)
