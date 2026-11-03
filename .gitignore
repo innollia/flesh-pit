@@ -11,3 +11,6 @@ game/tools/_barrier_probe2.gd.uid
 
 # play logs from play_logged.bat
 playlogs/
+
+# generated local pages (tools/build_sound_gallery.py)
+build/
