@@ -51,7 +51,8 @@ func _spread(out: Vector3, cone: float) -> Vector3:
 
 ## Throws `bits` flesh bits and `drops` droplets of `color` from `at`,
 ## mostly along `out` (spread by `cone`), at `speed` m/s give or take.
-func burst(at: Vector3, out: Vector3, bits: int, drops: int, color: Color = BLOOD, speed: float = 1.4, cone: float = 0.7) -> void:
+## `size` scales the pieces (a hand's tear throws bigger ones).
+func burst(at: Vector3, out: Vector3, bits: int, drops: int, color: Color = BLOOD, speed: float = 1.4, cone: float = 0.7, size: float = 1.0) -> void:
 	if not is_inside_tree():
 		return
 	var floor_y := at.y - 2.5
@@ -67,7 +68,7 @@ func burst(at: Vector3, out: Vector3, bits: int, drops: int, color: Color = BLOO
 		var life := 0.9 + 0.6 * _rand()
 		_live_bits.append({
 			"pos": at, "vel": _spread(out, cone) * speed * (0.6 + 0.6 * _rand()) + Vector3.UP * 0.5,
-			"life": life, "max": life, "size": 0.01 + 0.008 * _rand(),
+			"life": life, "max": life, "size": (0.01 + 0.008 * _rand()) * size,
 			"color": Color(1, 1, 1).lerp(Color(0.8, 0.55, 0.55), _rand()),
 			"spin": Vector3(_rand() - 0.5, _rand() - 0.5, _rand() - 0.5) * 30.0, "rot": Basis(),
 			"floor": floor_y, "landed": false,
@@ -78,7 +79,7 @@ func burst(at: Vector3, out: Vector3, bits: int, drops: int, color: Color = BLOO
 		var life := 0.6 + 0.5 * _rand()
 		_live_drops.append({
 			"pos": at, "vel": _spread(out, cone * 1.2) * speed * (0.8 + 0.8 * _rand()) + Vector3.UP * 0.4,
-			"life": life, "max": life, "size": 0.0035 + 0.004 * _rand(),
+			"life": life, "max": life, "size": (0.0035 + 0.004 * _rand()) * size,
 			"color": color.lerp(color.darkened(0.35), _rand()),
 			"spin": Vector3.ZERO, "rot": Basis(),
 			"floor": floor_y, "landed": false,

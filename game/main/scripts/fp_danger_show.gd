@@ -142,9 +142,13 @@ func apply_camera(base_fov: float = -1.0) -> void:
 		_base_fov = cam.fov
 	var c := clampf(float(main.call("crush_progress")), 0.0, 1.0)
 	var sq := tightness()
-	cam.fov = _base_fov * (1.0 - 0.22 * c - 0.07 * sq)
+	# a tear's snap jolt rides on the same restorable offsets (fp_tear_feel.gd)
+	var feel = main.get("tear_feel")
+	var jolt_fov: float = feel.jolt_fov() if feel != null else 1.0
+	var jolt: Vector2 = feel.jolt_offset() if feel != null else Vector2.ZERO
+	cam.fov = _base_fov * (1.0 - 0.22 * c - 0.07 * sq) * jolt_fov
 	var shake := c + 0.35 * sq
-	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * shake, sin(_t * 23.0 + 1.3) * 0.005 * shake)
+	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * shake, sin(_t * 23.0 + 1.3) * 0.005 * shake) + jolt
 	cam.h_offset += _applied_offset.x
 	cam.v_offset += _applied_offset.y
 	_written_offset = Vector2(cam.h_offset, cam.v_offset)

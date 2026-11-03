@@ -91,6 +91,9 @@ var _grip_t: float = 0.0
 var _time: float = 0.0
 var _state_time: float = 0.0
 var _chew: float = 0.0
+## Seconds since the last tear showed the torn chunk; the chunk keeps its own
+## clock so a release or new grab during the tear cannot leave it in the fist.
+var _chunk_time: float = 0.0
 var _lead: int = 0
 var _bob: Vector3 = Vector3.ZERO
 var _wet: float = 0.0
@@ -136,9 +139,18 @@ func on_cell_torn(_world_pos: Vector3 = Vector3.ZERO) -> void:
     _state_time = 0.0
     _chew = 0.0
     _wet = minf(1.0, _wet + 0.35)
+    _chunk_time = 0.0
     var chunk: MeshInstance3D = _hands[_lead]["chunk"]
     chunk.visible = true
     chunk.scale = Vector3.ONE
+
+## The torn chunk mesh of the hand that tore last, while it is shown (else
+## null). Games hang visuals off it (strands that snap from the wall).
+func torn_chunk() -> Node3D:
+    for h in _hands:
+        if (h["chunk"] as Node3D).visible:
+            return h["chunk"]
+    return null
 
 func on_released() -> void:
     if state == HandState.IDLE:
@@ -203,6 +215,7 @@ func step(delta: float) -> void:
         build()
     _time += delta
     _state_time += delta
+    _chunk_time += delta
     match state:
         HandState.TEAR:
             if _state_time >= TEAR_TIME:
@@ -232,8 +245,11 @@ func step(delta: float) -> void:
         _apply_pose(h, target, k)
         var chunk: MeshInstance3D = h["chunk"]
         if chunk.visible:
-            var s := clampf(1.0 - maxf(0.0, _state_time - TEAR_TIME * 0.55) / (TEAR_TIME * 0.45), 0.05, 1.0)
-            chunk.scale = Vector3.ONE * s
+            if _chunk_time >= TEAR_TIME:
+                chunk.visible = false
+            else:
+                var s := clampf(1.0 - maxf(0.0, _chunk_time - TEAR_TIME * 0.55) / (TEAR_TIME * 0.45), 0.05, 1.0)
+                chunk.scale = Vector3.ONE * s
     _pile.visible = is_carrying()
     if _pile.visible:
         # ?뺣떂 寃곗젙 2026-09-29: 湲곕낯 ?붾??????먮컮?μ뿉 ?щ씪媛???뺣룄(?먮옒
@@ -319,12 +335,15 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["t1"] = 34.0
             p["t2"] = 58.0
             p["t3"] = 62.0
-            var jerk := sin(tt * PI) * exp(-tt * 2.0)
-            p["wrist_pitch"] = 40.0 - 35.0 * jerk
+            # Snap: the fist leaves from where the pull held it and is
+            # yanked back hard at once, then eases (fast attack, slow decay;
+            # the old sine eased in and first moved the hand forward).
+            var jerk := (1.0 - exp(-tt * 14.0)) * exp(-tt * 1.6) / 0.68
+            p["wrist_pitch"] = 40.0 - 42.0 * jerk
             p["wrist_yaw"] = 6.0 * side
-            p["wrist_roll"] = -14.0 * side - 18.0 * side * jerk
+            p["wrist_roll"] = -14.0 * side - 22.0 * side * jerk
             var lead_scale := 1.0 if is_lead else 0.35
-            p["pos"] = Vector3(0.13 * side, -0.11, -0.44) + Vector3(0.03 * side, -0.07, 0.11) * jerk * lead_scale
+            p["pos"] = Vector3(0.135 * side, -0.12, -0.4) + Vector3(0.035 * side, -0.06, 0.125) * jerk * lead_scale
         HandState.SLIP:
             var st := clampf(t / SLIP_TIME, 0.0, 1.0)
             var lead_k := 1.0 if is_lead else 0.6
@@ -467,10 +486,19 @@ func _build_hand(side: float) -> Dictionary:
 
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(0.03, 0.026, 0.034), 0.35, 7 + int(side), Color(0.62, 0.07, 0.1), Color(0.85, 0.2, 0.2))
+    # A fistful of torn flesh: wider than the fist so it bulges out between
+    # fingers and palm on both sides, with ragged shreds hanging under it
+    # (the old 3 cm pebble sat hidden inside the fist; 2026-11-03 "뿅").
+    var ca := Color(0.62, 0.07, 0.1)
+    var cb := Color(0.85, 0.2, 0.2)
+    FDKLowPoly.add_blob(st, Vector3.ZERO, Vector3(0.052, 0.04, 0.05), 0.4, 7 + int(side), ca, cb)
+    FDKLowPoly.add_blob(st, Vector3(0.038 * side, -0.018, 0.012), Vector3(0.026, 0.024, 0.03), 0.45, 9 + int(side), ca, cb)
+    FDKLowPoly.add_blob(st, Vector3(-0.03 * side, -0.03, -0.018), Vector3(0.022, 0.026, 0.024), 0.45, 11 + int(side), ca, cb)
+    FDKLowPoly.add_blob(st, Vector3(0.012 * side, -0.058, 0.004), Vector3(0.011, 0.03, 0.012), 0.3, 13 + int(side), ca.darkened(0.2), cb)
+    FDKLowPoly.add_blob(st, Vector3(-0.022 * side, -0.05, 0.02), Vector3(0.008, 0.022, 0.009), 0.3, 15 + int(side), ca.darkened(0.2), cb)
     var chunk := _add_mesh(wrist, "TornChunk", FDKLowPoly.with_box_uvs(st.commit(), 24.0))
     chunk.material_override = FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_torn_chunk_128.png", 1.0, false, 0.7, 0.4, 0.18)
-    chunk.position = Vector3(0, -0.03, -0.105)
+    chunk.position = Vector3(0, -0.04, -0.1)
     chunk.visible = false
 
     return {

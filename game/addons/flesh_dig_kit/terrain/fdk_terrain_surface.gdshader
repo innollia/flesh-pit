@@ -27,12 +27,24 @@ uniform float wetness : hint_range(0.0, 1.0) = 0.4;
 // behaviour but now on the shared PS1 material.
 uniform vec3 press_center = vec3(0.0, -9999.0, 0.0);
 uniform float press_amount = 0.0;
-uniform float press_radius = 0.75;
+uniform float press_radius = 1.0;
 // Direction from the wall toward the player. The press moves every vertex
 // along this one shared direction (never its own NORMAL): flat-shaded faces
 // don't share normals, so per-normal offsets tore the mesh open at every
 // edge while pressing (2026-09-30). Same position -> same offset, no gaps.
 uniform vec3 press_toward = vec3(0.0, 0.0, 1.0);
+// Tear snap (2026-11-03 "살이 뿅 뿅 사라짐"): for a moment after a real tear
+// the flesh round the fresh hole springs back from the pull and wobbles.
+// Only an additive offset of the real published faces: it opens outward
+// from the hole and along the same shared direction, never over the hole.
+uniform vec3 snap_center = vec3(0.0, -9999.0, 0.0);
+uniform vec3 snap_toward = vec3(0.0, 0.0, 1.0);
+uniform float snap_age = 99.0;
+uniform float snap_radius = 0.9;
+// Fresh wounds: the last few real tear holes, wet with blood round their
+// rim (xyz = tear centre, w = 0..1 freshness; 0 = unused slot).
+uniform vec4 wounds[6];
+uniform float wound_radius = 0.6;
 // View-model squash (hands, stomach mass): pull vertices toward the eye along
 // their view ray so they keep screen position but never clip into nearby
 // walls. 1.0 = off (world geometry).
@@ -67,9 +79,26 @@ void vertex() {
     float pull = smoothstep(0.45, 1.0, pa);
     vec3 side = wpos - press_center;
     vec3 pn = normalize(press_toward + vec3(0.0, 1e-5, 0.0));
-    vec3 off = -pn * pf * (0.16 * dent - 0.26 * pull * pf);
-    off -= side * pf * 0.18 * pull;
-    off += pn * pf * pull * 0.02 * sin(TIME * 47.0 + pd * 20.0);
+    // The pull is the grip: the centre is drawn out toward the hand in a
+    // tight cone (pf^2) while the skin round it is gathered in, trembling
+    // harder as it nears the tear.
+    vec3 grip = -pn * pf * (0.16 * dent - 0.34 * pull * pf);
+    grip -= side * pf * 0.24 * pull;
+    grip += pn * pf * pull * (0.02 + 0.03 * pull) * sin(TIME * 47.0 + pd * 20.0);
+    if (snap_age < 0.9) {
+        vec3 sn = normalize(snap_toward + vec3(0.0, 1e-5, 0.0));
+        vec3 sv = wpos - snap_center;
+        float sd = length(sv);
+        float sf = smoothstep(snap_radius, 0.12, sd);
+        vec3 radial = sv - sn * dot(sv, sn);
+        float rl = length(radial);
+        radial = rl > 0.0001 ? radial / rl : vec3(0.0);
+        float env = exp(-snap_age * 6.5);
+        float wob = sin(snap_age * 36.0 - sd * 10.0);
+        // rim flaps toward/away along the shared direction and peels open
+        grip += sf * env * (sn * 0.09 * wob + radial * 0.06 * (0.65 + 0.35 * wob));
+    }
+    vec3 off = vec3(0.0);
     if (organic_motion > 0.0) {
         float clock = motion_clock < 0.0 ? TIME : motion_clock;
         float moving = organic_motion;
@@ -88,6 +117,13 @@ void vertex() {
     float eye_distance = distance(wpos, CAMERA_POSITION_WORLD);
     float motion_limit = mix(0.055, 0.5, smoothstep(1.5, 2.0, eye_distance));
     off *= min(1.0, motion_limit / max(length(off), 0.000001));
+    // The grip/snap only happens at arm's reach in front of the eater, so it
+    // gets its own cap: a vertex moves at most so far that it stays 0.45 m
+    // from the eye (it can come no nearer than its offset length). The old
+    // shared 5.5 cm cap flattened the whole pull at reach distance.
+    float grip_limit = clamp(eye_distance - 0.45, 0.0, 0.32);
+    grip *= min(1.0, grip_limit / max(length(grip), 0.000001));
+    off += grip;
     vec3 pushed = VERTEX + (inverse(mat3(MODEL_MATRIX)) * off);
     // Classic PS1 vertex jitter: transform to clip space, snap XY to a
     // coarse integer grid in NDC, transform back. Done here (not as a
@@ -130,11 +166,50 @@ void fragment() {
         float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
         col = mix(vec3(0.88, 0.87, 0.84) * (1.0 - h * 0.025), grout_color, t.b);
     }
+    // Fresh wound rims: blood pooled on the torn faces and run down under
+    // the hole in uneven drips; glossier than the dry flesh round it.
+    float wound = 0.0;
+    if (!tile_mode) {
+        for (int i = 0; i < 6; i++) {
+            vec4 w = wounds[i];
+            if (w.w <= 0.0) {
+                continue;
+            }
+            vec3 d = vwpos - w.xyz;
+            float drip = fract(sin(floor(vwpos.x * 26.0 + w.x * 7.0) * 91.7) * 4375.85);
+            // below the centre the reach stretches into drip streaks
+            d.y = d.y < 0.0 ? d.y * mix(0.85, 0.32, drip * drip) : d.y;
+            vec3 cell = floor(vwpos * 16.0);
+            float blot = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+            float r = wound_radius * (0.8 + 0.35 * blot);
+            wound = max(wound, w.w * smoothstep(r, r * 0.45, length(d)));
+        }
+    }
+    // Strain of the grip: the skin round the hands goes taut and pale and
+    // its fibres stand out red in rings drawn toward the grip, so the pull
+    // reads even where the fists cover the gripped spot itself.
+    float tension = 0.0;
+    if (press_amount > 0.0 && !tile_mode) {
+        vec3 pv = vwpos - press_center;
+        float pdist = length(pv);
+        tension = smoothstep(0.3, 1.0, press_amount) * smoothstep(press_radius, 0.05, pdist);
+        vec3 pnf = normalize(press_toward + vec3(0.0, 1e-5, 0.0));
+        vec3 ta = normalize(cross(pnf, abs(pnf.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+        vec3 tb = cross(pnf, ta);
+        float ang = atan(dot(pv, tb), dot(pv, ta));
+        // uneven fibres: wavering, of mixed width, broken up along their length
+        float wav = ang * 17.0 + 1.7 * sin(ang * 5.0 + pdist * 7.0) + pdist * 9.0;
+        float seg = fract(sin(floor(wav / 6.2832) * 17.3 + floor(pdist * 7.0) * 3.1) * 4375.85);
+        float fib = 0.5 + 0.5 * sin(wav);
+        col = mix(col, col * 1.8 + vec3(0.14, 0.03, 0.04), tension * 0.6);
+        col = mix(col, vec3(0.42, 0.015, 0.04), tension * tension * smoothstep(0.5, 0.92, fib) * (0.45 + 0.4 * seg));
+    }
+    col = mix(col, vec3(0.46, 0.02, 0.04), wound * 0.85);
     ALBEDO = mix(col * tint.rgb, fog_color, vfog);
-    ROUGHNESS = mix(roughness_value, 0.15, wetness);
+    ROUGHNESS = mix(mix(roughness_value, 0.15, wetness), 0.08, max(wound, tension * 0.7));
     // matte materials (roughness ~1, e.g. restroom tiles) get almost no toon
     // highlight, so the white room stops glaring off every wall
-    SPECULAR = mix(0.25, 0.7, wetness) * (1.0 - 0.85 * smoothstep(0.8, 1.0, roughness_value));
+    SPECULAR = mix(mix(0.25, 0.7, wetness) * (1.0 - 0.85 * smoothstep(0.8, 1.0, roughness_value)), 0.9, wound);
     float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
-    EMISSION = tex * rim * 0.12 * wetness;
+    EMISSION = tex * rim * 0.12 * wetness + vec3(0.09, 0.0, 0.006) * rim * wound;
 }

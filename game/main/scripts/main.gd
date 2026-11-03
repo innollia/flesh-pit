@@ -1,6 +1,7 @@
 extends Node3D
 const FPProfile := preload("res://main/scripts/fp_profile.gd")
 const FPGore := preload("res://main/scripts/fp_gore.gd")
+const FPTearFeel := preload("res://main/scripts/fp_tear_feel.gd")
 const FPWakeLids := preload("res://main/scripts/fp_wake_lids.gd")
 
 ## 화장실과 세 겹의 살점, 전체 진행을 연결한다.
@@ -90,6 +91,8 @@ var tank_lid: FPTankLid
 var stomach_view: FPStomachView
 ## Bits and droplets out of tears and splashes (fp_gore.gd).
 var gore: Node3D
+## Snap, strands, wet rims and jolt of a tear (fp_tear_feel.gd).
+var tear_feel: Node3D
 ## Eyes opening when waking in the restroom after a death (fp_wake_lids.gd).
 var wake_lids: CanvasLayer
 var vomit_button: FPVomitButton
@@ -329,6 +332,12 @@ func _ready() -> void:
 	gore.exclude.append(player.get_rid())
 	gore.name = "Gore"
 	add_child(gore)
+	tear_feel = FPTearFeel.new()
+	tear_feel.name = "TearFeel"
+	tear_feel.terrain = terrain
+	tear_feel.gore = gore
+	tear_feel.grip_node = func(): return hands_rig.torn_chunk() if hands_rig != null else null
+	add_child(tear_feel)
 	wake_lids = FPWakeLids.new()
 	wake_lids.name = "WakeLids"
 	add_child(wake_lids)
@@ -1027,6 +1036,7 @@ func _process(delta: float) -> void:
 	hand_motions.check_cancel()
 	_watch_tank_lean(delta)
 	hand_motions.tick(delta)
+	tear_feel.tick(delta)
 	FPProfile.begin("eye_guard")
 	_guard_terrain_eye(false, false)
 	FPProfile.end("eye_guard")
@@ -1206,6 +1216,7 @@ func _chew_step(delta: float) -> void:
 	if chewer.is_chewing() and _chew_target != Vector3.INF and _chew_contact != Vector3.INF and _looking_at(_chew_contact, 12.0, progression.reach()) and terrain.density_at(_chew_target) >= terrain_config.iso_level and _chew_target.distance_to(hit.position) <= terrain_config.cell_size * 1.5:
 		if tissue_tools.chew_at(_chew_target, hit.position, dir, delta):
 			terrain.set_press(hit.position, -dir, _chew_ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
+			tear_feel.on_chew(_chew_ratio, hit.position, -dir)
 		return
 	var target := _terrain_target(hit, dir)
 	_chew_target = target
@@ -1213,6 +1224,7 @@ func _chew_step(delta: float) -> void:
 	# hardness per tissue, membrane only with a blade (fp_tissue_tools.gd)
 	if tissue_tools.chew_at(target, hit.position, dir, delta):
 		terrain.set_press(hit.position, -dir, _chew_ratio if chewer.is_chewing() and hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
+		tear_feel.on_chew(_chew_ratio if chewer.is_chewing() else 0.0, hit.position, -dir)
 	else:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
@@ -2757,10 +2769,9 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 	_chew_contact = Vector3.INF
 	tissue_tools.on_cell_torn(world_pos)
 	terrain.queue_visible_tear(world_pos)
-	# bits and blood spit out of the fresh hole, toward the eater
-	var out := player.camera.global_position - world_pos
-	out = out.normalized() if out.length() > 0.01 else Vector3.UP
-	gore.burst(world_pos + out * 0.1, out, 3, 7)
+	# the fresh hole: strands snap, the rim springs back, bits and blood
+	# spray toward the eater, the view jolts (visual only; fp_tear_feel.gd)
+	tear_feel.on_tear(world_pos, player.camera.global_position)
 	# the chewer already put chewer.last_units in the stomach unless carrying
 	if carry_mode and progression.equipped() == "big_saw":
 		swallow_torn(shell, chewer.last_units) # a saw stroke cannot be held (06-tools.md)
