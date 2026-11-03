@@ -46,16 +46,15 @@ var mirror_art: Node3D
 var bowl_center: Vector3
 var _door_target: float = 0.0
 var _lid_target: float = 0.0
-## Light that spills out of the open door into the flesh passage (spec 03
-## §4: the open door is a lighthouse on the way back).
-var door_spill: SpotLight3D
-var door_spill_fill: OmniLight3D
-const DOOR_SPILL_ENERGY := 0.85
-const DOOR_FILL_ENERGY := 0.25
-## 0..1 dimming of the door light while the player stands in its beam right
-## outside the door (main sets it; 1 = the approved light). 2026-10-19 play:
-## digging into the flesh at the door, the light 0.25 m away blew it out.
-var door_spill_dim := 1.0
+## No light is thrown out of the door (2026-11-03 user: the cone stuck on
+## the doorway shone into the flesh for no reason; the lamp's purpose is the
+## glare on coming back in, main.gd _update_atmosphere / FPGlareController).
+## The open door still shows the lit room from the passage.
+
+## Shower riser along the -X wall, in the back corner beside the mirror
+## cabinet (the cabinet over the basin reaches world z -1.17; the riser at
+## -1.05 stood inside it).
+const SHOWER_Z := -1.38
 
 func _ready() -> void:
     build()
@@ -405,7 +404,7 @@ func _build_korean(mat: Material) -> void:
     var chrome := Color(0.8, 0.82, 0.86)
     var chrome_d := Color(0.6, 0.62, 0.67)
     var x := -HALF.x
-    var sz := -1.05
+    var sz := SHOWER_Z
     # shower mixer on the left wall, riser bar, head, hose
     _box(st, Vector3(x, 0.95, sz - 0.08), Vector3(x + 0.06, 1.05, sz + 0.08), chrome, chrome_d)
     _box(st, Vector3(x + 0.06, 0.98, sz - 0.02), Vector3(x + 0.12, 1.02, sz + 0.02), chrome, chrome_d)
@@ -705,30 +704,6 @@ func _build_light() -> void:
     l.shadow_enabled = true
     l.light_color = Color(1.0, 0.97, 0.91)
     add_child(l)
-    # door spill: a cold cone of tube light thrown out into the passage, and
-    # a soft fill just past the threshold. Both scale with how open the door is.
-    door_spill = SpotLight3D.new()
-    door_spill.name = "DoorSpill"
-    door_spill.position = Vector3(0, DOOR_H - 0.1, HALF.z - 0.25)
-    door_spill.rotation = Vector3(deg_to_rad(-8.0), PI, 0) # spot points -Z; turn it to +Z
-    door_spill.spot_range = 9.0
-    door_spill.spot_angle = 34.0
-    door_spill.spot_attenuation = 0.8
-    door_spill.light_color = Color(0.9, 0.96, 1.0)
-    door_spill.light_energy = 0.0
-    door_spill.shadow_enabled = true
-    # the cone skips the player's own waist (main.BODY_LAYER = 1 << 11):
-    # standing in the doorway it blew the shirt and belt out to white; the
-    # soft fill below still lights them
-    door_spill.light_cull_mask = 0xFFFFF & ~(1 << 11)
-    add_child(door_spill)
-    door_spill_fill = OmniLight3D.new()
-    door_spill_fill.name = "DoorSpillFill"
-    door_spill_fill.position = Vector3(0, 1.2, HALF.z + 0.35)
-    door_spill_fill.omni_range = 2.2
-    door_spill_fill.light_color = Color(0.88, 0.94, 1.0)
-    door_spill_fill.light_energy = 0.0
-    add_child(door_spill_fill)
 
 func _build_collision() -> void:
     var body := StaticBody3D.new()
@@ -765,7 +740,6 @@ func set_door_open(open: bool, instant: bool = false) -> void:
     _door_target = deg_to_rad(100.0) if open else 0.0
     if instant:
         door_pivot.rotation.y = _door_target
-        _update_door_spill()
 
 func is_door_open() -> bool:
     return absf(_door_target) > 0.01
@@ -786,20 +760,10 @@ func _process_inner(delta: float) -> void:
     tank_lid.rotation.x = lerpf(tank_lid.rotation.x, _lid_target, k)
     if tank_art != null:
         tank_art.call("set_lid_open", tank_lid.rotation.x / deg_to_rad(-75.0))
-    _update_door_spill()
 
 ## 0 (shut) .. 1 (fully open), from the door's actual swing.
 func door_open_amount() -> float:
     return clampf(door_pivot.rotation.y / deg_to_rad(100.0), 0.0, 1.0)
-
-func _update_door_spill() -> void:
-    if door_spill == null:
-        return
-    var k := door_open_amount()
-    door_spill.light_energy = DOOR_SPILL_ENERGY * k * door_spill_dim
-    door_spill_fill.light_energy = DOOR_FILL_ENERGY * k * door_spill_dim
-    door_spill.visible = k > 0.01
-    door_spill_fill.visible = k > 0.01
 
 ## Is this world point inside the room box?
 func contains(p: Vector3) -> bool:

@@ -103,8 +103,9 @@ func run() -> void:
     m.mirror.close()
     check(is_equal_approx(FPRestroom.HALF.x, 2.25), "original room width restored")
     m.restroom.set_door_open(true, true)
-    m.restroom._update_door_spill()
-    check(is_equal_approx(m.restroom.door_spill.light_energy, 0.85), "approved dim door light retained")
+    # 2026-11-03 user: the door light stuck pointing out was removed; the
+    # lamp's glare is the entry adaptation (run_glare_t6_tests)
+    check(m.restroom.find_children("*", "SpotLight3D", true, false).is_empty(), "no light stuck on the open door pointing out")
     check(m.restroom.get_node("RoomLight").shadow_enabled, "fixture shadows restored")
     m.progression.teeth_in_hand = 3
     m.progression.teeth = 5

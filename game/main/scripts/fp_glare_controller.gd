@@ -3,14 +3,24 @@ extends RefCounted
 
 ## R10 / T6: Cave return glare controller.
 ## Returning to the brightly lit restroom after staying in the dark cave
-## for 20+ seconds triggers a momentary glare (flash = 1.0).
+## for 20+ seconds triggers a momentary glare (flash = 1.0): the eyes are
+## dark-adapted, the room blows out to white and settles as they adapt
+## (get_tonemap_exposure). This is the restroom lamp's whole effect on the
+## way back; no light is thrown out of the door (2026-11-03 user request).
 ## Short visits (< 20s), bright doorway threshold crossings, or standing
-## in front of the illuminated open door (door_spill) do not arm or re-trigger glare.
+## right outside the open door, looking at the lit room, do not arm or
+## re-trigger glare.
 ## Rearming requires spending at least 20 continuous seconds in the actual dark cave.
 ## On title start, load, or death respawn, state is cleanly reset to prevent accidental glare.
 
 const DARK_DWELL_THRESHOLD: float = 20.0
-const BASE_DECAY_RATE: float = 0.8
+## flash 1 -> 0 in 1 / BASE_DECAY_RATE s (2.5 s; M24 doubles it).
+const BASE_DECAY_RATE: float = 0.4
+## Exposure at the moment of entry is 1 + PEAK_EXPOSURE_BOOST. The boost
+## follows flash ^ ADAPT_CURVE: a fast fall from the white-out, then a
+## gentle settle to normal (no hard stop when flash reaches 0).
+const PEAK_EXPOSURE_BOOST: float = 3.0
+const ADAPT_CURVE: float = 2.2
 
 var dark_dwell_threshold: float = DARK_DWELL_THRESHOLD
 var decay_rate: float = BASE_DECAY_RATE
@@ -77,7 +87,7 @@ func step(inside: bool, delta: float, p3: Variant = null, p4: Variant = null) ->
 			if cave_time >= dark_dwell_threshold:
 				glare_ready = true
 		else:
-			# Player is outside, but in bright threshold / door_spill / bright area
+			# Player is outside, but in bright threshold / open doorway / bright area
 			# 20초 연속 어둠만 누적, 밝은 문턱 구간은 dark_time 불누적 / 연속 체류 reset
 			cave_time = 0.0
 			if glare_ready:
@@ -96,7 +106,7 @@ func step(inside: bool, delta: float, p3: Variant = null, p4: Variant = null) ->
 ## Used by Main._update_atmosphere to determine is_dark.
 ## - inside: inside restroom box -> false (bright)
 ## - dist_to_door < 0.8: standing in door frame / threshold (문기둥) -> false
-## - door_open_amount > 0.05 and dist_to_door < 2.5: illuminated by open door spill -> false
+## - door_open_amount > 0.05 and dist_to_door < 2.5: the lit room is right there through the open door -> false
 ## - depth < 2.2: shallow entrance zone near restroom -> false
 ## - otherwise (deep in flesh cave): true (dark)
 static func is_dark_at(inside: bool, dist_to_door: float, door_open_amount: float = 0.0, depth: float = 999.0) -> bool:
@@ -122,6 +132,7 @@ func get_cave_time() -> float:
 func get_flash() -> float:
 	return flash
 
-## Computes tonemap exposure matching main.gd formula: 1.0 + 2.5 * flash
+## Tonemap exposure for the current flash (main.gd _update_atmosphere uses
+## it): 1 + PEAK_EXPOSURE_BOOST * flash ^ ADAPT_CURVE, exactly 1 when adapted.
 func get_tonemap_exposure() -> float:
-	return 1.0 + 2.5 * flash
+	return 1.0 + PEAK_EXPOSURE_BOOST * pow(clampf(flash, 0.0, 1.0), ADAPT_CURVE)

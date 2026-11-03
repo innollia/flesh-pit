@@ -188,21 +188,14 @@ func run() -> void:
 	await process_frame
 	var wall_target: float = m.lamp_target()
 	check(wall_target < open_target, "facing a wall close up the lamp dims (%.2f < %.2f)" % [wall_target, open_target])
-	check(is_equal_approx(FPRestroom.DOOR_SPILL_ENERGY, 0.85), "the approved door light is unchanged")
-	# right outside the open door: the eyes wait and the door light dims
+	check(m.restroom.get_node_or_null("DoorSpill") == null, "no door light thrown out of the door (2026-11-03 user)")
+	# right outside the open door: the eyes wait, the lit room is behind them
 	m.restroom.set_door_open(true, true)
 	m.player.global_position = Vector3(0, 0.95, FPRestroom.HALF.z + 0.4)
 	m._eye_adapt = 0.5
 	for i in range(30):
 		m._update_atmosphere(0.1)
-	check(m._eye_adapt < 0.05, "in the open door's light the eyes do not adapt to the dark (%.2f)" % m._eye_adapt)
-	m.restroom._update_door_spill()
-	check(m.restroom.door_spill.light_energy < FPRestroom.DOOR_SPILL_ENERGY * 0.6, "standing in its beam right outside, the door light dims (%.2f)" % m.restroom.door_spill.light_energy)
-	m.player.global_position = Vector3(0, 0.95, 0.0)
-	for i in range(30):
-		m._update_atmosphere(0.1)
-	m.restroom._update_door_spill()
-	check(absf(m.restroom.door_spill.light_energy - FPRestroom.DOOR_SPILL_ENERGY) < 0.01, "seen from the room it is the approved light again (%.3f)" % m.restroom.door_spill.light_energy)
+	check(m._eye_adapt < 0.05, "right outside the open, lit room the eyes do not adapt to the dark (%.2f)" % m._eye_adapt)
 	print("--- squeeze: %d passed, %d failed ---" % [passed, failed])
 	m.queue_free()
 	quit(1 if failed else 0)

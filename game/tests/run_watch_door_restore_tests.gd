@@ -177,7 +177,7 @@ func run() -> void:
 	check(not m.restroom.is_door_open(), "F cannot activate obstructed door")
 	obstruction.queue_free()
 	check(is_equal_approx(FPRestroom.HALF.x, 2.25), "accepted bathroom width retained")
-	check(is_equal_approx(FPRestroom.DOOR_SPILL_ENERGY, 0.85), "accepted door light retained")
+	check(m.restroom.get_node_or_null("DoorSpill") == null, "no door light thrown out of the door (2026-11-03 user)")
 	print("WATCH/DOOR: ", checks - failures, " passed, ", failures, " failed")
 	m.queue_free()
 	await process_frame

@@ -101,9 +101,8 @@ const BODY_LAYER := 1 << 11 ## the first-person waist (belt, shirt, trousers)
 const BODY_FILL := 0.35 ## body fill energy per unit of player lamp energy
 ## Eye lamp in the flesh (2026-10-19 play: stepping out of the door blew the
 ## view out to white). The lamp switched from 0 to full within ~0.3 s and lit
-## walls half a metre away at full strength; the approved door light is not
-## the cause and stays. The lamp now comes up as the eyes adapt and dims
-## while a wall is right in front of the eye.
+## walls half a metre away at full strength. The lamp now comes up as the
+## eyes adapt and dims while a wall is right in front of the eye.
 ## Frames between a chunk's regrowth steps (FDKTerrainField.regen_stagger).
 const REGEN_STAGGER := 6
 const LAMP_ENERGY := 2.4
@@ -116,12 +115,7 @@ const LAMP_FULL_AT := 1.2
 const LAMP_NEAR_MIN := 0.12
 const LAMP_TIGHT := 0.5 ## share of the lamp with the body fully squeezed
 const LAMP_SIDE_NEAR := 0.4 ## m: a wall this close beside the eye counts like one LAMP_FULL_AT ahead
-## The door light seen from the room stays the approved light; standing in
-## its beam right outside the door (digging in) it dims to DOOR_GLARE_MIN and
-## comes back over DOOR_GLARE_RANGE metres.
-const DOOR_GLARE_MIN := 0.3
-const DOOR_GLARE_RANGE := 3.0
-const LAMP_DOOR_ZONE := 1.8 ## m past the door plane the open door still lights the eyes
+const LAMP_DOOR_ZONE := 1.8 ## m past the door plane the open, lit room still keeps the eyes light-adapted
 var _eye_adapt := 0.0
 var nerves: Array[FDKNerveStalk] = []
 
@@ -754,7 +748,7 @@ func _update_atmosphere(delta: float, immediate: bool = false) -> void:
 	var glare_factor: float = progression.restroom_glare_factor() if progression != null else 1.0
 	glare_controller.step(inside, 0.0 if immediate else delta, _is_dark_atmosphere(player.global_position), glare_factor)
 	_flash = glare_controller.flash
-	environment.tonemap_exposure = 1.0 + 2.5 * _flash
+	environment.tonemap_exposure = glare_controller.get_tonemap_exposure()
 	var k := 1.0 if immediate else 1.0 - exp(-delta * 3.0)
 	var depth_tone := clampf(terrain.depth_at(player.global_position) / terrain_config.depth_tone_distance, 0.0, 1.0)
 	environment.fog_density = lerpf(environment.fog_density, 0.01 if inside else lerpf(0.1, 0.2, depth_tone), k)
@@ -768,9 +762,8 @@ func _update_atmosphere(delta: float, immediate: bool = false) -> void:
 	environment.ambient_light_color = environment.ambient_light_color.lerp(Color(0.85, 0.87, 0.9) if inside else out_light, k)
 	environment.ambient_light_energy = lerpf(environment.ambient_light_energy, 0.12 if inside else out_energy, k)
 	var from_door := player.global_position.z - (restroom.global_position.z + FPRestroom.HALF.z)
-	# the eyes do not get used to the dark while the open door's light is
-	# right beside them: the lamp waits until the body is past its beam (the
-	# two together blew the view out; each alone did not)
+	# the eyes do not get used to the dark while the open, lit room is
+	# right behind them: the lamp waits until the body is past the doorway
 	var door_lit: bool = restroom.door_open_amount() > 0.05 and from_door < LAMP_DOOR_ZONE
 	if inside:
 		_eye_adapt = 0.0
@@ -778,8 +771,6 @@ func _update_atmosphere(delta: float, immediate: bool = false) -> void:
 		_eye_adapt = maxf(0.0, _eye_adapt - delta / LAMP_ADAPT_TIME)
 	else:
 		_eye_adapt = minf(1.0, _eye_adapt + (1.0 if immediate else delta / LAMP_ADAPT_TIME))
-	var dim := 1.0 if inside else lerpf(DOOR_GLARE_MIN, 1.0, smoothstep(0.0, DOOR_GLARE_RANGE, maxf(from_door, 0.0)))
-	restroom.door_spill_dim = lerpf(restroom.door_spill_dim, dim, k)
 	player_lamp.light_energy = lerpf(player_lamp.light_energy, 0.0 if inside else lamp_target(), k)
 	body_fill.light_energy = player_lamp.light_energy * BODY_FILL
 	if not inside:

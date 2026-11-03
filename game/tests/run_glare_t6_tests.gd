@@ -11,7 +11,7 @@ const FPGlareController = preload("res://main/scripts/fp_glare_controller.gd")
 ## - re-adaptation and second long dark dwell -> 1 additional flash
 ## - title / load / death respawn reset -> 0 unintended flash
 ## - mutation M24 glare factor duration scaling (x2 duration)
-## - spatial dark discrimination (door_spill, threshold frame, depth)
+## - spatial dark discrimination (open doorway, threshold frame, depth)
 
 var passed := 0
 var failed := 0
@@ -37,6 +37,7 @@ func run() -> void:
 	_test_m24_glare_duration_scaling()
 	_test_is_dark_at_spatial_discrimination()
 	_test_restroom_coordinate_integration()
+	_test_entry_adaptation_curve()
 
 	print("GLARE T6: %d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
@@ -61,7 +62,7 @@ func _test_naive_logic_flaw_contrast() -> void:
 		"cured: FPGlareController suppresses flash on short 2s trip")
 
 ## Component test 1: bright outside 20s -> no arm
-## Player stays outside, but in bright threshold / door_spill light for 20s.
+## Player stays outside, but in bright threshold / in front of the open doorway for 20s.
 ## Result: dark_time does not accumulate, glare_ready NEVER arms.
 func _test_bright_outside_20s_no_arm() -> void:
 	var ctrl := FPGlareController.new()
@@ -155,7 +156,7 @@ func _test_readaptation_and_second_long_dwell() -> void:
 	check(ctrl.total_flashes == 1, "rearm: first return triggered flash")
 
 	# Re-adapt inside restroom: let flash decay completely to 0.0
-	for i in range(10):
+	for i in range(15):
 		ctrl.step(true, 0.2, false)
 	check(ctrl.flash == 0.0, "rearm: eyes adapted, flash decayed to 0.0")
 
@@ -215,7 +216,7 @@ func _test_m24_glare_duration_scaling() -> void:
 	ctrl_std.step(true, 0.0, false)
 	ctrl_std.flash = 1.0
 	ctrl_std.step(true, 1.0, false, 1.0)
-	check(is_equal_approx(ctrl_std.flash, 0.2), "m24: standard flash after 1.0s is 0.2")
+	check(is_equal_approx(ctrl_std.flash, 0.6), "m24: standard flash after 1.0s is 0.6")
 
 	# M24 Owl Eyes progression (glare_factor = 2.0)
 	var ctrl_m24 := FPGlareController.new()
@@ -223,14 +224,15 @@ func _test_m24_glare_duration_scaling() -> void:
 	ctrl_m24.step(true, 0.0, false)
 	ctrl_m24.flash = 1.0
 	ctrl_m24.step(true, 1.0, false, 2.0)
-	check(is_equal_approx(ctrl_m24.flash, 0.6), "m24: M24 flash after 1.0s is 0.6 (decays half as fast)")
+	check(is_equal_approx(ctrl_m24.flash, 0.8), "m24: M24 flash after 1.0s is 0.8 (decays half as fast)")
 
-	# Complete fade: standard reaches 0.0 at 1.25s, M24 at 2.5s (2x duration)
-	ctrl_std.step(true, 0.3, false, 1.0)
-	check(ctrl_std.flash == 0.0, "m24: standard flash reaches 0.0 in 1.25s")
-	check(ctrl_m24.flash > 0.0, "m24: M24 flash still active past 1.25s")
+	# Complete fade: standard reaches 0.0 at 2.5s, M24 at 5.0s (2x duration)
+	ctrl_std.step(true, 1.5, false, 1.0)
+	check(ctrl_std.flash == 0.0, "m24: standard flash reaches 0.0 in 2.5s")
 	ctrl_m24.step(true, 1.5, false, 2.0)
-	check(ctrl_m24.flash == 0.0, "m24: M24 flash reaches 0.0 at 2.5s (exact 2x duration)")
+	check(ctrl_m24.flash > 0.0, "m24: M24 flash still active past 2.5s")
+	ctrl_m24.step(true, 2.5, false, 2.0)
+	check(ctrl_m24.flash == 0.0, "m24: M24 flash reaches 0.0 at 5.0s (exact 2x duration)")
 
 ## Test 8: Spatial dark discrimination helper (is_dark_at)
 func _test_is_dark_at_spatial_discrimination() -> void:
@@ -240,7 +242,7 @@ func _test_is_dark_at_spatial_discrimination() -> void:
 	# Outside, but standing right at door frame / jamb / threshold (< 0.8m) -> bright (false)
 	check(not FPGlareController.is_dark_at(false, 0.5, 0.0, 1.6), "spatial: door threshold frame (<0.8m) is bright")
 
-	# Outside, in front of door within door_spill cone (< 2.5m, door open) -> bright (false)
+	# Outside, in front of the open door, the lit room right there (< 2.5m) -> bright (false)
 	check(not FPGlareController.is_dark_at(false, 2.0, 1.0, 2.0), "spatial: open door spill cone (<2.5m) is bright")
 
 	# Outside, shallow depth (< 2.2m) near restroom boundary -> bright (false)
@@ -281,3 +283,33 @@ func _test_restroom_coordinate_integration() -> void:
 	# Step inside room:
 	var tr := ctrl.step(in_room, 0.016, false)
 	check(tr and ctrl.total_flashes == 1, "coords: entering room triggers glare")
+
+## Test 10 (2026-11-03): the glare is an eye adaptation on entering, eased
+## from the white-out back to normal exposure, with no light thrown out of
+## the door to stand in for it.
+func _test_entry_adaptation_curve() -> void:
+	var ctrl := FPGlareController.new()
+	check(is_equal_approx(ctrl.get_tonemap_exposure(), 1.0), "adapt: adapted eyes see normal exposure 1.0")
+	ctrl.step(false, 21.0, true)
+	ctrl.step(true, 0.0, false)
+	var peak := ctrl.get_tonemap_exposure()
+	check(peak >= 3.5, "adapt: entering after the dark blows the room out (exposure %.2f)" % peak)
+	var prev := peak
+	var monotonic := true
+	var samples: Array[float] = []
+	for i in range(25):
+		ctrl.step(true, 0.1, false)
+		var e := ctrl.get_tonemap_exposure()
+		if e > prev + 0.0001:
+			monotonic = false
+		prev = e
+		samples.append(e)
+	check(monotonic, "adapt: exposure only falls while the eyes adapt")
+	check(is_equal_approx(samples[24], 1.0), "adapt: back to normal exposure after 2.5s")
+	# eased: the first half second drops more than the last half second
+	var first_drop := peak - samples[4]
+	var last_drop := samples[19] - samples[24]
+	check(first_drop > last_drop * 4.0, "adapt: fast fall from the white-out, gentle settle (%.2f vs %.2f)" % [first_drop, last_drop])
+	check(samples[19] - 1.0 < 0.1, "adapt: the last half second is nearly adapted (%.3f)" % samples[19])
+	var restroom_src := FileAccess.get_file_as_string("res://main/scripts/restroom.gd")
+	check(not restroom_src.contains("SpotLight3D") and not restroom_src.contains("DoorSpill"), "adapt: no light is stuck on the doorway pointing out")
