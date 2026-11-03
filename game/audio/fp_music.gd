@@ -11,7 +11,12 @@ extends Node
 ##   pause     Esc, eyes shut (and its settings)        mus_pause
 ##   vent      in the restroom with the vent open       mus_vent
 ##   restroom  in the restroom once the eyes have       mus_restroom
-##             adjusted (03 4: the glare on return)
+##             adjusted (03 4: the glare on return)      ON HOLD
+##
+## On hold (user, 2026-11-04): the restroom has no music for now, only its
+## ambience (the light's hum, the exhaust fan, water in the pipes: the
+## manifest's "restroom" bed). mus_restroom and its builder stay; turning
+## RESTROOM_ON_HOLD off brings the old placement back unchanged.
 ##
 ## Only reads main's state; never changes progression. Lives under the
 ## audio hookup and keeps running while the tree is paused (title, Esc).
@@ -22,6 +27,8 @@ const TRACKS := {
 	"vent": "mus_vent", "restroom": "mus_restroom",
 }
 const BUS := &"Music"
+## The restroom's own music is on hold (see above): the room stays silent here.
+const RESTROOM_ON_HOLD := true
 ## Seconds in the room, eyes adjusted and the opening over, before the
 ## restroom's music starts; it then comes in slowly under the room's hum.
 const ROOM_SETTLE := 6.0
@@ -85,6 +92,8 @@ func want_place(delta: float = 0.0) -> String:
 		_room_t = 0.0
 	elif not get_tree().paused:
 		_room_t += delta
+	if RESTROOM_ON_HOLD:
+		return ""
 	return "restroom" if _room_t >= ROOM_SETTLE else ""
 
 func _process(delta: float) -> void:

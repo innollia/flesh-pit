@@ -625,11 +625,27 @@
     "res://audio/loops/mus_keybind.wav"
    ],
    "loop_seconds": 86.4
+  },
+  "amb_restroom_fan": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_restroom_fan.wav"
+   ],
+   "loop_seconds": 16.0
+  },
+  "amb_restroom_pipes": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/amb_restroom_pipes.wav"
+   ],
+   "loop_seconds": 40.0
   }
  },
  "beds": {
   "restroom": [
-   "amb_restroom"
+   "amb_restroom",
+   "amb_restroom_fan",
+   "amb_restroom_pipes"
   ],
   "body_a": [
    "amb_body_a",

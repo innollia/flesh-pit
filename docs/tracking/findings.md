@@ -107,3 +107,8 @@
 
 - `tests/capture_seat_keys.gd`는 `reset_keybinds()`로 `user://keybinds.json`을 지우고 저장 경로도 격리하지 않는다. `run_live_interactions_tests.gd`는 사용자 키 파일을 읽으므로 사용자가 W·F·V·R을 바꿨으면 실패한다.
 - 범위: 이제 `main.user_keybinds_path`를 ready 전에 바꾸면 된다. 이번에는 `run_settle_vent_tests.gd`만 옮겼다.
+
+## 조직·도구 검사 W20 재메시 시간 초과 (2026-11-04 관찰)
+
+- 재현: `godot_console --headless --path game --script res://tests/run_tissue_tools_tests.gd`. `W20 remesh stays under 8 ms while squeezing`가 최악 12~17 ms로 실패한다(119/1).
+- 범위: 브랜치 `dryforge/text-game`(ea40226)의 변경 없는 상태에서도 같다(12 ms). 화장실 소리 작업(오디오 파일·manifest·fp_music)과 무관하며, 시간 기준이라 장비 부하에 따라 값이 달라진다. 원인은 조사하지 않았다.

@@ -1,5 +1,13 @@
 # 현재 상태
 
+## 2026-11-04 화장실 음악 보류, 환풍기·배관 배경 (브랜치 restroom-amb)
+
+사용자 결정: 화장실곡은 보류하고 환풍기와 파이프 물소리만.
+- `audio/fp_music.gd` `RESTROOM_ON_HOLD`: 화장실에서 mus_restroom이 나오지 않는다. 곡 파일·`tools/build_music.py`·자리 규칙은 남겨 두었다. 시작 화면·키 설정·Esc·환풍구 음악은 그대로다.
+- 화장실 배경(restroom 베드)에 `amb_restroom_fan`(16초, 낡은 욕실 환풍기: 덕트 바람, 112.5Hz 날개 웅, 가끔 헐거운 날개창 달각)과 `amb_restroom_pipes`(40초, 벽 속 배관: 졸졸 흐름, 공기 빨리는 꾸르륵, 금속 똑, 대부분 조용)를 더했다. 주인이 고정한 amb_restroom은 손대지 않았다. 베드 층이라 Music 버스로 나가고, 살로 나가면 형광등과 같은 2초 페이드로 같이 사라진다. 베드는 위치 없는 재생이라 공간화는 하지 않았다(살짝 넓힌 스테레오).
+- `tools/build_restroom_amb.py`(결정적, 원 루프 FFT 필터로 이음매 없음, build_audio의 PS1 light). 환풍기 -38, 배관 -39 LUFS. 베드 합계 -32.1(전 -34.0). 문·물 내림·환풍구·동전 소리의 베드 대비 마진 +16~+33 dB(기준 -10).
+- 검사: `run_music_tests.gd` 변경 전 26/8 실패, 변경 후 34/0. `run_audio_tests.gd` 253/0. CLAP: 환풍기·졸졸·꾸르륵 모두 의도 문구 1위. 엔진 녹음 `tests/capture_restroom_amb.gd`.
+
 ## 2026-11-04 M22 외계인 손 뜯기의 게임 효과 (브랜치 alien-parity)
 
 - 외계인 손 뜯기가 Chewer 뜯기와 같은 `main.tear_effects()`를 탄다(굴착 수·신경 건드림과 수축·신경 재생·큰 톱/M07·M14 추가 셀·게시 구멍·고어). 셀 중심을 뜯고 빈 셀은 노리지 않는다. 섭취는 기획대로 늘 위장이다. `run_mutation_wire_tests.gd`의 두 세계 대조(지방·살·신경·연골 ×2, 재생 자리, M07)는 변경 전 48실패, 변경 후 207/0이다.

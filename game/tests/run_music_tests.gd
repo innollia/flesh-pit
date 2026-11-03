@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Background music (audio/fp_music.gd, tools/build_music.py). Each place
 ## starts its own track on the Music bus, and nothing plays in the flesh
-## (docs/spec/08-presentation.md 3). Real main scene, isolated save.
+## (docs/spec/08-presentation.md 3). The restroom's music is on hold: there
+## only its bed plays (hum, exhaust fan, pipes), and that leaves with the room. Real main scene, isolated save.
 ##   godot_console --headless --path game --script res://tests/run_music_tests.gd
 
 const SAVE := "user://music-test.bin"
@@ -39,6 +40,14 @@ func run_for(sec: float) -> void:
 		t += 0.1
 	await process_frame
 
+## The restroom bed (manifest "beds"): the owner's hum plus the exhaust fan
+## and the water in the pipes (tools/build_restroom_amb.py).
+const BED_LAYERS := ["amb_restroom", "amb_restroom_fan", "amb_restroom_pipes"]
+
+func bed_on_music_bus(d: FDKAudioDirector, layer: String) -> bool:
+	var p := d.get_node_or_null("Bed_" + layer) as AudioStreamPlayer
+	return p != null and p.bus == &"Music" and p.playing and p.stream != null
+
 func on_music_bus(id: String) -> bool:
 	var p: AudioStreamPlayer = music.call("player", id)
 	return p != null and p.bus == &"Music" and p.playing and AudioServer.get_bus_index(p.bus) >= 0
@@ -62,21 +71,26 @@ func _run() -> void:
 	_ok(music.get("place") == "" and music.call("audible").is_empty(), "no music during the opening (%s)" % music.get("place"))
 	m.finish_opening()
 	await frames(2)
-	# restroom: comes in only after the eyes have settled
+	# restroom: its music is on hold (2026-11-04); only the room's ambience
+	# plays, the light's hum with the exhaust fan and the water in the pipes
 	await run_for(3.0)
 	_ok(music.call("audible").is_empty(), "not yet 3 s after the opening")
-	await run_for(4.0)
-	_ok(music.get("place") == "restroom", "restroom music wanted once settled (%s)" % music.get("place"))
-	await run_for(8.5)
-	_ok(on_music_bus("mus_restroom") and float(music.call("level", "mus_restroom")) > 0.99, "restroom plays mus_restroom on the Music bus")
+	await run_for(12.5)
+	_ok(music.get("place") == "" and music.call("audible").is_empty() and music.call("player", "mus_restroom") == null,
+		"restroom music on hold: mus_restroom does not play however long you stay (%s)" % str(music.call("audible")))
+	var hk: Node = m.get_node("AudioHookup")
+	var d: FDKAudioDirector = hk.get("director")
+	_ok(d.current_bed == "restroom", "the restroom bed plays in the room (%s)" % d.current_bed)
+	for layer in BED_LAYERS:
+		_ok(bed_on_music_bus(d, layer) and d.bed_layer_db(layer) > -0.5, "%s plays at full level on the Music bus" % layer)
 	# the vent trade takes over while the grate is open
 	m.vent.is_open = true
 	await run_for(3.0)
 	_ok(music.get("place") == "vent" and on_music_bus("mus_vent") and float(music.call("level", "mus_vent")) > 0.99, "vent open plays mus_vent on the Music bus")
-	_ok(float(music.call("level", "mus_restroom")) < 0.01, "restroom music crossfaded out under the trade")
 	m.vent.is_open = false
 	await run_for(3.0)
-	_ok(music.get("place") == "restroom" and float(music.call("level", "mus_restroom")) > 0.3, "grate shut: back to the restroom music")
+	_ok(music.get("place") == "" and float(music.call("level", "mus_vent")) < 0.01 and music.call("player", "mus_restroom") == null,
+		"grate shut: the trade's music is gone and no restroom music comes back")
 	# out in the flesh: held still so the flesh does not push the body back
 	m.set_process(false)
 	m.set_physics_process(false)
@@ -86,11 +100,26 @@ func _run() -> void:
 	await frames(2)
 	await run_for(OUT_S)
 	_ok(music.get("place") == "" and music.call("audible").is_empty(), "in the flesh no music plays (%s)" % str(music.call("audible")))
+	# the fan and the pipes leave with the room's hum, on the same 2 s fade
+	await frames(1)
+	_ok(d.current_bed != "restroom", "outside, the bed is the body's (%s)" % d.current_bed)
+	var lv := {}
+	for layer in BED_LAYERS:
+		lv[layer] = d.bed_layer_db(layer)
+	d.advance(0.9)
+	var mid := {}
+	for layer in BED_LAYERS:
+		mid[layer] = d.bed_layer_db(layer)
+	_ok(mid["amb_restroom"] < -1.0 and mid["amb_restroom"] > -60.0, "the room's hum is mid-fade (%.1f dB)" % mid["amb_restroom"])
+	for layer in ["amb_restroom_fan", "amb_restroom_pipes"]:
+		_ok(absf(mid[layer] - mid["amb_restroom"]) < 0.01, "%s fades with the room's hum (%.1f dB vs %.1f dB)" % [layer, mid[layer], mid["amb_restroom"]])
+	d.advance(1.5)
+	for layer in BED_LAYERS:
+		_ok(d.bed_layer_db(layer) <= -60.0 and d.is_bed_layer_running(layer), "%s silent in the flesh, kept running for the way back" % layer)
 	await run_for(20.0)
 	_ok(music.call("audible").is_empty(), "and it stays silent while there (%s)" % str(music.call("audible")))
 	# what is heard there is the body's bed and the song's own faint tine
 	# (the spec's one exception), nothing from fp_music
-	var hk: Node = m.get_node("AudioHookup")
 	print("    in the flesh: bed %s, song_melody layer %.2f" % [hk.get("director").current_bed, float(hk.call("layer_level", "song_melody"))])
 	m.player.global_position = c + Vector3(0, 0, -m.OUTER_RADIUS * 0.9)
 	await frames(2)
