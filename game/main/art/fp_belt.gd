@@ -415,6 +415,13 @@ func _supply_position(feed: bool) -> Vector3:
     # (it hung 22 cm under the belt, in front of the thigh)
     return Vector3(-wx + 0.10, 0.035, -wzf - 0.10) if feed else Vector3(-wx + 0.01, 0.0, -wzf)
 
+## What `prog` has on the belt: owned spray cans and supplies minus what a
+## hand holds. The first-person waist, the mirror reflection and the shadow
+## body all show the same stock.
+func show_stock(prog: FPProgression) -> void:
+    set_spray_count(prog.sprays.count_of_tier(FDKSprayCan.Tier.CHEAP) - int(prog.hands.holds("spray_cheap")), prog.sprays.count_of_tier(FDKSprayCan.Tier.DEEP) - int(prog.hands.holds("spray_deep")))
+    set_supplies(prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
+
 func set_supplies(feed: bool, barrier: bool) -> void:
     for id in ["canary_feed", "barrier"]:
         if not _supplies.has(id):

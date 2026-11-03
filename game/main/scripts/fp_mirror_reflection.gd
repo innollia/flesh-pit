@@ -295,8 +295,7 @@ func _sync_live_details() -> void:
 			_held["lid"].visible = main.tank_lid.held
 			_held["lid"].position = Vector3(0, 0.055, 0.04)
 	if body._belt != null:
-		body._belt.call("set_spray_count", prog.sprays.count_of_tier(FDKSprayCan.Tier.CHEAP) - int(prog.hands.holds("spray_cheap")), prog.sprays.count_of_tier(FDKSprayCan.Tier.DEEP) - int(prog.hands.holds("spray_deep")))
-		body._belt.call("set_supplies", prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
+		body._belt.call("show_stock", prog)
 		body._belt.call("set_hung", main.belt_swap.hung_ids())
 		FPMirror.tag_layer(body._belt, MIRROR_BODY_LAYER)
 

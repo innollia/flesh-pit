@@ -15,11 +15,13 @@ const ArmHair := preload("res://main/art/fp_arm_hair.gd")
 ## Arm hair points at which the body is fully hairy. The arm grows past it
 ## (fp_arm_hair MAX_SLOTS, thicker hairs) and the body stays at its fullest.
 const BODY_FULL := 120
+## Hair kinds in arm order (fp_arm_hair.gd).
+const KINDS := ["common", "core", "mantle", "surface"]
 
 ## Hair kinds in arm order, one entry per arm hair point up to BODY_FULL;
 ## past it every kind keeps its share (at least one while it has any).
 static func kinds(counts: Dictionary) -> Array:
-	var order := ["common", "core", "mantle", "surface"]
+	var order := KINDS
 	var total := 0
 	for kind in order:
 		total += maxi(0, int(counts.get(kind, 0)))
@@ -123,6 +125,6 @@ static func counts_of(prog: Object) -> Dictionary:
 	if prog == null:
 		return {}
 	var out := {}
-	for kind in ["common", "core", "mantle", "surface"]:
+	for kind in KINDS:
 		out[kind] = int(prog.call("hairs", kind))
 	return out

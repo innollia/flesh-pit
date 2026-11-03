@@ -309,9 +309,7 @@ func _process_inner(_delta: float) -> void:
 	belt.call("set_blood", body_blood)
 	if legs != null:
 		legs.call("set_blood", body_blood)
-	var sp := prog.sprays
-	belt.call("set_spray_count", sp.count_of_tier(FDKSprayCan.Tier.CHEAP) - int(prog.hands.holds("spray_cheap")), sp.count_of_tier(FDKSprayCan.Tier.DEEP) - int(prog.hands.holds("spray_deep")))
-	belt.call("set_supplies", prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
+	belt.call("show_stock", prog)
 	belt.call("set_canary", m.has_canary)
 	belt.call("set_canary_scared", m.canary_urgency > 0.5)
 	bag.visible = prog.has_bag

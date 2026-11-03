@@ -70,8 +70,7 @@ func sync() -> void:
 		return
 	belt.call("set_worn", prog.has_belt)
 	belt.call("set_canary", bool(main.get("has_canary")))
-	belt.call("set_spray_count", prog.sprays.count_of_tier(FDKSprayCan.Tier.CHEAP) - int(prog.hands.holds("spray_cheap")), prog.sprays.count_of_tier(FDKSprayCan.Tier.DEEP) - int(prog.hands.holds("spray_deep")))
-	belt.call("set_supplies", prog.canary_feed > 0 and not prog.hands.holds("canary_feed"), prog.barriers > 0 and not prog.hands.holds("barrier"))
+	belt.call("show_stock", prog)
 	if main.get("belt_swap") != null:
 		belt.call("set_hung", main.belt_swap.hung_ids())
 	var bag := belt.get_node_or_null("TumorBag") as Node3D
