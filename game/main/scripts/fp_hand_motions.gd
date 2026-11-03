@@ -105,10 +105,8 @@ func _start(k: String) -> void:
     _heaves_done = 0
     _poured = false
     _swung = false
-    if m.hands_rig != null:
-        m.hands_rig.set("pose_hook", self)
-    if m.art_hookup != null and m.art_hookup.mut_hands != null:
-        m.art_hookup.mut_hands.call("rig").set("pose_hook", self)
+    for rig in rigs_of(m):
+        rig.set("pose_hook", self)
 
 ## Reach into the open tank at `world_pos` (rig-local, clamped to the arm),
 ## fingers open, close on the teeth and bring them back to the held cup.
@@ -301,14 +299,8 @@ func watch_arm_basis() -> Basis:
 
 func _apply_watch_arm() -> void:
     var b := watch_arm_basis()
-    var rigs: Array = [m.hands_rig]
-    var hook = m.get("art_hookup")
-    if hook != null and hook.get("mut_hands") != null:
-        var r2 = (hook.mut_hands as Node).call("rig") if (hook.mut_hands as Node).has_method("rig") else null
-        if r2 != null:
-            rigs.append(r2)
-    for rig in rigs:
-        if rig == null or not (rig as Node).has_method("get_hand_root"):
+    for rig in rigs_of(m):
+        if not (rig as Node).has_method("get_hand_root"):
             continue
         var lr: Node3D = rig.call("get_hand_root", "left")
         if lr != null:
@@ -636,25 +628,37 @@ var _cup_roll := HOLD_TEETH_ROLL
 const COMPASS_ROLL := PI
 var _cup_wl := 0.0
 var _compass_rolled := false
+## Motions that pose both hands themselves: neither palm-up roll holds
+## through them (the teeth cup also gives way to the scoop).
+const ROLL_FREE_KINDS := ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"]
+
+## The first-person hand rigs: the plain one and, once built, the mutation
+## one (fp_mutation_hands). Missing rigs are left out.
+static func rigs_of(main: Node) -> Array:
+    var out: Array = []
+    if main.get("hands_rig") != null:
+        out.append(main.get("hands_rig"))
+    var hook = main.get("art_hookup")
+    if hook != null and hook.get("mut_hands") != null and (hook.mut_hands as Node).has_method("rig"):
+        var r = (hook.mut_hands as Node).call("rig")
+        if r != null:
+            out.append(r)
+    return out
 
 func _apply_cup_root(delta: float) -> void:
     var holding: bool = m.progression != null and m.progression.teeth_in_hand > 0 and not _hands_working(m.hands_rig)
     var want := 1.0 if holding or tank_leaning() else 0.0
-    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag", "scoop"]:
+    if kind in ROLL_FREE_KINDS or kind == "scoop":
         want = 0.0
     # give way quickly when the hand goes to work, settle back gently
     _cup_w = move_toward(_cup_w, want, delta * (8.0 if want < _cup_w else 4.0))
     _cup_roll = move_toward(_cup_roll, CUP_ROLL if tank_leaning() else HOLD_TEETH_ROLL, delta * 3.0)
     var want_l := 1.0 if m.progression != null and m.progression.hands.left == "compass" else 0.0
-    if kind in ["watch", "take", "take2", "pour", "belt", "wash", "vomit_toilet", "vomit_floor", "gag"] or m._mirror_open:
+    if kind in ROLL_FREE_KINDS or m._mirror_open:
         want_l = 0.0
     _cup_wl = move_toward(_cup_wl, want_l, delta * 4.0)
-    var rigs: Array = [m.hands_rig]
-    var hook = m.get("art_hookup")
-    if hook != null and hook.get("mut_hands") != null and (hook.mut_hands as Node).has_method("rig"):
-        rigs.append((hook.mut_hands as Node).call("rig"))
-    for rig in rigs:
-        if rig == null or not (rig as Node).has_method("get_hand_root"):
+    for rig in rigs_of(m):
+        if not (rig as Node).has_method("get_hand_root"):
             continue
         var rr: Node3D = rig.call("get_hand_root", "right")
         if rr != null:
@@ -670,12 +674,8 @@ func _apply_compass_roll() -> void:
         return
     if _cup_wl <= 0.0 and not _compass_rolled:
         return
-    var rigs: Array = [m.hands_rig]
-    var hook = m.get("art_hookup")
-    if hook != null and hook.get("mut_hands") != null and (hook.mut_hands as Node).has_method("rig"):
-        rigs.append((hook.mut_hands as Node).call("rig"))
-    for rig in rigs:
-        if rig == null or not (rig as Node).has_method("get_hand_root"):
+    for rig in rigs_of(m):
+        if not (rig as Node).has_method("get_hand_root"):
             continue
         var lr: Node3D = rig.call("get_hand_root", "left")
         if lr != null:

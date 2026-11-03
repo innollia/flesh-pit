@@ -1248,12 +1248,7 @@ func _show_pull(at: Vector3, dir: Vector3, ratio: float) -> void:
 ## Point both hand rigs (plain and mutation) at the grabbed flesh, or clear
 ## it with Vector3.INF. The rig only reads the point; it never decides a tear.
 func set_hand_reach(world_pos: Vector3) -> void:
-	var rigs: Array = [hands_rig]
-	if art_hookup != null and art_hookup.mut_hands != null:
-		rigs.append(art_hookup.mut_hands.call("rig"))
-	for rig in rigs:
-		if rig == null:
-			continue
+	for rig in FPHandMotions.rigs_of(self):
 		if world_pos == Vector3.INF:
 			rig.clear_reach_point()
 		else:
