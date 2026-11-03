@@ -15,10 +15,10 @@ extends Node3D
 
 const MAX_STRANDS := 16
 const STRANDS_PER_TEAR := 5
-const MAX_WOUNDS := 6
+const MAX_WOUNDS := FDKChunk.WOUND_SLOTS
 const WOUND_LIFE := 14.0
 const SNAP_OFF := 99.0
-const SNAP_END := 0.9
+const SNAP_END := FDKChunk.SNAP_END
 const JOLT_TIME := 0.3
 const STRAND_LIFE := 0.6
 const BLOOD := Color(0.86, 0.07, 0.1)

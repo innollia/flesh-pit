@@ -143,8 +143,12 @@ static func set_press_all(center: Vector3, toward: Vector3, amount: float) -> vo
 
 ## Tear visuals on every tissue material (fdk_terrain_surface.gdshader):
 ## the rim springing back `age` seconds after a real tear at `center`
-## (age >= 0.9 = off) and up to six wet wound rims (xyz centre, w freshness).
-## Visual only: the real removal and its published faces are untouched.
+## (age >= SNAP_END = off) and up to WOUND_SLOTS wet wound rims (xyz centre,
+## w freshness). Visual only: the real removal and its published faces are
+## untouched. Both numbers match the shader (snap_age < 0.9, wounds[6]).
+const SNAP_END := 0.9
+const WOUND_SLOTS := 6
+
 static func set_snap_all(center: Vector3, toward: Vector3, age: float) -> void:
     for i in range(TISSUE_TEXTURES.size()):
         var m := terrain_material(i)
@@ -155,7 +159,7 @@ static func set_snap_all(center: Vector3, toward: Vector3, age: float) -> void:
 
 static func set_wounds_all(wounds: PackedVector4Array) -> void:
     var w := wounds.duplicate()
-    w.resize(6)
+    w.resize(WOUND_SLOTS)
     for i in range(TISSUE_TEXTURES.size()):
         terrain_material(i).set_shader_parameter("wounds", w)
 

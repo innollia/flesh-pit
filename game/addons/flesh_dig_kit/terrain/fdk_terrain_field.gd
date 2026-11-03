@@ -1180,11 +1180,11 @@ func set_press(center: Vector3, toward: Vector3, amount: float) -> void:
     FDKChunk.set_press_all(center, toward, clampf(amount, 0.0, 1.0))
 
 ## Tear snap visual: the flesh round a fresh hole at `center` springs back
-## and wobbles, `age` seconds after the tear (>= 0.9 = off).
+## and wobbles, `age` seconds after the tear (>= FDKChunk.SNAP_END = off).
 func set_snap(center: Vector3, toward: Vector3, age: float) -> void:
     FDKChunk.set_snap_all(center, toward, age)
 
-## Wet blood on the rims of recent tear holes: up to six Vector4
+## Wet blood on the rims of recent tear holes: up to FDKChunk.WOUND_SLOTS Vector4
 ## (xyz = tear centre, w = 0..1 freshness). Empty clears them.
 func set_wounds(wounds: PackedVector4Array) -> void:
     FDKChunk.set_wounds_all(wounds)
