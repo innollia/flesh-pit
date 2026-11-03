@@ -152,6 +152,8 @@ const FINGERS := [
 ]
 const PHALANX := [0.38, 0.25, 0.37]
 const THUMB_LEN := 0.051
+## The thumb in the holding pose: forward and across the front of the item.
+const THUMB_HOLD := Vector3(-62, 0, -38)
 ## Curl at rest (holding) and when gripping on the take; per joint the
 ## middle (PIP) bends most and the tip (DIP) least, as in the photos.
 const CURL_REST := 1.15
@@ -270,28 +272,43 @@ static func _oval(st: SurfaceTool, t: Transform3D, pts: Array, rx: Array, rz: Ar
 func _build_meshes() -> void:
     if not _meshes.is_empty():
         return
+    # Silhouettes stay round (user 2026-11-03: the angles should not show):
+    # 12-20 sided rings, more rings where the outline curves, smooth normals.
     var st := K.begin()
     # forearm, built one unit long from the wrist (0) up to the elbow (1);
-    # the rig stretches it along Y to the real length
-    _oval(st, Transform3D.IDENTITY, [Vector3(0, -0.01, 0), Vector3(0, 0.12, 0), Vector3(0, 0.55, 0), Vector3(0, 1.0, 0)], [WRIST_HALF, WRIST_HALF * 1.06, WRIST_HALF * 1.2, WRIST_HALF * 1.24], [WRIST_HALF * 0.68, WRIST_HALF * 0.76, WRIST_HALF * 0.98, WRIST_HALF * 1.05], 10, [SKIN, SKIN, SKIN_SHADE], false)
+    # the rig stretches it along Y to the real length. It swells only a
+    # little above the wrist so a fan of eight arms stays light.
+    _oval(st, Transform3D.IDENTITY, [Vector3(0, -0.012, 0), Vector3(0, 0.05, 0), Vector3(0, 0.16, 0), Vector3(0, 0.45, 0), Vector3(0, 0.75, 0), Vector3(0, 1.0, 0)], [WRIST_HALF * 0.97, WRIST_HALF, WRIST_HALF * 1.05, WRIST_HALF * 1.12, WRIST_HALF * 1.12, WRIST_HALF * 1.08], [WRIST_HALF * 0.66, WRIST_HALF * 0.7, WRIST_HALF * 0.8, WRIST_HALF * 0.95, WRIST_HALF * 1.0, WRIST_HALF * 0.98], 12, [SKIN, SKIN, SKIN, SKIN, SKIN_SHADE], false)
     _meshes["fore"] = K.finish(st, 8.0)
     # upper arm, straight up from the elbow into the black (true length)
     st = K.begin()
-    _oval(st, Transform3D.IDENTITY, [Vector3(0, 0.0, 0), Vector3(0, 0.3, 0), Vector3(0, 0.62, 0), Vector3(0, 0.9, 0), Vector3(0, 1.4, 0)], [0.034, 0.036, 0.037, 0.038, 0.039], [0.031, 0.033, 0.034, 0.035, 0.036], 10, [SKIN_SHADE, Color(0.6, 0.53, 0.51), Color(0.12, 0.1, 0.1), Color(0.01, 0.01, 0.01)], false)
+    _oval(st, Transform3D.IDENTITY, [Vector3(0, -0.01, 0), Vector3(0, 0.3, 0), Vector3(0, 0.62, 0), Vector3(0, 0.9, 0), Vector3(0, 1.4, 0)], [0.03, 0.032, 0.033, 0.034, 0.035], [0.028, 0.03, 0.031, 0.032, 0.033], 12, [SKIN_SHADE, Color(0.6, 0.53, 0.51), Color(0.12, 0.1, 0.1), Color(0.01, 0.01, 0.01)], false)
     _meshes["upper"] = K.finish(st, 8.0)
     # the elbow, a soft round joint where the two meet
     st = K.begin()
-    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -0.034), Vector2(0.024, -0.024), Vector2(0.034, 0.0), Vector2(0.024, 0.024), Vector2(0.0, 0.034)], 10, [SKIN_SHADE, SKIN, SKIN, SKIN_SHADE])
+    K.lathe(st, Transform3D.IDENTITY, [Vector2(0.0, -0.03), Vector2(0.015, -0.026), Vector2(0.026, -0.015), Vector2(0.03, 0.0), Vector2(0.026, 0.015), Vector2(0.015, 0.026), Vector2(0.0, 0.03)], 12, [SKIN_SHADE, SKIN, SKIN, SKIN, SKIN, SKIN_SHADE])
     _meshes["elbow"] = K.finish(st, 8.0)
     # wrist and palm to the measured ratios: the wrist 0.74 of the palm's
-    # breadth, widening to the knuckles, thin through; a soft pad under
-    # the thumb where it leaves the palm (0.3 of the palm length down)
+    # breadth flowing into it, the palm's outline rounded (many rings, 20
+    # sides), widest just below the knuckles, its end arched like the
+    # photos; a thenar mound where the thumb leaves (0.3 of the palm down)
+    # and a soft web from it to the index root
     st = K.begin()
     var wz := WRIST_HALF * 0.68
-    _oval(st, Transform3D.IDENTITY, [Vector3(0, 0.02, 0), Vector3(0, 0.0, 0.0), Vector3(0, -0.014, 0.001)], [WRIST_HALF, WRIST_HALF * 1.02, WRIST_HALF * 1.12], [wz, wz * 0.95, wz * 0.88], 10, [SKIN, SKIN], false)
-    _oval(st, Transform3D.IDENTITY, [Vector3(0, -0.008, 0.001), Vector3(0, -0.03, 0.002), Vector3(0, -0.058, 0.001), Vector3(0, -PALM_LEN + MCP_IN + 0.004, 0.0), Vector3(0, -PALM_LEN + MCP_IN - 0.004, -0.001)], [WRIST_HALF * 1.1, PALM_HALF * 0.93, PALM_HALF, PALM_HALF * 0.97, PALM_HALF * 0.86], [0.0145, 0.014, 0.0128, 0.0112, 0.0098], 12, [SKIN, SKIN, SKIN, SKIN], true, [0.0, 0.0, 0.12, 0.42, 0.46])
-    # the soft pad at the thumb's root, running down into the thumb
-    _oval(st, Transform3D.IDENTITY, [Vector3(0.017, -0.006, 0.005), Vector3(0.022, -0.02, 0.007), Vector3(0.026, -0.034, 0.008), Vector3(0.028, -0.042, 0.008)], [0.011, 0.0125, 0.011, 0.008], [0.008, 0.0095, 0.009, 0.0075], 8, [SKIN, SKIN, SKIN], true)
+    var ys := [0.02, 0.006, -0.006, -0.018, -0.032, -0.046, -0.058, -0.066, -0.071, -PALM_LEN + MCP_IN - 0.001, -PALM_LEN + MCP_IN - 0.005, -PALM_LEN + MCP_IN - 0.008]
+    var rx := [WRIST_HALF, WRIST_HALF * 1.0, WRIST_HALF * 1.04, PALM_HALF * 0.86, PALM_HALF * 0.93, PALM_HALF * 0.975, PALM_HALF, PALM_HALF * 0.995, PALM_HALF * 0.97, PALM_HALF * 0.9, PALM_HALF * 0.76, PALM_HALF * 0.5]
+    var rz := [wz, wz * 0.97, wz * 0.95, 0.0142, 0.0141, 0.0136, 0.013, 0.0124, 0.0118, 0.0108, 0.0096, 0.0075]
+    var arch := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.03, 0.1, 0.22, 0.34, 0.36, 0.36]
+    var pts: Array = []
+    for k in range(ys.size()):
+        pts.append(Vector3(0, float(ys[k]), 0.001))
+    var cols: Array = []
+    for k in range(ys.size() - 1):
+        cols.append(SKIN)
+    _oval(st, Transform3D.IDENTITY, pts, rx, rz, 20, cols, true, arch)
+    _oval(st, Transform3D.IDENTITY, [Vector3(0.012, -0.004, 0.004), Vector3(0.018, -0.014, 0.0065), Vector3(0.023, -0.025, 0.0078), Vector3(0.027, -0.036, 0.008), Vector3(0.029, -0.044, 0.0075)], [0.01, 0.0128, 0.013, 0.0112, 0.0085], [0.0075, 0.0094, 0.0098, 0.0092, 0.0078], 12, [SKIN, SKIN, SKIN, SKIN], true)
+    # the web between thumb and index, thin, on the thumb side
+    _oval(st, Transform3D.IDENTITY, [Vector3(0.026, -0.04, 0.006), Vector3(0.028, -0.052, 0.005), Vector3(0.027, -0.064, 0.004)], [0.009, 0.0085, 0.006], [0.0062, 0.0055, 0.0045], 12, [SKIN, SKIN], true)
     _meshes["palm"] = K.finish(st, 8.0)
     for i in range(FINGERS.size()):
         var f: Array = FINGERS[i]
@@ -300,25 +317,33 @@ func _build_meshes() -> void:
         _meshes["f%d_0" % i] = _bone_mesh(length * PHALANX[0] + MCP_IN, r, r * 0.93, false)
         _meshes["f%d_1" % i] = _bone_mesh(length * PHALANX[1], r * 0.93, r * 0.86, false)
         _meshes["f%d_2" % i] = _bone_mesh(length * PHALANX[2], r * 0.86, r * 0.8, true)
-    _meshes["thumb_p"] = _bone_mesh(THUMB_LEN * 0.55, 0.0084, 0.0078, false)
-    _meshes["thumb_d"] = _bone_mesh(THUMB_LEN * 0.45, 0.0078, 0.0068, true)
+    _meshes["thumb_p"] = _bone_mesh(THUMB_LEN * 0.55, 0.0086, 0.0079, false)
+    _meshes["thumb_d"] = _bone_mesh(THUMB_LEN * 0.45, 0.0079, 0.0069, true)
     for k in _meshes.keys():
         _meshes[k] = _smooth(_meshes[k])
 
-## One finger bone hanging down -Y from its joint: a slim tapering oval
-## (open at the far end, the next bone starts inside it). The tip bone is
-## rounded off and carries the nail on its back (-Z): 0.57 of the bone
-## long, 0.82 of the fingertip wide, a 2 mm free edge.
+## One finger bone hanging down -Y from its joint: a 12-sided tapering tube
+## with a slight knuckle swell at its joint (the next bone starts inside
+## it, so the joint reads as one soft bulge). The tip bone ends in a round
+## capsule and carries the nail on its back (-Z): 0.57 of the bone long,
+## 0.82 of the fingertip wide, a 2 mm free edge.
 func _bone_mesh(length: float, r0: float, r1: float, tip: bool) -> ArrayMesh:
     var st := K.begin()
+    var d0 := r0 * 0.88
     if tip:
-        _oval(st, Transform3D.IDENTITY, [Vector3(0, 0.003, 0), Vector3(0, -length * 0.5, 0.0), Vector3(0, -length * 0.82, 0.0005), Vector3(0, -length * 0.97, 0.001), Vector3(0, -length - 0.0015, 0.0015)], [r0, (r0 + r1) * 0.5, r1, r1 * 0.78, r1 * 0.35], [r0 * 0.88, (r0 + r1) * 0.44, r1 * 0.88, r1 * 0.7, r1 * 0.3], 8, [SKIN, SKIN, SKIN_BLUSH, SKIN_BLUSH], true)
+        var py := [0.004, 0.0, -length * 0.35, -length * 0.7, -length * 0.86, -length * 0.95, -length - 0.0005, -length - 0.0025]
+        var px := [r0 * 0.98, r0 * 1.03, (r0 + r1) * 0.5, r1, r1 * 0.96, r1 * 0.84, r1 * 0.6, r1 * 0.22]
+        var pz := [d0 * 0.98, d0 * 1.03, (d0 + r1 * 0.88) * 0.5, r1 * 0.88, r1 * 0.85, r1 * 0.75, r1 * 0.55, r1 * 0.2]
+        var pts: Array = []
+        for k in range(py.size()):
+            pts.append(Vector3(0, float(py[k]), 0.0006 * float(k) / float(py.size())))
+        _oval(st, Transform3D.IDENTITY, pts, px, pz, 12, [SKIN, SKIN, SKIN, SKIN, SKIN_BLUSH, SKIN_BLUSH, SKIN_BLUSH], true)
         var nz := -r1 * 0.8
         var nl := length * 0.57
         var nw := r1 * 0.82
-        _oval(st, Transform3D.IDENTITY, [Vector3(0, -length + nl, nz + 0.0002), Vector3(0, -length + nl * 0.55, nz - 0.0006), Vector3(0, -length + nl * 0.1, nz - 0.0004), Vector3(0, -length - 0.002, nz + 0.0012)], [nw * 0.8, nw, nw * 0.9, nw * 0.45], [0.0008, 0.0012, 0.0011, 0.0007], 8, [NAIL, NAIL, NAIL_TIP], true)
+        _oval(st, Transform3D.IDENTITY, [Vector3(0, -length + nl, nz + 0.0002), Vector3(0, -length + nl * 0.75, nz - 0.0005), Vector3(0, -length + nl * 0.4, nz - 0.0007), Vector3(0, -length + nl * 0.1, nz - 0.0004), Vector3(0, -length - 0.002, nz + 0.0012)], [nw * 0.75, nw * 0.95, nw, nw * 0.88, nw * 0.45], [0.0008, 0.0011, 0.0012, 0.0011, 0.0007], 10, [NAIL, NAIL, NAIL, NAIL_TIP], true)
     else:
-        _oval(st, Transform3D.IDENTITY, [Vector3(0, 0.004, 0), Vector3(0, -length * 0.5, 0.0), Vector3(0, -length - 0.003, 0.0)], [r0, (r0 + r1) * 0.5, r1], [r0 * 0.88, (r0 + r1) * 0.43, r1 * 0.86], 8, [SKIN, SKIN], false)
+        _oval(st, Transform3D.IDENTITY, [Vector3(0, 0.004, 0), Vector3(0, 0.0, 0), Vector3(0, -length * 0.35, 0.0), Vector3(0, -length * 0.75, 0.0), Vector3(0, -length - 0.004, 0.0)], [r0 * 0.98, r0 * 1.04, r0 * 0.98, (r0 + r1) * 0.5, r1], [d0 * 0.98, d0 * 1.04, d0 * 0.96, (d0 + r1 * 0.86) * 0.5, r1 * 0.86], 12, [SKIN, SKIN, SKIN, SKIN], false)
     return K.finish(st, 10.0)
 
 func _new_rig(index: int) -> Dictionary:
@@ -346,7 +371,7 @@ func _new_rig(index: int) -> Dictionary:
     # the thumb leaves the palm 0.3 of its length down on the +X side and
     # lies across the front of the item, closing the grip
     var tp := K.pivot(hand, "Thumb", Vector3(0.03, -PALM_LEN * 0.36, 0.012))
-    tp.rotation_degrees = Vector3(-62, 0, -38)
+    tp.rotation_degrees = THUMB_HOLD
     K.add_mesh(tp, "Bone", _meshes["thumb_p"], skin)
     var td := K.pivot(tp, "Tip", Vector3(0, -THUMB_LEN * 0.55, 0))
     td.rotation_degrees = Vector3(-14, 0, 12)
@@ -449,6 +474,7 @@ func _pose_fingers() -> void:
             for j in range(3):
                 (f[j] as Node3D).rotation.x = -c * k * float(JOINT_SHARE[j])
         var th: Array = rig["thumb"]
+        (th[0] as Node3D).rotation_degrees = THUMB_HOLD
         (th[1] as Node3D).rotation_degrees.x = -14.0 - 30.0 * _curl
 
 func _hand_to(target: float, secs: float, ease_type: Tween.EaseType) -> void:
