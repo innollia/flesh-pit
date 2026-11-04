@@ -1334,11 +1334,19 @@ func step_world(delta: float) -> void:
 		FPProfile.begin("interact_ring")
 		var target := interact_target()
 		# the glyph names the input that acts (FPInteractions.plan): the belt
-		# hooks take only the hand buttons; every other target takes F and
-		# either hand button alike (the glyph shows F)
+		# hooks take only the hand buttons; every other target takes F and the
+		# hands that can do it. One input shows in one place: the ring's vomit
+		# key gives way to the stomach's, the opening's to both
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else ("fp_pick" if target == "belt" else "fp_interact"))
 		interact_ring.set("shown", target != "" and not _settling)
-		interact_ring.set("pick_ok", target != "" and target != "toilet")
+		interact_ring.set("hand_left", target != "toilet" and not FPInteractions.right_hand_only(self, target))
+		interact_ring.set("hand_right", target != "toilet")
+		var stomach_key := stomach.fill_ratio() >= 1.0
+		interact_ring.set("glyph_on", not (target == "toilet" and stomach_key))
+		opening_view.hints.vomit_muted = target == "toilet" or stomach_key
+		opening_view.hints.lever_left = not _settling
+		if target == "lever" and not _settling:
+			opening_view.hints.lever_at = Vector2.INF
 		FPProfile.end("interact_ring")
 	FPProfile.begin("death_drop")
 	_step_death_drop(delta)

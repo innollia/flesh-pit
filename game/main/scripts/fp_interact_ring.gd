@@ -2,9 +2,9 @@ extends Control
 
 ## Wordless interaction affordance (W03/W32, spec 03 §9 "상호작용이 뜬다"):
 ## a thin pale ring round the screen centre that fades in when fp_interact
-## would do something. A small button glyph sits at the ring's 4 o'clock,
-## matching the device the player last touched (keyboard F key cap,
-## gamepad X button, or a mouse with its side button lit).
+## would do something. One small glyph sits at the ring's 4 o'clock, in the
+## device the player looks with (spec 08 §1): a mouse with the buttons of the
+## hands that can do it lit, the F key cap, or the gamepad X button.
 
 var shown: bool = false
 var action: String = "fp_interact":
@@ -12,16 +12,26 @@ var action: String = "fp_interact":
 		if action != value:
 			action = value
 			queue_redraw()
-## The target also takes the right button (fp_pick: tank teeth, lever,
-## vent): with a mouse the glyph is that button, not the side button many
-## mice lack (2026-10-31 play: nobody knew how to take the teeth).
-var pick_ok: bool = false:
+## The hands whose button acts on the target; the mouse glyph lights these.
+var hand_left: bool = false:
 	set(value):
-		if pick_ok != value:
-			pick_ok = value
+		if hand_left != value:
+			hand_left = value
 			queue_redraw()
-## "keyboard" | "pad" | "mouse" — follows the last input device used.
-var device: String = "keyboard"
+var hand_right: bool = false:
+	set(value):
+		if hand_right != value:
+			hand_right = value
+			queue_redraw()
+## Off when another prompt already shows this input (the stomach's vomit key).
+var glyph_on: bool = true:
+	set(value):
+		if glyph_on != value:
+			glyph_on = value
+			queue_redraw()
+## "keyboard" | "pad" | "mouse": what the player looks with. Walking keys
+## say nothing, so a mouse player's glyph does not flip with every step.
+var device: String = "mouse"
 var _a: float = 0.0
 
 const INK := Color(0.96, 0.93, 0.88)
@@ -35,17 +45,23 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	var d := device
-	if event is InputEventKey:
+	if event is InputEventKey and event.is_pressed() and _looks(event):
 		d = "keyboard"
 	elif event is InputEventJoypadButton:
 		d = "pad"
 	elif event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.4:
 		d = "pad"
-	elif event is InputEventMouseButton:
+	elif event is InputEventMouseButton or event is InputEventMouseMotion:
 		d = "mouse"
 	if d != device:
 		device = d
 		queue_redraw()
+
+func _looks(event: InputEvent) -> bool:
+	for a in ["fdk_look_up", "fdk_look_down", "fdk_look_left", "fdk_look_right"]:
+		if InputMap.has_action(a) and event.is_action(a):
+			return true
+	return false
 
 func _process(delta: float) -> void:
 	var target := 1.0 if shown else 0.0
@@ -65,6 +81,8 @@ func _draw() -> void:
 	draw_arc(c, r, 0.0, TAU, 48, Color(INK, 0.95 * _a), 3.0 * k, true)
 	draw_circle(c, 3.5 * k, Color(DARK, 0.7 * _a))
 	draw_circle(c, 2.2 * k, Color(INK, 0.95 * _a))
+	if not glyph_on:
+		return
 	var p := glyph_pos()
 	draw_set_transform(p, 0.0, Vector2(k, k))
 	p = Vector2.ZERO
@@ -73,8 +91,7 @@ func _draw() -> void:
 			_draw_pad(p)
 		"mouse":
 			if action == "fp_vomit": _draw_key(p, _key_label())
-			elif pick_ok: _draw_right_button(p)
-			else: _draw_mouse(p)
+			else: FPMenuKit.draw_mouse(self, p, hand_left, hand_right, _a, 22.0)
 		_:
 			_draw_key(p, _key_label())
 	draw_set_transform(Vector2.ZERO)
@@ -108,24 +125,6 @@ func _draw_pad(p: Vector2) -> void:
 			draw_circle(q, 3.4, Color(INK, 0.95 * _a))
 		else:
 			draw_arc(q, 2.8, 0.0, TAU, 16, Color(INK, 0.6 * _a), 1.2, true)
-
-func _draw_mouse(p: Vector2) -> void:
-	# Mouse body seen from the side-top, side button (XBUTTON1) lit.
-	var body := Rect2(p - Vector2(6, 9), Vector2(12, 18))
-	draw_rect(body, Color(DARK, 0.55 * _a), true)
-	draw_rect(body, Color(INK, 0.85 * _a), false, 1.5)
-	draw_line(p + Vector2(0, -9), p + Vector2(0, -3), Color(INK, 0.6 * _a), 1.0)
-	draw_line(p + Vector2(-6, -3), p + Vector2(6, -3), Color(INK, 0.6 * _a), 1.0)
-	draw_rect(Rect2(p + Vector2(-8.5, -1), Vector2(3, 5)), Color(INK, 0.95 * _a), true)
-
-func _draw_right_button(p: Vector2) -> void:
-	# Mouse from above, right button filled.
-	var body := Rect2(p - Vector2(7, 10), Vector2(14, 20))
-	draw_rect(body, Color(DARK, 0.55 * _a), true)
-	draw_rect(Rect2(p + Vector2(0, -10), Vector2(7, 8)), Color(INK, 0.95 * _a), true)
-	draw_rect(body, Color(INK, 0.85 * _a), false, 1.5)
-	draw_line(p + Vector2(0, -10), p + Vector2(0, -2), Color(INK, 0.6 * _a), 1.0)
-	draw_line(p + Vector2(-7, -2), p + Vector2(7, -2), Color(INK, 0.6 * _a), 1.0)
 
 func _key_label() -> String:
 	if InputMap.has_action(action):

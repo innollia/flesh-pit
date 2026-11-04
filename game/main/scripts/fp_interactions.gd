@@ -126,7 +126,7 @@ static func acts_on(target: String) -> bool:
 ## The left button leaves this target to the right hand: the lid is held in
 ## the right hand, and a left hand on the blender stays on it.
 static func right_hand_only(main: Node3D, target: String) -> bool:
-	return target == "tank_lid" or main.progression.hands.item(FDKToolKit.Hand.LEFT) == "blender"
+	return target == "tank_lid" or (target != "belt" and main.progression.hands.item(FDKToolKit.Hand.LEFT) == "blender")
 
 ## What a fresh press of `source` would do now, without doing it:
 ## "lid_down", "belt", "target:<name>", "item:<id>", "dig", "settle" or "none".

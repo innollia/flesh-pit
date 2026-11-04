@@ -75,7 +75,7 @@ func _run() -> void:
 	await shot("offer")
 	look_at_point(m.vent.offer_center())
 	await frames(3)
-	print("  target ", m.interact_target(), " pick_ok ", m.interact_ring.get("pick_ok"))
+	print("  target ", m.interact_target(), " hand_right ", m.interact_ring.get("hand_right"))
 	await press(take)
 	# the item in the hand on its way (form, size, material), then the waist
 	var at := 0

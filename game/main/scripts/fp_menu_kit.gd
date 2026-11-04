@@ -202,6 +202,25 @@ static func draw_key(ci: CanvasItem, center: Vector2, text: String, alpha: float
             HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.25, 0.05, 0.06, alpha))
     return w
 
+## The one mouse of every HUD prompt: its left and/or right button filled
+## (left hand, right hand). `height` scales it; 70 is the opening's size.
+static func draw_mouse(ci: CanvasItem, center: Vector2, left: bool, right: bool, alpha: float = 1.0, height: float = 70.0) -> void:
+    var u := height / 70.0
+    var body := StyleBoxFlat.new()
+    body.bg_color = Color(0.06, 0.01, 0.02, 0.55 * alpha)
+    body.border_color = Color(0.92, 0.86, 0.76, 0.9 * alpha)
+    body.set_border_width_all(maxi(1, roundi(2.0 * u)))
+    body.set_corner_radius_all(roundi(20.0 * u))
+    ci.draw_style_box(body, Rect2(center - Vector2(27, 35) * u, Vector2(54, 70) * u))
+    for i in range(2):
+        if not [left, right][i]:
+            continue
+        var button := StyleBoxFlat.new()
+        button.bg_color = Color(0.92, 0.86, 0.76, alpha)
+        button.set_corner_radius_all(roundi(4.0 * u))
+        button.set_corner_radius(CORNER_TOP_LEFT if i == 0 else CORNER_TOP_RIGHT, roundi(16.0 * u))
+        ci.draw_style_box(button, Rect2(center + Vector2(-24 + i * 25, -32) * u, Vector2(23, 28) * u))
+
 ## Menu-font text with a dark edge, for HUD words over any background.
 static func draw_ink(ci: CanvasItem, at: Vector2, text: String, font_size: int, color: Color) -> void:
     ci.draw_string_outline(FONT, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 5, Color(0.06, 0.0, 0.02, 0.8 * color.a))

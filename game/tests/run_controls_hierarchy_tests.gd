@@ -376,6 +376,39 @@ func run() -> void:
 	check(m.restroom.is_door_open(), "right click opens the door past the blender")
 	check(m.progression.hands.holds("blender"), "the blender stays in the left hand")
 
+	# --- the glyph: one input, lit for the hands that can do it ---------------
+	var ring: Control = m.interact_ring
+	await aim(door_mid)
+	await frames(2)
+	check(ring.hand_right and not ring.hand_left, "the left hand on the blender: only the right button lights")
+	await fresh_game(Vector3(0, 0.9, 0.8))
+	ring = m.interact_ring
+	await aim(door_mid)
+	await frames(2)
+	check(ring.shown and ring.hand_left and ring.hand_right, "the door: both buttons light")
+	check(ring.device == "mouse", "a new game shows the mouse (%s)" % ring.device)
+	await tap_key(KEY_W)
+	check(ring.device == "mouse", "a walking key does not flip the glyph")
+	await tap_key(KEY_LEFT)
+	check(ring.device == "keyboard", "looking with the arrow keys shows the key cap")
+	var motion := InputEventMouseMotion.new()
+	motion.relative = Vector2(1, 0)
+	Input.parse_input_event(motion)
+	await frames(3)
+	check(ring.device == "mouse", "looking with the mouse brings it back")
+	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	ring = m.interact_ring
+	await aim(m.tank_lid.lid.global_position)
+	await frames(2)
+	check(ring.hand_right and not ring.hand_left, "the lid: only the right button lights")
+	await aim(m.toilet_point())
+	await frames(2)
+	check(ring.action == "fp_vomit" and ring.glyph_on and m.opening_view.hints.vomit_muted, "the bowl: the ring's V stands alone")
+	while m.stomach.fill_ratio() < 1.0:
+		m.stomach.add_flesh(20.0)
+	await frames(2)
+	check(not ring.glyph_on, "a full stomach shows its own V, the ring's gives way")
+
 	# --- both hands on a load: the door still answers, no hand lets go -------
 	for load_kind in ["big_saw", "pile"]:
 		await fresh_game(Vector3(0, 0.9, 0.8))
