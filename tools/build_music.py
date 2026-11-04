@@ -4,66 +4,88 @@ registers it in game/audio/manifest.json.
 
     python -X utf8 tools/build_music.py
 
-Every track is made from the ending song's own tune (MELODY / HARMONY in
-tools/build_song_layers.py): fragments, slower or re-metered versions and
-other chords, on worn timbres (an out-of-tune music box, closed-lip hums, a
-leaky reed organ, a wet finger round porcelain, teeth counted on a lip). The
-tune is the game's one piece of music, so every place it is heard points at
-the ending.
+Every track comes from the ending song's own tune (MELODY / HARMONY in
+tools/build_song_layers.py). Title and the held restroom track are that tune
+on worn timbres, synthesized here in numpy. The tracks that must not feel like
+them are nkido patches (game/tools/audio/patches/mus_*.akkado): they keep the
+tune's shape (the contour 3-5-6-5-3-2-1, or just its rising third) in another
+key, metre, instrument and room. Python only folds their loop, adds tape or
+crank wow, the lo-fi and the mastering (NKIDO_TRACKS).
 
 docs/spec/08-presentation.md 3: while digging there is no music, only the
 low drone (the song's faint melody is the one exception, already in
 song_melody). So none of these plays in the flesh. Where each one plays
 (game/audio/fp_music.gd):
 
-  mus_title    start screen        music box lullaby over a worn organ, a
-                                   hum joins, then the chords turn minor
-  mus_restroom white restroom      fragments sung by a wet finger round the
+  mus_title     start screen       music box lullaby over a worn organ, a
+                                   hum joins, then the chords turn minor.
+                                   D major, 44 bpm, 4/4
+  mus_keybind   key settings stage a wheezing fairground organ cranked round
+                                   for the turning stage of dolls: reedy
+                                   pipes, drum and snare, oom-pah-pah.
+                                   G minor, 130 bpm, 3/4
+  mus_pause     Esc (eyes shut)    a slow warm string pad with no attacks at
+                                   all, breathing. Ab lydian, no beat (the
+                                   lids show the heart)
+  mus_pause_alt not played         the other candidate for Esc, for the sound
+                                   gallery: a felted piano in a warm room, a
+                                   few notes far apart. Db major, 66 bpm
+  mus_vent      vent trade open    teeth tapped on a lip, a walking plucked
+                                   string, someone whistling the song through
+                                   their teeth, down a duct. B minor, 120 bpm
+  mus_mirror    Tab, in the room   a soft analogue synth sequence in 7/8 with
+                                   side-to-side echoes and a wristwatch's tick
+                                   (the arm is up as if reading one). F lydian
+  mus_settle    over the bowl      low bowed basses, a dull tally knock and
+                                   tuned drips in the porcelain. Bb phrygian,
+                                   54 bpm
+  mus_restroom  on hold            fragments sung by a wet finger round the
                                    porcelain, far apart in a tiled room;
                                    mostly silence (03 1: so
                                    quiet you hear your own breath)
-  mus_vent     vent trade open     teeth clicked on a lip, a plucked low
-                                   string, the tune late on a reed organ,
-                                   then backwards on the box, down a duct
-  mus_pause    Esc (eyes shut)     the hum heard through your own lids at the
-                                   lids' heartbeat (66 bpm), blood rushing
-  mus_keybind  key settings stage  the tune re-metered as a slow, sagging
-                                   music-box waltz with missing teeth, for
-                                   the turning stage of dolls
 
-Each is a seamless loop of whole bars: notes and reverb tails wrap round
-the loop end (circular placement and circular convolution), every slow
-modulation runs a whole number of cycles per loop, noise is filtered in the
-frequency domain over the whole loop. Deterministic (fixed seeds). Lo-fi:
+Each is a seamless loop of whole bars. The numpy tracks wrap notes and
+reverb tails round the loop end (circular placement and circular
+convolution), every slow modulation runs a whole number of cycles per loop,
+noise is filtered in the frequency domain over the whole loop. nkido has no
+loop mode, so its tracks render twice round and keep the second pass, whose
+start already carries the tails of the end, then fold a short overhang over
+the head (KNOWHOW B4). Deterministic (fixed seeds). Lo-fi:
 sample-and-hold down to an older rate and a coarser word length (PS1-era
 streamed music), then mastered to TARGET_LUFS with a true peak of at most
 -1 dBFS like the song layers.
 """
 import math
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import wave
 
 import numpy as np
-from scipy.signal import lfilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "game", "tools", "audio"))
 import analyze_audio as A  # noqa: E402
-from build_song_layers import HARMONY, MELODY, low_hum, midi_hz, nasal_hum  # noqa: E402
+from build_song_layers import HARMONY, MELODY, midi_hz, nasal_hum  # noqa: E402
 
 RATE = 48000
 OUT = os.path.join(HERE, "..", "game", "audio", "loops")
 MANIFEST = os.path.join(HERE, "..", "game", "audio", "manifest.json")
+PATCHES = os.path.join(HERE, "..", "game", "tools", "audio", "patches")
+NKIDO = r"C:\projects\_tools\nkido\build-clang\bin\nkido.exe"
 
 # Integrated loudness per track. The restroom one sits just above the room's
 # own hum bed (amb_restroom -34) so the light, the water and your breath stay
 # on top; the menus are about where the song's tine (-24) is; the vent trade
-# stays under where the being's voice will be.
+# stays under where the being's voice will be; Esc, the bowl and the forearm
+# stay under reading and under the room's own sounds, which go on beneath.
 TARGET_LUFS = {
     "mus_title": -23.0, "mus_restroom": -31.0, "mus_vent": -27.0,
-    "mus_pause": -25.0, "mus_keybind": -24.0,
+    "mus_pause": -28.0, "mus_pause_alt": -28.0, "mus_keybind": -25.0,
+    "mus_mirror": -28.0, "mus_settle": -28.0,
 }
 PHRASE_UNITS = 32  # MELODY / HARMONY span 32 units (16 s at the song's 0.5 s)
 
@@ -123,14 +145,6 @@ def reverb(x, seconds, damp_hz, seed, predelay=0.012):
         full[:m] = ir
         outs.append(np.fft.irfft(np.fft.rfft(x) * np.fft.rfft(full), n))
     return outs[0], outs[1]
-
-
-def duct(x, delay_ms, feedback):
-    """A pipe's comb resonance, applied as its steady-state response (circular)."""
-    n = len(x)
-    w = 2 * math.pi * np.fft.rfftfreq(n, 1.0 / RATE)
-    h = 1.0 / (1.0 - feedback * np.exp(-1j * w * delay_ms / 1000.0))
-    return np.fft.irfft(np.fft.rfft(x) * h, n) * (1.0 - feedback)
 
 
 def wow(x, depth_s, ks, phases=None):
@@ -195,32 +209,6 @@ def rim(f, dur, rng):
         if f * ratio < RATE * 0.45:
             tone += amp * np.sin(phase * ratio)
     return tone * env * (1.0 + 0.12 * grit)
-
-
-def pluck(f, rng, length=2.4, damping=0.996):
-    """A dull plucked low string (Karplus-Strong through lfilter)."""
-    m = int(length * RATE)
-    p = max(2, int(round(RATE / f)))
-    exc = np.zeros(m)
-    burst = band(rng.standard_normal(p * 4), None, f * 6) if p * 4 > 8 else rng.standard_normal(p * 4)
-    exc[: p * 4] = burst * np.hanning(p * 4)
-    a = np.zeros(p + 2)
-    a[0] = 1.0
-    a[p] = -0.5 * damping
-    a[p + 1] = -0.5 * damping
-    y = lfilter([1.0], a, exc)
-    tt = np.arange(m) / RATE
-    return y / (np.abs(y).max() + 1e-9) * np.exp(-tt / 0.9)
-
-
-def click(rng, gain=1.0):
-    """A tooth tapped on a tooth: a tiny bright knock."""
-    m = int(0.03 * RATE)
-    x = rng.standard_normal(m) * np.exp(-np.arange(m) / (0.0025 * RATE))
-    f0 = rng.uniform(2300, 3600)
-    tt = np.arange(m) / RATE
-    ring = np.sin(2 * math.pi * f0 * tt) * np.exp(-tt / 0.006)
-    return (band(x, 900, 6000) * 0.6 + ring * 0.5) * gain
 
 
 def voice_line(n, events, shape, harmonics=24, attack=0.09, release=0.22, glide=0.09, octave=0.5):
@@ -363,122 +351,48 @@ def mus_restroom():
     return np.stack([dry * 0.6 + l * 0.6, dry * 0.6 + r * 0.6], -1)
 
 
-def mus_vent():
-    """The vent trade: teeth tapped on a lip like someone counting, a dull
-    low string walking the chords, the tune coming late on a reed organ, then
-    backwards on the box, all heard down a sheet-metal duct."""
-    unit = 0.5
-    phrase = PHRASE_UNITS * unit
-    n = int(round(4 * phrase * RATE))
-    rng = np.random.default_rng(303)
-    clicks = np.zeros(n)
-    accent = [1.0, 0.3, 0.6, 0.3, 0.9, 0.3, 0.5, 0.45]
-    for u in range(4 * PHRASE_UNITS):
-        if rng.random() < 0.12:  # a tooth missed
-            continue
-        at = u * unit + rng.normal(0.0, 0.012)
-        place(clicks, click(rng, accent[u % 8]), int(at * RATE))
-    bass = np.zeros(n)
-    for p in range(4):
-        for b, length, note in HARMONY:
-            for off in range(0, length, 2):
-                place(bass, pluck(midi_hz(note - 12), rng) * (1.0 if off == 0 else 0.6),
-                      int((p * phrase + (b + off) * unit) * RATE))
-    late = []
-    for p in (1, 3):
-        late += timed(MELODY, unit, p * phrase + unit * 0.5, -12)  # half a unit behind
-    organ = organ_line(n, late, detune=14.0, seed=3.0)
-    box = np.zeros(n)
-    rev = []
-    for b, length, note in MELODY:
-        rev.append((PHRASE_UNITS - 2 - b - length, length, note))
-    box_line(box, timed(rev, unit, 2 * phrase, 12), rng, detune_spread=25.0, gain=0.8)
-    dry = clicks * 0.22 + band(bass, 50, 1500) * 0.5 + band(organ, 80, 2500) * 0.13 + box * 0.4
-    dry = duct(dry, 5.3, 0.45)
-    dry = wow(dry, 0.006, [3, 11], [0.0, 2.1])
-    l, r = reverb(dry, 0.9, 2500, 31, predelay=0.02)
-    return np.stack([dry * 0.8 + l * 0.35, dry * 0.8 + r * 0.35], -1)
+TRACKS = (mus_title, mus_restroom)
 
-
-def mus_pause():
-    """Eyes shut (Esc): the hum heard from inside your own head, through the
-    lids, at the lids' heartbeat (fp_pause_lids.gdshader beats 1.1 times a
-    second, so one unit of the tune is one beat); a second voice under it the
-    second time; blood rushing; then only pieces of it."""
-    unit = 1.0 / 1.1
-    phrase = PHRASE_UNITS * unit
-    n = int(round(3 * phrase * RATE))
-    lead = timed(MELODY, unit) + timed(MELODY, unit, phrase)
-    lead += timed([MELODY[i] for i in (0, 1, 2, 3)], unit, 2 * phrase)
-    lead += timed([MELODY[i] for i in (11, 12, 13)], unit, 2 * phrase)
-    hum = voice_line(n, lead, nasal_hum, attack=0.16, release=0.4)
-    second = voice_line(n, timed(HARMONY, unit, phrase) + timed(HARMONY[:4], unit, 2 * phrase),
-                        low_hum, attack=0.2, release=0.5, glide=0.14)
-    pad = organ_line(n, timed(HARMONY, unit, 0, -12) + timed(HARMONY, unit, 2 * phrase, -12), detune=6.0, seed=4.0)
-    blood = loop_noise(n, 13, 30, 220) * (0.35 + 0.65 * cycles(n, 4, 0.7))
-    dry = band(hum * 0.5 + second * 0.32 + pad * 0.06, 70, 1100, order=3) + blood * 0.09
-    dry = wow(dry, 0.003, [1, 5])
-    l, r = reverb(dry, 3.4, 1400, 41, predelay=0.03)
-    return np.stack([dry * 0.7 + l * 0.5, dry * 0.7 + r * 0.5], -1)
-
-
-# the tune re-metered into 3/4: long-short pairs, (beat, beats, midi), 24 beats
-WALTZ = [(0, 2, 66), (2, 1, 69), (3, 2, 71), (5, 1, 69), (6, 2, 66), (8, 1, 64), (9, 3, 62),
-         (12, 2, 64), (14, 1, 66), (15, 2, 69), (17, 1, 71), (18, 2, 69), (20, 1, 66), (21, 3, 64)]
-# one chord per bar from HARMONY's eight roots: (bass, two upper notes)
-WALTZ_CHORDS = {62: (50, 66, 69), 66: (54, 69, 73), 57: (45, 61, 64), 59: (47, 62, 66), 61: (49, 64, 69)}
-
-
-def mus_keybind():
-    """The key settings stage (dolls on a turning stage): the tune as a slow
-    music-box waltz, slower than any jingle and never quite in tune. Plain;
-    in minor; with the harmony ringing above; an octave up and thin; and last
-    with teeth missing from the comb. The spring's pull drifts the pitch."""
-    q = 0.72
-    phrase = 24 * q
-    n = int(round(5 * phrase * RATE))
-    rng = np.random.default_rng(505)
-    box = np.zeros(n)
-    acc = np.zeros(n)
-    roots = [note for _b, _l, note in HARMONY]
-    for p in range(5):
-        at = p * phrase
-        mel = list(WALTZ)
-        transpose = 12
-        minor = p == 1
-        if minor:
-            mel = [(b, l, {66: 65, 71: 70}.get(note, note)) for b, l, note in mel]
-        if p == 3:
-            transpose = 24
-        if p == 4:
-            mel = [e for i, e in enumerate(mel) if i % 3 != 2]
-        box_line(box, timed(mel, q, at, transpose), rng, detune_spread=20.0,
-                 gain=0.7 if p == 3 else 1.0, bright=0.6 if p == 3 else 0.8)
-        for bar in range(8):
-            bass, u1, u2 = WALTZ_CHORDS[roots[bar]]
-            if minor:
-                u1, u2 = [{66: 65, 73: 72, 54: 53, 69: 69}.get(u, u) for u in (u1, u2)]
-            t0 = at + bar * 3 * q
-            place(acc, tine(midi_hz(bass), rng, 0.0, 2.0, 0.5) * 0.55, int(t0 * RATE))
-            for beat in (1, 2):
-                for u in (u1, u2):
-                    place(acc, tine(midi_hz(u), rng, rng.uniform(-9, 9), 1.2, 0.3) * 0.11,
-                          int((t0 + beat * q) * RATE))
-        if p == 2:
-            box_line(box, timed(HARMONY, q * 0.75, at, 24, 1.0), rng, gain=0.25, bright=0.5)
-    clicks = np.zeros(n)
-    for b in range(int(round(5 * 24))):
-        place(clicks, click(rng, 0.25 if b % 3 == 0 else 0.12), int(b * q * RATE) - int(0.004 * RATE))
-    dry = box * 0.5 + band(acc, 70, 4000) * 0.6 + band(clicks, 1500, 7000) * 0.12
-    # the spring: pitch sags once round the loop, with a small flutter
-    dry = wow(dry, 0.009, [1, 9], [0.0, 0.5])
-    l, r = reverb(dry, 1.8, 4200, 51)
-    return np.stack([dry * 0.75 + l * 0.42, dry * 0.75 + r * 0.42], -1)
-
-
-TRACKS = (mus_title, mus_restroom, mus_vent, mus_pause, mus_keybind)
+# nkido tracks: bpm, loop seconds (whole cycles of the patch), overhang folded
+# over the head, then tape or crank wow as wow()'s arguments.
+NKIDO_TRACKS = {
+    "mus_pause": (6.0, 80.0, 1.5, None),
+    "mus_pause_alt": (66.0, 96 / 1.1, 0.5, (0.0022, [1, 4], [0.0, 0.0])),
+    "mus_keybind": (60.0 / 0.46, 120 * 0.46, 0.08, (0.018, [1, 3, 5], [0.0, 0.7, 2.0])),
+    "mus_mirror": (300.0 / 7.0, 67.2, 0.12, None),
+    "mus_vent": (120.0, 64.0, 0.1, (0.006, [3, 11], [0.0, 2.1])),
+    "mus_settle": (54.0, 24 * 60.0 / 54.0, 0.3, (0.002, [2, 5], [0.0, 0.0])),
+}
 LOFI = {"mus_title": (22050, 12), "mus_restroom": (24000, 12), "mus_vent": (16000, 10),
-        "mus_pause": (22050, 12), "mus_keybind": (22050, 12)}
+        "mus_pause": (22050, 14), "mus_pause_alt": (22050, 14), "mus_keybind": (18900, 10),
+        "mus_mirror": (32000, 12), "mus_settle": (16000, 10)}
+
+
+def render_nkido(name):
+    """The patch twice round plus the overhang; the second pass is the loop."""
+    bpm, loop, fold, flutter = NKIDO_TRACKS[name]
+    tmp = tempfile.mkdtemp(prefix="fp_music_")
+    try:
+        raw = os.path.join(tmp, name + ".wav")
+        args = [NKIDO, "render", os.path.join(PATCHES, name + ".akkado"), "-o", raw,
+                "--seconds", "%.3f" % (2 * loop + fold + 0.25), "--rate", str(RATE),
+                "--bpm", "%.9f" % bpm, "--no-default-bank"]
+        r = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode != 0 or not os.path.exists(raw):
+            raise RuntimeError("nkido render failed: " + (r.stdout + r.stderr)[-600:])
+        data, rate = A.read_wav(raw)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    if rate != RATE:
+        raise RuntimeError("%s rendered at %d Hz" % (name, rate))
+    n, f = int(round(loop * RATE)), int(round(fold * RATE))
+    body = data[n:2 * n + f].copy()
+    w = (0.5 - 0.5 * np.cos(math.pi * np.arange(f) / f))[:, None]
+    body[:f] = body[:f] * w + body[n:n + f] * (1.0 - w)  # out[0] continues out[n-1]
+    body = body[:n]
+    if flutter:
+        body = np.stack([wow(body[:, c], *flutter) for c in range(2)], -1)
+    return body
 
 
 def master(name, data):
@@ -528,4 +442,8 @@ if __name__ == "__main__":
         if only and fn.__name__ not in only:
             continue
         lengths[fn.__name__] = save(fn.__name__, master(fn.__name__, fn()))
+    for name in NKIDO_TRACKS:
+        if only and name not in only:
+            continue
+        lengths[name] = save(name, master(name, render_nkido(name)))
     register(lengths)

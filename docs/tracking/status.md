@@ -1,5 +1,13 @@
 # 현재 상태
 
+## 2026-11-04 배경음악 곳마다 다르게 (브랜치 audio-music)
+
+사용자 요청 "필요한 곳마다 서로 다른 느낌으로 더 만들어줘. mus_pause는 특히 안어울려." 새로 만들거나 바꾼 곡은 nkido 패치(`game/tools/audio/patches/mus_*.akkado`)이고 `tools/build_music.py`가 두 바퀴 렌더해 둘째 바퀴를 접어 루프로 만든다(lo-fi·마스터링은 Python, 결정적).
+- 교체: `mus_pause`(따뜻한 현악 패드, 어택 없음). 다른 후보 `mus_pause_alt`(펠트 피아노)는 manifest에만 있고 재생하지 않는다.
+- 새 곳: `mus_mirror`(화장실 안 변이 화면, 살 속 Tab은 무음), `mus_settle`(변기 정산 화면, 0.6초에 올라옴). 앉기·설정·도감(벽 그림, 화면 없음)은 곡을 두지 않았다.
+- 다시 만듦: `mus_keybind`는 시작 화면과 CLAP 코사인 0.91이라 유원지 오르간 왈츠로, `mus_vent`는 오르골·오르간이 시작 화면과 겹쳐(스펙트럼 차 6.3 dB) 휘파람과 걷는 저음으로. `mus_title`·`mus_restroom`은 바이트 그대로다.
+- 검사: `run_music_tests.gd` 변경 전 44/2 실패, 변경 후 48/0. 근거: 노트 폴더 `orchestra/wire/music2/`.
+
 ## 2026-11-04 조작 표시 질서
 
 사용자 요청 "표시 글자 질서를 세우자". 기준은 spec 08 §1. 조준 고리의 마우스 그림이 되는 손의 버튼만 켜고(`FPMenuKit.draw_mouse`로 오프닝과 통일, L·R 글자와 측면 버튼 그림 제거), 장치는 보는 입력을 따르며(걷는 키로 뒤집히지 않음), 같은 입력이 두 곳에 뜨지 않는다. 검사: `run_controls_hierarchy_tests.gd`. 화면: 노트 폴더 `orchestra/wire/glyphs/`.

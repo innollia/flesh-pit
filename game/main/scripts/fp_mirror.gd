@@ -220,6 +220,9 @@ static func tag_layer(n: Node, bits: int) -> void:
 func _ui_scale() -> float:
 	return clampf(get_viewport().get_visible_rect().size.y / 720.0, 1.0, 2.0) if get_viewport() != null else 1.0
 
+func is_open() -> bool:
+	return visible
+
 func open(p: FPProgression) -> void:
 	prog = p
 	visible = true

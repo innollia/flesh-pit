@@ -1,0 +1,32 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_settle -- kneeling over the bowl with what you brought back: a low section of bowed basses
+// with the rosin audible, a dull knock that tallies, single tuned drips in the porcelain. Short and
+// heard from its first note (the stay here is seconds); neither the lullaby's sweetness nor a
+// threat: a reckoning. Bb phrygian, 54 bpm; a cycle is one beat, the loop is 24 beats (26.67 s).
+bpm = 54
+
+bow = ({freq, gate}) -> {
+    // three bows, not one reed: the stereo difference is made at the source
+    s = stereo(saw(freq * 0.9962) + saw(freq * 1.0031), saw(freq * 1.0044) + saw(freq * 0.9975))
+    grain = stereo(noise(0, 0, 211), noise(0, 0, 223)) |> bp(@, 900, 0.7)
+    ((s * 0.5 |> hp(@, 60) |> lp(@, 700)) + grain * 0.1) * adsr(gate, 0.12, 0.1, 0.9, 0.3)
+}
+knock = ({freq, gate}) -> {
+    (sine(freq) + tri(freq * 2.02) * 0.3) * ar(gate, 0.002, 0.16)
+}
+// a drop: the pitch leaps upward as the bubble closes
+drip = ({freq, gate}) -> {
+    (sine(freq * (1.32 - 0.32 * ar(gate, 0.001, 0.06)))) * ar(gate, 0.002, 0.085)
+}
+
+bass = n"[bb1@8 b1@4 bb1@4 gb1@4 f1@4]/24"
+tally = n"[bb2 ~ ~ ~ ~ bb2 ~ ~]/4"
+// half-beat steps: the song's rising third, then a semitone falling back
+drops = n"[~ bb5 ~ ~ db6 ~ ~ b5 ~!4 bb5 ~!5 ab5 ~!2 b5 ~!2 bb5 ~!4 db6 ~!2 eb6 ~!2 db6 ~!2 b5 ~!3 ab5 ~!2 bb5 ~!2]/24"
+
+// the bow's pressure swells twice a bar (12 whole cycles per loop)
+low = (bass |> legato(@, bow, release: 0.4)) * (0.6 + 0.4 * sine(0.45)) * 0.17
+wood = (tally |> poly(@, knock, 4, release: 0.5)) * 0.3 |> lp(@, 800)
+water = (drops |> poly(@, drip, 4, release: 0.3)) * 0.5 |> delay(@, 0.0031, 0.5, 1.0, 0.5)
+
+out((low + wood + water) |> freeverb(@, 0.42, 0.55, 0.28, 0.7, 0.8, 0.4) |> hp(@, 30))

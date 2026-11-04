@@ -1,0 +1,38 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_keybind -- the key settings stage (dolls on a turning stage): someone cranks a wheezing
+// little fairground organ. Reedy pipes, a bass drum on the oom and a dry snare on the pah, in
+// G minor, faster than anything else in the game; the fourth time round an octave up and thin, the
+// last time with pipes that no longer speak. The song's 3-5-6-5-3-2-1 is Bb D Eb D Bb A G here.
+// The crank's drag is wow in Python.
+// A cycle is one beat of 0.46 s (bpm 60/0.46), the loop is five rounds of 24 beats (55.2 s).
+bpm = 130.434782609
+
+// square and saw ranks a few cents apart: nothing sine-like, sines read as the music box
+pipes = ({freq, gate, vel}) -> {
+    s = stereo(sqr(freq * 0.997) + saw(freq * 1.004) * 0.7, sqr(freq * 1.003) + saw(freq * 0.995) * 0.7)
+    chiff = noise(0, 0, 307) * ar(gate, 0.001, 0.035) |> bp(@, 2400, 1.0)
+    ((s |> lp(@, 2300)) * 0.5 + chiff * 0.25) * adsr(gate, 0.014, 0.02, 0.95, 0.04) * vel
+}
+reed = ({freq, gate, vel}) -> {
+    (saw(freq) * 0.6 + sqr(freq * 1.004) * 0.4) * adsr(gate, 0.012, 0.03, 0.9, 0.05) * vel
+}
+drum = ({gate}) -> (sine(58 + 70 * ar(gate, 0.001, 0.04)) * ar(gate, 0.002, 0.13))
+snare = ({gate}) -> (noise(0, 0, 601) * ar(gate, 0.001, 0.05) |> bp(@, 1500, 0.8))
+
+// plain, plain with a second rank (below), plain, an octave up, then pipes missing
+song = n"[[bb4@2 d5 eb5@2 d5 bb4@2 a4 g4@3 a4@2 bb4 d5@2 eb5 d5@2 bb4 a4@3]@24 [bb4@2 d5 eb5@2 d5 bb4@2 a4 g4@3 a4@2 bb4 d5@2 eb5 d5@2 bb4 a4@3]@24 [bb4@2 d5 eb5@2 d5 bb4@2 a4 g4@3 a4@2 bb4 d5@2 eb5 d5@2 bb4 a4@3]@24 [bb5@2 d6 eb6@2 d6 bb5@2 a5 g5@3 a5@2 bb5 d6@2 eb6 d6@2 bb5 a5@3]@24 [bb4@2 d5 ~@2 d5 bb4@2 ~ g4@3 a4@2 ~ d5@2 eb5 ~@2 bb4 a4@3]@24]/120"
+rank2 = n"[~@48 [g4@2 bb4 c5@2 bb4 g4@2 f#4 eb4@3 f#4@2 g4 bb4@2 c5 bb4@2 g4 f#4@3]@24 ~@48]/120"
+oom = n"g1 ~ ~ c2 ~ ~ g1 ~ ~ d2 ~ ~ eb2 ~ ~ g1 ~ ~ c2 ~ ~ d2 ~ ~"
+pah = n"~ [d3,g3,bb3]!2 ~ [eb3,g3,c4]!2 ~ [d3,g3,bb3]!2 ~ [d3,f#3,a3]!2 ~ [eb3,g3,bb3]!2 ~ [d3,g3,bb3]!2 ~ [eb3,g3,c4]!2 ~ [d3,f#3,a3]!2"
+
+top = (song |> poly(@, pipes, 4, release: 0.1)) * 0.16 + (rank2 |> poly(@, pipes, 4, release: 0.1)) * 0.07
+bass = (oom |> poly(@, reed, 3, release: 0.1)) * 0.13 |> lp(@, 700)
+chords = (pah |> poly(@, reed, 8, release: 0.1)) * 0.024 |> lp(@, 1800)
+kit = (n"c4 ~ ~" |> poly(@, drum, 2, release: 0.2)) * 0.2 + (n"~ c4 c4" |> poly(@, snare, 2, release: 0.1)) * 0.05
+
+// the crank's knock once a bar, the bellows' leak (whole cycles per loop)
+knock = noise(0, 0, 409) * ar(trigger(0.333333333), 0.001, 0.025) |> bp(@, 500, 1.5)
+leak = noise(0, 0, 503) |> bp(@, 1700, 0.7)
+
+mix = top + bass + chords + kit + knock * 0.06 + leak * 0.004 * (0.7 + 0.3 * sine(0.7246376812))
+out(mix |> freeverb(@, 0.38, 0.6, 0.28, 0.7, 0.9, 0.22) |> hp(@, 40))

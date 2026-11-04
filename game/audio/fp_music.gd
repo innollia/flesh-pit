@@ -10,8 +10,19 @@ extends Node
 ##   keybind   key settings stage (from title or Esc)   mus_keybind
 ##   pause     Esc, eyes shut (and its settings)        mus_pause
 ##   vent      in the restroom with the vent open       mus_vent
+##   mirror    Tab's forearm screen, in the room        mus_mirror
+##   settle    kneeling over the bowl (start_settlement) mus_settle
 ##   restroom  in the restroom once the eyes have       mus_restroom
 ##             adjusted (03 4: the glare on return)      ON HOLD
+##
+## The room itself has no music; mirror and settle are modal screens in it
+## with their own view and cursor, so they count as places of their own. Tab
+## out in the flesh stays silent (08 3: nothing there). Not places: sitting
+## on the toilet (still the room, you can look round), the settings page (it
+## keeps the music of the screen it was opened from, and its 배경음 slider
+## has to be judged against that), the codex (no screen: crayon drawings on
+## the room's wall). mus_pause_alt is the other Esc candidate, in the manifest
+## for the sound gallery and never played.
 ##
 ## On hold (user, 2026-11-04): the restroom has no music for now, only its
 ## ambience (the light's hum, the exhaust fan, water in the pipes: the
@@ -25,6 +36,7 @@ extends Node
 const TRACKS := {
 	"title": "mus_title", "keybind": "mus_keybind", "pause": "mus_pause",
 	"vent": "mus_vent", "restroom": "mus_restroom",
+	"mirror": "mus_mirror", "settle": "mus_settle",
 }
 const BUS := &"Music"
 ## The restroom's own music is on hold (see above): the room stays silent here.
@@ -32,7 +44,8 @@ const RESTROOM_ON_HOLD := true
 ## Seconds in the room, eyes adjusted and the opening over, before the
 ## restroom's music starts; it then comes in slowly under the room's hum.
 const ROOM_SETTLE := 6.0
-const FADE_IN := {"restroom": 8.0, "vent": 2.0}
+## The bowl is a stay of seconds, so its music has to be there at once.
+const FADE_IN := {"restroom": 8.0, "vent": 2.0, "mirror": 1.5, "settle": 0.6}
 ## Crossfade between two places with music.
 const FADE := 2.5
 ## Out in the flesh (stepping out the door, eyes opening there after Esc):
@@ -82,6 +95,10 @@ func want_place(delta: float = 0.0) -> String:
 	if not _in_room():
 		_room_t = 0.0
 		return ""
+	if main.has_method("is_settling") and bool(main.is_settling()):
+		return "settle"
+	if _open("mirror"):
+		return "mirror"
 	var vent = main.get("vent")
 	if vent != null and bool(vent.get("is_open")):
 		return "vent"

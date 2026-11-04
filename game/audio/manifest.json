@@ -617,14 +617,14 @@
    "files": [
     "res://audio/loops/mus_pause.wav"
    ],
-   "loop_seconds": 87.273
+   "loop_seconds": 80.0
   },
   "mus_keybind": {
    "kind": "loop",
    "files": [
     "res://audio/loops/mus_keybind.wav"
    ],
-   "loop_seconds": 86.4
+   "loop_seconds": 55.2
   },
   "amb_restroom_fan": {
    "kind": "loop",
@@ -672,6 +672,27 @@
     "res://audio/sfx/pipe_tick_v4.wav"
    ],
    "spatial": false
+  },
+  "mus_pause_alt": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_pause_alt.wav"
+   ],
+   "loop_seconds": 87.273
+  },
+  "mus_mirror": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_mirror.wav"
+   ],
+   "loop_seconds": 67.2
+  },
+  "mus_settle": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_settle.wav"
+   ],
+   "loop_seconds": 26.667
   }
  },
  "beds": {

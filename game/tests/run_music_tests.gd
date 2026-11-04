@@ -92,6 +92,7 @@ func _run() -> void:
 	await run_for(3.0)
 	_ok(music.get("place") == "" and float(music.call("level", "mus_vent")) < 0.01 and music.call("player", "mus_restroom") == null,
 		"grate shut: the trade's music is gone and no restroom music comes back")
+	await _modal_places_in_room()
 	# out in the flesh: held still so the flesh does not push the body back
 	m.set_process(false)
 	m.set_physics_process(false)
@@ -136,6 +137,29 @@ func _run() -> void:
 	await frames(2)
 	await run_for(OUT_S)
 	_ok(music.call("audible").is_empty(), "eyes open in the flesh: the music is gone within %.1f s" % OUT_S)
+	# Tab out in the flesh: the forearm screen opens, but the flesh has no music
+	m.open_mirror()
+	await frames(2)
+	await run_for(3.0)
+	_ok(m.mirror.visible and music.get("place") == "" and music.call("audible").is_empty(), "Tab in the flesh stays silent (%s)" % music.get("place"))
+	m.mirror.close()
+	m.player.set_physics_process(false)
+	await frames(2)
+	# settings keep the music of the screen that opened them
+	m.open_pause_menu()
+	await frames(2)
+	await run_for(3.0)
+	m.open_settings()
+	await frames(2)
+	await run_for(3.0)
+	_ok(m.settings_menu.is_open() and music.get("place") == "pause" and float(music.call("level", "mus_pause")) > 0.99, "settings from Esc keep mus_pause (%s)" % music.get("place"))
+	m.settings_menu.close()
+	await frames(2)
+	_ok(m.pause_menu.is_open(), "closing settings goes back to Esc")
+	m.pause_menu.resume()
+	m._on_pause_resumed()
+	await frames(2)
+	await run_for(OUT_S)
 	# key settings stage
 	m.open_keybind_menu()
 	await frames(2)
@@ -150,6 +174,13 @@ func _run() -> void:
 	await run_for(3.0)
 	_ok(music.get("place") == "title" and on_music_bus("mus_title") and float(music.call("level", "mus_title")) > 0.99, "start screen plays mus_title on the Music bus")
 	_ok(music.call("audible") == ["mus_title"], "only one track left after the crossfade (%s)" % str(music.call("audible")))
+	m.open_settings()
+	await frames(2)
+	await run_for(3.0)
+	_ok(m.settings_menu.is_open() and music.get("place") == "title" and float(music.call("level", "mus_title")) > 0.99, "settings from the start screen keep mus_title (%s)" % music.get("place"))
+	m.settings_menu.close()
+	await frames(2)
+	await run_for(3.0)
 	# the 배경음 slider is the Music bus
 	var s: Dictionary = FPSettings.load_from().duplicate()
 	s["music"] = 0.0
@@ -166,6 +197,39 @@ func _run() -> void:
 	_ok(music.get("place") == "" and music.call("audible").is_empty(), "no background music under the ending's hum")
 	m.ending.active = false
 	_finish()
+
+## The two modal screens in the room have their own tracks; the room around
+## them stays silent, and nothing about the game changes for playing them.
+func _modal_places_in_room() -> void:
+	var bank: FDKSoundBank = m.get_node("AudioHookup").get("director").bank
+	_ok(bank.has("mus_pause_alt") and bank.is_loop("mus_pause_alt") and not music.get("TRACKS").values().has("mus_pause_alt"),
+		"mus_pause_alt is in the manifest for the gallery and no place plays it")
+	var teeth_before: int = m.progression.teeth_in_hand
+	var muts_before: Array[String] = m.progression.all_mutations()
+	m.open_mirror()
+	await frames(2)
+	await run_for(2.0)
+	_ok(music.get("place") == "mirror" and on_music_bus("mus_mirror") and float(music.call("level", "mus_mirror")) > 0.99, "Tab in the room plays mus_mirror on the Music bus (%s)" % music.get("place"))
+	m.mirror.close()
+	await frames(2)
+	await run_for(3.0)
+	_ok(music.get("place") == "" and float(music.call("level", "mus_mirror")) < 0.01, "forearm down: the room is silent again")
+	# the settlement: F or V at the bowl, the bowl's own view and cursor
+	m.player.global_position = m.RESTROOM_CENTER
+	m.start_settlement()
+	await frames(2)
+	await run_for(0.8)
+	_ok(m.is_settling() and music.get("place") == "settle" and on_music_bus("mus_settle") and float(music.call("level", "mus_settle")) > 0.99, "over the bowl mus_settle is there within 0.8 s (%s)" % music.get("place"))
+	m.leave_settlement()
+	await frames(2)
+	await run_for(3.0)
+	_ok(music.get("place") == "" and float(music.call("level", "mus_settle")) < 0.01, "standing up: the room is silent again")
+	# sitting on the toilet is still the room
+	_ok(m.sit_down(), "sat down")
+	await run_for(3.0)
+	_ok(music.get("place") == "" and music.call("audible").is_empty(), "sitting on the toilet has no music (%s)" % str(music.call("audible")))
+	m.stand_up()
+	_ok(m.progression.teeth_in_hand == teeth_before and m.progression.all_mutations() == muts_before, "the music changed nothing in progression")
 
 func _finish() -> void:
 	print("--- %d passed, %d failed ---" % [_passed, _failed])

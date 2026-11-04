@@ -1,0 +1,39 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_pause_alt -- the other candidate for Esc, kept for the sound gallery, not played: a felted piano in a small
+// warm room, a chord, then one or two high notes seconds apart over a held warmth, and a faint
+// heart. Everything sits in the warm mids: low notes and sub read as dread, whatever the key.
+// Db major, the song's key let down a semitone. 66 bpm is the lids' 1.1 beats a second
+// (fp_pause_lids.gdshader); a cycle is one beat, the loop is 96 beats.
+bpm = 66
+
+// thick felt: a slow soft hammer, two strings a breath apart, only the low partials
+felt = ({freq, gate, vel}) -> {
+    body = (sine(freq * 0.9993) + sine(freq * 1.0007)) * 0.5 * ar(gate, 0.024, 7.0)
+    second = sine(freq * 2.002) * 0.3 * ar(gate, 0.024, 3.5)
+    third = sine(freq * 3.006) * 0.08 * ar(gate, 0.03, 1.6)
+    (body + second + third) * vel
+}
+
+// the left hand: one low chord every twelve beats, the last few alone
+lh = n"[db3,ab3,f4] ~!11 [gb3,db4,bb4] ~!11 [ab3,eb4,c5] ~!11 [f3,c4,ab4] ~!11 [db3,ab3,f4] ~!11 [gb3,db4,f4] ~!11 [ab3,eb4,c5] ~!11 [db3,ab3,f4] ~!11"
+// the song's contour F Ab Bb Ab F Eb Db over the first 48 beats, then only pieces of it
+rh = n"~!4 f5 ~!2 ab5 ~!7 bb5 ~!5 ab5 ~!7 f5 ~!10 eb5 ~!3 db5 ~!9 f5 ~!10 bb5 ~!2 ab5 ~!9 f5 ~!3 eb5 ~!13"
+
+// the warmth left in the room between notes: the same chords, held, hardly there
+glow = ({freq, gate, vel}) -> {
+    s = stereo(tri(freq * 0.9985), tri(freq * 1.0015))
+    (s |> lp(@, 1000)) * adsr(gate, 2.5, 0.1, 1.0, 3.5) * vel
+}
+held = n"[db4,f4,ab4] _!11 [gb3,bb3,db4,f4] _!11 [ab3,c4,eb4] _!11 [f3,ab3,db4] _!11 [db4,f4,ab4] _!11 [gb3,bb3,db4,f4] _!11 [ab3,c4,eb4,bb4] _!11 [db4,f4,c5] _!11"
+warmth = (held |> poly(@, glow, 8, release: 4.0)) * 0.05
+keys = (lh |> poly(@, felt, 12, release: 9.0)) * 0.13 + (rh |> poly(@, felt, 6, release: 9.0)) * 0.26
+space = (keys + warmth) |> lp(@, 2200) |> freeverb(@, 0.7, 0.6, 0.28, 0.7, 0.75, 0.5) |> hp(@, 90)
+
+// the heart, felt more than heard, on every beat of the lids. Keep it this low: at twice the
+// level the CLAP ear heard this as scary (0.30 to 0.47)
+hb = trigger(1)
+lub = sine(58) * ar(hb, 0.012, 0.09)
+dub = lub |> delay(@, 0.27, 0.0, 1.0, 0.55)
+pulse = dub |> hp(@, 30) |> lp(@, 170)
+
+out(space + pulse * 0.05)

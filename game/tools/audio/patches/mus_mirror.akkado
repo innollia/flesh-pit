@@ -1,0 +1,35 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_mirror -- the forearm screen, in the room: cool and weightless, the only clean sound in
+// the game. A soft analogue synth sequence going round in 7/8 (3+2+2) with echoes thrown from side
+// to side, a wristwatch ticking the eighths (the arm is up as if reading one), the tune held far
+// above on a slow sine lead. No struck tones: bells and bars read as the music box. F lydian.
+// An eighth is 0.2 s; a cycle is one 7/8 bar (bpm 300/7), the loop is 48 bars (67.2 s).
+bpm = 42.857142857
+
+// a filtered pulse, the filter opening on each note and shutting again
+seq = ({freq, gate, vel}) -> {
+    s = stereo(sqr(freq * 0.998), saw(freq * 1.002))
+    (s |> lp(@, 300 + 900 * ar(gate, 0.02, 0.28), 0.9)) * adsr(gate, 0.03, 0.2, 0.55, 0.25) * vel
+}
+lead = ({freq, gate}) -> {
+    sine(freq * (1 + 0.0025 * sine(4.2857142857))) * adsr(gate, 0.6, 0.2, 0.8, 1.0)
+}
+
+// F C/E B, G G/D B, A C/E G, E G/B D, two bars each, an octave under where bells would sit
+a = n"[f3 ~ e4 c4 ~ b3 ~]!2 [g3 ~ g4 d4 ~ b3 ~]!2 [a3 ~ c4 e4 ~ g4 ~]!2 [e3 ~ g4 b3 ~ d4 ~]!2"
+// the song's contour A C D C A G F, a note every other bar, then ten bars of nothing
+song = n"a5@2 c6@2 d6@2 c6@2 a5@2 g5@2 f5@2 ~@10"
+
+ticker = ({gate, vel}) -> noise(0, 0, 101) * ar(gate, 0.0005, 0.007) * vel
+ticks = n"[c4!7]" |> poly(@, ticker, 2)
+accents = n"[c4 ~ ~ c4 ~ c4 ~]" |> poly(@, ticker, 2)
+watch = (ticks * 0.5 + accents) |> bp(@, 3400, 1.2)
+
+pulse = (a |> poly(@, seq, 8, release: 0.6)) * 0.16
+echoes = pulse |> pingpong(@, 0.6, 0.45, 1.0, dry: 1.0, wet: 0.4)
+high = (song |> legato(@, lead, release: 1.2)) * 0.035
+// a thin glass air, 3 whole swells per loop
+air = (sine(698.46) + sine(1046.5)) * 0.002 * (0.65 + 0.35 * sine(0.0446428571))
+
+space = (echoes + high) |> dattorro(@, 0.6, 40, 0.75, 0.625, dry: 0.85, wet: 0.3, damping: 0.25) |> hp(@, 90)
+out(space + watch * 0.022 + air)

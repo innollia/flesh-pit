@@ -1,0 +1,30 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_pause -- Esc is closing your eyes, the one rest in the game: red light through the lids
+// and something to read. A warm string pad with no attack anywhere (every other track has notes
+// that start; this one asks for no attention), chords melting into each other ten seconds apart,
+// swelling and sinking like breath, one viola far off giving the song's rising third twice.
+// Everything sits in the warm mids: low notes and sub read as dread, whatever the key.
+// Ab lydian. 6 bpm: a cycle is ten seconds, the loop is 8 cycles (80 s).
+bpm = 6
+
+pad = ({freq, gate, vel}) -> {
+    // the stereo difference is made here, at the source, before any filter
+    s = stereo(saw(freq * 0.9971), saw(freq * 1.0029))
+    (s |> lp(@, 1100)) * adsr(gate, 3.0, 0.1, 1.0, 3.6) * vel
+}
+viola = ({freq, gate, vel}) -> {
+    v = tri(freq * (1 + 0.0016 * sine(4.7)))
+    (v |> lp(@, 900)) * adsr(gate, 1.5, 0.1, 1.0, 2.4) * vel
+}
+
+chords = n"[ab3,c4,eb4,g4,c5] [bb3,d4,f4,a4,c5] [f3,ab3,c4,eb4,g4] [db4,f4,ab4,c5] [ab3,c4,eb4,g4,bb4] [bb3,d4,f4,bb4] [eb3,g3,bb3,eb4,g4] [eb3,ab3,eb4,g4,bb4]"
+high = n"[~ c5] [eb5 ~] ~ ~ ~ [~ c5] [eb5 ~] ~"
+
+// breath: whole cycles per loop (8 in 80 s)
+breath = 0.62 + 0.38 * sine(0.1)
+strings = (chords |> poly(@, pad, 16, release: 4.0)) * 0.05 * breath
+line = (high |> poly(@, viola, 3, release: 3.0)) * 0.05
+
+// no heartbeat here: the lids show it (fp_pause_lids.gdshader), and even a very faint one under
+// this pad took the CLAP ear from gentle (scary 0.25) to scary (0.53)
+out((strings + line) |> freeverb(@, 0.82, 0.8, 0.28, 0.7, 0.7, 0.6) |> hp(@, 45))

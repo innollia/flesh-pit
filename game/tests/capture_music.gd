@@ -26,13 +26,25 @@ func seg(name: String) -> void:
 func _run() -> void:
 	await frames(5)
 	m.finish_opening()
-	# the restroom: settles, then the porcelain comes in under the room's hum
+	# the restroom: no music, only its bed
 	seg("restroom")
-	await frames(1500)
+	await frames(450)
 	seg("vent_trade")
 	m.vent.is_open = true
 	await frames(600)
 	m.vent.is_open = false
+	await frames(120)
+	# the two modal screens in the room
+	m.open_mirror()
+	seg("mirror")
+	await frames(600)
+	m.mirror.close()
+	await frames(120)
+	m.start_settlement()
+	seg("settle")
+	await frames(450)
+	m.leave_settlement()
+	await frames(120)
 	m.open_keybind_menu()
 	seg("keybind")
 	await frames(540)

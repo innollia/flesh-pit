@@ -1,0 +1,36 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_vent -- the vent trade, heard down a sheet-metal duct: teeth tapped on a lip like someone
+// counting, a dull plucked string walking in B minor, and someone in there whistling the song
+// through their teeth, half a beat late, every other time. No music box and no organ any more:
+// those made it the start screen at another speed. The song's 3-5-6-5-3-2-1 is D F# G F# D C# B.
+// 120 bpm; a cycle is one 0.5 s unit, the loop is 128 units (64 s).
+bpm = 120
+
+tooth = ({gate, vel}) -> {
+    (noise(0, 0, 701) * ar(gate, 0.0005, 0.004) + sine(2900) * 0.5 * ar(gate, 0.0005, 0.007)) * vel
+}
+string = ({freq, gate}) -> {
+    (saw(freq) |> lp(@, 180 + 900 * ar(gate, 0.001, 0.09), 0.8)) * ar(gate, 0.002, 0.6)
+}
+whistle = ({freq, gate}) -> {
+    env = adsr(gate, 0.06, 0.05, 0.85, 0.12)
+    tone = sine(freq * (1 + 0.006 * sine(5.6)))
+    breath = noise(0, 0, 809) |> bp(@, freq, 5.0)
+    (tone * 0.8 + breath * 1.1) * env
+}
+
+// a tooth a unit, some missed; the rest of the count is quieter
+strong = n"[c4 ~ ~ ~ c4 ~ ~ ~ c4 ~ ~ ~ ~ ~ ~ ~]/8"
+weak = n"[~ c4 c4 c4 ~ c4 c4 ~ ~ c4 c4 c4 ~ ~ c4 c4 ~ c4 ~ c4 ~ c4 c4 c4 ~ c4 c4 c4 ~ c4 ~ c4]/16"
+// a walking bass, a note every other unit, on Bm G Bm F# | G Bm C#dim F#
+walk = n"[b1 d2 f#2 d2 g1 b1 d2 b1 b1 d2 f#2 d2 f#1 a#1 c#2 a#1 g1 b1 d2 b1 b1 d2 f#2 d2 c#2 e2 g2 e2 f#1 a#1 c#2 f#1]/64"
+song = n"[~@32 [d5@2 f#5@2 g5@3 f#5 d5@2 c#5@2 b4@4 c#5@2 d5@2 f#5@3 g5 f#5@2 d5@2 c#5@2 ~@2]@32 ~@32 [d5@2 f#5@2 g5@3 f#5 d5@2 c#5@2 b4@4 c#5@2 d5@2 f#5@3 g5 f#5@2 d5@2 c#5@2 ~@2]@32]/128"
+
+clicks = ((strong |> poly(@, tooth, 2)) + (weak |> poly(@, tooth, 2)) * 0.35) |> hp(@, 900)
+low = (walk |> poly(@, string, 3, release: 0.7)) * 0.5
+// half a beat late: the delay's wet path alone
+lips = (song |> legato(@, whistle, release: 0.2)) * 0.04 |> delay(@, 0.25, 0.0, 0.0, 1.0)
+
+// the duct: a short comb, then a small hard room
+duct = (clicks * 0.22 + low + lips) |> delay(@, 0.0053, 0.45, 1.0, 0.5)
+out(duct |> freeverb(@, 0.34, 0.6, 0.28, 0.7, 0.85, 0.3) |> hp(@, 40))
