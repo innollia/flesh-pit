@@ -87,13 +87,15 @@ static func is_lever_aimed(main: Node3D, camera: Camera3D = null) -> bool:
 # "조작 우선순위"). Modal states (opening, seated, settling, Tab, canary
 # pull, menus) own every input before this runs (main._process). A press of
 # one source does exactly one thing, the first that applies:
-#   1. a held tank lid: F or either hand button puts it down
+#   1. a held tank lid: F or the right hand holding it puts it down
 #   2. the aimed belt hook (looking down): that hand swaps with it; F does not
 #   3. the aimed fixture or object, nearest the crosshair (interact_target):
-#      F or either hand acts on it, whatever that hand holds; the hand that
-#      pressed reaches for it (left click the left hand, right click and F
-#      the right). Only one target action per frame, whichever source comes
-#      first; the later press of that frame still keeps its hand off digging.
+#      F or either hand acts on it; the hand that pressed reaches for it
+#      (left click the left hand, right click and F the right). Two things
+#      are not the left hand's: the lid (it goes to the right hand) and
+#      anything while it grips the blender (right_hand_only). Only one
+#      target action per frame, whichever source comes first; the later
+#      press of that frame still keeps its hand off digging.
 #   4. the item in that hand: spray, blender, feed, barrier
 #   5. otherwise a bare, knife or saw hand digs while held; F settles when
 #      standing by the toilet with something to give.
@@ -121,18 +123,23 @@ static func source_hand(source: String) -> int:
 static func acts_on(target: String) -> bool:
 	return target != "" and target != "belt"
 
+## The left button leaves this target to the right hand: the lid is held in
+## the right hand, and a left hand on the blender stays on it.
+static func right_hand_only(main: Node3D, target: String) -> bool:
+	return target == "tank_lid" or main.progression.hands.item(FDKToolKit.Hand.LEFT) == "blender"
+
 ## What a fresh press of `source` would do now, without doing it:
 ## "lid_down", "belt", "target:<name>", "item:<id>", "dig", "settle" or "none".
 static func plan(main: Node3D, source: String) -> String:
 	var hand := source_hand(source)
 	if main.tank_lid != null and main.tank_lid.held:
-		return "lid_down"
+		return "none" if source == SOURCE_LEFT else "lid_down"
 	if main.belt_swap != null and main.belt_swap.busy():
 		return "none"
 	if hand >= 0 and main.belt_swap != null and main.belt_swap.aimed_hook() >= 0:
 		return "belt"
 	var target: String = main.interact_target()
-	if acts_on(target):
+	if acts_on(target) and not (source == SOURCE_LEFT and right_hand_only(main, target)):
 		return "target:" + target
 	if hand < 0:
 		if main._near_toilet() and main.has_settle_contents():

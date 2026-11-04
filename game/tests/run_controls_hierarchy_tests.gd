@@ -4,10 +4,11 @@ extends SceneTree
 ## normal Main process (2026-11-03 play):
 ## - one place decides a press (FPInteractions.plan/press): lid, belt hook,
 ##   aimed target (F or either hand, one per frame), held item, dig
-## - left click acts on the aimed door, lever, lid like right click, with the
-##   left hand reaching (2026-11-04 decision); with nothing aimed it digs;
-##   a left hand holding a load (blender, big saw, flesh pile) still acts but
-##   does not let go of it to reach
+## - left click is the left hand, right click the right: left click acts on
+##   the aimed door and lever with the left hand reaching (2026-11-04
+##   decision); with nothing aimed it digs; the lid is the right hand's; a
+##   left hand on the blender uses it and leaves the door to the right hand;
+##   both hands on a load (big saw, flesh pile) still act, without reaching
 ## - the canary hole in front of the sink takes F and the right button
 ## - right click at the tank leaves no bent hand: the held-teeth cup gives
 ##   way while the hands work flesh and comes back when they rest
@@ -314,17 +315,15 @@ func run() -> void:
 	check(m.tank_lid.held, "right click lifts the aimed lid")
 	face(m.player._yaw + 1.2, -0.4)
 	await frames(4)
-	check(FPInteractions.plan(m, "left") == "lid_down", "the left hand button also puts the held lid down")
+	check(FPInteractions.plan(m, "left") == "none", "the left hand does not put down the lid the right hand holds")
+	await tap_mouse(MOUSE_BUTTON_LEFT)
+	check(m.tank_lid.held, "left click leaves the held lid in the right hand")
 	await tap_mouse(MOUSE_BUTTON_RIGHT)
 	check(not m.tank_lid.held and not m.tank_lid.on_tank, "right click puts the held lid down")
 	await fresh_game(Vector3(-1.25, 0.9, 0.72))
 	await aim(m.tank_lid.lid.global_position)
 	await tap_mouse(MOUSE_BUTTON_LEFT)
-	check(m.tank_lid.held, "left click lifts the aimed lid (into the right hand, as always) (%s, %s)" % [m.interact_target(), FPInteractions.plan(m, "left")])
-	face(m.player._yaw + 1.2, -0.4)
-	await frames(4)
-	await tap_mouse(MOUSE_BUTTON_LEFT)
-	check(not m.tank_lid.held, "left click puts the held lid down")
+	check(not m.tank_lid.held, "left click does not lift the lid, the right hand does (%s, %s)" % [m.interact_target(), FPInteractions.plan(m, "left")])
 
 	# --- the lever: left click pulls it with the left hand --------------------
 	await fresh_game(Vector3(-1.25, 0.9, 0.72))
@@ -363,17 +362,28 @@ func run() -> void:
 	check(m.hand_motions.kind != "press", "digging is not a press")
 	m.chewer.cell_torn.disconnect(on_tear_l)
 
-	# --- a busy left hand: the door still answers, the hand keeps its load ----
-	for load_kind in ["blender", "big_saw", "pile"]:
+	# --- the blender in the left hand: left click uses it, right click opens --
+	await fresh_game(Vector3(0, 0.9, 0.8))
+	m.progression.grant_item("blender")
+	m.equip_hand("blender", FDKToolKit.Hand.LEFT)
+	await frames(40)
+	await aim(door_mid)
+	check(FPInteractions.plan(m, "left") == "item:blender", "the left hand on the blender uses it, not the door (%s)" % FPInteractions.plan(m, "left"))
+	check(FPInteractions.plan(m, "right") == "target:door", "the free right hand takes the door")
+	await tap_mouse(MOUSE_BUTTON_LEFT)
+	check(not m.restroom.is_door_open(), "left click on the blender leaves the door shut")
+	await tap_mouse(MOUSE_BUTTON_RIGHT)
+	check(m.restroom.is_door_open(), "right click opens the door past the blender")
+	check(m.progression.hands.holds("blender"), "the blender stays in the left hand")
+
+	# --- both hands on a load: the door still answers, no hand lets go -------
+	for load_kind in ["big_saw", "pile"]:
 		await fresh_game(Vector3(0, 0.9, 0.8))
 		if load_kind == "pile":
 			m.carried_flesh = 12.0
 		else:
 			m.progression.grant_item(load_kind)
-			if load_kind == "blender":
-				m.equip_hand("blender", FDKToolKit.Hand.LEFT)
-			else:
-				m.equip_tool("big_saw")
+			m.equip_tool("big_saw")
 		await frames(40)
 		check(m.progression.hands.holds(load_kind) if load_kind != "pile" else m.hands_rig.is_carrying(), "%s is in hand" % load_kind)
 		await aim(door_mid)
