@@ -78,6 +78,8 @@ const RATTLE_GAP := Vector2(0.22, 0.45)
 var _rattle_left := 0.0
 var _rattle_next := 0.0
 var _rng := RandomNumberGenerator.new()
+## The water in the restroom's pipes: one-shots at long gaps (audio/fp_pipe_water.gd).
+var _pipe_water: Node
 
 func _ready() -> void:
 	main = get_parent()
@@ -89,6 +91,10 @@ func _ready() -> void:
 	var music: Node = preload("res://audio/fp_music.gd").new()
 	music.name = "Music"
 	add_child(music)
+	_pipe_water = preload("res://audio/fp_pipe_water.gd").new()
+	_pipe_water.name = "PipeWater"
+	_pipe_water.set("director", director)
+	add_child(_pipe_water)
 	call_deferred("_wire")
 
 func _wire() -> void:
@@ -295,6 +301,7 @@ func _process_inner(_delta: float) -> void:
 		want = "ending"
 	if want != director.current_bed:
 		director.set_bed(want, 2.0)
+	_pipe_water.call("step", _delta, director.current_bed == "restroom")
 	# mutation stage from how much of the body has changed (0..1, as the hands)
 	var prog = main.get("progression")
 	if prog != null and prog.has_method("mutation_amount"):

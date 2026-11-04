@@ -1,6 +1,17 @@
 // flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
-// id: amb_heart_b -- deeper: slower and heavier heart, 0.625 Hz (5 beats per 8 s). Mono sub.
-hb = trigger(0.625)
-lub = sine(54) * ar(hb, 0.05, 0.36) * 0.4
-dub = lub |> delay(@, 0.36, 0.0, 1.0, 0.6)
-out(dub |> hp(@, 45))
+// id: amb_heart_b -- deeper: slower and heavier heart, 0.625 Hz (5 beats per 8 s), the second beat later and fuller. Mono.
+// Same build as amb_heart_a, lower and longer: bursts at 92 and 160 Hz, a darker contact above.
+BEAT = 0.625
+DUB_AT = 0.38
+tb = phasor(BEAT) / BEAT
+td = clamp(tb - DUB_AT, 0, 10)
+on = gt(tb, DUB_AT)
+lub_env = clamp(tb / 0.055, 0, 1) * clamp(tb / 0.055, 0, 1) * exp(neg(tb) / 0.115)
+dub_env = clamp(td / 0.04, 0, 1) * clamp(td / 0.04, 0, 1) * exp(neg(td) / 0.08) * on
+lub = noise(0, 0, 501) * lub_env |> bp(@, 92, 1.4)
+lub2 = noise(0, 0, 613) * lub_env |> bp(@, 160, 1.4)
+dub = noise(0, 0, 719) * dub_env |> bp(@, 135, 1.5)
+tone = sin(6.2832 * 64 * tb) * lub_env + sin(6.2832 * 82 * td) * dub_env * 0.7
+touch_env = clamp(tb / 0.012, 0, 1) * exp(neg(tb) / 0.03) + clamp(td / 0.01, 0, 1) * exp(neg(td) / 0.022) * on * 0.8
+touch = noise(0, 0, 907) * touch_env |> bp(@, 330, 1.0)
+out((lub * 4.5 + lub2 * 3.2 + dub * 6 + tone * 0.8 + touch * 0.4) * 0.4 |> hp(@, 38) |> lp(@, 1800))

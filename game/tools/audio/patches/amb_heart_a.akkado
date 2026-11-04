@@ -1,6 +1,19 @@
 // flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
-// id: amb_heart_a -- the body's heart, felt more than heard: lub-dub every 1.333 s (0.75 Hz, 6 beats per 8 s). Mono sub.
-hb = trigger(0.75)
-lub = sine(52) * ar(hb, 0.04, 0.28) * 0.35
-dub = lub |> delay(@, 0.3, 0.0, 1.0, 0.55)
-out(dub |> hp(@, 36))
+// id: amb_heart_a -- the body's heart: lub-dub every 1.333 s (0.75 Hz, 6 beats per 8 s). Mono.
+// A heart you hear on a laptop, felt rather than loud. A real heart sound is a soft burst of band-limited rumble, not a tone:
+// filtered noise at 110 and 190 Hz with a slow squared attack and a low tone under it, a faint contact above. (A gliding sine
+// sits in the audible band too but reads as a kick drum; a sine under 60 Hz does not reach speakers at all.)
+BEAT = 0.75
+DUB_AT = 0.3
+tb = phasor(BEAT) / BEAT
+td = clamp(tb - DUB_AT, 0, 10)
+on = gt(tb, DUB_AT)
+lub_env = clamp(tb / 0.045, 0, 1) * clamp(tb / 0.045, 0, 1) * exp(neg(tb) / 0.09)
+dub_env = clamp(td / 0.03, 0, 1) * clamp(td / 0.03, 0, 1) * exp(neg(td) / 0.06) * on
+lub = noise(0, 0, 501) * lub_env |> bp(@, 110, 1.4)
+lub2 = noise(0, 0, 613) * lub_env |> bp(@, 190, 1.4)
+dub = noise(0, 0, 719) * dub_env |> bp(@, 165, 1.5)
+tone = sin(6.2832 * 74 * tb) * lub_env + sin(6.2832 * 98 * td) * dub_env * 0.7
+touch_env = clamp(tb / 0.012, 0, 1) * exp(neg(tb) / 0.03) + clamp(td / 0.01, 0, 1) * exp(neg(td) / 0.022) * on * 0.8
+touch = noise(0, 0, 907) * touch_env |> bp(@, 420, 1.0)
+out((lub * 4 + lub2 * 3.2 + dub * 5.5 + tone * 0.8 + touch * 0.5) * 0.4 |> hp(@, 38) |> lp(@, 1800))

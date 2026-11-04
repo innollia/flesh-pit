@@ -18,6 +18,15 @@
 
 검사: `run_controls_hierarchy_tests.gd`(실제 입력). 변경 전 새 항목 실패, 변경 후 통과. 화면: 노트 폴더 `orchestra/wire/lmb-targets/`(`tests/capture_left_click_targets.gd`).
 
+## 2026-11-04 심장이 들리게, 화장실 물소리는 간헐적으로 (브랜치 audio-heart-water)
+
+사용자 청취: amb_heart_b가 아예 안 들림, 화장실 물소리는 간헐적이어야 함.
+- 심장 `amb_heart_a/b`: 패치(`game/tools/audio/patches`)를 다시 짰다. 52~54Hz 사인이 전부라 스피커에 닿지 않던 것을, 90~190Hz 대역 잡음 뭉치(느린 어택)와 낮은 음, 위쪽의 희미한 닿는 소리로. 미끄러지는 사인은 CLAP가 드럼 0.99로 들어 버렸다. a는 0.75Hz, b는 0.625Hz에 둘째 박이 늦고 무겁다. LUFS -33/-31 → -26/-23.
+- 물소리: 40초 반복 `amb_restroom_pipes`를 베드와 manifest에서 빼고 단발 4종(각 4변주)으로 바꿨다. `audio/fp_pipe_water.gd`(hookup 자식, 자기 난수, 상태만 받음)가 화장실 베드일 때만 45~150초 간격, 첫 번은 25~70초 뒤에 튼다. 재생 중 나가면 베드 페이드를 따라간다.
+- `amb_restroom`: 사용자가 들은 8초 주기 물은 패치의 cistern trickle 층(`sine(0.125)` 진폭, 3 kHz 위 약 20 dB 스윙)이었다. 고른 낮은 공기 소리로 폈다. 나머지 층은 그대로다. 측정된 5 dB 스웰은 60/60.125Hz 좌우 맥놀이가 모노 합에서 보이는 것으로 채널별로는 평탄해 손대지 않았다.
+- `tools/render_loop_patches.py`: manifest를 건드리지 않고 지정한 반복음만 build_audio와 같은 체인으로 렌더링. 전체 재빌드에도 같은 결과가 나온다.
+- 검사: `run_audio_tests.gd` 변경 전 289/14 실패, 변경 후 370/0, `run_music_tests.gd` 31/0. 근거: 노트 폴더 `orchestra/wire/heart-water/`(`tests/capture_heart_water.gd`).
+
 ## 2026-11-04 화장실 음악 보류, 환풍기·배관 배경 (브랜치 restroom-amb)
 
 사용자 결정: 화장실곡은 보류하고 환풍기와 파이프 물소리만.

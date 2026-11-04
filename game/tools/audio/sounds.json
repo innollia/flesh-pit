@@ -578,7 +578,7 @@
    "kind": "loop",
    "loop_seconds": 8.0,
    "fade_seconds": 1.0,
-   "target_lufs": -33,
+   "target_lufs": -26,
    "rotate_seconds": 1.1
   },
   {
@@ -586,7 +586,7 @@
    "kind": "loop",
    "loop_seconds": 8.0,
    "fade_seconds": 1.0,
-   "target_lufs": -31,
+   "target_lufs": -23,
    "rotate_seconds": 1.35
   },
   {

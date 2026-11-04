@@ -3,7 +3,7 @@ extends SceneTree
 ## Background music (audio/fp_music.gd, tools/build_music.py). Each place
 ## starts its own track on the Music bus, and nothing plays in the flesh
 ## (docs/spec/08-presentation.md 3). The restroom's music is on hold: there
-## only its bed plays (hum, exhaust fan, pipes), and that leaves with the room. Real main scene, isolated save.
+## only its bed plays (hum, exhaust fan), and that leaves with the room. Real main scene, isolated save.
 ##   godot_console --headless --path game --script res://tests/run_music_tests.gd
 
 const SAVE := "user://music-test.bin"
@@ -41,8 +41,9 @@ func run_for(sec: float) -> void:
 	await process_frame
 
 ## The restroom bed (manifest "beds"): the owner's hum plus the exhaust fan
-## and the water in the pipes (tools/build_restroom_amb.py).
-const BED_LAYERS := ["amb_restroom", "amb_restroom_fan", "amb_restroom_pipes"]
+## (tools/build_restroom_amb.py); the water in the pipes is one-shots at long
+## gaps over it (audio/fp_pipe_water.gd, run_audio_tests.gd).
+const BED_LAYERS := ["amb_restroom", "amb_restroom_fan"]
 
 func bed_on_music_bus(d: FDKAudioDirector, layer: String) -> bool:
 	var p := d.get_node_or_null("Bed_" + layer) as AudioStreamPlayer
@@ -72,7 +73,7 @@ func _run() -> void:
 	m.finish_opening()
 	await frames(2)
 	# restroom: its music is on hold (2026-11-04); only the room's ambience
-	# plays, the light's hum with the exhaust fan and the water in the pipes
+	# plays, the light's hum with the exhaust fan
 	await run_for(3.0)
 	_ok(music.call("audible").is_empty(), "not yet 3 s after the opening")
 	await run_for(12.5)
@@ -100,7 +101,7 @@ func _run() -> void:
 	await frames(2)
 	await run_for(OUT_S)
 	_ok(music.get("place") == "" and music.call("audible").is_empty(), "in the flesh no music plays (%s)" % str(music.call("audible")))
-	# the fan and the pipes leave with the room's hum, on the same 2 s fade
+	# the fan leaves with the room's hum, on the same 2 s fade
 	await frames(1)
 	_ok(d.current_bed != "restroom", "outside, the bed is the body's (%s)" % d.current_bed)
 	var lv := {}
@@ -111,7 +112,7 @@ func _run() -> void:
 	for layer in BED_LAYERS:
 		mid[layer] = d.bed_layer_db(layer)
 	_ok(mid["amb_restroom"] < -1.0 and mid["amb_restroom"] > -60.0, "the room's hum is mid-fade (%.1f dB)" % mid["amb_restroom"])
-	for layer in ["amb_restroom_fan", "amb_restroom_pipes"]:
+	for layer in ["amb_restroom_fan"]:
 		_ok(absf(mid[layer] - mid["amb_restroom"]) < 0.01, "%s fades with the room's hum (%.1f dB vs %.1f dB)" % [layer, mid[layer], mid["amb_restroom"]])
 	d.advance(1.5)
 	for layer in BED_LAYERS:

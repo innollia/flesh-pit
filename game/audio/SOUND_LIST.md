@@ -29,15 +29,15 @@
 | canary_chirp | sfx 3D | 카나리아 평소 | 짧고 밝은 두 번 짹 |
 | canary_warn | sfx 3D | 카나리아 경고 | 너무 빠르고 많은 짹, 점점 높아짐. 크지 않게 |
 | canary_wrong | sfx 3D | 카나리아가 이상할 때 | 늘어지고 처지는, 어긋난 음정 두 겹, 밑에 가르륵 |
-| amb_restroom | loop 배경 | 화장실 안 | 형광등 60Hz 윙·지직, 환풍기, 물 새는 소리 |
+| amb_restroom | loop 배경 | 화장실 안 | 형광등 60Hz 윙·지직, 환풍기, 고른 공기 쉭 소리(8초마다 차오르던 물줄기 층을 2026-11-04에 고르게 폈다) |
 | amb_restroom_fan | loop 배경 16 s | 화장실 안(restroom 배경 층) | 낡은 욕실 환풍기: 덕트를 지나는 고른 바람, 날개 다섯 장의 낮은 웅(112.5Hz), 가끔 헐거운 날개창이 한 바퀴마다 달각, 오래가지 않음 |
-| amb_restroom_pipes | loop 배경 40 s | 화장실 안(restroom 배경 층) | 벽 속 배관의 물: 대부분 조용하다가 똑 한 번, 물이 한동안 졸졸 흐르고, 끝에 배관이 공기를 빨며 꾸르륵. 짧은 두 번째 흐름과 먼 꾸르륵. 타일 너머라 둔함 |
-| amb_body_a + amb_heart_a | loop 배경 | 얕은 껍질(0~1) | 낮은 압력 드론 + 느린 심장(0.75Hz 쿵-쿵) |
-| amb_body_b + amb_heart_b | loop 배경 | 깊은 껍질(2~) | 더 낮고 빽빽한 드론 + 더 느리고 무거운 심장 |
+| pipe_trickle / pipe_run / pipe_glug / pipe_tick | sfx 4종 각 4변주 | 화장실 안, 끝난 뒤 45~150초 조용하다가 하나씩(들어온 뒤 첫 번은 25~70초, `audio/fp_pipe_water.gd`) | 벽 속 배관의 물: 짧은 졸졸 / 한동안 흐르고 끝에 공기 빨리는 꾸르륵 / 꾸르륵만 / 금속 똑. 방을 나가면 배경과 같이 사라진다 |
+| amb_body_a + amb_heart_a | loop 배경 | 얕은 껍질(0~1) | 낮은 압력 드론 + 느린 심장(0.75Hz 쿵-쿵, 70~250Hz의 부드러운 잡음 뭉치와 희미한 닿는 소리, 노트북 스피커에서도 들림) |
+| amb_body_b + amb_heart_b | loop 배경 | 깊은 껍질(2~) | 더 낮고 빽빽한 드론 + 더 느리고 무거운 심장(0.625Hz, 둘째 박이 늦고 차다) |
 | shell_transition | sfx | 더 깊은 껍질로 넘어갈 때 | 몸 전체가 뒤틀리는 낮아지는 신음, 압력 |
 | depth_marker | sfx | 새 깊이 도달 | 멀리서 낮게 부풀어 오름. 급격한 시작 없음 |
 
-화장실 배경(restroom)은 amb_restroom + amb_restroom_fan + amb_restroom_pipes 세 층이다(2026-11-04, `tools/build_restroom_amb.py`). 주인이 고정한 amb_restroom은 그대로 두고 환풍기·배관 층을 더했으며, 세 층이 같이 커지고 같이 사라진다. 환풍기 -38, 배관 -40 LUFS로 형광등(-34) 아래, 문·물 내림·환풍구 소리보다 16 dB 이상 작다.
+화장실 배경(restroom)은 amb_restroom + amb_restroom_fan 두 층이고, 배관 물소리는 그 위에 띄엄띄엄 재생되는 단발이다(2026-11-04, `tools/build_restroom_amb.py`, `audio/fp_pipe_water.gd`). 층은 같이 커지고 줄며, 물소리는 재생 중이던 것도 배경 음량을 따라 사라진다.
 
 배경 전환: 화장실 ↔ 몸은 2초, 얕은↔깊은 몸은 3초 크로스페이드. 모든 배경 층은 계속 돌고 음량만 바뀐다(루프가 다시 시작되지 않음).
 

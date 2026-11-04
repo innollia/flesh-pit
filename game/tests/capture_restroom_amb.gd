@@ -1,8 +1,8 @@
 extends SceneTree
 
 ## The restroom as the game really mixes it (2026-11-04: its music on hold,
-## the bed is the light's hum, the exhaust fan and the water in the pipes,
-## tools/build_restroom_amb.py). The movie writer records the engine's own
+## the bed is the light's hum and the exhaust fan, tools/build_restroom_amb.py;
+## the water in the pipes comes at long gaps, audio/fp_pipe_water.gd). The movie writer records the engine's own
 ## audio. Isolated save. Prints "SEG <name> <start frame>" for each part.
 ##   godot_console --path game --resolution 480x270 --write-movie <dir>/restroom.avi --fixed-fps 30 --script res://tests/capture_restroom_amb.gd
 
@@ -27,7 +27,7 @@ func seg(name: String) -> void:
 func _run() -> void:
 	await frames(5)
 	m.finish_opening()
-	# a whole pipes loop (40 s) and more: where the music used to come in
+	# 50 s: where the music used to come in
 	# (6 s after the glare) nothing but the room is heard
 	seg("restroom")
 	await frames(1500)
@@ -46,7 +46,7 @@ func _run() -> void:
 	m.vent.is_open = false
 	seg("restroom_after_vent")
 	await frames(300)
-	# out in the flesh: held still; the fan and the pipes leave with the hum
+	# out in the flesh: held still; the fan leaves with the hum
 	m.set_process(false)
 	m.set_physics_process(false)
 	m.player.set_physics_process(false)

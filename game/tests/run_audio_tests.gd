@@ -19,6 +19,9 @@ func _initialize() -> void:
 	_test_bed_transition()
 	_test_chew_speed()
 	_test_signals_and_steps()
+	_test_heart_and_hum_loops()
+	_test_restroom_water_assets()
+	_test_pipe_water_gaps()
 	# integration: the real main scene; main.gd adds the hookup itself (the
 	# one line in audio/HOOKUP.md), so use that node, never a second one
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
@@ -227,6 +230,16 @@ func _layer_steps(delta: float) -> bool:
 			_step_wait = 0.8
 		9:
 			_ok(_rattle_count() == _rattle_from, "1-7 no clink after the tank is still")
+			_water_in_room_start()
+			_step_wait = 2.3
+		10:
+			_water_leaving_start()
+			_step_wait = 1.0
+		11:
+			_water_leaving_mid()
+			_step_wait = 2.5
+		12:
+			_water_left()
 			return _finish()
 	_layer_step += 1
 	_layer_t = 0.0
@@ -240,6 +253,59 @@ const RATTLE_GAP_MAX := 0.45
 
 func _rattle_count() -> int:
 	return (_hook.get("played_events") as Array).count("tank_rattle")
+
+## Restroom water in the real main: armed only in the room, played by the
+## hookup's own node, and an event under way fades with the bed.
+func _pipe_water() -> Node:
+	return _hook.get_node_or_null("PipeWater")
+
+func _water_in_room_start() -> void:
+	var w := _pipe_water()
+	_ok(w != null, "the hookup plays the restroom water")
+	if w == null:
+		return
+	# the player was moved out by the layer steps; back in the room the bed
+	# returns, the water timer rearms and never fires straight away
+	var d: FDKAudioDirector = _hook.get("director")
+	_main.ending.active = false
+	_main.player.global_position = _main.RESTROOM_CENTER
+	_hook.call("_process_inner", 0.016)
+	_ok(d.current_bed == "restroom", "back in the room for the water check (%s)" % d.current_bed)
+	_ok(bool(w.call("is_armed")) and float(w.call("seconds_to_next")) >= 20.0, "entering the room arms the water, not right away (%.1f s)" % float(w.call("seconds_to_next")))
+
+func _water_leaving_start() -> void:
+	var w := _pipe_water()
+	if w == null:
+		return
+	var d: FDKAudioDirector = _hook.get("director")
+	_ok(d.bed_layer_db("amb_restroom") > -1.0, "the room's bed is back up (%.1f dB)" % d.bed_layer_db("amb_restroom"))
+	w.call("play_take", "pipe_run")
+	_water_voice = w.call("voice")
+	_ok(_water_voice is AudioStreamPlayer and _water_voice.is_inside_tree(), "a water take plays on its own voice")
+	_ok(_water_voice != null and String(_water_voice.name).begins_with("Bed_"), "the water follows the same volume slider as its bed")
+	_main.player.global_position = _main.RESTROOM_CENTER + Vector3(0, 0, -6.0)
+
+func _water_leaving_mid() -> void:
+	var w := _pipe_water()
+	if w == null:
+		return
+	var d: FDKAudioDirector = _hook.get("director")
+	var bed := d.bed_layer_db("amb_restroom")
+	_ok(d.current_bed != "restroom" and bed < -1.0 and bed > -60.0, "the bed is mid-fade (%s %.1f dB)" % [d.current_bed, bed])
+	_ok(absf((_water_voice as AudioStreamPlayer).volume_db - bed) < 1.5, "the water fades with the bed (%.1f dB vs %.1f dB)" % [(_water_voice as AudioStreamPlayer).volume_db, bed])
+	_ok(not bool(w.call("is_armed")), "out in the flesh the water is not armed")
+
+func _water_left() -> void:
+	var w := _pipe_water()
+	if w == null:
+		return
+	_ok(w.call("voice") == null, "the water take stopped with the bed gone")
+	var heard: int = (w.get("played") as Array).size()
+	for k in range(600):
+		w.call("step", 1.0, false)
+	_ok((w.get("played") as Array).size() == heard, "no water in the flesh in ten minutes")
+
+var _water_voice: Object
 
 func _ok(cond: bool, msg: String) -> void:
 	if cond:
@@ -371,3 +437,170 @@ func _test_signals_and_steps() -> void:
 	_ok(d.last_played == "step_tile_s3", "footstep uses surface + mutation stage")
 	d.free()
 	chewer.free()
+
+## Reader for the builders' plain 16-bit wavs: left channel, -1..1.
+func _wav_left(path: String) -> PackedFloat32Array:
+	var b := FileAccess.get_file_as_bytes(path)
+	var at := 12
+	while at + 8 < b.size():
+		var size := b.decode_u32(at + 4)
+		if b.slice(at, at + 4).get_string_from_ascii() == "data":
+			var ch := b.decode_u16(22)
+			var out := PackedFloat32Array()
+			out.resize(size / (2 * ch))
+			for i in range(out.size()):
+				out[i] = b.decode_s16(at + 8 + i * 2 * ch) / 32768.0
+			return out
+		at += 8 + size + (size & 1)
+	return PackedFloat32Array()
+
+## Butterworth high-pass, two poles.
+func _highpass(x: PackedFloat32Array, hz: float) -> PackedFloat32Array:
+	var w := TAU * hz / 48000.0
+	var a := sin(w) / sqrt(2.0)
+	var c := cos(w)
+	var a0 := 1.0 + a
+	var b0 := (1.0 + c) * 0.5 / a0
+	var b1 := -(1.0 + c) / a0
+	var a1 := -2.0 * c / a0
+	var a2 := (1.0 - a) / a0
+	var y := PackedFloat32Array()
+	y.resize(x.size())
+	var x1 := 0.0
+	var x2 := 0.0
+	var y1 := 0.0
+	var y2 := 0.0
+	for i in range(x.size()):
+		var v := b0 * x[i] + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2
+		x2 = x1
+		x1 = x[i]
+		y2 = y1
+		y1 = v
+		y[i] = v
+	return y
+
+func _power(x: PackedFloat32Array, from: int = 0, to: int = -1) -> float:
+	var end := x.size() if to < 0 else to
+	var sum := 0.0
+	for i in range(from, end):
+		sum += x[i] * x[i]
+	return sum / maxf(float(end - from), 1.0)
+
+func _db(p: float) -> float:
+	return 10.0 * log(maxf(p, 1e-14)) / log(10.0)
+
+## Short-time levels (dB), one per window.
+func _levels(x: PackedFloat32Array, window: int) -> Array[float]:
+	var out: Array[float] = []
+	var at := 0
+	while at + window <= x.size():
+		out.append(_db(_power(x, at, at + window)))
+		at += window
+	return out
+
+## Lubs per loop: the level rises through (peak - 12 dB), the dub falls
+## inside the hold-off.
+func _beats(x: PackedFloat32Array) -> int:
+	var lv := _levels(x, 960)
+	var top: float = lv.max()
+	var n := 0
+	var hold := 0
+	for i in range(lv.size()):
+		hold -= 1
+		if lv[i] > top - 12.0 and hold <= 0:
+			n += 1
+			hold = 50
+	return n
+
+func _test_heart_and_hum_loops() -> void:
+	# owner, listening: amb_heart_b could not be heard at all. The beat must
+	# live where speakers reach, not under 60 Hz.
+	var want := {"amb_heart_a": 6, "amb_heart_b": 5}
+	for id in want.keys():
+		var x := _wav_left("res://audio/loops/%s.wav" % id)
+		var hi := _highpass(x, 70.0)
+		var share := _power(hi) / maxf(_power(x), 1e-14)
+		_ok(share > 0.6, "%s lives above 70 Hz (%.0f%% of its energy)" % [id, share * 100.0])
+		_ok(_db(_power(hi)) > -36.0, "%s is up in the audible band (%.1f dB above 70 Hz)" % [id, _db(_power(hi))])
+		var low: float = _levels(_highpass(x, 170.0), 2400).max()
+		_ok(low > -34.0, "%s reaches a laptop speaker (beat %.1f dB above 170 Hz)" % [id, low])
+		_ok(_beats(x) == want[id], "%s keeps its own pace (%d beats per 8 s)" % [id, _beats(x)])
+	# the room's hum must not surge: the old 8 s trickle swing read as water
+	var room := _wav_left("res://audio/loops/amb_restroom.wav")
+	var hiss := _levels(_highpass(_highpass(room, 3500.0), 3500.0), 24000)
+	_ok(hiss.max() - hiss.min() < 2.0, "amb_restroom's top no longer swells on the loop (%.1f dB swing)" % (hiss.max() - hiss.min()))
+	var all := _levels(room, 24000)
+	_ok(all.max() - all.min() < 1.0, "amb_restroom's body stays level (%.1f dB swing)" % (all.max() - all.min()))
+
+const PIPE_TAKES := ["pipe_trickle", "pipe_run", "pipe_glug", "pipe_tick"]
+
+func _test_restroom_water_assets() -> void:
+	var bank := FDKSoundBank.from_file(MANIFEST)
+	_ok(not (bank.beds["restroom"] as Array).has("amb_restroom_pipes"), "the restroom bed no longer holds the water loop")
+	_ok((bank.beds["restroom"] as Array).has("amb_restroom") and (bank.beds["restroom"] as Array).has("amb_restroom_fan"), "the hum and the fan stay in the bed")
+	for id in PIPE_TAKES:
+		_ok(bank.has(id) and not bank.is_loop(id), "%s is a one-shot water take" % id)
+		for bed in bank.beds.keys():
+			_ok(not (bank.beds[bed] as Array).has(id), "%s is not in bed %s" % [id, bed])
+
+## Hours of simulated room time: the gaps are long, random and uneven, the
+## first one is never right at entry, and leaving stops the water.
+func _test_pipe_water_gaps() -> void:
+	if not ResourceLoader.exists("res://audio/fp_pipe_water.gd"):
+		_ok(false, "audio/fp_pipe_water.gd plays the restroom water")
+		return
+	var d := _director()
+	d.set_bed("restroom", 0.0)
+	var w: Node = load("res://audio/fp_pipe_water.gd").new()
+	w.set("director", d)
+	root.add_child(w)
+	var firsts: Array[float] = []
+	var gaps: Array[float] = []
+	var seen := {}
+	var t := 0.0
+	var repeats := 0
+	var dt := 0.25
+	seed(1)  # the game's own random state must not matter here
+	var game_draw := randi()
+	seed(1)
+	var played: Array = w.get("played")
+	for visit in range(40):
+		var entered := t
+		var last_end := -1.0
+		var stay := 900.0 if visit % 2 == 0 else 12.0
+		while t < entered + stay:
+			t += dt
+			var heard := played.size()
+			w.call("step", dt, true)
+			if played.size() == heard:
+				continue
+			seen[played.back()] = true
+			if played.size() >= 2 and played[played.size() - 1] == played[played.size() - 2]:
+				repeats += 1
+			if last_end < 0.0:
+				firsts.append(t - entered)
+			else:
+				gaps.append(t - last_end)
+			last_end = t + float(w.call("seconds_left"))
+		var before := played.size()
+		for k in range(240):
+			t += dt
+			w.call("step", dt, false)
+		_ok(played.size() == before, "visit %d: no water while out of the room" % visit)
+	_ok(randi() == game_draw, "the water never draws from the game's random numbers")
+	_ok(gaps.size() >= 20, "enough events to judge the gaps (%d)" % gaps.size())
+	var low := 1e9
+	var high := 0.0
+	for g in gaps:
+		low = minf(low, g)
+		high = maxf(high, g)
+	_ok(low >= 44.5 and high <= 150.5, "gaps stay in 45-150 s (%.1f..%.1f)" % [low, high])
+	_ok(high - low > 50.0, "the gaps are uneven, not one cycle (%.1f..%.1f)" % [low, high])
+	var first_low := 1e9
+	for f in firsts:
+		first_low = minf(first_low, f)
+	_ok(not firsts.is_empty() and first_low >= 20.0, "the first water is never right at entry (%.1f s, %d entries)" % [first_low, firsts.size()])
+	_ok(seen.size() == PIPE_TAKES.size(), "all the takes come up (%s)" % str(seen.keys()))
+	_ok(repeats == 0, "never the same take twice in a row (%d)" % repeats)
+	w.free()
+	d.free()

@@ -1,37 +1,43 @@
 # -*- coding: utf-8 -*-
-"""Synthesizes the restroom's two extra ambience layers and adds them to the
-restroom bed (game/audio/loops/<id>.wav, manifest "beds"."restroom").
+"""Synthesizes the restroom's extra ambience: the fan layer of the restroom bed
+(game/audio/loops/amb_restroom_fan.wav, manifest "beds"."restroom") and the
+water in the pipes, one-shots the hookup plays at long random gaps
+(game/audio/sfx/pipe_*_v1..v4.wav, audio/fp_pipe_water.gd).
 
-    python -X utf8 tools/build_restroom_amb.py [amb_restroom_fan|amb_restroom_pipes]
+    python -X utf8 tools/build_restroom_amb.py [amb_restroom_fan] [pipes]
 
   amb_restroom_fan    the old exhaust fan behind the vent grate: a steady
                       airy whoosh through a short duct (its modes ring
                       faintly), the five blades chopping at 112.5 Hz, and a
                       loose louvre that rattles once a turn now and then,
                       never for long. 16 s loop.
-  amb_restroom_pipes  water in the pipes inside the wall, heard through the
-                      tiles: mostly quiet, then a trickle runs for a while,
-                      the pipe swallows air and glugs, a tick as the metal
-                      settles. 40 s loop, so it never sounds like a pattern.
+  pipe_trickle        water in the pipes inside the wall, heard through the
+  pipe_run            tiles, one event each: a short thin trickle; a longer
+  pipe_glug           run that ends with the pipe swallowing air; the pipe
+  pipe_tick           glugging alone; the metal settling with a tick.
+                      Owner, listening 2026-11-04: the water must be
+                      intermittent, so these replaced a 40 s loop whose
+                      cycle came round again and again.
 
 The owner's amb_restroom (fluorescent hum and buzz, pinned in
-game/tools/audio/build_audio.py PS1_PINNED) stays untouched and keeps
-playing; these two are added beside it, so the bed fades in and out of the
-flesh exactly as before (the director fades every layer of a bed together).
+game/tools/audio/build_audio.py PS1_PINNED) keeps playing; the fan is added
+beside it, so the bed fades in and out of the flesh exactly as before (the
+director fades every layer of a bed together; the water follows that fade).
 User decision 2026-11-04: the restroom has no music for now, only the fan and
 the water in the pipes (audio/fp_music.gd RESTROOM_ON_HOLD).
 
-Seamless: every noise is shaped by an FFT filter over the whole loop
+Seamless fan: every noise is shaped by an FFT filter over the whole loop
 (circular convolution, so the wrap is just another sample), every tone has a
 whole number of cycles per loop, every event is placed with wrap-around.
-The PS1 texture is build_audio.py's "light" level (the same as amb_restroom),
-run over three laps so it wraps too.
+The PS1 texture is build_audio.py's "light" level (the same as amb_restroom);
+the loop runs over three laps so it wraps too.
 
 Levels: under the room's own hum (amb_restroom -34 LUFS) so breathing stays
 on top (docs/spec/08-presentation.md 3), and far under the door, flush and
-vent cues (-19..-20 LUFS); the script prints their masking margin against
-the whole bed. Note: game/tools/audio/build_audio.py rewrites manifest.json
-from its own list; run this builder again after it.
+vent cues (-19..-20 LUFS); the script prints the fan's masking margin against
+the whole bed. The water keeps the level the pipes loop had. Note:
+game/tools/audio/build_audio.py rewrites manifest.json from its own list;
+run this builder again after it.
 """
 import json
 import math
@@ -45,18 +51,24 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 AUDIO_TOOLS = os.path.join(HERE, "..", "game", "tools", "audio")
 sys.path.insert(0, AUDIO_TOOLS)
 import analyze_audio as A  # noqa: E402
-from build_audio import ps1_treat  # noqa: E402
+from build_audio import ps1_treat, remove_dc  # noqa: E402
 
 RATE = 48000
 OUT = os.path.join(HERE, "..", "game", "audio", "loops")
 SFX = os.path.join(HERE, "..", "game", "audio", "sfx")
 MANIFEST = os.path.join(HERE, "..", "game", "audio", "manifest.json")
 
-# Integrated loudness (gated, so the pipes' quiet stretches do not count).
-# amb_restroom is -34; the fan sits a few dB under it, the water lower still.
-TARGET_LUFS = {"amb_restroom_fan": -38.0, "amb_restroom_pipes": -39.0}
-LOOP_SEC = {"amb_restroom_fan": 16.0, "amb_restroom_pipes": 40.0}
-BED = ["amb_restroom", "amb_restroom_fan", "amb_restroom_pipes"]
+# Integrated loudness. amb_restroom is -34; the fan sits a few dB under it, the
+# water lower still (the old pipes loop was -39, gated over its running water).
+TARGET_LUFS = {"amb_restroom_fan": -38.0, "pipe_trickle": -39.0, "pipe_run": -39.0,
+               "pipe_glug": -39.0, "pipe_tick": -39.5}
+LOOP_SEC = {"amb_restroom_fan": 16.0}
+BED = ["amb_restroom", "amb_restroom_fan"]
+# Each take: 4 variations (seed, pitch), like every one-shot in the bank.
+VARIATIONS = [(7731, 1.0), (4407, 0.96), (2293, 1.04), (9182, 0.98)]
+PIPE_TAKES = ("pipe_trickle", "pipe_run", "pipe_glug", "pipe_tick")
+# A take whose shared seed read as a frog croaking (CLAP) gets its own seed.
+SEED_FOR = {("pipe_glug", 0): 3307}
 
 
 # --- circular building blocks ---------------------------------------------------
@@ -243,36 +255,47 @@ def gurgle(rng, n, start, length, strength):
     return out
 
 
-def tick(rng, n, at, strength):
+def tick(rng, n, at, strength, pitch=1.0):
     """The metal pipe settling: a short dull ring."""
     m = int(0.09 * RATE)
     tt = np.arange(m) / RATE
-    s = (np.sin(2 * math.pi * 940 * tt) * 0.7 + np.sin(2 * math.pi * 1610 * tt) * 0.4) * np.exp(-tt / 0.018)
+    s = (np.sin(2 * math.pi * 940 * pitch * tt) * 0.7
+         + np.sin(2 * math.pi * 1610 * pitch * tt) * 0.4) * np.exp(-tt / 0.018)
     s += rng.standard_normal(m) * np.exp(-tt / 0.002) * 0.5
     out = np.zeros(n)
     place(out, s * strength, int(at * RATE))
     return out
 
 
-def amb_restroom_pipes():
-    sec = LOOP_SEC["amb_restroom_pipes"]
-    n = int(sec * RATE)
-    rng = np.random.default_rng(7731)
-    w = np.zeros(n)
-    # 0..3 s quiet; a tick, then someone's water runs down for a while
-    w += tick(rng, n, 2.7, 0.35)
-    w += trickle(rng, n, 3.2, 8.5, 1.0)
-    # the last of it drags air down the pipe
-    w += gurgle(rng, n, 11.4, 2.4, 2.2)
-    # quiet; a faint second tick far along the wall
-    w += tick(rng, n, 19.6, 0.18)
-    # a shorter, thinner run, then a small glug
-    w += trickle(rng, n, 24.0, 5.0, 0.85)
-    w += gurgle(rng, n, 29.3, 1.4, 1.5)
-    # a short lone gurgle late, as if from another floor
-    w += gurgle(rng, n, 35.8, 0.7, 0.9)
-    # inside the wall: the tiles take the top off, the pipe rings low
-    w = shape(w, lambda f: bp(90, 2400, 2)(f) * peaks([310.0, 760.0], 6.0, 0.9)(f))
+def pipe_take(name, seed, pitch):
+    """One water event, inside the wall: the tiles take the top off, the pipe
+    rings low. Silence around it, so the tail of the wall dies out in the file."""
+    rng = np.random.default_rng(seed)
+    if name == "pipe_trickle":
+        length = rng.uniform(3.4, 5.2)
+        n = int((length + 1.0) * RATE)
+        w = trickle(rng, n, 0.05, length, 0.85)
+    elif name == "pipe_run":
+        # a tick, someone's water runs down, the last of it drags air
+        length = rng.uniform(7.0, 9.0)
+        glug = rng.uniform(1.8, 2.6)
+        n = int((length + glug + 1.0) * RATE)
+        w = tick(rng, n, 0.05, 0.35, pitch) + trickle(rng, n, 0.5, length, 1.0)
+        w += gurgle(rng, n, 0.5 + length - 0.3, glug, 2.2)
+    elif name == "pipe_glug":
+        # a lone glug, as if from another floor, sometimes a small second one
+        glug = rng.uniform(0.9, 1.6)
+        n = int((glug + 2.0) * RATE)
+        w = gurgle(rng, n, 0.05, glug, 1.5)
+        if rng.uniform() < 0.5:
+            w += gurgle(rng, n, 0.05 + glug + rng.uniform(0.15, 0.5), 0.6, 0.9)
+    else:
+        # the metal settling, sometimes twice along the wall
+        n = int(1.2 * RATE)
+        w = tick(rng, n, 0.05, 0.35, pitch)
+        if rng.uniform() < 0.5:
+            w += tick(rng, n, rng.uniform(0.25, 0.5), 0.18, pitch * rng.uniform(0.9, 1.1))
+    w = shape(w, lambda f: bp(90, 2400 * pitch, 2)(f) * peaks([310.0 * pitch, 760.0 * pitch], 6.0, 0.9)(f))
     return stereo(w, 0.0045)
 
 
@@ -283,10 +306,14 @@ def stereo(mono, delay):
     return np.stack([mono, np.roll(mono, int(delay * RATE))], -1)
 
 
-def master(name, data):
+def master(name, data, is_loop=True):
     data = data - data.mean(axis=0)
     data = data / (np.abs(data).max() + 1e-9) * 0.5
-    data = ps1_treat(data, RATE, "light", True)
+    data = ps1_treat(data, RATE, "light", is_loop)
+    if not is_loop:
+        data = remove_dc(data, RATE, False)
+        fade = int(0.02 * RATE)
+        data[-fade:] *= np.linspace(1.0, 0.0, fade)[:, None]
     lufs = A.integrated_lufs(data, RATE)
     data = data * 10 ** ((TARGET_LUFS[name] - lufs) / 20.0)
     tp = A.true_peak_dbfs(data, RATE)
@@ -295,18 +322,20 @@ def master(name, data):
     return data
 
 
-def save(name, data):
-    path = os.path.join(OUT, name + ".wav")
+def save(path, data, is_loop=True):
+    name = os.path.basename(path)
     pcm = (np.clip(data, -1, 1) * 32767).astype("<i2")
     with wave.open(path, "wb") as w:
         w.setnchannels(2)
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes(pcm.tobytes())
-    seam = A.loop_discontinuity(data)
-    print("wrote %s  %.2f s  LUFS %.1f  TP %.1f  seam %.3f  wrap_hf %.1f dB" % (
-        os.path.basename(path), len(data) / RATE, A.integrated_lufs(data, RATE), A.true_peak_dbfs(data, RATE),
-        seam["jump_ratio"], seam["wrap_hf_dbfs"]))
+    line = "wrote %s  %.2f s  LUFS %.1f  TP %.1f" % (
+        name, len(data) / RATE, A.integrated_lufs(data, RATE), A.true_peak_dbfs(data, RATE))
+    if is_loop:
+        seam = A.loop_discontinuity(data)
+        line += "  seam %.3f  wrap_hf %.1f dB" % (seam["jump_ratio"], seam["wrap_hf_dbfs"])
+    print(line)
 
 
 def register():
@@ -314,6 +343,10 @@ def register():
         m = json.load(f)
     for name, sec in LOOP_SEC.items():
         m["sounds"][name] = {"kind": "loop", "files": ["res://audio/loops/%s.wav" % name], "loop_seconds": sec}
+    for name in PIPE_TAKES:
+        files = ["res://audio/sfx/%s_v%d.wav" % (name, i + 1) for i in range(len(VARIATIONS))]
+        m["sounds"][name] = {"kind": "sfx", "files": files, "spatial": False}
+    m["sounds"].pop("amb_restroom_pipes", None)
     m["beds"]["restroom"] = list(BED)
     with open(MANIFEST, "w", encoding="utf-8", newline="\n") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
@@ -342,9 +375,12 @@ def report_masking():
 
 if __name__ == "__main__":
     only = sys.argv[1:]
-    for fn in (amb_restroom_fan, amb_restroom_pipes):
-        if only and fn.__name__ not in only:
-            continue
-        save(fn.__name__, master(fn.__name__, fn()))
+    if not only or "amb_restroom_fan" in only:
+        save(os.path.join(OUT, "amb_restroom_fan.wav"), master("amb_restroom_fan", amb_restroom_fan()))
+    if not only or "pipes" in only:
+        for name in PIPE_TAKES:
+            for i, (seed, pitch) in enumerate(VARIATIONS):
+                save(os.path.join(SFX, "%s_v%d.wav" % (name, i + 1)),
+                     master(name, pipe_take(name, SEED_FOR.get((name, i), seed), pitch), False), False)
     register()
     report_masking()

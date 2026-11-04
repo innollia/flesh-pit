@@ -633,19 +633,51 @@
    ],
    "loop_seconds": 16.0
   },
-  "amb_restroom_pipes": {
-   "kind": "loop",
+  "pipe_trickle": {
+   "kind": "sfx",
    "files": [
-    "res://audio/loops/amb_restroom_pipes.wav"
+    "res://audio/sfx/pipe_trickle_v1.wav",
+    "res://audio/sfx/pipe_trickle_v2.wav",
+    "res://audio/sfx/pipe_trickle_v3.wav",
+    "res://audio/sfx/pipe_trickle_v4.wav"
    ],
-   "loop_seconds": 40.0
+   "spatial": false
+  },
+  "pipe_run": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/pipe_run_v1.wav",
+    "res://audio/sfx/pipe_run_v2.wav",
+    "res://audio/sfx/pipe_run_v3.wav",
+    "res://audio/sfx/pipe_run_v4.wav"
+   ],
+   "spatial": false
+  },
+  "pipe_glug": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/pipe_glug_v1.wav",
+    "res://audio/sfx/pipe_glug_v2.wav",
+    "res://audio/sfx/pipe_glug_v3.wav",
+    "res://audio/sfx/pipe_glug_v4.wav"
+   ],
+   "spatial": false
+  },
+  "pipe_tick": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/pipe_tick_v1.wav",
+    "res://audio/sfx/pipe_tick_v2.wav",
+    "res://audio/sfx/pipe_tick_v3.wav",
+    "res://audio/sfx/pipe_tick_v4.wav"
+   ],
+   "spatial": false
   }
  },
  "beds": {
   "restroom": [
    "amb_restroom",
-   "amb_restroom_fan",
-   "amb_restroom_pipes"
+   "amb_restroom_fan"
   ],
   "body_a": [
    "amb_body_a",
