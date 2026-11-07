@@ -115,9 +115,18 @@ func run() -> void:
 		else:
 			await tap_mouse(MOUSE_BUTTON_LEFT)
 		check(m.is_pulling_canary(), "%s begins the canary pull" % button)
-		while m.is_pulling_canary():
-			await frames(5)
-		check(m.has_canary, "%s ends with the canary tucked in" % button)
+		if button == "F":
+			while m.is_pulling_canary():
+				await frames(5)
+			check(m.has_canary, "%s ends with the canary tucked in" % button)
+		else:
+			# the whole left-click take is run_canary_take_tests.gd; here a
+			# move press cancels it (keeps this suite under the runner limit)
+			await frames(20)
+			await tap_key(KEY_W)
+			while m.is_pulling_canary():
+				await frames(5)
+			check(not m.has_canary, "%s cancelled by a move press gives no canary" % button)
 		key(KEY_CTRL, false)
 		await frames(3)
 	# standing it stays hidden and out of reach (spec 03 9)
