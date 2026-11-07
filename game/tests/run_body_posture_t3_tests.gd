@@ -158,6 +158,7 @@ func check_geometry() -> void:
 func run() -> void:
 	check_geometry()
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_body_posture_t3.json"
 	m.save_path = "user://t3_body_posture_test.bin"
 	root.add_child(m)
 	await frames(6)

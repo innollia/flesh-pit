@@ -21,6 +21,7 @@ func _assert(c: bool, msg: String) -> void:
 func _init() -> void:
     print("=== flesh-pit menu tests ===")
     _m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+    _m.user_keybinds_path = "user://keybinds_test_menu.json"
     get_root().add_child(_m)
 
 func _process(_d: float) -> bool:

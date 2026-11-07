@@ -86,12 +86,6 @@
 
 - `run_interaction_component_tests.gd`는 노드 실행기에서 1초 안에 실패하고, `run_continuation_tests.gd`는 `Belt/Canary/Waistband`가 없다는 스크립트 오류로 끝난다. `run_squeeze_tests.gd`는 "rare spikes stay bounded" 1건, `run_mutation_tests.gd`는 팔뚝 인형 자리 4건이 실패한다. 모두 물통·거울·자세 변경을 빼고 돌려도 같다.
 
-## 토하기 화면의 V·F·R 직접 키 읽기 — 2026-11-03
-
-- 재현: `capture_blender.gd`의 held_big_saw. 벨트에서 큰 톱을 들면 톱이 카메라 공간(`fp_art_hookup.gd` `_put(saw, rig, ...)`)에 따로 떠 있고 두 손은 빈 대기 자세로 톱 손잡이를 잡지 않는다. 걷기 흔들림 때 손만 움직이고 톱은 고정된다.
-- 원인: 믹서기와 같은 부착 문제(손 Wrist가 아니라 rig 자체에 붙음)이며, 두 손이 각각 양쪽 손잡이를 쥐는 자세가 rig에 없다.
-- 범위: 믹서기는 왼손 Wrist 부착과 쥐기/꺼내기 동작으로 고쳤다. 큰 톱은 두 손 쥐기 자세 설계(어느 손에 달고 다른 손을 어떻게 맞출지)가 필요해 이번 범위 밖으로 남긴다.
-
 ## M22 외계인 손 뜯기에 도구 동작이 없음 — 2026-11-04
 
 - 재현: M22를 가진 채 큰 톱이나 칼을 들고 살 속에서 가만히 선다. 외계인 손 뜯기는 이제 `main.tear_effects()`로 큰 톱의 추가 셀까지 같이 떼어 낸다. 그러나 톱질·가위질 동작과 `saw_stroked`·`scissors_snipped` 신호(`fp_art_hookup._on_torn`, Chewer `cell_torn`에만 연결)는 나오지 않는다.
@@ -101,14 +95,6 @@
 
 - `main.die()`가 먼저 몸을 화장실로 옮기고 눈을 감긴다. 그래서 기획의 "쪼그라들어"는 눌린 자리가 아니라 화장실에서 웅크린 채 깨는 모습으로 보인다.
 - 깨어나는 약 2초 동안 거울 속 몸은 웅크린 자세를 따르지 않는다(`mirror_view._sync_body_posture`는 카나리아 꺼내기만 몸 자세를 넘긴다).
-
-- 재현: 키 설정에서 토하기(V)·상호작용(F)·오른손(R)을 다른 키로 바꾸고 변기 앞 토하기 화면에 들어간다. `FPInputModes.settlement_inputs()`가 `KEY_V`/`KEY_F`/`KEY_R`을 키 코드로 직접 읽으므로 옛 V는 일어서기로, 옛 F·R은 레버 누르기로 여전히 먹힌다(`fp_interactions.gd`의 `key_f`·`key_r`).
-- 범위: 감사 1-11(이동·웅크리기·위로 파기)에서는 W/A/S/D/Space만 행동으로 옮겼다. V·F·R은 키 설정에 이미 있던 행동이고 레버 조준 판정과 얽혀 있어 따로 고친다.
-
-## 키 파일을 격리하지 않는 검사·캡처 — 2026-11-03
-
-- `tests/capture_seat_keys.gd`는 `reset_keybinds()`로 `user://keybinds.json`을 지우고 저장 경로도 격리하지 않는다. `run_live_interactions_tests.gd`는 사용자 키 파일을 읽으므로 사용자가 W·F·V·R을 바꿨으면 실패한다.
-- 범위: 이제 `main.user_keybinds_path`를 ready 전에 바꾸면 된다. 이번에는 `run_settle_vent_tests.gd`만 옮겼다.
 
 ## 조직·도구 검사 W20 재메시 시간 초과 (2026-11-04 관찰)
 

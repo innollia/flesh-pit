@@ -14,6 +14,7 @@ var center := Vector3(8, 5, 8)
 func _init() -> void:
     Engine.max_fps = 60
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_solid_aim.json"
     m.rest_seed = 1337
     root.add_child(m)
     run.call_deferred()

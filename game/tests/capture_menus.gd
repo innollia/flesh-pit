@@ -15,6 +15,7 @@ func _init() -> void:
             DisplayServer.window_set_size(sz)
             get_root().size = sz
     _m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+    _m.user_keybinds_path = "user://keybinds_test_menus.json"
     _m.save_path = "user://capture_save.bin"
     get_root().add_child(_m)
 

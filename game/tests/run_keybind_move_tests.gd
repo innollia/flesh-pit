@@ -107,7 +107,7 @@ func run() -> void:
 		if saved is Dictionary and saved.get("키", {}).has(action):
 			got = String(saved["키"][action].get("키보드", ""))
 		check(got == OS.get_keycode_string(REBIND[action][1]), "%s saved in the key file (%s)" % [action, got])
-	check(not FileAccess.file_exists(m.USER_KEYBINDS_PATH) or m.user_keybinds_path != m.USER_KEYBINDS_PATH, "the player's own key file is not touched")
+	check(m.user_keybinds_path == KEYS_PATH, "the player's own key file is not touched")
 
 	# --- restart: the input map starts empty again, the kit and the game
 	# register their keys, the key file wins

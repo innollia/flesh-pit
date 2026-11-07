@@ -33,6 +33,7 @@ func _init() -> void:
 		DisplayServer.window_set_size(_size)
 		get_root().size = _size
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	_main.user_keybinds_path = "user://keybinds_test_ingame_capture.json"
 	get_root().add_child(_main)
 
 func _pose(pos: Vector3, yaw: float, pitch: float = 0.0) -> void:

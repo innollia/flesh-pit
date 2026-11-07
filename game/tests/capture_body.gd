@@ -78,6 +78,7 @@ func eye_view() -> void:
 
 func run() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_body.json"
 	m.save_path = "user://capture-body.bin"
 	root.add_child(m)
 	await frames(6)

@@ -15,6 +15,7 @@ var _main: Node3D
 func _init() -> void:
     var packed: PackedScene = load("res://main/scenes/main.tscn")
     _main = packed.instantiate()
+    _main.user_keybinds_path = "user://keybinds_test_capture.json"
     get_root().add_child(_main)
     get_root().size = RESOLUTIONS[0]
 

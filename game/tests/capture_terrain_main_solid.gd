@@ -12,6 +12,7 @@ func _init() -> void:
     destination = ProjectSettings.globalize_path("res://../.dryforge/evidence/main-solid-gpu")
     DirAccess.make_dir_recursive_absolute(destination)
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_main_solid.json"
     m.rest_seed = 1337
     m.save_path = destination.path_join("isolated-save.bin")
     root.add_child(m)
@@ -116,6 +117,7 @@ func run() -> void:
         m.queue_free()
         await process_frame
         m = load("res://main/scenes/main.tscn").instantiate()
+        m.user_keybinds_path = "user://keybinds_test_terrain_main_solid.json"
         m.rest_seed = 1337
         m.save_path = destination.path_join("direction_%d.bin" % torn.size())
         root.add_child(m)

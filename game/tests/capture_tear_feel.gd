@@ -45,6 +45,7 @@ func on_tear(pos: Vector3) -> void:
 
 func run() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_tear_feel.json"
 	m.rest_seed = 1337
 	m.save_path = "user://capture-tear-feel.bin"
 	root.add_child(m)

@@ -88,6 +88,7 @@ func fresh_game(at: Vector3) -> void:
 		m.queue_free()
 		await frames(2)
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_controls_hierarchy.json"
 	m.save_path = "user://controls-hierarchy-test.bin"
 	root.add_child(m)
 	await frames(6)

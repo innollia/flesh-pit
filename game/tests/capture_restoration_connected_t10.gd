@@ -56,6 +56,7 @@ func game_at(position: Vector3) -> void:
 		m.queue_free()
 		await frames(2)
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_restoration_connected_t10.json"
 	m.save_path = folder.path_join("isolated.bin")
 	root.add_child(m)
 	await frames(6)
@@ -327,6 +328,7 @@ func test_normal_glare_and_save() -> void:
 
 func run() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_restoration_connected_t10.json"
 	m.save_path = folder.path_join("isolated.bin")
 	root.add_child(m)
 	await frames(6)

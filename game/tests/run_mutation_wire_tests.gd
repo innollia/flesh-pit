@@ -29,6 +29,7 @@ func _assert(c: bool, msg: String) -> void:
 func _init() -> void:
 	print("=== flesh-pit mutation wiring tests ===")
 	_m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	_m.user_keybinds_path = "user://keybinds_test_mutation_wire.json"
 	_m.save_path = "user://test-mutation-wire.bin"
 	_m.rest_seed = 1337
 	get_root().add_child(_m)
@@ -78,6 +79,7 @@ const PARITY_REGROW := 0 ## the tear aimed where main.tear_effects grows a nerve
 
 func _new_world() -> Node3D:
 	var w: Node3D = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	w.user_keybinds_path = "user://keybinds_test_mutation_wire.json"
 	w.save_path = "user://test-mutation-wire.bin"
 	w.rest_seed = 1337
 	get_root().add_child(w)

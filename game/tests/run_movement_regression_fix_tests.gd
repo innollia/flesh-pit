@@ -31,6 +31,7 @@ func place() -> void:
 func run() -> void:
 	assert(OS.get_user_data_dir().contains("restoration"))
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_movement_regression_fix.json"
 	m.save_path = "user://movement-boundary-test.bin"
 	root.add_child(m)
 	await create_timer(0.1).timeout

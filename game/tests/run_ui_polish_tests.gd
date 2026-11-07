@@ -12,6 +12,7 @@ var failed := 0
 
 func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_ui_polish.json"
 	m.save_path = "user://ui-polish-test.bin"
 	root.add_child(m)
 	run.call_deferred()

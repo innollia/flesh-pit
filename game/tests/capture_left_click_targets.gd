@@ -48,6 +48,7 @@ func game_at(at: Vector3) -> void:
 		m.queue_free()
 		await frames(2)
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	m.user_keybinds_path = "user://keybinds_test_left_click_targets.json"
 	m.save_path = SAVE
 	root.add_child(m)
 	await frames(6)

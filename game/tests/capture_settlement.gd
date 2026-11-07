@@ -17,6 +17,7 @@ func _init() -> void:
     if args.size() > 0:
         _shot = args[0]
     _main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+    _main.user_keybinds_path = "user://keybinds_test_settlement.json"
     get_root().add_child(_main)
 
 func _process(_d: float) -> bool:

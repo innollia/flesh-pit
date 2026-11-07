@@ -35,6 +35,7 @@ func _init() -> void:
     source.close()
     check(int(old_data.version)==5,"fixture is actual old version 5")
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_old_save.json"
     m.rest_seed = 1337
     m.save_path = copy_path
     root.add_child(m)

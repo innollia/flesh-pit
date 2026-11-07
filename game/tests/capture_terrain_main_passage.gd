@@ -18,6 +18,7 @@ func _init() -> void:
 	isolated_save_path = passage_evidence.path_join("isolated.bin")
 
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_terrain_main_passage.json"
 	m.rest_seed = 1337
 	m.save_path = isolated_save_path
 	root.add_child(m)

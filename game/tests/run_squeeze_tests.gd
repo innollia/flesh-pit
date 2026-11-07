@@ -13,6 +13,7 @@ var failed := 0
 
 func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_squeeze.json"
 	root.add_child(m)
 	run.call_deferred()
 

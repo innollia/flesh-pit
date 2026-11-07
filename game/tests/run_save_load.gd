@@ -23,6 +23,7 @@ func _init() -> void:
 	print("=== flesh-pit save/load integration test ===")
 	var packed: PackedScene = load("res://main/scenes/main.tscn")
 	_main_node = packed.instantiate()
+	_main_node.user_keybinds_path = "user://keybinds_test_save_load.json"
 	get_root().add_child(_main_node)
 
 func _process(_delta: float) -> bool:

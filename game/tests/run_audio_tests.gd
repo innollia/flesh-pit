@@ -25,6 +25,7 @@ func _initialize() -> void:
 	# integration: the real main scene; main.gd adds the hookup itself (the
 	# one line in audio/HOOKUP.md), so use that node, never a second one
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	_main.user_keybinds_path = "user://keybinds_test_audio.json"
 	root.add_child(_main)
 	# (_hook is looked up once main's _ready has run, in _process)
 

@@ -8,6 +8,7 @@ var capture := false
 func _init() -> void:
     capture = "--capture" in OS.get_cmdline_user_args()
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_preservation.json"
     root.add_child(m)
     run.call_deferred()
 

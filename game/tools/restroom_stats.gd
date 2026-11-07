@@ -12,6 +12,7 @@ var _t0 := 0
 
 func _init() -> void:
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	_main.user_keybinds_path = "user://keybinds_test_restroom_stats.json"
 	get_root().add_child(_main)
 
 func _tris(n: Node) -> int:

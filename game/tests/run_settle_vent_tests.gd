@@ -33,7 +33,7 @@ func _init() -> void:
             if path.ends_with("/vent_lines.json") and not String(l["id"]) in RETIRED:
                 _ids[String(l["id"])] = true
     _m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
-    # the key checks rebind and reset: never the player's own user://keybinds.json
+    # the key checks rebind and reset: never the player's own key file
     _m.user_keybinds_path = "user://keybinds_test_settle_vent.json"
     get_root().add_child(_m)
 

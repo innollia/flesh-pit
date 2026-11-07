@@ -61,6 +61,7 @@ func new_game(position := Vector3(-1.25, 0.9, 0.72)) -> void:
 		m.queue_free()
 		await frames(2)
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_restoration_core_t10.json"
 	m.save_path = folder.path_join("isolated.bin")
 	root.add_child(m)
 	await frames(6)

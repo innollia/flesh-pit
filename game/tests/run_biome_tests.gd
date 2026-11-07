@@ -28,6 +28,7 @@ func _init() -> void:
 	print("=== flesh-pit biome tests ===")
 	_static_tests()
 	_m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	_m.user_keybinds_path = "user://keybinds_test_biome.json"
 	_m.save_path = SAVE
 	get_root().add_child(_m)
 

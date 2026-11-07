@@ -7,6 +7,7 @@ func _init() -> void:
     destination = ProjectSettings.globalize_path("res://../.dryforge/evidence/old-save-gpu")
     DirAccess.make_dir_recursive_absolute(destination)
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_main_restore.json"
     m.rest_seed = 1337
     m.save_path = destination.path_join("copy.bin")
     var compressed := FileAccess.get_file_as_bytes("res://tests/fixtures/terrain_old_v5.bin.gz")

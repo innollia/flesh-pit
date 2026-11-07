@@ -5,6 +5,7 @@ var failed := 0
 var tears: Array = []
 func _init():
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_oct02.json"
     root.add_child(m)
     run.call_deferred()
 func check(ok: bool, label: String):

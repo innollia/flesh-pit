@@ -14,6 +14,7 @@ func _init() -> void:
 	if out == "":
 		out = OS.get_user_data_dir()
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	m.user_keybinds_path = "user://keybinds_test_tank_teeth.json"
 	m.save_path = SAVE
 	root.add_child(m)
 	_run.call_deferred()

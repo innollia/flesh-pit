@@ -20,6 +20,7 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	prefix = args[0] if args.size() > 0 else ""
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	m.user_keybinds_path = "user://keybinds_test_blender.json"
 	m.save_path = SAVE
 	root.add_child(m)
 	_run.call_deferred()

@@ -24,6 +24,7 @@ func _init() -> void:
 		for k in range(1, args.size()):
 			_extra_ids.append(args[k])
 	_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	_main.user_keybinds_path = "user://keybinds_test_mutation_capture.json"
 	get_root().add_child(_main)
 
 func _pose(pos: Vector3, yaw: float, pitch: float = 0.0) -> void:

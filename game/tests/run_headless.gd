@@ -18,6 +18,7 @@ func _init() -> void:
 		quit(1)
 		return
 	_root_node = packed.instantiate()
+	_root_node.user_keybinds_path = "user://keybinds_test_headless.json"
 	get_root().add_child(_root_node)
 
 func _process(_delta: float) -> bool:

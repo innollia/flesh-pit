@@ -17,6 +17,7 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0 and args[0] == "main":
 		_main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+		_main.user_keybinds_path = "user://keybinds_test_ending.json"
 		_main.set("save_path", "user://capture-ending.bin")
 		get_root().add_child(_main)
 		return

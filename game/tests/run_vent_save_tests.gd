@@ -168,6 +168,7 @@ func _load(path: String) -> void:
 		m.queue_free()
 		await frames(2)
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_vent_save.json"
 	m.save_path = path
 	root.add_child(m)
 	await process_frame

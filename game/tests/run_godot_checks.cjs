@@ -23,6 +23,37 @@ test('startup never reads the system certificate store', () => {
   const pem = fs.readFileSync(path.join(root, 'game', m[1]), 'utf8');
   assert.match(pem, /-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/);
 });
+// A check or capture that loads Main reads the player's key settings unless it
+// points Main at its own file before add_child, and key tests write there too.
+test('checks and captures never reach the player key file', () => {
+  const scripts = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(file);
+      else if (entry.name.endsWith('.gd')) scripts.push(file);
+    }
+  };
+  walk(path.join(root, 'game/tests'));
+  walk(path.join(root, 'game/tools'));
+  const offenders = [];
+  for (const file of scripts) {
+    const name = path.relative(root, file).split(path.sep).join('/');
+    const code = fs.readFileSync(file, 'utf8').split('\n')
+      .filter((line) => !line.trimStart().startsWith('#')).join('\n');
+    if (/user:\/\/keybinds\.json|USER_KEYBINDS_PATH/.test(code)) offenders.push(`${name}: names the player key file`);
+    if (/add_child\([^\n]*main\.tscn/.test(code)) offenders.push(`${name}: adds Main without a variable to isolate`);
+    const packed = [...code.matchAll(/(\w+)[^\n=]*=\s*\(?(?:pre)?load\("res:\/\/main\/scenes\/main\.tscn"\)/g)].map((m) => m[1]);
+    for (const made of code.matchAll(/^[ \t]*(?:var[ \t]+)?(\w+)[^\n=]*=[ \t]*([^\n]*\.instantiate\(\))/gm)) {
+      if (!made[2].includes('main.tscn') && !packed.some((p) => made[2].startsWith(`${p}.instantiate`))) continue;
+      const rest = code.slice(made.index + made[0].length);
+      const isolated = rest.indexOf(`${made[1]}.user_keybinds_path =`);
+      const added = rest.indexOf(`add_child(${made[1]}`);
+      if (isolated < 0 || (added >= 0 && added < isolated)) offenders.push(`${name}: ${made[1]} has no user_keybinds_path before add_child`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
 for (const suite of suites) {
   test(suite, () => {
     assert.match(suite, /^run_[a-z0-9_]+\.gd$/);

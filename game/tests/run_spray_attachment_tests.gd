@@ -6,6 +6,7 @@ var failed := 0
 
 func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_spray_attachment.json"
 	m.save_path = "user://spray_attachment_test.bin"
 	root.add_child(m)
 	run.call_deferred()

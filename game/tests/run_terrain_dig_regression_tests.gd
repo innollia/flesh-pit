@@ -30,6 +30,7 @@ var fixed_down_support: StaticBody3D
 func _init() -> void:
     Engine.max_fps = 60
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_dig_regression.json"
     m.rest_seed = 1337
     root.add_child(m)
     run.call_deferred()
@@ -340,6 +341,7 @@ func run() -> void:
     m.queue_free()
     await process_frame
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_dig_regression.json"
     m.rest_seed = 1337
     root.add_child(m)
     for frame in range(6): await physics_frame

@@ -71,6 +71,7 @@ func trapped() -> bool:
 
 func run() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_crush_t8.json"
 	m.save_path = "user://t8_crush_component_test.bin"
 	root.add_child(m)
 	await frames(6)

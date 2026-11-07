@@ -16,6 +16,7 @@ var results := {}
 
 func _init() -> void:
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
+	m.user_keybinds_path = "user://keybinds_test_bench_play.json"
 	m.save_path = "user://bench-play.bin"
 	root.add_child(m)
 	_run.call_deferred()

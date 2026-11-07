@@ -4,6 +4,7 @@ var passed := 0
 var failed := 0
 func _init() -> void:
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_terrain_density_cache.json"
     m.rest_seed = 1337
     m.save_path = "res://../.dryforge/evidence/checks/density-cache-isolated.bin"
     root.add_child(m)

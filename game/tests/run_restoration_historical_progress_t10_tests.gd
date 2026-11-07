@@ -34,6 +34,7 @@ func load_fixture(name: String, size: int, sha: String) -> Dictionary:
 	input.close()
 	check(int(old.version) == 5 and not old.progression.has("migrated_v5_hairs"), name + " actual unmigrated historical schema")
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_restoration_historical_progress_t10.json"
 	m.save_path = path
 	root.add_child(m)
 	await process_frame

@@ -28,6 +28,7 @@ func run() -> void:
 	var original: Dictionary = input.get_var()
 	input.close()
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = "user://keybinds_test_restoration_old_v5_t10.json"
 	m.save_path = path
 	root.add_child(m)
 	await process_frame

@@ -2,6 +2,7 @@ extends SceneTree
 var m: Node3D
 func _init():
     m = load("res://main/scenes/main.tscn").instantiate()
+    m.user_keybinds_path = "user://keybinds_test_profile_oct02.json"
     root.add_child(m)
     run.call_deferred()
 func run():
