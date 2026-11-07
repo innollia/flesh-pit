@@ -248,7 +248,8 @@ func play_wash(blood: float) -> void:
     _wash_from = blood
     _ensure_stream()
 
-func play_belt(hook: int) -> void:
+func play_belt(hook: int, hand: int = FDKToolKit.Hand.RIGHT) -> void:
+    acting_side = -1.0 if hand == FDKToolKit.Hand.LEFT else 1.0
     _start("belt")
     dur = FPBeltSwap.SWAP_TIME
     belt_hook = hook
@@ -1066,15 +1067,17 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
                 q["wrist_roll"] = lerpf(float(q["wrist_roll"]), -50.0 + 40.0 * sin(u * 40.0), tw)
                 _fingers(q, lerpf(lerpf(0.2, laced, rub), 0.55, tw))
         "belt":
-            if not right:
+            # the hand whose button was pressed goes down (left click the
+            # left hand); the right hand's dip is the original one
+            if side * hand_side < 0.0:
                 return {}
             var down := sin(u * PI)
             var open := seg(u, 0.4, 0.48) * (1.0 - seg(u, 0.54, 0.64))
             _fingers(q, 0.75 - 0.8 * open)
             q["wrist_pitch"] = lerpf(48.0, 75.0, down)
-            q["wrist_yaw"] = 12.0 * down
-            q["wrist_roll"] = -20.0 * down + 10.0 * open
-            q["pos"] = idle + Vector3(-0.03, -0.05, 0.06) * down + Vector3(0.0, 0.01, 0.0) * sin(u * 30.0) * open
+            q["wrist_yaw"] = 12.0 * down * side
+            q["wrist_roll"] = (-20.0 * down + 10.0 * open) * side
+            q["pos"] = idle + Vector3(-0.03 * side, -0.05, 0.06) * down + Vector3(0.0, 0.01, 0.0) * sin(u * 30.0) * open
         "watch":
             if right:
                 _fingers(q, 0.4)

@@ -492,12 +492,15 @@ func equip(id: String, carrying_flesh: bool) -> bool:
 	tools.equipped = id
 	return true
 
+const LEFT_ONLY := ["blender", "compass"]
+
 func equip_hand(id: String, hand: int, carrying_flesh: bool) -> bool:
 	if hand not in [FDKToolKit.Hand.LEFT, FDKToolKit.Hand.RIGHT]:
 		return false
 	if id != "" and not owns(id):
 		return false
-	if id == "blender" and hand != FDKToolKit.Hand.LEFT:
+	# the blender and the compass are left-hand things (read in the left palm)
+	if id in LEFT_ONLY and hand != FDKToolKit.Hand.LEFT:
 		return false
 	if id != "" and one_hand_busy(carrying_flesh) and (hand == FDKToolKit.Hand.RIGHT or tools.is_two_handed(id)):
 		return false

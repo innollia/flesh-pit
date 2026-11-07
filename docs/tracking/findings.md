@@ -113,3 +113,11 @@
 ## 화장실 대기 중 청크 재생성이 예산을 넘는다
 
 `run_perf_budget_tests.gd`의 "idle in the restroom, chunks are hardly re-meshed"가 180프레임에 174~178회로 한도 12를 넘어 실패한다. dryforge/text-game의 23a3377 소리 연결·manifest로 되돌려도 같은 실패(174회)라 round5-beds와 무관하다. 재현: `FP_CHECK_SUITES=run_perf_budget_tests.gd node --test game/tests/run_godot_checks.cjs`. 원인은 찾지 않았다.
+
+## 벨트 검사의 살 더미 들기가 실패한다
+
+`run_belt_tests.gd`의 "carrying a flesh pile"과 이어지는 톱 거절 2개가 실패한다(81 통과, 3 실패). 검사가 `m._on_cell_torn(Vector3(0, 1, 6.5))`로 더미를 만들지만 `carried_flesh`가 0으로 남는다. round6-belt 수정 전 dryforge/text-game(c5522c7)에서도 같은 3개가 실패해 이번 변경과 무관하다. 기본 목록에는 없는 묶음이다. 더미 들기 경로가 바뀐 것인지 검사가 낡은 것인지는 아직 보지 않았다.
+
+## 벨트 고리 교환은 F로 하지 않는다
+
+`run_belt_tests.gd` 끝의 "fp_interact from keyboard, pad and mouse" 확인은 벨트 교환이 F로 된다는 옛 전제를 담고 있다. 지금 규칙(business-rules "조작 우선순위" 2번)은 손 버튼만 교환한다. 검사 문구 정리는 범위 밖으로 남긴다.

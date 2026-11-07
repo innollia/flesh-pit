@@ -15,7 +15,12 @@ const AIM_DEG := 9.0
 const REACH := 1.2
 const SWAP_TIME := 0.75 ## reach down, hang, grab, bring up (fp_hand_motions "belt")
 const DIP := 0.22 ## how far the hands drop toward the belt (m)
-const HIP_TWIST := 0.9 ## rad the head may turn over the still hips
+const HIP_TWIST := 1.4 ## rad the head may turn over the still hips (bowed far to a hip can)
+
+## The slot that lights up as aimed (-1 = none): every item on the belt.
+var focus := -1
+const FOCUS_SCALE := 1.5
+var _compass_lit := false
 
 var m: Node3D
 var swap_t := -1.0
@@ -88,8 +93,19 @@ func target_for(i: int, hand: int = -1) -> Variant:
 	var held: String = m.progression.equipped() if hand < 0 else m.progression.hands.item(hand)
 	return "" if held != "" else null
 
+## Either hand button would do something with the aimed item.
 func can_act() -> bool:
-	return not busy() and target_for(aimed_hook()) != null
+	var i := aimed_hook()
+	return i >= 0 and (takes(i, FDKToolKit.Hand.LEFT) or takes(i, FDKToolKit.Hand.RIGHT))
+
+## Whether `hand` pressing on slot i would change anything: the item there
+## goes to that hand (the blender and the compass only to the left), or the
+## item that hand holds goes back.
+func takes(i: int, hand: int) -> bool:
+	var want = target_for(i, hand)
+	if want == null or busy():
+		return false
+	return str(want) == "" or not (str(want) in FPProgression.LEFT_ONLY and hand != FDKToolKit.Hand.LEFT)
 
 ## Start the reach. Returns false when there is nothing to do or the rules
 ## refuse it (the hand still dips, and comes back with nothing).
@@ -100,7 +116,7 @@ func begin(hand: int = -1) -> bool:
 	if want == null:
 		return false
 	if m.get("hand_motions") != null:
-		m.hand_motions.play_belt(aimed_hook())
+		m.hand_motions.play_belt(aimed_hook(), hand)
 	_hand = hand
 	_want = str(want)
 	_did = false
@@ -126,7 +142,12 @@ func tick(delta: float) -> void:
 			belt.call("set_worn", worn())
 		belt.call("set_hung", hung_ids())
 		_twist_hips(belt, delta)
-		belt.call("set_focus", aimed_hook() if not busy() and can_act() else -1)
+		focus = aimed_hook() if can_act() else -1
+		belt.call("set_focus", focus)
+		# the compass rides the waist outside the belt node's own slots
+		if m.art_hookup.waist_compass != null and (focus == COMPASS_SLOT) != _compass_lit:
+			_compass_lit = focus == COMPASS_SLOT
+			belt.call("light", m.art_hookup.waist_compass, _compass_lit, FOCUS_SCALE)
 	# bowed past LOOK_DOWN_DEG: both hands swing out so the waist is clear
 	# (the compass hangs there even before the belt)
 	var ak := clampf((-m.player.camera_pivot.rotation.x - deg_to_rad(LOOK_DOWN_DEG - 10.0)) / deg_to_rad(10.0), 0.0, 1.0)
