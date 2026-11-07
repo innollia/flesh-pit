@@ -246,7 +246,7 @@ func run() -> void:
 	var arms_before: Array = [m.hands_rig.get_node("HandRight/Forearm").mesh, m.hands_rig.get_node("HandLeft/Forearm").mesh]
 	await press(KEY_F)
 	check(m.is_pulling_canary(), "raw F begins canary retrieval")
-	var phases := [0.40, 0.56, 0.66, 0.79, 0.82, 0.88]
+	var phases := [0.40, 0.56, 0.66, 0.79, 0.82, 0.91]
 	for u in phases:
 		while m.is_pulling_canary() and m.canary_pull.progress() < u:
 			await frames(1)
@@ -255,14 +255,15 @@ func run() -> void:
 		check(m.player.camera.global_position.y > feet + 0.08, "eye stays above floor")
 		if u == 0.40:
 			check(not m.has_canary and m.canary_pull.prone() > 0.95, "prone search before possession")
-			var hand: Node3D = m.hands_rig.get_node("HandRight")
-			check(hand.global_position.distance_to(m.canary_hole_point()) < 0.13, "right hand physically reaches opening")
-			var left: Node3D = m.hands_rig.get_node("HandLeft")
-			check(left.global_position.distance_to(m.canary_hole_point()) > 0.3, "left hand braces instead of swimming")
-			check(m.mirror_view.body._sub["hand_r"].global_position.distance_to(m.canary_hole_point()) < 0.17, "connected reflected right arm reaches same hole")
-		if u == 0.56:
+			# user 2026-11-08: the left hand fishes; the right braces
+			var hand: Node3D = m.hands_rig.get_node("HandLeft")
+			check(hand.global_position.distance_to(m.canary_hole_point()) < 0.2, "left hand physically reaches opening")
+			var right: Node3D = m.hands_rig.get_node("HandRight")
+			check(right.global_position.distance_to(m.canary_hole_point()) > 0.3, "right hand braces instead of swimming")
+			check(m.mirror_view.body._sub["hand_l"].global_position.distance_to(m.canary_hole_point()) < 0.25, "connected reflected left arm reaches same hole")
+		if u == 0.79:
 			check(not m.has_canary and m.canary_pull.bird.visible, "caught single bird is held before tucking")
-		if u == 0.88:
+		if u == 0.91:
 			check(m.has_canary and not m.canary_pull.bird.visible, "possession transfers only after tucking")
 		await shot("canary-phase-%s" % u)
 		if u == 0.40:

@@ -1341,15 +1341,23 @@ func step_world(delta: float) -> void:
 		# hands that can do it. One input shows in one place: the ring's vomit
 		# key gives way to the stomach's, the opening's to both
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else ("fp_pick" if target == "belt" else "fp_interact"))
-		interact_ring.set("shown", target != "" and not _settling)
-		if target == "belt":
+		interact_ring.set("shown", target != "" and not _settling and not is_pulling_canary())
+		# standing over the canary hole: the crouch key cap says "get down"
+		var crouch_hint := target == "" and not _settling and canary_crouch_hint()
+		if crouch_hint:
+			interact_ring.set("action", "fdk_crouch")
+			interact_ring.set("shown", true)
+		if crouch_hint:
+			interact_ring.set("hand_left", false)
+			interact_ring.set("hand_right", false)
+		elif target == "belt":
 			# only the buttons whose hand that item goes to (the blender and
 			# the compass to the left) or whose held item goes back there
 			interact_ring.set("hand_left", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.LEFT))
 			interact_ring.set("hand_right", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.RIGHT))
 		else:
 			interact_ring.set("hand_left", target != "toilet" and not FPInteractions.right_hand_only(self, target))
-			interact_ring.set("hand_right", target != "toilet")
+			interact_ring.set("hand_right", target != "toilet" and not FPInteractions.left_hand_only(target))
 		var stomach_key := stomach.fill_ratio() >= 1.0
 		interact_ring.set("glyph_on", not (target == "toilet" and stomach_key))
 		opening_view.hints.vomit_muted = target == "toilet" or stomach_key
@@ -1650,6 +1658,16 @@ func toilet_point() -> Vector3:
 
 func canary_hole_point() -> Vector3:
 	return FPRestroom.CANARY_HOLE + Vector3(0.03, 0.0, 0.0)
+
+## Standing and looking down at the canary hole, too high to reach it
+## (user 2026-11-08): the ring shows the crouch key so the player learns the
+## body can get down there. The key cap follows the crouch keybind.
+const CANARY_HINT_DEGREES := 22.0
+const CANARY_HINT_REACH := 2.1
+func canary_crouch_hint() -> bool:
+	if has_canary or is_pulling_canary() or player._is_crouching or _seated or _mirror_open:
+		return false
+	return _looking_at(canary_hole_point(), CANARY_HINT_DEGREES, CANARY_HINT_REACH)
 
 func _near_toilet() -> bool:
 	return player.global_position.distance_to(restroom.toilet.to_global(Vector3(0, 0.9, 0.5))) < 1.3

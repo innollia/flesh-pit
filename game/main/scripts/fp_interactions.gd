@@ -128,6 +128,11 @@ static func acts_on(target: String) -> bool:
 static func right_hand_only(main: Node3D, target: String) -> bool:
 	return target == "tank_lid" or (target != "belt" and main.progression.hands.item(FDKToolKit.Hand.LEFT) == "blender")
 
+## The right button leaves this target to the left hand: the canary is
+## fished out by the left hand (user 2026-11-08), and F does the same.
+static func left_hand_only(target: String) -> bool:
+	return target == "canary"
+
 ## What a fresh press of `source` would do now, without doing it:
 ## "lid_down", "belt", "target:<name>", "item:<id>", "dig", "settle" or "none".
 static func plan(main: Node3D, source: String) -> String:
@@ -139,7 +144,8 @@ static func plan(main: Node3D, source: String) -> String:
 	if hand >= 0 and main.belt_swap != null and main.belt_swap.aimed_hook() >= 0:
 		return "belt"
 	var target: String = main.interact_target()
-	if acts_on(target) and not (source == SOURCE_LEFT and right_hand_only(main, target)):
+	if acts_on(target) and not (source == SOURCE_LEFT and right_hand_only(main, target)) \
+			and not (source == SOURCE_RIGHT and left_hand_only(target)):
 		return "target:" + target
 	if hand < 0:
 		if main._near_toilet() and main.has_settle_contents():
