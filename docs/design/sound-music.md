@@ -23,17 +23,17 @@
 |---|---|---|
 | 시작 화면 | `mus_title` | 음이 어긋난 오르골 자장가와 낡은 리드 오르간 |
 | 키 설정 | `mus_keybind` | 유원지 오르간 왈츠 |
-| Esc | `mus_pause` | 녹아 넘어가는 따뜻한 현악 패드, 박 없음 |
+| Esc, 살 속 | `mus_pause` | 녹아 넘어가는 따뜻한 현악 패드, 박 없음 |
+| Esc, 화장실 안 | `mus_pause_alt` | 펠트 피아노. 끌 때까지 바뀌지 않는다 |
 | 환풍구가 열려 있는 동안 | `mus_vent` | 휘파람과 걷는 저음 |
 | 방 안의 변이 화면 | `mus_mirror` | 7/8박 신스와 손목시계 소리 |
-| 변기 정산 | `mus_settle` | 낮은 현과 물방울 |
-| 화장실 | 없음 | `mus_restroom`은 보류 상태로 남아 있다(`RESTROOM_ON_HOLD`) |
+| 화장실과 변기 정산 | `mus_room_*` 여덟 층 | 한 곡이다. 상황에 따라 층의 음량만 움직인다(`game/audio/room_music.json`) |
 | 살 속, 쉼터, 살 속의 Tab | 없음 | |
 | 엔딩 | 엔딩 노래 층만 | 아래 항목 |
 
 설정 화면은 연 화면의 곡을 잇고, 변기에 앉기와 도감에는 곡이 없다.
 
-진행 중(`round5-music`): 위 표의 화장실과 Esc는 음악 기준대로 바뀌는 중이다. 지금 코드는 어디서나 Esc에 `mus_pause`를 틀고 `mus_pause_alt`는 틀지 않는다. `mus_settle`은 판별 모델의 무서움 점수가 높아 사람이 들어 볼 곡이다.
+옛 `mus_restroom`과 `mus_settle`은 없어졌고, `mus_settle`은 `mus_room_reckon` 층이 됐다. 화장실 층은 시선을 보지 않으며, 많이 파고 돌아오면 무서운 `mus_room_dread` 층이 올라온다. 사람이 들어 보지 않았다.
 
 후보 6곡(감정, 아트 스타일, 재료, 반복 구조, 이야기, 역설)은 게임에 넣지 않았고 `build/music_lab.html`에 모았다.
 

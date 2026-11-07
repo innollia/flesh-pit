@@ -5,9 +5,8 @@ registers it in game/audio/manifest.json.
     python -X utf8 tools/build_music.py
 
 Every track comes from the ending song's own tune (MELODY / HARMONY in
-tools/build_song_layers.py). Title and the held restroom track are that tune
-on worn timbres, synthesized here in numpy. The tracks that must not feel like
-them are nkido patches (game/tools/audio/patches/mus_*.akkado): they keep the
+tools/build_song_layers.py). The title is that tune on worn timbres,
+synthesized here in numpy. The tracks that must not feel like it are nkido patches (game/tools/audio/patches/mus_*.akkado): they keep the
 tune's shape (the contour 3-5-6-5-3-2-1, or just its rising third) in another
 key, metre, instrument and room. Python only folds their loop, adds tape or
 crank wow, the lo-fi and the mastering (NKIDO_TRACKS).
@@ -24,25 +23,27 @@ song_melody). So none of these plays in the flesh. Where each one plays
                                    for the turning stage of dolls: reedy
                                    pipes, drum and snare, oom-pah-pah.
                                    G minor, 130 bpm, 3/4
-  mus_pause     Esc (eyes shut)    a slow warm string pad with no attacks at
-                                   all, breathing. Ab lydian, no beat (the
-                                   lids show the heart)
-  mus_pause_alt not played         the other candidate for Esc, for the sound
-                                   gallery: a felted piano in a warm room, a
-                                   few notes far apart. Db major, 66 bpm
+  mus_pause     Esc in the flesh   a slow warm string pad with no attacks at
+                                   all, breathing: a refuge from the noise.
+                                   Ab lydian, no beat (the lids show the heart)
+  mus_pause_alt Esc in the room    a felted piano in a warm room, a few notes
+                                   far apart, close, the size of the room.
+                                   Db major, 66 bpm
   mus_vent      vent trade open    teeth tapped on a lip, a walking plucked
                                    string, someone whistling the song through
                                    their teeth, down a duct. B minor, 120 bpm
   mus_mirror    Tab, in the room   a soft analogue synth sequence in 7/8 with
                                    side-to-side echoes and a wristwatch's tick
                                    (the arm is up as if reading one). F lydian
-  mus_settle    over the bowl      low bowed basses, a dull tally knock and
-                                   tuned drips in the porcelain. Bb phrygian,
-                                   54 bpm
-  mus_restroom  on hold            fragments sung by a wet finger round the
-                                   porcelain, far apart in a tiled room;
-                                   mostly silence (03 1: so
-                                   quiet you hear your own breath)
+  mus_room_*    restroom and bowl  one piece of music in parallel stems, all
+                                   Bb phrygian, 54 bpm, 72 beats (80 s). They
+                                   play together in one synchronized stream and
+                                   only their levels move, by what the game
+                                   says (audio/room_music.json): base (wet
+                                   finger on the rim, always, very low: 03 1,
+                                   so quiet you hear your own breath), reckon
+                                   (the bowl's bowed basses, tally, drips),
+                                   dread, linger, gut, cold, wrong, gold
 
 Each is a seamless loop of whole bars. The numpy tracks wrap notes and
 reverb tails round the loop end (circular placement and circular
@@ -77,15 +78,15 @@ MANIFEST = os.path.join(HERE, "..", "game", "audio", "manifest.json")
 PATCHES = os.path.join(HERE, "..", "game", "tools", "audio", "patches")
 NKIDO = r"C:\projects\_tools\nkido\build-clang\bin\nkido.exe"
 
-# Integrated loudness per track. The restroom one sits just above the room's
-# own hum bed (amb_restroom -34) so the light, the water and your breath stay
-# on top; the menus are about where the song's tine (-24) is; the vent trade
-# stays under where the being's voice will be; Esc, the bowl and the forearm
-# stay under reading and under the room's own sounds, which go on beneath.
+# Integrated loudness per track. The menus are about where the song's tine
+# (-24) is; the vent trade stays under where the being's voice will be; Esc and
+# the forearm stay under reading and under the room's own sounds. Each room
+# stem is mastered alike and audio/room_music.json sets what is heard: the
+# base's gain there puts it under the room's own hum bed (amb_restroom -34).
 TARGET_LUFS = {
-    "mus_title": -23.0, "mus_restroom": -31.0, "mus_vent": -27.0,
+    "mus_title": -23.0, "mus_vent": -27.0,
     "mus_pause": -28.0, "mus_pause_alt": -28.0, "mus_keybind": -25.0,
-    "mus_mirror": -28.0, "mus_settle": -28.0,
+    "mus_mirror": -28.0,
 }
 PHRASE_UNITS = 32  # MELODY / HARMONY span 32 units (16 s at the song's 0.5 s)
 
@@ -189,26 +190,6 @@ def tine(f, rng, detune_cents, length=2.8, bright=1.0):
     k = int(0.012 * RATE)
     tone[:k] += rng.standard_normal(k) * np.exp(-np.arange(k) / (0.003 * RATE)) * 0.08
     return tone
-
-
-def rim(f, dur, rng):
-    """A wet fingertip drawn round the porcelain rim (a glass-harp tone):
-    it swells in, sings with the stick-slip roughness of skin on glaze,
-    and dies away. No struck attack, so nothing in the quiet room pings."""
-    m = int((dur + 1.4) * RATE)
-    tt = np.arange(m) / RATE
-    env = np.minimum(1.0, 0.5 - 0.5 * np.cos(math.pi * np.minimum(1.0, tt / 0.35)))
-    after = np.maximum(0.0, tt - dur)
-    env *= np.exp(-after / 0.45)
-    grit = band(rng.standard_normal(m), 4, 30)
-    grit /= np.abs(grit).max() + 1e-9
-    waver = 1.0 + 0.0015 * grit
-    phase = 2 * math.pi * np.cumsum(f * waver) / RATE + rng.uniform(0, 6.28)
-    tone = np.zeros(m)
-    for ratio, amp in [(1.0, 1.0), (2.012, 0.22), (3.03, 0.07), (4.9, 0.025)]:
-        if f * ratio < RATE * 0.45:
-            tone += amp * np.sin(phase * ratio)
-    return tone * env * (1.0 + 0.12 * grit)
 
 
 def voice_line(n, events, shape, harmonics=24, attack=0.09, release=0.22, glide=0.09, octave=0.5):
@@ -317,41 +298,7 @@ def mus_title():
     return np.stack([dry * 0.75 + l * 0.45 + hiss, dry * 0.75 + r * 0.45 + hiss], -1)
 
 
-def mus_restroom():
-    """The restroom: a few notes of the tune sung by a wet finger round the
-    porcelain, far apart, the tiles answering. The gaps are long; the room's
-    own light and water and your breath fill them. Kept off the tube's
-    60/120/180 Hz and its 2.4 kHz buzz (amb_restroom)."""
-    n = int(96.0 * RATE)
-    rng = np.random.default_rng(202)
-    sung = np.zeros(n)
-    slow = 0.85
-
-    def phrase(idx, at, transpose=0, gain=1.0):
-        base = MELODY[idx[0]][0]
-        for i in idx:
-            b, length, note = MELODY[i]
-            place(sung, rim(midi_hz(note + transpose), length * slow, rng) * gain,
-                  int((at + (b - base) * slow + rng.normal(0.0, 0.04)) * RATE))
-
-    phrase([0, 1, 2, 3], 4.0)
-    phrase([4, 5, 6], 28.0, gain=0.85)
-    for at, dur, note in ((50.0, 2.6, 62), (52.4, 3.2, 57)):
-        place(sung, rim(midi_hz(note), dur, rng) * 0.6, int(at * RATE))
-    phrase([7, 8, 9, 10], 66.0, 12, gain=0.3)
-    phrase([11, 12, 13], 82.0, gain=0.8)  # stops on E, the loop's first F# answers it
-    # the cistern's water holding D and A, swelling once across the loop
-    t = np.arange(n) / RATE
-    tank = (np.sin(2 * math.pi * midi_hz(62) * t) + 0.6 * np.sin(2 * math.pi * midi_hz(69) * t))
-    tank = tank * (cycles(n, 1, -math.pi / 2) ** 2) * 0.03
-    tank += band(loop_noise(n, 9, 250, 900) * cycles(n, 3, 0.4), 250, 900) * 0.012
-    dry = band(sung, 220, 5000) * 0.5 + tank
-    dry = wow(dry, 0.0015, [1, 3])
-    l, r = reverb(dry, 1.3, 6000, 21, predelay=0.006)
-    return np.stack([dry * 0.6 + l * 0.6, dry * 0.6 + r * 0.6], -1)
-
-
-TRACKS = (mus_title, mus_restroom)
+TRACKS = (mus_title,)
 
 # nkido tracks: bpm, loop seconds (whole cycles of the patch), overhang folded
 # over the head, then tape or crank wow as wow()'s arguments.
@@ -361,11 +308,24 @@ NKIDO_TRACKS = {
     "mus_keybind": (60.0 / 0.46, 120 * 0.46, 0.08, (0.018, [1, 3, 5], [0.0, 0.7, 2.0])),
     "mus_mirror": (300.0 / 7.0, 67.2, 0.12, None),
     "mus_vent": (120.0, 64.0, 0.1, (0.006, [3, 11], [0.0, 2.1])),
-    "mus_settle": (54.0, 24 * 60.0 / 54.0, 0.3, (0.002, [2, 5], [0.0, 0.0])),
 }
-LOFI = {"mus_title": (22050, 12), "mus_restroom": (24000, 12), "mus_vent": (16000, 10),
+LOFI = {"mus_title": (22050, 12), "mus_vent": (16000, 10),
         "mus_pause": (22050, 14), "mus_pause_alt": (22050, 14), "mus_keybind": (18900, 10),
-        "mus_mirror": (32000, 12), "mus_settle": (16000, 10)}
+        "mus_mirror": (32000, 12)}
+
+# The room's stems: one piece, so one length, one wow curve (a different one per
+# stem would slide them against each other) and one lo-fi. Their loudness is
+# alike; the game sets the mix. Written at half rate: the lo-fi leaves nothing
+# above 8 kHz, and eight long stems are the largest thing in the sound folder.
+ROOM_STEMS = ("base", "reckon", "dread", "linger", "gut", "cold", "wrong", "gold")
+ROOM_LOOP = 72 * 60.0 / 54.0
+ROOM_RATE = 24000
+for stem in ROOM_STEMS:
+    NKIDO_TRACKS["mus_room_" + stem] = (54.0, ROOM_LOOP, 0.3, (0.002, [2, 5], [0.0, 0.0]))
+    LOFI["mus_room_" + stem] = (16000, 12)
+    TARGET_LUFS["mus_room_" + stem] = -28.0
+# folded into the stems: no longer built, gone from the manifest
+RETIRED = ("mus_restroom", "mus_settle")
 
 
 def render_nkido(name):
@@ -410,17 +370,22 @@ def master(name, data):
 
 def save(name, data):
     path = os.path.join(OUT, name + ".wav")
+    rate = RATE
+    if name.startswith("mus_room_"):
+        step = RATE // ROOM_RATE
+        data = np.stack([band(data[:, c], None, ROOM_RATE * 0.46, order=4) for c in range(2)], -1)[::step]
+        rate = ROOM_RATE
     pcm = (np.clip(data, -1, 1) * 32767).astype("<i2")
     with wave.open(path, "wb") as w:
         w.setnchannels(2)
         w.setsampwidth(2)
-        w.setframerate(RATE)
+        w.setframerate(rate)
         w.writeframes(pcm.tobytes())
     seam = A.loop_discontinuity(data)
     print("wrote %s  %.2f s  LUFS %.1f  TP %.1f  seam %.3f  wrap_hf %.1f dB" % (
-        path, len(data) / RATE, A.integrated_lufs(data, RATE), A.true_peak_dbfs(data, RATE),
+        path, len(data) / rate, A.integrated_lufs(data, rate), A.true_peak_dbfs(data, rate),
         seam["jump_ratio"], seam["wrap_hf_dbfs"]))
-    return len(data) / RATE
+    return len(data) / rate
 
 
 def register(lengths):
@@ -430,6 +395,8 @@ def register(lengths):
     for name, sec in lengths.items():
         m["sounds"][name] = {"kind": "loop", "files": ["res://audio/loops/%s.wav" % name],
                              "loop_seconds": round(sec, 3)}
+    for name in RETIRED:
+        m["sounds"].pop(name, None)
     with open(MANIFEST, "w", encoding="utf-8", newline="\n") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
         f.write("\n")

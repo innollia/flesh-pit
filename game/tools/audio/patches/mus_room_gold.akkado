@@ -1,0 +1,20 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_gold -- a big settlement (audio/room_music.json 이빨을_많이_정산): teeth settling in the
+// cistern as tuned ticks, and under them, for the only time in this room, the D natural: Bb major,
+// a warmth that does not quite belong here. 54 bpm, 72 beats.
+bpm = 54
+
+tick = ({freq, gate, vel}) -> {
+    (tri(freq) + sine(freq * 2.76) * 0.3) * ar(gate, 0.001, 0.07) * vel
+}
+ticks = n"[bb5 ~ d6 ~ f6 ~ d6 ~ bb5 ~ ~ f5 ~!4 d6 ~ f6 ~ bb6 ~ f6 ~ d6 ~!7]/12"
+coins = (ticks |> poly(@, tick, 6, release: 0.2)) * 0.2 |> delay(@, 0.1852, 0.3, 0.8, 0.3)
+
+warm = ({freq, gate, vel}) -> {
+    s = stereo(tri(freq * 0.9986), tri(freq * 1.0014))
+    (s |> lp(@, 900)) * adsr(gate, 3.0, 0.1, 1.0, 4.0) * vel
+}
+chords = n"[[bb3,d4,f4] _!11 [gb3,bb3,db4] _!11 [bb3,d4,f4,ab4] _!11]/36"
+glow = (chords |> poly(@, warm, 8, release: 4.0)) * 0.1
+
+out((coins + glow) |> freeverb(@, 0.5, 0.6, 0.28, 0.7, 0.75, 0.45) |> hp(@, 110))

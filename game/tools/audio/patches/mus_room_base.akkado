@@ -1,0 +1,25 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_base -- the restroom's own quiet, the one stem that always plays (audio/room_music.json
+// 평소): a wet fingertip drawn round the porcelain rim, the song's contour 3-5-6-5-3-2-1 a few notes
+// at a time, far apart, and the cistern holding the tonic. No attack anywhere, so nothing in the
+// still room pings. It was mus_restroom in D; here it shares the bowl's Bb phrygian and 54 bpm.
+// All mus_room_* stems: 54 bpm, a cycle is one beat, the loop is 72 beats (80 s), same key.
+// Kept off the tube's 60/120/180 Hz and its 2.4 kHz buzz (amb_restroom).
+bpm = 54
+
+rim = ({freq, gate, vel}) -> {
+    w = 1 + 0.0011 * sine(3.3) + 0.0007 * sine(5.1)
+    tone = sine(freq * w) + sine(freq * w * 2.012) * 0.22 + sine(freq * w * 3.03) * 0.07 + sine(freq * w * 4.9) * 0.025
+    tone * (1 + 0.12 * sine(7.3)) * adsr(gate, 0.4, 0.1, 1.0, 1.2) * vel
+}
+
+// Db F Gb F, Db Cb Bb, then pieces of it, the loop's last Ab leaning on the first Db
+sung = n"[~!4 db5 _ f5 _ gb5 _ _ f5 _ ~!9 db5 _ b4 _ bb4 _ _ _ ~!9 f4 _ _ gb4 _ ~!8 bb4 _ b4 _ bb4 _ ab4 _ _ _ ~!10]/72"
+singing = (sung |> poly(@, rim, 3, release: 1.6)) * 0.34 |> hp(@, 180) |> lp(@, 5000)
+
+// the cistern's water holding Bb and F, swelling once across the loop
+swell = 0.5 + 0.5 * sine(0.0125)
+tank = (sine(233.08) + sine(349.23) * 0.6) * swell * swell * 0.05
+hush = stereo(noise(0, 0, 41), noise(0, 0, 43)) |> bp(@, 520, 0.8)
+
+out((singing + tank + hush * swell * 0.012) |> freeverb(@, 0.5, 0.7, 0.28, 0.7, 0.8, 0.4) |> hp(@, 90))

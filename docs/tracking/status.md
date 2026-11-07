@@ -1,5 +1,16 @@
 # 현재 상태
 
+## 화장실과 변기를 잇는 동적 음악, Esc 곡 규칙 (2026-11-07, 브랜치 round5-music)
+
+사용자 요청 "화장실 배경음악이 나오다가 변기 바라본다고 음악이 달라지는건 이상함. 둘이 이어져야 함." `RESTROOM_ON_HOLD`는 이 요청으로 없앴다. `mus_restroom`·`mus_settle`은 `mus_room_*` 여덟 층으로 합쳐 지웠다.
+- 층: base(옛 mus_restroom의 테두리 음을 Bb 프리지안으로 옮김), reckon(옛 mus_settle), dread, linger, gut, cold, wrong, gold. 모두 nkido 패치, Bb 프리지안, 54 bpm, 72박(80 s), 24 kHz. `AudioStreamSynchronized` 하나에서 함께 돌고 음량만 움직인다(오름 1/8, 내림 1/12 초당).
+- 상황 목록은 `game/audio/room_music.json`. 사실(이번 원정 굴착·깊이·종양, 방 체류, 위장, 죽음, 변기 앞, 정산 이빨)을 main에서 읽기만 한다. 시선은 사실이 아니다. main 수정 없음.
+- 시작: 눈부심·기상 눈꺼풀이 끝나고 6초 뒤 8초에 걸쳐. 환풍기·배관은 그대로. 환풍구·Tab은 곡이 그대로 따로 있고 방 음악은 그 아래에서 자리를 유지한다.
+- Esc: 눈을 감은 곳으로 고른다. 화장실 안 mus_pause_alt, 살 속 mus_pause. 끌 때까지 바뀌지 않는다.
+- 검증: `run_music_tests.gd` 수정 전 10 실패와 스크립트 오류, 수정 후 102 통과. 엔진 녹음(음악 버스만)으로 변기 진입·이탈 전후 위상 어긋남 0 샘플, 100 ms 최대 변화 3.9 dB(옛 코드는 전체 믹스 22 dB, 효과음 포함). 평소는 음악 없는 방보다 +0.2 LU, 많이 파고 온 경우 +4.8 LU. CLAP 무서움 0.09 → 0.50.
+- 녹음에서 찾은 것: 곧게 22박 넘는 `_` 이음은 nkido 패턴에서 중간에 끊겨 cold가 16초 무음이었다. 긴 화음은 12박마다 다시 쳐서 잇는다.
+- 사람이 들어 본 적은 없다. gold는 CLAP이 "따뜻함"보다 "슬픔"으로 듣는다.
+
 ## 환풍구 음성 준비 (round5-voice, 2026-11-07)
 
 - 음성은 사용자가 녹음한다. 대사 137줄(vent_lines 93, vent_biome_lines 35, vent_guide_lines 9)을 `game/audio/voice/<대사 id>.ogg|.wav`로 넣으면 나온다. 지금 파일은 0개라 게임은 자막만 나온다.

@@ -1,0 +1,38 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_dread -- back from digging far too much (audio/room_music.json 많이_파고_옴): two low
+// bowed notes a semitone apart grinding in slow rolls, a heart much too slow and much too close, a
+// high string sliding up a hair at a time, and something else breathing in the small room.
+// The room's Bb, with the Cb and the E natural that do not let it rest. 54 bpm, 72 beats.
+bpm = 54
+
+grind = ({freq, gate}) -> {
+    s = stereo(saw(freq * 0.9951), saw(freq * 1.0061))
+    (s |> hp(@, 42) |> lp(@, 620)) * adsr(gate, 4.0, 0.1, 1.0, 4.0)
+}
+cluster = n"[[bb1,b1] _!11 [bb1,b1] _!11 [bb1,e2] _!11 [bb1,b1] _!11 [f1,gb1,b1] _!11 [f1,gb1,b1] _!11]/72"
+roll = 0.55 + 0.45 * sine(0.0875)
+low = (cluster |> poly(@, grind, 4, release: 4.0)) * roll * 0.12
+
+// lub-dub every other beat, felt in the chest
+thud = ({freq, gate}) -> {
+    (sine(freq * (1 + 0.4 * ar(gate, 0.002, 0.05))) + tri(freq * 2.0) * 0.2) * ar(gate, 0.01, 0.22)
+}
+lubdub = n"[[ab1 ab1] ~]/2"
+heart = (lubdub |> poly(@, thud, 2, release: 0.4)) * 0.5 |> lp(@, 180)
+
+// the string: E over the Bb, the worst note in the key, rising a quarter tone and falling back
+scrape = ({freq, gate}) -> {
+    f = freq * (1.0 + 0.02 * (0.5 + 0.5 * sine(0.025)))
+    strung = stereo(saw(f * 0.9985), saw(f * 1.0017))
+    (strung |> bp(@, 1400, 1.1)) * (0.65 + 0.35 * sine(6.1)) * adsr(gate, 5.0, 0.1, 1.0, 5.0)
+}
+line = n"[~!12 e5 _!20 ~!8 e5 f5 _!17 ~!12]/72"
+thin = (line |> poly(@, scrape, 2, release: 5.0)) * 0.06
+
+// a breath that is not yours: a whole number of times round the loop
+air = stereo(noise(0, 0, 301), noise(0, 0, 307)) |> bp(@, 560, 0.9)
+lung = 0.5 + 0.5 * sine(0.225)
+breath = air * lung * lung * lung * 0.1
+
+space = (low + thin + breath) |> freeverb(@, 0.45, 0.6, 0.28, 0.7, 0.8, 0.4) |> hp(@, 28)
+out(space + heart)

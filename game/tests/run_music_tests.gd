@@ -2,13 +2,20 @@ extends SceneTree
 
 ## Background music (audio/fp_music.gd, tools/build_music.py). Each place
 ## starts its own track on the Music bus, and nothing plays in the flesh
-## (docs/spec/08-presentation.md 3). The restroom's music is on hold: there
-## only its bed plays (hum, exhaust fan), and that leaves with the room. Real main scene, isolated save.
+## (docs/spec/08-presentation.md 3). The restroom and the bowl are one piece of
+## music: parallel stems in one player, chosen by what the game says
+## (audio/room_music.json), never swapped, never by where you look. The room's
+## bed (hum, exhaust fan) goes on under it and leaves with the room. Real main
+## scene, isolated save.
 ##   godot_console --headless --path game --script res://tests/run_music_tests.gd
 
 const SAVE := "user://music-test.bin"
 ## fp_music FADE_OUT_FLESH (0.8 s) plus a frame: gone by then.
 const OUT_S := 1.0
+## The room's stems, the one player they share.
+const ROOM := "mus_room"
+## Esc in the room.
+const PIANO := "mus_pause_alt"
 var _passed := 0
 var _failed := 0
 var m: Node3D
@@ -73,13 +80,14 @@ func _run() -> void:
 	_ok(music.get("place") == "" and music.call("audible").is_empty(), "no music during the opening (%s)" % music.get("place"))
 	m.finish_opening()
 	await frames(2)
-	# restroom: its music is on hold (2026-11-04); only the room's ambience
-	# plays, the light's hum with the exhaust fan
+	# the room's music comes in slowly once the eyes have settled, over the
+	# light's hum and the exhaust fan, which stay as they were
 	await run_for(3.0)
 	_ok(music.call("audible").is_empty(), "not yet 3 s after the opening")
 	await run_for(12.5)
-	_ok(music.get("place") == "" and music.call("audible").is_empty() and music.call("player", "mus_restroom") == null,
-		"restroom music on hold: mus_restroom does not play however long you stay (%s)" % str(music.call("audible")))
+	_ok(music.get("place") == "room" and on_music_bus(ROOM) and float(music.call("level", ROOM)) > 0.99,
+		"the room's music is up 15 s after the opening (%s, %s)" % [music.get("place"), str(music.call("audible"))])
+	await _stems_are_one_piece()
 	var hk: Node = m.get_node("AudioHookup")
 	var d: FDKAudioDirector = hk.get("director")
 	_ok(d.current_bed == "restroom", "the restroom bed plays in the room (%s)" % d.current_bed)
@@ -91,9 +99,13 @@ func _run() -> void:
 	_ok(music.get("place") == "vent" and on_music_bus("mus_vent") and float(music.call("level", "mus_vent")) > 0.99, "vent open plays mus_vent on the Music bus")
 	m.vent.is_open = false
 	await run_for(3.0)
-	_ok(music.get("place") == "" and float(music.call("level", "mus_vent")) < 0.01 and music.call("player", "mus_restroom") == null,
-		"grate shut: the trade's music is gone and no restroom music comes back")
+	_ok(music.get("place") == "room" and float(music.call("level", "mus_vent")) < 0.01,
+		"grate shut: the trade's music is gone and the room's is back (%s)" % music.get("place"))
+	await run_for(8.0)
 	await _modal_places_in_room()
+	await _bowl_is_the_same_music()
+	await _never_by_the_eyes()
+	await _situations()
 	# out in the flesh: held still so the flesh does not push the body back
 	m.set_process(false)
 	m.set_physics_process(false)
@@ -132,7 +144,8 @@ func _run() -> void:
 	m.open_pause_menu()
 	await frames(2)
 	await run_for(3.0)
-	_ok(music.get("place") == "pause" and on_music_bus("mus_pause") and float(music.call("level", "mus_pause")) > 0.99, "Esc plays mus_pause on the Music bus")
+	_ok(music.get("place") == "pause" and on_music_bus("mus_pause") and float(music.call("level", "mus_pause")) > 0.99, "Esc in the flesh plays mus_pause (the strings) on the Music bus")
+	_ok(music.call("player", PIANO) == null or float(music.call("level", PIANO)) <= 0.0, "and never the piano there")
 	m.pause_menu.resume()
 	m._on_pause_resumed()
 	await frames(2)
@@ -199,14 +212,85 @@ func _run() -> void:
 	m.ending.active = false
 	_finish()
 
-## The two modal screens in the room have their own tracks; the room around
-## them stays silent, and nothing about the game changes for playing them.
+## Same place, same Esc music: shut your eyes in the room and it is the felt
+## piano, whatever happened before; it does not change until the eyes open.
+func _esc_by_where_the_eyes_shut() -> void:
+	var room_player: AudioStreamPlayer = music.call("player", ROOM)
+	m.open_pause_menu()
+	await frames(2)
+	await run_for(3.0)
+	_ok(music.get("place") == "pause" and on_music_bus(PIANO) and float(music.call("level", PIANO)) > 0.99, "Esc in the room plays mus_pause_alt, the felt piano")
+	_ok(music.call("player", "mus_pause") == null, "and not the strings")
+	# nothing can move the body while paused, but if it did the song stays
+	var at: Vector3 = m.player.global_position
+	m.player.global_position = m.RESTROOM_CENTER + Vector3(0, 0, -6.0)
+	await run_for(1.0)
+	_ok(float(music.call("level", PIANO)) > 0.99 and music.call("player", "mus_pause") == null, "the song does not change until Esc is closed")
+	m.player.global_position = at
+	await frames(1)
+	m.open_settings()
+	await frames(2)
+	await run_for(2.0)
+	_ok(float(music.call("level", PIANO)) > 0.99, "settings from Esc in the room keep the piano")
+	await run_for(6.0)
+	_ok(music.call("player", ROOM) == room_player and room_player != null, "the room's music keeps its place under a long Esc")
+	m.settings_menu.close()
+	await frames(2)
+	m.pause_menu.resume()
+	m._on_pause_resumed()
+	await frames(2)
+	await run_for(3.0)
+	_ok(music.get("place") == "room" and float(music.call("level", PIANO)) < 0.01, "eyes open: the room's music again (%s)" % music.get("place"))
+	await run_for(8.0)
+
+## The stems are one piece: same length, same rate, in one synchronized stream
+## on one player, every one of them a manifest loop.
+func _stems_are_one_piece() -> void:
+	var bank: FDKSoundBank = m.get_node("AudioHookup").get("director").bank
+	var data: Dictionary = music.call("room_data")
+	_ok(data != null and not data.is_empty(), "room_music.json loads")
+	var stems: Array = (data.get("층", {}) as Dictionary).keys()
+	_ok(stems.size() >= 8, "at least eight stems (%d)" % stems.size())
+	var length := -1.0
+	var rate := -1
+	var same := true
+	for stem in stems:
+		var id := String(data["층"][stem]["곡"])
+		var wav := bank.stream(id, 0) as AudioStreamWAV
+		_ok(bank.has(id) and bank.is_loop(id) and wav != null, "%s (%s) is a loop in the manifest" % [id, stem])
+		if wav == null:
+			continue
+		if length < 0.0:
+			length = wav.get_length()
+			rate = wav.mix_rate
+		same = same and absf(wav.get_length() - length) < 0.00001 and wav.mix_rate == rate
+	_ok(same, "every stem has the same length and rate (%.3f s at %d)" % [length, rate])
+	var beats := length * 54.0 / 60.0
+	_ok(absf(beats - roundf(beats)) < 0.001, "the loop is whole beats at 54 bpm (%.2f beats)" % beats)
+	var p: AudioStreamPlayer = music.call("player", ROOM)
+	_ok(p != null and p.stream is AudioStreamSynchronized and (p.stream as AudioStreamSynchronized).stream_count == stems.size(), "one player, one synchronized stream")
+	var players := music.get_children().filter(func(c): return c is AudioStreamPlayer)
+	_ok(players.size() == 1, "the stems are not separate players (%d)" % players.size())
+	# the situations' conditions read facts that exist, and quiet is quiet
+	var facts: Dictionary = music.call("facts")
+	var bad: Array = []
+	for sit in data.get("상황", []):
+		for key in (sit.get("조건", {}) as Dictionary).keys():
+			if not facts.has(key):
+				bad.append(key)
+		for stem in (sit.get("층", {}) as Dictionary).keys():
+			if not stems.has(stem):
+				bad.append(stem)
+	_ok(bad.is_empty(), "every condition and stem named in the situations exists %s" % str(bad))
+	_ok(music.call("active_situations") == ["평소"], "fresh in the room only the quiet is active (%s)" % str(music.call("active_situations")))
+
 func _modal_places_in_room() -> void:
 	var bank: FDKSoundBank = m.get_node("AudioHookup").get("director").bank
-	_ok(bank.has("mus_pause_alt") and bank.is_loop("mus_pause_alt") and not music.get("TRACKS").values().has("mus_pause_alt"),
-		"mus_pause_alt is in the manifest for the gallery and no place plays it")
+	_ok(bank.has(PIANO) and bank.is_loop(PIANO), "mus_pause_alt is a loop in the manifest")
+	_ok(not bank.has("mus_settle") and not bank.has("mus_restroom"), "the two old tracks are folded into the stems")
 	var teeth_before: int = m.progression.teeth_in_hand
 	var muts_before: Array[String] = m.progression.all_mutations()
+	await _esc_by_where_the_eyes_shut()
 	m.open_mirror()
 	await frames(2)
 	await run_for(2.0)
@@ -214,23 +298,170 @@ func _modal_places_in_room() -> void:
 	m.mirror.close()
 	await frames(2)
 	await run_for(3.0)
-	_ok(music.get("place") == "" and float(music.call("level", "mus_mirror")) < 0.01, "forearm down: the room is silent again")
-	# the settlement: F or V at the bowl, the bowl's own view and cursor
-	m.player.global_position = m.RESTROOM_CENTER
-	m.start_settlement()
-	await frames(2)
-	await run_for(0.8)
-	_ok(m.is_settling() and music.get("place") == "settle" and on_music_bus("mus_settle") and float(music.call("level", "mus_settle")) > 0.99, "over the bowl mus_settle is there within 0.8 s (%s)" % music.get("place"))
-	m.leave_settlement()
-	await frames(2)
-	await run_for(3.0)
-	_ok(music.get("place") == "" and float(music.call("level", "mus_settle")) < 0.01, "standing up: the room is silent again")
+	_ok(music.get("place") == "room" and float(music.call("level", "mus_mirror")) < 0.01, "forearm down: the room's music again")
+	await run_for(8.0)
 	# sitting on the toilet is still the room
 	_ok(m.sit_down(), "sat down")
 	await run_for(3.0)
-	_ok(music.get("place") == "" and music.call("audible").is_empty(), "sitting on the toilet has no music (%s)" % str(music.call("audible")))
+	_ok(music.get("place") == "room" and music.call("audible") == [ROOM], "sitting on the toilet is the room's music (%s)" % str(music.call("audible")))
 	m.stand_up()
 	_ok(m.progression.teeth_in_hand == teeth_before and m.progression.all_mutations() == muts_before, "the music changed nothing in progression")
+
+## The largest change in any stem over one 0.1 s step while `sec` passes.
+func track_stems(sec: float) -> float:
+	var biggest := 0.0
+	var t := 0.0
+	var was: Dictionary = music.call("room_levels")
+	while t < sec:
+		music.call("step", 0.1)
+		t += 0.1
+		var now: Dictionary = music.call("room_levels")
+		for k in now.keys():
+			biggest = maxf(biggest, absf(float(now[k]) - float(was.get(k, 0.0))))
+		was = now
+	await process_frame
+	return biggest
+
+## Kneeling at the bowl and standing up again: the same player keeps running,
+## nothing else comes in, the master does not move, and only the stems drift.
+func _bowl_is_the_same_music() -> void:
+	m.player.global_position = m.RESTROOM_CENTER
+	var p: AudioStreamPlayer = music.call("player", ROOM)
+	var before_id := p.get_instance_id() if p != null else 0
+	var before: Dictionary = music.call("room_levels")
+	m.start_settlement()
+	await frames(2)
+	_ok(m.is_settling(), "at the bowl")
+	var biggest: float = await track_stems(0.8)
+	var q: AudioStreamPlayer = music.call("player", ROOM)
+	_ok(music.get("place") == "room" and music.call("audible") == [ROOM], "over the bowl the room's music goes on, nothing else plays (%s %s)" % [music.get("place"), str(music.call("audible"))])
+	_ok(q != null and q.get_instance_id() == before_id and q.playing, "the same player, never restarted")
+	_ok(float(music.call("level", ROOM)) > 0.99, "the master does not dip")
+	_ok(biggest <= 0.0126, "the first 0.8 s moves any stem at most 1/8 per second (%.4f per 0.1 s)" % biggest)
+	biggest = await track_stems(9.0)
+	var over: Dictionary = music.call("room_levels")
+	_ok(biggest <= 0.0126 and float(over.get("reckon", 0.0)) > float(before.get("reckon", 0.0)) + 0.2, "the reckoning stem rises slowly (%.2f)" % float(over.get("reckon", 0.0)))
+	m.leave_settlement()
+	await frames(2)
+	biggest = await track_stems(14.0)
+	var after: Dictionary = music.call("room_levels")
+	_ok(biggest <= 0.0126 and float(after.get("reckon", 0.0)) <= float(before.get("reckon", 0.0)) + 0.001, "standing up it sinks back as slowly (%.2f)" % float(after.get("reckon", 0.0)))
+	var r: AudioStreamPlayer = music.call("player", ROOM)
+	_ok(r != null and r.get_instance_id() == before_id, "and it is still the same player")
+
+## Where you look changes nothing: a whole turn, at the bowl, the mirror, the door.
+func _never_by_the_eyes() -> void:
+	var before: Dictionary = music.call("room_levels")
+	var same := not before.is_empty()
+	for i in range(36):
+		m.player.rotation.y = TAU * float(i) / 36.0
+		music.call("step", 0.1)
+		same = same and music.call("room_levels") == before and music.get("place") == "room"
+	await process_frame
+	m.player.rotation.y = 0.0
+	_ok(same, "a whole turn in the room changes no stem")
+
+## Out through the door and back with main held still, so the flesh does not
+## push the body around; `out` is what happens while away.
+func _trip(out: Callable) -> void:
+	var c: Vector3 = m.RESTROOM_CENTER
+	m.player.global_position = c + Vector3(0, 0, -6.0)
+	await frames(1)
+	await run_for(0.3)
+	await out.call()
+	await run_for(0.3)
+	m.player.global_position = c
+	await frames(1)
+	await run_for(16.0)
+
+func _hears(stem: String, situation: String) -> void:
+	var t: Dictionary = music.call("room_targets")
+	var active: Array = music.call("active_situations")
+	_ok(active.has(situation), "%s is active (%s)" % [situation, str(active)])
+	_ok(float(t.get(stem, 0.0)) > 0.2 and float((music.call("room_levels") as Dictionary).get(stem, 0.0)) > 0.2, "%s brings up %s (%.2f)" % [situation, stem, float(t.get(stem, 0.0))])
+
+func _situations() -> void:
+	m.set_process(false)
+	m.set_physics_process(false)
+	m.player.set_physics_process(false)
+	var quiet: Dictionary = music.call("room_targets")
+	# a short trip, nothing dug: the quiet comes back
+	await _trip(func(): pass)
+	_ok(music.call("active_situations") == ["평소"], "a walk to the door and back changes nothing (%s)" % str(music.call("active_situations")))
+	_ok(music.call("room_targets") == quiet, "same stems as before")
+	# back from a big dig
+	await _trip(func():
+		m.excavated_cells += 60
+		await run_for(0.2))
+	_hears("dread", "많이_파고_옴")
+	_ok(float((music.call("facts") as Dictionary).get("이번_굴착", 0.0)) >= 60.0, "the dig is counted")
+	await run_for(260.0)
+	_ok(not music.call("active_situations").has("많이_파고_옴"), "the fear wears off after minutes in the room (%s)" % str(music.call("active_situations")))
+	# a long stay: the same clock, now past the long-stay line
+	await run_for(30.0)
+	_hears("linger", "오래_안_나감")
+	# a small dig is not a big dig
+	await _trip(func():
+		m.excavated_cells += 5
+		await run_for(0.2))
+	_ok(not music.call("active_situations").has("많이_파고_옴"), "a few cells are not a big dig")
+	_ok(not music.call("active_situations").has("오래_안_나감"), "and going out ended the long stay")
+	# the stomach
+	m.stomach.fill = m.stomach_config.capacity
+	await run_for(10.0)
+	_hears("gut", "위장이_참")
+	m.stomach.fill = 0.0
+	await run_for(14.0)
+	_ok(not music.call("active_situations").has("위장이_참"), "emptied, the stem goes")
+	# a tumor eaten out there
+	await _trip(func():
+		m.progression.eat_tumor_kind("T1")
+		await run_for(0.2))
+	_hears("wrong", "종양을_먹음")
+	# a big settlement
+	m.toilet.vomit_into(240.0)
+	var got: Dictionary = m.pull_lever()
+	await run_for(10.0)
+	_hears("gold", "이빨을_많이_정산")
+	_ok(int(got["teeth"]) >= 12, "the bowl paid %d teeth" % int(got["teeth"]))
+	await run_for(100.0)
+	_ok(not music.call("active_situations").has("이빨을_많이_정산"), "that wears off too")
+	# dying: main.die moves the body back; the lids must finish first
+	m.excavated_cells += 60
+	m.player.global_position = m.RESTROOM_CENTER + Vector3(0, 0, -6.0)
+	await frames(1)
+	await run_for(3.0)
+	m.die("test")
+	await frames(1)
+	_ok(m.wake_lids.playing(), "waking behind the lids")
+	music.call("step", 0.1)
+	_ok(music.get("place") == "", "nothing starts behind the lids (%s)" % music.get("place"))
+	m.wake_lids.set("_t", -1.0)
+	await run_for(16.0)
+	_hears("cold", "죽고_돌아옴")
+	_ok(not music.call("active_situations").has("많이_파고_옴"), "death takes the place of the fear")
+	# the glare on the way back holds the start until the eyes have adjusted
+	m.player.global_position = m.RESTROOM_CENTER + Vector3(0, 0, -6.0)
+	await frames(1)
+	await run_for(6.0)
+	_ok(music.call("audible").is_empty(), "out again, nothing plays")
+	m.player.global_position = m.RESTROOM_CENTER
+	m.glare_controller.flash = 1.0
+	await frames(1)
+	for i in range(25):
+		music.call("step", 0.1)
+		m.glare_controller.flash = maxf(0.0, m.glare_controller.flash - 0.04)
+	await process_frame
+	_ok(music.call("audible").is_empty(), "under the glare no music")
+	m.glare_controller.flash = 0.0
+	await run_for(5.5)
+	_ok(music.call("audible").is_empty(), "nor for the 6 s after it clears")
+	await run_for(1.0)
+	_ok(float(music.call("level", ROOM)) > 0.0 and float(music.call("level", ROOM)) < 0.2, "then it rises slowly (%.2f)" % float(music.call("level", ROOM)))
+	m.set_process(true)
+	m.set_physics_process(true)
+	m.player.set_physics_process(true)
+	await frames(1)
 
 func _finish() -> void:
 	print("--- %d passed, %d failed ---" % [_passed, _failed])
