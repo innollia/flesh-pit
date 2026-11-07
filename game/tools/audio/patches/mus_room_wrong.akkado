@@ -1,0 +1,16 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_wrong -- you ate a tumor out there (audio/room_music.json 종양을_먹음): the rim's own
+// tune again, a shadow of it a third of a semitone flat and half a beat late, trembling, as if
+// something in you hums along and does not know the song. The one stem meant to be out of tune.
+// 54 bpm, 72 beats.
+bpm = 54
+
+rim = ({freq, gate, vel}) -> {
+    f = freq * 0.98 * (1 + 0.004 * sine(2.3))
+    s = stereo(sine(f * 0.999) + sine(f * 2.03) * 0.3, sine(f * 1.001) + sine(f * 1.97) * 0.3)
+    s * (0.55 + 0.45 * sine(11.3)) * adsr(gate, 0.5, 0.1, 1.0, 1.5) * vel
+}
+sung = n"[~!4 [~ db5] _ [~ f5] _ [~ gb5] _ _ [~ f5] ~!10 [~ db5] _ [~ b4] _ [~ bb4] _ _ ~!10 [~ f4] _ _ [~ gb4] ~!9 [~ bb4] _ [~ b4] _ [~ bb4] _ ~!14]/72"
+singing = (sung |> poly(@, rim, 4, release: 1.8)) * 0.3 |> hp(@, 150) |> lp(@, 4000)
+
+out(singing |> freeverb(@, 0.6, 0.65, 0.28, 0.7, 0.75, 0.45))

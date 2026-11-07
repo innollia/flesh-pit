@@ -15,3 +15,5 @@ manifest 경로와 실제 스트림의 존재, 씹기 유지와 중단 시 루�
 소리 모음 페이지: `py -3 -B tools/build_sound_gallery.py`로 manifest·SOUND_LIST에서 `build/sound_gallery.html`을 다시 만들고, 그 파일을 브라우저로 바로 열면(file://, 서버 없음) 모든 소리를 들을 수 있다.
 
 fp_vent_voice는 `FPVent.line_spoken`을 받아 `audio/voice/<대사 id>.ogg` 또는 `.wav`를 Voice 버스로 재생한다. 파일이 없으면 자막만 나오고, 다음 대사가 나오면 파일 유무와 상관없이 나오던 음성을 끊는다. 게임을 고치지 않고 `voice_started`·`voice_cut` 신호만 내며, Main이 이를 자막에 연결한다. 파일은 대사 id로만 찾으므로 문구를 바꿔도 연결이 끊기지 않고, 녹음한 문구와 달라진 줄은 `tools/check_voice_files.py`가 `recorded_lines.json`과 비교해 알려 준다. 폴더의 원본을 그대로 읽어 import 없이 나오며, 내보낸 게임은 import된 사본을 쓴다. Godot의 import는 EXTENSIBLE 머리말의 24비트 WAV를 거부하므로 검사가 문제로 알리고 `--fix`가 머리말을 고친다. 녹음 대본은 `tools/build_voice_sheet.py`가 `build/voice_sheet.html`로 만든다.
+
+fp_music은 곳마다 곡을 고르고, 화장실과 변기는 한 곡이다. `mus_room_*` 여덟 층은 같은 조·템포·길이로 AudioStreamSynchronized 하나에서 함께 돌고 음량만 움직인다. 어느 층이 올라올지는 `room_music.json`의 상황 목록이 사실(굴착·체류·위장·죽음·종양·정산)로 정한다. 시선은 사실에 넣지 않는다. 층은 같은 길이로 렌더하고 wow 곡선도 같아야 서로 밀리지 않는다(`tools/build_music.py` ROOM_STEMS). Esc 곡은 눈을 감은 곳으로 고르고(화장실 mus_pause_alt, 살 속 mus_pause) 끌 때까지 바꾸지 않는다.

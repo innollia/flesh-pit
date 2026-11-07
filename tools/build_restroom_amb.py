@@ -23,8 +23,9 @@ The owner's amb_restroom (fluorescent hum and buzz, pinned in
 game/tools/audio/build_audio.py PS1_PINNED) keeps playing; the fan is added
 beside it, so the bed fades in and out of the flesh exactly as before (the
 director fades every layer of a bed together; the water follows that fade).
-User decision 2026-11-04: the restroom has no music for now, only the fan and
-the water in the pipes (audio/fp_music.gd RESTROOM_ON_HOLD).
+The fan and the water came in when the restroom's music was on hold
+(2026-11-04); the room's music is back since as very low stems over them
+(audio/fp_music.gd), and they stay as they were.
 
 Seamless fan: every noise is shaped by an FFT filter over the whole loop
 (circular convolution, so the wrap is just another sample), every tone has a

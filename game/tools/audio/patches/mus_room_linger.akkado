@@ -1,0 +1,20 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_linger -- you have been in the room too long (audio/room_music.json 오래_안_나감): the
+// rim that was far away is close now and has stopped wandering. It circles one semitone, Bb and Cb,
+// over and over, patiently, and the cistern's note leans in under it. Asks you to go. 54 bpm, 72 beats.
+bpm = 54
+
+rim = ({freq, gate, vel}) -> {
+    w = 1 + 0.0011 * sine(3.3) + 0.0007 * sine(5.1)
+    tone = sine(freq * w) + sine(freq * w * 2.012) * 0.3 + sine(freq * w * 3.03) * 0.12 + sine(freq * w * 4.9) * 0.05
+    tone * (1 + 0.16 * sine(9.1)) * adsr(gate, 0.25, 0.1, 1.0, 0.9) * vel
+}
+circle = n"[bb4 _ _ b4 _ _ bb4 _ ~ ~ ~ ~]/12"
+under = n"[~!6 f4 _ _ _ gb4 _ _ _ f4 _ ~!8]/24"
+voices = (circle |> poly(@, rim, 3, release: 1.2)) * 0.32 + (under |> poly(@, rim, 3, release: 1.2)) * 0.16
+
+// a whole number of slow leans per loop
+lean = 0.5 + 0.5 * sine(0.0375)
+tank = stereo(sine(233.08 * 1.0015), sine(233.08 * 0.9985)) * lean * 0.09
+
+out((voices + tank) |> hp(@, 90) |> lp(@, 4500) |> freeverb(@, 0.3, 0.7, 0.28, 0.7, 0.8, 0.4))

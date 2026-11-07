@@ -1,0 +1,17 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_cold -- waking here after dying (audio/room_music.json 죽고_돌아옴): everything warm
+// and low is gone. High thin tones a semitone apart, hardly moving, cold air over tile.
+// Bb phrygian, 54 bpm, 72 beats. Under the tube's 2.4 kHz.
+bpm = 54
+
+glass = ({freq, gate, vel}) -> {
+    s = stereo(sine(freq * 0.9994), sine(freq * 1.0006)) + stereo(sine(freq * 2.003), sine(freq * 1.997)) * 0.06
+    s * adsr(gate, 6.0, 0.1, 1.0, 6.0) * vel
+}
+held = n"[[f6,gb6] _!11 [f6,gb6] _!11 [bb5,b5] _!11 [db6,f6] _!11 [gb6,bb6] _!11 [f6,gb6] _!11]/72"
+tones = (held |> poly(@, glass, 8, release: 6.0)) * 0.1 * (0.7 + 0.3 * sine(0.1))
+
+air = stereo(noise(0, 0, 501), noise(0, 0, 503)) |> bp(@, 3100, 0.5)
+wind = air * (0.5 + 0.5 * sine(0.05)) * 0.012
+
+out((tones + wind) |> freeverb(@, 0.7, 0.5, 0.28, 0.7, 0.7, 0.5) |> hp(@, 400))

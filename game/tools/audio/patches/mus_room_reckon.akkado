@@ -1,8 +1,8 @@
 // flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
-// id: mus_settle -- kneeling over the bowl with what you brought back: a low section of bowed basses
-// with the rosin audible, a dull knock that tallies, single tuned drips in the porcelain. Short and
-// heard from its first note (the stay here is seconds); neither the lullaby's sweetness nor a
-// threat: a reckoning. Bb phrygian, 54 bpm; a cycle is one beat, the loop is 24 beats (26.67 s).
+// id: mus_room_reckon -- what mus_settle was, now a stem under the room's quiet instead of a track of
+// its own: a low section of bowed basses with the rosin audible, a dull knock that tallies, single
+// tuned drips in the porcelain. Neither sweet nor a threat: a reckoning. It comes up slowly at the
+// bowl and after a big settlement (audio/room_music.json). Bb phrygian, 54 bpm, 72 beats.
 bpm = 54
 
 bow = ({freq, gate}) -> {
@@ -24,7 +24,7 @@ tally = n"[bb2 ~ ~ ~ ~ bb2 ~ ~]/4"
 // half-beat steps: the song's rising third, then a semitone falling back
 drops = n"[~ bb5 ~ ~ db6 ~ ~ b5 ~!4 bb5 ~!5 ab5 ~!2 b5 ~!2 bb5 ~!4 db6 ~!2 eb6 ~!2 db6 ~!2 b5 ~!3 ab5 ~!2 bb5 ~!2]/24"
 
-// the bow's pressure swells twice a bar (12 whole cycles per loop)
+// the bow's pressure swells twice a bar (36 whole cycles per loop)
 low = (bass |> legato(@, bow, release: 0.4)) * (0.6 + 0.4 * sine(0.45)) * 0.17
 wood = (tally |> poly(@, knock, 4, release: 0.5)) * 0.3 |> lp(@, 800)
 water = (drops |> poly(@, drip, 4, release: 0.3)) * 0.5 |> delay(@, 0.0031, 0.5, 1.0, 0.5)

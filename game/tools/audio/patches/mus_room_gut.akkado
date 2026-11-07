@@ -1,0 +1,21 @@
+// flesh-pit music patch. tools/build_music.py renders it twice round and keeps the second pass.
+// id: mus_room_gut -- a full stomach in a quiet room (audio/room_music.json 위장이_참): a slow heavy
+// wobble low in the belly and tuned bubbles rising through it, on the room's notes.
+// Bb phrygian, 54 bpm, 72 beats. Off the tube's 60 and 120 Hz.
+bpm = 54
+
+bubble = ({freq, gate, vel}) -> {
+    (sine(freq * (1.0 + 0.9 * (1.0 - ar(gate, 0.01, 0.34)))) + sine(freq * 2.0) * 0.12) * ar(gate, 0.02, 0.36) * vel
+}
+rises = n"[~!3 db3 ~ ~ f3 ~!2 gb3 ab3 ~!4 db3 ~!6 f2 ~!2 ab2 ~!3 db3 f3 ~!3 gb2 ~!8 ab2 ~!2 db3 ~!4 f3 gb3 ab3 ~!8 f2 ~!7]/36"
+bubbles = (rises |> poly(@, bubble, 6, release: 0.5)) * 0.42
+
+wob = 0.5 + 0.5 * sine(0.5875)
+belly = ({freq, gate}) -> {
+    s = stereo(tri(freq * 0.998), tri(freq * 1.002))
+    (s |> lp(@, 240)) * adsr(gate, 2.0, 0.1, 1.0, 2.0)
+}
+held = n"[f2 _!11 db2 _!11 gb2 _!11]/36"
+weight = (held |> poly(@, belly, 3, release: 2.0)) * (0.35 + 0.65 * wob) * 0.34
+
+out((bubbles + weight) |> freeverb(@, 0.3, 0.8, 0.28, 0.7, 0.85, 0.35) |> hp(@, 38))

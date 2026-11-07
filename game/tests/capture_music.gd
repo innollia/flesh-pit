@@ -27,7 +27,7 @@ func seg(name: String) -> void:
 func _run() -> void:
 	await frames(5)
 	m.finish_opening()
-	# the restroom: no music, only its bed
+	# the restroom: its bed and, once the eyes settle, the very low stems
 	seg("restroom")
 	await frames(450)
 	seg("vent_trade")
