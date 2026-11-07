@@ -34,7 +34,7 @@ godot_console --path game --resolution 640x360 --fixed-fps 60 --script res://tes
 
 수정 전후 비교는 HEAD 코드에 같은 벤치를 얹은 격리 사본과 변경한 격리 사본을 번갈아 잰다. 측정만 하는 `.claude/agents/performance-analyst.md`가 이 절차를 따른다. 구현한 쪽이 스스로 개선을 판정하지 않게 측정을 그 에이전트에 맡길 수 있다.
 
-FP_AUDIO_LOG=1은 소리 이벤트 로그만 켠다. FP_PLAY_LOG=<CSV 경로>는 보상 척도용 플레이 기록을 남긴다(docs/spec/09-reward-scale.md 10.2). 원정 시간을 재려면 이 기록으로 몇 번 원정한 뒤 `python -X utf8 tools/economy/reward_scale.py --log <CSV 경로>`로 읽는다. 기록은 저장 슬롯과 설정을 바꾸지 않는다. 기록 장치 자체는 `run_play_log_tests.gd`로 검사한다. FP_TERRAIN_EVIDENCE는 이를 지원하는 성능·캡처 프로그램의 출력 경로이며 플레이 데이터 경로가 아니다. 엔진이 검사 시작 전에 멈추면 시간 초과를 실패로 기록하고 원인을 확인해 같은 검사를 다시 실행한다. 사용자의 editor 프로세스를 종료하지 않는다.
+FP_AUDIO_LOG=1은 소리 이벤트 로그만 켠다. FP_PLAY_LOG=<CSV 경로>는 보상 척도용 플레이 기록을 남긴다(docs/archive/spec-v1/09-reward-scale.md 10.2). 원정 시간을 재려면 이 기록으로 몇 번 원정한 뒤 `python -X utf8 tools/economy/reward_scale.py --log <CSV 경로>`로 읽는다. 기록은 저장 슬롯과 설정을 바꾸지 않는다. 기록 장치 자체는 `run_play_log_tests.gd`로 검사한다. FP_TERRAIN_EVIDENCE는 이를 지원하는 성능·캡처 프로그램의 출력 경로이며 플레이 데이터 경로가 아니다. 엔진이 검사 시작 전에 멈추면 시간 초과를 실패로 기록하고 원인을 확인해 같은 검사를 다시 실행한다. 사용자의 editor 프로세스를 종료하지 않는다.
 
 클린룸 플레이테스트는 코드와 문서를 모르는 플레이어 에이전트가 처음 하는 사람처럼 플레이하고, 평가자가 그 기록에 플레이어가 못 본 텔레메트리를 더해 발견을 내는 절차다(결정 0007).
 1. `python -X utf8 tools/playtest/run_session.py --session <이름> --no-agent`: `game/`을 `%TEMP%/flesh-pit-playtest/<이름>/iso`로 복사하고 `config/name`을 `flesh-pit-playtest-<이름>`으로 바꿔 `user://`를 따로 둔다. 그 폴더를 비운 뒤 브리지(`game/tests/playtest_bridge.gd`)를 autoload로 넣고, 960×540·`--fixed-fps 30`으로 띄운다. 플레이어의 방(`room/`)에는 `play.py`, `manual.md`, 화면이 쌓이는 `session/`만 있다. 텔레메트리와 로그는 `evidence/`에 쌓인다.

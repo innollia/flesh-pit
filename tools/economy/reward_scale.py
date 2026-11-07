@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""보상 척도 계산기 (docs/spec/09-reward-scale.md 11장 감사 표).
+"""보상 척도 계산기 (docs/design/economy.md 감사 표, 척도 방법은 docs/archive/spec-v1/09-reward-scale.md).
 
 params.json의 코드 상수를 읽어 척도 지표를 계산하고, 대역 판정 표를 마크다운으로
 표준 출력에 낸다. 실행할 때마다 params.json의 각 값을 같은 이름의 코드 상수와
@@ -19,7 +19,7 @@ params.json의 코드 상수를 읽어 척도 지표를 계산하고, 대역 판
     python -X utf8 tools/economy/reward_scale.py --json     지표를 JSON으로 표준 출력
     python -X utf8 tools/economy/reward_scale.py --json out.json   행 목록을 파일로
     python -X utf8 tools/economy/reward_scale.py --selftest 고정 입력으로 공식 검사(0/1)
-    python -X utf8 tools/economy/reward_scale.py --write docs/spec/09-reward-scale.md
+    python -X utf8 tools/economy/reward_scale.py --write docs/design/economy.md
     python -X utf8 tools/economy/reward_scale.py --no-verify --params <사본>   후보 값 시험(--write 거부)
 
 종료 코드: 0 정상, 1 대역 밖(--check), selftest 불일치 또는 가상 값으로 --write 시도,
@@ -486,8 +486,8 @@ P_HOOK = "game/audio/fp_audio_hookup.gd"
 P_MANIFEST = "game/audio/manifest.json"
 P_MIRROR_BODY = "game/main/art/fp_mirror_body.gd"
 P_VENT = "game/main/scripts/fp_vent.gd"
-P_ECON = "docs/spec/04-economy.md"
-P_FIRST10 = "docs/spec/10-first-ten-minutes.md"
+P_ECON = "docs/archive/spec-v1/04-economy.md"
+P_FIRST10 = "docs/archive/spec-v1/10-first-ten-minutes.md"
 KIT = "game/addons/flesh_dig_kit/"
 P_CHEWER = KIT + "eat/fdk_chewer.gd"
 P_STOMACH = KIT + "eat/fdk_stomach.gd"
@@ -2665,7 +2665,7 @@ def parse_pair(s: str, cast=float) -> list:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="보상 척도 계산기 (docs/spec/09-reward-scale.md 11장)")
+    ap = argparse.ArgumentParser(description="보상 척도 계산기 (docs/design/economy.md 감사 표)")
     ap.add_argument("--repo", type=Path, default=DEFAULT_REPO, help="저장소 루트 (기본: tools/의 부모)")
     ap.add_argument("--params", type=Path, default=DEFAULT_PARAMS, help="입력 params.json")
     ap.add_argument("--te", type=float, help="가정 T_E (s)")

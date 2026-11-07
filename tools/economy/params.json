@@ -1,7 +1,7 @@
 {
   "_안내": "보상 척도 계산기(reward_scale.py)의 입력이다. value는 코드에서 직접 읽어 확인한 값이고, source는 그 값이 있는 파일과 줄이다. 계산기는 실행할 때마다 같은 이름을 코드에서 다시 찾아 값과 줄을 대조한다. 코드가 바뀌면 value와 source를 함께 고친다.",
-  "as_of": "2026-10-13",
-  "base": "dryforge/text-game a61af54 + 커밋 안 된 작업 트리",
+  "as_of": "2026-11-07",
+  "base": "dryforge/text-game 1975032",
   "params": {
     "progression.SHELL_MULTIPLIER": {"value": {"core": 1, "mantle": 2, "surface": 3}, "unit": "배", "source": "game/main/scripts/fp_progression.gd:18", "note": "껍질 배율 m_k. 털 계산의 가중 살 W = u × m_k"},
     "progression.TEETH_PER_FLESH": {"value": 0.08, "unit": "개/u", "source": "game/main/scripts/fp_progression.gd:22", "note": "레버 정산 이빨률. 정산은 round(fill × 0.08)"},
@@ -28,7 +28,7 @@
     "progression.BASE_OVERFILL_CHEW": {"value": 3.0, "unit": "배", "source": "game/main/scripts/fp_progression.gd:81", "note": "과식 최대 씹기 배수 Om"},
     "progression.BASE_CRUSH_TIME": {"value": 6.0, "unit": "s", "source": "game/main/scripts/fp_progression.gd:83", "note": "압사까지 갇혀 있는 시간"},
     "progression.BASE_CARRY": {"value": 40.0, "unit": "u", "source": "game/main/scripts/fp_progression.gd:84", "note": "살 더미 운반량(M13 ×1.5는 미연결)"},
-    "progression.TISSUE_HARDNESS": {"value": {"0": 1.0, "1": 1.2, "2": 1.0, "3": 2.0, "4": 1.4}, "unit": "배", "source": "game/main/scripts/fp_progression.gd:88", "note": "조직 경도 H. 0 압축, 1 신경, 2 옛 지방, 3 막, 4 수축"},
+    "progression.TISSUE_HARDNESS": {"value": {"0": 1.0, "1": 1.2, "2": 0.8, "3": 2.0, "4": 1.4, "6": 1.8, "7": 1.1, "8": 1.3}, "unit": "배", "source": "game/main/scripts/fp_progression.gd:88", "note": "조직 경도 H. 0 압축, 1 신경, 2 옛 지방, 3 막, 4 수축"},
     "progression.M06_CRUSH_BONUS": {"value": 3.0, "unit": "s", "source": "game/main/scripts/fp_progression.gd:296", "note": "M06 긴 숨: 압사 시간 + 3 s = 9 s"},
     "progression.M17_DAMAGE_FACTOR": {"value": 0.5, "unit": "배", "source": "game/main/scripts/fp_progression.gd:354", "note": "M17 무통각증: 조직 피해 × 0.5"},
     "progression.CUD_PERIOD": {"value": 60.0, "unit": "s", "source": "game/main/scripts/fp_progression.gd:373", "note": "M16 되새김 위 틱 간격"},
@@ -51,8 +51,8 @@
       {"id": "M30", "branch": "combination", "pools": ["surface", "core"]}
     ], "unit": "개", "source": "game/main/scripts/fp_progression.gd:159", "note": "_def 호출 29개: 공통 6, 압축 6, 수축 7, 신경 7, 조합 3"},
 
-    "tissue_rules.HARDNESS": {"value": {"0": 1.0, "1": 1.2, "2": 1.0, "3": 2.0, "4": 1.4}, "unit": "배", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:22", "note": "키트 경도표. TISSUE_HARDNESS와 같아야 한다(K02)"},
-    "tissue_rules.REGEN": {"value": {"0": 1.5, "1": 0.8, "2": 1.0, "3": 0.0, "4": 1.0, "5": 0.0}, "unit": "배", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:23", "note": "조직 재생 배율 R. 막과 녹은 셀은 0"},
+    "tissue_rules.HARDNESS": {"value": {"0": 1.0, "1": 1.2, "2": 0.8, "3": 2.0, "4": 1.4, "6": 1.8, "7": 1.1, "8": 1.3}, "unit": "배", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:28", "note": "키트 경도표. TISSUE_HARDNESS와 같아야 한다(K02)"},
+    "tissue_rules.REGEN": {"value": {"0": 1.5, "1": 0.8, "2": 1.2, "3": 0.0, "4": 1.0, "5": 0.0, "6": 0.5, "7": 0.3, "8": 1.2}, "unit": "배", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:23", "note": "조직 재생 배율 R. 막과 녹은 셀은 0"},
     "tissue_rules.BASE_CHEW_TIME": {"value": 0.6, "unit": "s", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:25", "note": "키트 쪽 τ 사본(K01)"},
     "tissue_rules.SAW_TIME_FACTOR": {"value": 1.5, "unit": "배", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:27", "note": "큰 톱 스트로크 = τ × H × 1.5"},
     "tissue_rules.SAW_TEAR_CELLS": {"value": 6, "unit": "셀", "source": "game/addons/flesh_dig_kit/terrain/fdk_tissue_rules.gd:28", "note": "큰 톱 한 번에 뜯는 셀 수"},
@@ -143,7 +143,7 @@
     "vent_rules.LONG_ABSENT_MULT": {"value": 5.0, "unit": "배", "source": "game/main/data/vent_rules.json:565", "note": "기준.LONG_ABSENT_MULT.값. LONG_AWAY × 5 = 600 s(fp_vent.gd:455)"}
   },
   "assumptions": {
-    "T_E": {"value": 240.0, "unit": "s", "source": "docs/spec/00-overview.md:28", "note": "가정. 원정 3~5분 목표의 가운데 값. --te로 바꾼다"},
+    "T_E": {"value": 240.0, "unit": "s", "source": "docs/archive/spec-v1/00-overview.md:28", "note": "가정. 원정 3~5분 목표의 가운데 값. --te로 바꾼다"},
     "aim": {"value": 0.3, "unit": "s", "source": "가정", "note": "반응 사이 겨눔 시간 a. --aim"},
     "ritual": {"value": [11.0, 40.0], "unit": "s", "source": "가정", "note": "화장실 의식 시간 하한·상한(토하기, 레버, 퍼내기, 환풍구, 자막). --ritual"},
     "escape_cells": {"value": [2, 3], "unit": "셀", "source": "가정", "note": "압사에서 빠져나갈 셀 수: 보통·과식. --escape"},

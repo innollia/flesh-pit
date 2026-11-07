@@ -13,3 +13,4 @@
 | 0008-knife-gate-farther | 핵은 막까지 맨손으로 파고, 칼은 원정 한 번 값(8개), 맨손 거절은 손과 소리로 알린다 |
 | 0009-first-expedition-return | 첫 레버 정산 전 밖 토하기는 헛구역질, V 표시는 변기·쉼터에서만, 허리에 차고 손에 드는 나침반 |
 | 0010-biomes-per-shell | 껍질마다 바이옴 여러 개(새 다섯 개), 바이옴마다 조직·빈 곳·구조물·빛·소리, 배치는 고정 |
+| 0011-spec-archive | 1차 기획서를 `docs/archive/spec-v1/`로 보관하고 지금 기준은 코드와 `docs/design/`이다 |
