@@ -1342,8 +1342,14 @@ func step_world(delta: float) -> void:
 		# key gives way to the stomach's, the opening's to both
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else ("fp_pick" if target == "belt" else "fp_interact"))
 		interact_ring.set("shown", target != "" and not _settling)
-		interact_ring.set("hand_left", target != "toilet" and not FPInteractions.right_hand_only(self, target))
-		interact_ring.set("hand_right", target != "toilet")
+		if target == "belt":
+			# only the buttons whose hand that item goes to (the blender and
+			# the compass to the left) or whose held item goes back there
+			interact_ring.set("hand_left", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.LEFT))
+			interact_ring.set("hand_right", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.RIGHT))
+		else:
+			interact_ring.set("hand_left", target != "toilet" and not FPInteractions.right_hand_only(self, target))
+			interact_ring.set("hand_right", target != "toilet")
 		var stomach_key := stomach.fill_ratio() >= 1.0
 		interact_ring.set("glyph_on", not (target == "toilet" and stomach_key))
 		opening_view.hints.vomit_muted = target == "toilet" or stomach_key

@@ -35,6 +35,8 @@ var wx := RX
 var wzf := RZF
 var wzb := RZ
 var _cans: Array = []
+## What each clip holds now ("spray_cheap", "spray_deep" or "").
+var _can_kinds: Array = ["", "", ""]
 ## First-person holsters must not project detached-looking rings onto the room.
 ## Mirror and Tab bodies retain their ordinary shadows.
 var spray_cast_shadows := true
@@ -351,6 +353,7 @@ func set_hung(ids: Array) -> void:
         if id == _hung[i]:
             continue
         _hung[i] = id
+        _focus_dirty = true
         var hook: Node3D = _hooks[i]
         var old := hook.get_node_or_null("Tool")
         if old != null:
@@ -401,14 +404,29 @@ func hook_count() -> int:
 ## World point the player aims at to use hook i (the ring / the tool on it).
 func hook_point(i: int) -> Vector3:
     var hook: Node3D = _hooks[i]
-    return hook.global_transform * Vector3(0, -0.13, -0.01)
+    # the tool hanging there is what the eye goes to; an empty ring is aimed
+    # at below the ring as before
+    # (unscaled: the lit hook swelling must not move its own aim point)
+    var xf := hook.get_parent_node_3d().global_transform * Transform3D(Basis.from_euler(hook.rotation), hook.position)
+    var tool := hook.get_node_or_null("Tool") as Node3D
+    if tool != null:
+        return xf * _local_aabb(tool).get_center()
+    return xf * Vector3(0, -0.13, -0.01)
 
 func slot_point(i: int) -> Vector3:
     if i < 3:
         return hook_point(i)
     if i in [3, 4]:
-        return (_cans[0 if i == 3 else 2] as Node3D).global_position
+        return (_cans[_can_index(i)] as Node3D).global_position
     return global_transform * _supply_position(i == 5)
+
+## Which clip holds the can of slot 3 (cheap) / 4 (deep): the clip that
+## empties when a can of that kind is taken (cheap cans fill the clips from
+## the first, so the last one goes; deep ones from the last, so the first
+## goes), else its usual clip.
+func _can_index(i: int) -> int:
+    var at := _can_kinds.rfind("spray_cheap") if i == 3 else _can_kinds.find("spray_deep")
+    return at if at >= 0 else (0 if i == 3 else 2)
 
 func _supply_position(feed: bool) -> Vector3:
     # the barrier pack sits on the strap at the front-left, beside the feed
@@ -425,6 +443,7 @@ func show_stock(prog: FPProgression) -> void:
 func set_supplies(feed: bool, barrier: bool) -> void:
     for id in ["canary_feed", "barrier"]:
         if not _supplies.has(id):
+            _focus_dirty = true
             var art := FPConsumable.make(id)
             add_child(art)
             _body_layer(art)
@@ -432,10 +451,43 @@ func set_supplies(feed: bool, barrier: bool) -> void:
             _supplies[id] = art
         _supplies[id].visible = feed if id == "canary_feed" else barrier
 
-## The aimed hook swells a little (wordless: "this one"); -1 = none.
+## The aimed item swells a little (wordless: "this one"); -1 = none.
+## Slots as FPBeltSwap.SLOTS: 0-2 hooks, 3/4 cheap / deep can, 5 feed,
+## 6 barrier (the compass, 7, is not a child of the belt).
+var focused := -1
+var _focus_dirty := false
 func set_focus(i: int) -> void:
+    if i == focused and not _focus_dirty:
+        return
+    focused = i
+    _focus_dirty = false
     for k in range(_hooks.size()):
-        (_hooks[k] as Node3D).scale = Vector3.ONE * (1.2 if k == i else 1.0)
+        light(_hooks[k], k == i, 1.35)
+    var can_at := _can_index(i) if i in [3, 4] else -1
+    for k in range(_cans.size()):
+        light(_cans[k], k == can_at, 1.4)
+    for id in _supplies:
+        light(_supplies[id], (i == 5 and id == "canary_feed") or (i == 6 and id == "barrier"), 1.4)
+
+## The aimed item: a little bigger and washed in a pale glow that breathes,
+## so it reads as "this one" against the dark floor (no words).
+static var _glow: StandardMaterial3D
+static func glow_material() -> StandardMaterial3D:
+    if _glow == null:
+        _glow = StandardMaterial3D.new()
+        _glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        _glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        # drawn over whatever covers it (the band over the compass, the
+        # belly over a hip can) so the lit item always shows where it is
+        _glow.no_depth_test = true
+        _glow.render_priority = 2
+        _glow.albedo_color = Color(1.0, 0.94, 0.72, 0.55)
+    return _glow
+
+static func light(n: Node3D, on: bool, grow: float) -> void:
+    n.scale = Vector3.ONE * (grow if on else 1.0)
+    for mi in n.find_children("*", "MeshInstance3D", true, false):
+        (mi as MeshInstance3D).material_overlay = glow_material() if on else null
 
 func set_spray_count(cheap: int, expensive: int) -> void:
     var c := clampi(cheap, 0, 3)
@@ -444,6 +496,7 @@ func set_spray_count(cheap: int, expensive: int) -> void:
     if counts == _spray_counts:
         return
     _spray_counts = counts
+    _focus_dirty = true
     for i in range(3):
         var slot: Node3D = _cans[i]
         for ch in slot.get_children():
@@ -451,6 +504,7 @@ func set_spray_count(cheap: int, expensive: int) -> void:
             ch.queue_free()
         var deep := (i == 2 and e > 0) or (i == 1 and c <= 1 and e > 1)
         var cheap_slot := (i == 0 and c > 0) or (i == 1 and c > 1) or (i == 2 and c > 2)
+        _can_kinds[i] = "spray_deep" if deep else ("spray_cheap" if cheap_slot else "")
         if deep or cheap_slot:
             var can := K.add_mesh(slot, "CanMesh", FPConsumable.item_mesh("spray_deep" if deep else "spray_cheap"), FPConsumable.item_material("spray_cheap"))
             can.layers = 1 << 11
@@ -484,6 +538,8 @@ var _swing: Array = [0.0, 0.0, 0.0]
 
 func _process(delta: float) -> void:
     _time += delta
+    if focused >= 0 and _glow != null:
+        _glow.albedo_color.a = 0.5 + 0.2 * sin(_time * 6.0)
     for i in range(mini(_swing.size(), _hooks.size())):
         if _swing[i] > 0.0:
             _swing[i] = maxf(0.0, float(_swing[i]) - delta * 1.4)

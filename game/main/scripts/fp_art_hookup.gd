@@ -533,7 +533,10 @@ func _sync_belt_posture(_delta: float) -> void:
 	# terrain correction. The head moves when looking down; holsters remain
 	# fixed to the body during WASD instead of acquiring their own velocity.
 	belt.position = Vector3(0.0, 0.05 - 0.48 * crouch, 0.02)
-	belt.rotation = Vector3.ZERO
+	# The yaw is the hips' own (FPBeltSwap._twist_hips): bowed, the belt stays
+	# put while the head turns to a side hook. Zeroing it here turned the belt
+	# with the head, so only the front items could ever be aimed (2026-11-07).
+	belt.rotation = Vector3(0.0, belt.rotation.y, 0.0)
 	if m.is_pulling_canary() and m.canary_pull != null:
 		var prone: float = m.canary_pull.prone()
 		belt.position = belt.position.lerp(Vector3(0, -m.player.config.stand_height * 0.5 + 0.22, 0.52), prone)

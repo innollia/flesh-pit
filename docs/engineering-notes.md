@@ -100,3 +100,7 @@ HUD 층(22)과 메뉴 층(30번대)은 PS1 후처리(층 20) 위에 있어 디�
 ## 시작 때 인증서 저장소
 
 Godot는 TLS 묶음이 지정되지 않으면 `Main::start`(스크립트 `_init` 직후, 첫 프레임 전)에서 Windows 시스템 CA 저장소를 읽는다. CPU가 바쁠 때 이 호출이 가끔 돌아오지 않아 프로세스가 CPU 0%로 멈췄다(동시 16개 부하에서 검사 실행의 약 3~8%, `run_motion_tests` 단독 반복에서 "약 4회 중 1회"로 보고됨). `--verbose`는 타이밍을 바꿔 증상을 숨긴다. 게임은 TLS를 쓰지 않으므로 `project.godot`의 `network/tls/certificate_bundle_override`를 프로젝트 안의 인증서 하나(`main/data/offline_ca.crt`, 개인 키는 버림)로 고정한다. 이 설정을 지우면 `run_godot_checks.cjs`의 시작 인증서 검사가 실패한다. 나중에 실제 HTTPS가 필요하면 이 파일 대신 실제 CA 묶음을 넣는다.
+
+## 허리띠의 방향
+
+허리띠(`fp_belt.gd`)의 yaw는 `FPBeltSwap._twist_hips`만 정한다. 내려다볼 때 허리는 그 자리에 있고 머리만 돌아야 옆 고리·오른쪽 캔·나침반에 조준이 닿는다. `fp_art_hookup._sync_belt_posture`가 자세를 맞추며 rotation 전체를 0으로 두자 허리가 머리를 따라 돌아 앞쪽 물건 말고는 겨눌 수 없었다(2026-11-07 "벨트에 있는 물건 목록을 아직 못 건드려"). 벨트 검사는 카메라 각을 직접 넣어 이 회귀를 못 봤다. 실제 마우스 움직임으로 화면 위 물건을 따라가는 `run_belt_reach_tests.gd`가 지킨다.
