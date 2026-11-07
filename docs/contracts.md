@@ -47,3 +47,7 @@ FDKHandsRig.set_reach_point(world_pos)는 실제 접촉이 유지되는 동안 �
 FDKTerrainField.dig_at(world_pos: Vector3,amount: float)는 실제 셀과 이웃 공유 모서리 밀도를 제거하고 게시할 지형을 표시한다. 반환값은 없으며 부작용 결과는 밀도·메시·충돌에서 확인한다. serialize()/deserialize(Dictionary)는 청크 상태를 주고받는다. 소비자는 복원 뒤 실제 화면이 필요한 시점에 게시를 준비해야 하며 데이터 적용만으로 첫 화면 준비를 단정하지 않는다.
 
 외부 HTTP API나 로그인 프로토콜은 제공하지 않는다. 키트의 Godot 호출과 신호, 로컬 파일 형식이 소비자 경계다.
+
+## 음성과 자막
+
+`AudioHookup/Voice`(audio/fp_vent_voice.gd)는 `voice_started(line_id: String, seconds: float)`와 `voice_cut(line_id: String)`을 내고, Main이 `FPSubtitles.follow_voice`·`FPSubtitles.voice_cut`에 연결한다. 음성이 나오는 줄의 자막은 대기열을 건너뛰어 바로 나오고 `max(seconds + VOICE_TAIL, VOICE_MIN_TIME)` 동안 남는다. 끊긴 음성의 자막은 내려가고 대기 중인 줄이 이어진다. 음성 없는 줄끼리는 기존 대기열 그대로다. 연결 순서상 자막의 `line_spoken` 구독이 음성보다 먼저여야 하며, 소리 연결은 지연 호출되는 `_wire`에서 구독한다.

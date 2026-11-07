@@ -100,3 +100,8 @@
 
 - 재현: `godot_console --headless --path game --script res://tests/run_tissue_tools_tests.gd`. `W20 remesh stays under 8 ms while squeezing`가 최악 12~17 ms로 실패한다(119/1).
 - 범위: 브랜치 `dryforge/text-game`(ea40226)의 변경 없는 상태에서도 같다(12 ms). 화장실 소리 작업(오디오 파일·manifest·fp_music)과 무관하며, 시간 기준이라 장비 부하에 따라 값이 달라진다. 원인은 조사하지 않았다.
+
+## 자막 대기열의 중복 거르기가 듣지 않음 (2026-11-07 관찰)
+
+- 재현: 같은 문구의 대사가 자막이 떠 있는 동안 두 번 들어오면 둘 다 대기한다. `FPSubtitles.show_text()`의 `_queue.has(text)`가 `[text, seconds]` 배열이 든 대기열에서 문자열을 찾기 때문이다.
+- 범위: 대기열 상한은 3이고 vent의 LINE_GAP·CHATTER_REPEAT가 같은 줄의 연속을 대부분 막아 플레이에서 보지 못했다. 음성 작업과 무관한 기존 동작이라 그대로 두었다.

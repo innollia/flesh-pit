@@ -80,6 +80,7 @@ var _rattle_next := 0.0
 var _rng := RandomNumberGenerator.new()
 ## The water in the restroom's pipes: one-shots at long gaps (audio/fp_pipe_water.gd).
 var _pipe_water: Node
+var _voice: Node
 
 func _ready() -> void:
 	main = get_parent()
@@ -95,6 +96,10 @@ func _ready() -> void:
 	_pipe_water.name = "PipeWater"
 	_pipe_water.set("director", director)
 	add_child(_pipe_water)
+	# the recorded vent lines (audio/voice, audio/fp_vent_voice.gd)
+	_voice = preload("res://audio/fp_vent_voice.gd").new()
+	_voice.name = "Voice"
+	add_child(_voice)
 	call_deferred("_wire")
 
 func _wire() -> void:
@@ -132,6 +137,7 @@ func _wire() -> void:
 	if field != null and field.has_signal("barrier_broke"):
 		field.connect("barrier_broke", func(_b, pos): play_event("barrier_break", pos))
 	var vent = main.get("vent")
+	_voice.call("listen", vent)
 	if vent != null and vent.get("is_open") != null:
 		_vent_open = bool(vent.get("is_open"))
 	# the seven events that got their own signals in main (5th pass hookup)

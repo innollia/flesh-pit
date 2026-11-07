@@ -13,3 +13,5 @@ manifest 경로와 실제 스트림의 존재, 씹기 유지와 중단 시 루�
 반복음 패치만 고쳤을 때는 `py -3 -B -X utf8 tools/render_loop_patches.py <id>...`로 그 파일만 다시 만든다(manifest는 그대로). `build_audio.py` 전체 실행은 manifest를 다시 쓰므로 뒤이어 다른 빌더들을 다시 돌려야 한다.
 
 소리 모음 페이지: `py -3 -B tools/build_sound_gallery.py`로 manifest·SOUND_LIST에서 `build/sound_gallery.html`을 다시 만들고, 그 파일을 브라우저로 바로 열면(file://, 서버 없음) 모든 소리를 들을 수 있다.
+
+fp_vent_voice는 `FPVent.line_spoken`을 받아 `audio/voice/<대사 id>.ogg` 또는 `.wav`를 Voice 버스로 재생한다. 파일이 없으면 자막만 나오고, 다음 대사가 나오면 파일 유무와 상관없이 나오던 음성을 끊는다. 게임을 고치지 않고 `voice_started`·`voice_cut` 신호만 내며, Main이 이를 자막에 연결한다. 파일은 대사 id로만 찾으므로 문구를 바꿔도 연결이 끊기지 않고, 녹음한 문구와 달라진 줄은 `tools/check_voice_files.py`가 `recorded_lines.json`과 비교해 알려 준다. 폴더의 원본을 그대로 읽어 import 없이 나오며, 내보낸 게임은 import된 사본을 쓴다. Godot의 import는 EXTENSIBLE 머리말의 24비트 WAV를 거부하므로 검사가 문제로 알리고 `--fix`가 머리말을 고친다. 녹음 대본은 `tools/build_voice_sheet.py`가 `build/voice_sheet.html`로 만든다.

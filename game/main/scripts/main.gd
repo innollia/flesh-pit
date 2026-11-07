@@ -449,6 +449,9 @@ func _ready() -> void:
 	var audio_hookup: Node = preload("res://audio/fp_audio_hookup.gd").new()
 	audio_hookup.name = "AudioHookup"
 	add_child(audio_hookup)
+	var voice: Node = audio_hookup.get_node("Voice")
+	voice.connect("voice_started", subtitles.follow_voice)
+	voice.connect("voice_cut", subtitles.voice_cut)
 	# volume buses: beds to Music, everything else to SFX (FPSettings)
 	get_tree().node_added.connect(_on_node_added_for_bus)
 	for a in find_children("*", "AudioStreamPlayer", true, false) + find_children("*", "AudioStreamPlayer3D", true, false):
