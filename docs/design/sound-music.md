@@ -70,5 +70,5 @@
 ## 만드는 법과 확인
 
 - 음악과 소리는 nkido 패치로 만든다(`game/tools/audio/patches/*.akkado`, `tools/build_music.py`, `tools/render_loop_patches.py`). 파이썬은 믹스, 페이드, 측정에만 쓴다. `mus_title`처럼 이전에 만든 곡 일부는 파이썬 합성으로 남아 있다.
-- 모아 듣기: `py -3 -B tools/build_sound_gallery.py`가 `build/sound_gallery.html`을 만든다. 후보곡까지 묶는 작업은 진행 중이다(`round5-gallery`).
+- 모아 듣기: `py -3 -B tools/build_sound_gallery.py`가 후보곡 묶음까지 포함한 `build/sound_gallery.html`을 만든다.
 - 수치, 스펙트로그램, 판별 모델의 판정은 사람이 들어 본 것이 아니다. 보고할 때 구분해서 적는다.
