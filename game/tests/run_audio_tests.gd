@@ -52,6 +52,7 @@ func _process(_delta: float) -> bool:
 		_ok(d.current_bed == "restroom", "game starts on the restroom bed (%s)" % d.current_bed)
 		_ok(d.bed_layer_db("amb_restroom") > -0.5, "restroom bed audible at start")
 		_ok(d.surface == "tile", "start surface is tile")
+		_test_step_room(d)
 		var chewer = _main.get("chewer")
 		if chewer is FDKChewer:
 			(chewer as FDKChewer).cell_torn.emit(Vector3(0, 1, 3))
@@ -443,6 +444,111 @@ func _test_signals_and_steps() -> void:
 	_ok(d.last_played == "step_tile_s3", "footstep uses surface + mutation stage")
 	d.free()
 	chewer.free()
+	_test_step_variation()
+	_test_step_files()
+
+## round7-sfx: the steps sound in the room the feet are in. The Room bus
+## carries a reverb, sends to SFX (the slider still sets it), and the flesh
+## room is more damped than the tiled one, with the flesh steps lower.
+func _test_step_room(d: FDKAudioDirector) -> void:
+	var i := AudioServer.get_bus_index(&"Room")
+	_ok(i >= 0 and AudioServer.get_bus_send(i) == &"SFX", "a Room bus sends to SFX (%d)" % i)
+	var rv: AudioEffectReverb = AudioServer.get_bus_effect(i, 0) as AudioEffectReverb if i >= 0 and AudioServer.get_bus_effect_count(i) > 0 else null
+	_ok(rv != null, "the Room bus has a reverb")
+	_ok(d.room_bus == &"Room", "footsteps play on the Room bus (%s)" % d.room_bus)
+	_ok(_hook.call("room") == "tile" and is_equal_approx(d.step_gain_db, 0.0), "the restroom is the tiled room, steps at full level")
+	if rv == null:
+		return
+	var tile_damp := rv.damping
+	_hook.call("_set_room", "flesh")
+	_ok(rv.damping > tile_damp and rv.room_size < 0.3 and d.step_gain_db < -1.0, "in the flesh the room is damped and small, steps lower (damp %.2f > %.2f, %.1f dB)" % [rv.damping, tile_damp, d.step_gain_db])
+	_hook.call("_set_room", "tile")
+	_ok(is_equal_approx(rv.damping, tile_damp), "back in the restroom the tiled room returns")
+
+## round7-sfx: a walk is not one sample fired again and again. Each step is a
+## little off in pitch and level, never far enough to sound like another foot.
+func _test_step_variation() -> void:
+	var d := _director()
+	d.step_gain_db = -3.0
+	var lo := 9.0
+	var hi := 0.0
+	var dlo := 99.0
+	var dhi := -99.0
+	for k in range(60):
+		d.play_step()
+		lo = minf(lo, d.last_step_pitch)
+		hi = maxf(hi, d.last_step_pitch)
+		dlo = minf(dlo, d.last_step_db)
+		dhi = maxf(dhi, d.last_step_db)
+	var j := d.step_pitch_jitter
+	_ok(lo >= 1.0 - j - 0.0001 and hi <= 1.0 + j + 0.0001 and j <= 0.06, "footstep pitch stays within +-%.2f (%.3f..%.3f)" % [j, lo, hi])
+	_ok(hi - lo > j, "footstep pitch really varies over 60 steps (%.3f..%.3f)" % [lo, hi])
+	var g := d.step_gain_jitter_db
+	_ok(dlo >= -3.0 - g - 0.001 and dhi <= -3.0 + g + 0.001 and dhi - dlo > g, "footstep level varies around step_gain_db by at most +-%.1f dB (%.2f..%.2f)" % [g, dlo, dhi])
+	var pitched := 0
+	for c in d.get_children():
+		if c is AudioStreamPlayer and not is_equal_approx((c as AudioStreamPlayer).pitch_scale, 1.0):
+			pitched += 1
+	_ok(pitched > 0 or not d.is_inside_tree(), "the step player gets its pitch (%d)" % pitched)
+	var tlo := 9.0
+	var thi := 0.0
+	for k in range(60):
+		d._on_cell_torn(Vector3.ZERO)
+		tlo = minf(tlo, d.last_tear_pitch)
+		thi = maxf(thi, d.last_tear_pitch)
+	var tj := d.tear_pitch_jitter
+	_ok(d.last_played.begins_with("tear_") and tlo >= 1.0 - tj - 0.0001 and thi <= 1.0 + tj + 0.0001 and thi - tlo > tj and tj <= 0.05, "each tear is a little off in pitch, within +-%.2f (%.3f..%.3f)" % [tj, tlo, thi])
+	d.free()
+
+## round7-sfx: the footsteps are rebuilt without the PS1 crunch and without a
+## pure-tone thud, so no step rings at one pitch. Pitch clarity is the highest
+## normalised autocorrelation at 70 Hz..1 kHz in the 50 ms after the peak; the
+## old step_tile_s2 and step_flesh_s2 had 0.6 and 0.5. Four variations each,
+## level within a few dB of each other.
+func _test_step_files() -> void:
+	var worst := 0.0
+	var worst_id := ""
+	var spread_ok := true
+	for surface in ["flesh", "tile"]:
+		for s in range(1, 4):
+			var id := "step_%s_s%d" % [surface, s]
+			var lv: Array[float] = []
+			for v in range(1, 5):
+				var path := "res://audio/sfx/%s_v%d.wav" % [id, v]
+				var x := _wav_left(path)
+				_ok(x.size() > 4800, "%s_v%d is there" % [id, v])
+				lv.append(_db(_power(x)))
+				if v == 1:
+					var c := _pitch_clarity(x)
+					if c > worst:
+						worst = c
+						worst_id = id
+			if lv.max() - lv.min() > 4.0:
+				spread_ok = false
+	_ok(worst < 0.4, "no footstep rings at one pitch (worst %s %.2f < 0.40)" % [worst_id, worst])
+	_ok(spread_ok, "each footstep's four variations are within 4 dB")
+
+func _pitch_clarity(x: PackedFloat32Array) -> float:
+	var peak := 0
+	for i in range(x.size()):
+		if absf(x[i]) > absf(x[peak]):
+			peak = i
+	var n := 2400
+	var seg := x.slice(peak, mini(peak + n, x.size()))
+	var e0 := 0.0
+	for i in range(seg.size()):
+		e0 += seg[i] * seg[i]
+	if e0 <= 0.0:
+		return 0.0
+	var best := 0.0
+	var lag := 48
+	while lag < 686:
+		var acc := 0.0
+		for i in range(seg.size() - lag):
+			acc += seg[i] * seg[i + lag]
+		best = maxf(best, acc / e0)
+		lag += 2
+	return best
 
 ## Reader for the builders' plain 16-bit wavs: left channel, -1..1.
 func _wav_left(path: String) -> PackedFloat32Array:
