@@ -9,7 +9,8 @@ extends SceneTree
 ##   decision); with nothing aimed it digs; the lid is the right hand's; a
 ##   left hand on the blender uses it and leaves the door to the right hand;
 ##   both hands on a load (big saw, flesh pile) still act, without reaching
-## - the canary hole in front of the sink takes F and the right button
+## - the canary hole in front of the sink takes F and the left button (the
+##   left hand fishes it out, user 2026-11-08); the right button leaves it
 ## - right click at the tank leaves no bent hand: the held-teeth cup gives
 ##   way while the hands work flesh and comes back when they rest
 ## - looking down, the hands come in to the flesh they tear instead of
@@ -101,21 +102,31 @@ func fresh_game(at: Vector3) -> void:
 
 func run() -> void:
 	# --- canary hole from in front of the sink, crouched ---------------------
-	for button in ["F", "RMB"]:
+	for button in ["F", "LMB"]:
 		await fresh_game(Vector3(-1.3, 0.9, -0.51))
 		key(KEY_CTRL, true)
 		await frames(15)
 		await aim(m.canary_hole_point())
 		check(m.interact_target() == "canary", "crouched in front of the sink the visible hole is the target (%s)" % button)
-		check(FPInteractions.plan(m, "right") == "target:canary", "the right hand plans the canary")
+		check(FPInteractions.plan(m, "left") == "target:canary", "the left hand plans the canary")
+		check(FPInteractions.plan(m, "right") != "target:canary", "the right hand leaves the canary to the left")
 		if button == "F":
 			await tap_key(KEY_F)
 		else:
-			await tap_mouse(MOUSE_BUTTON_RIGHT)
+			await tap_mouse(MOUSE_BUTTON_LEFT)
 		check(m.is_pulling_canary(), "%s begins the canary pull" % button)
-		while m.is_pulling_canary():
-			await frames(5)
-		check(m.has_canary, "%s ends with the canary tucked in" % button)
+		if button == "F":
+			while m.is_pulling_canary():
+				await frames(5)
+			check(m.has_canary, "%s ends with the canary tucked in" % button)
+		else:
+			# the whole left-click take is run_canary_take_tests.gd; here a
+			# move press cancels it (keeps this suite under the runner limit)
+			await frames(20)
+			await tap_key(KEY_W)
+			while m.is_pulling_canary():
+				await frames(5)
+			check(not m.has_canary, "%s cancelled by a move press gives no canary" % button)
 		key(KEY_CTRL, false)
 		await frames(3)
 	# standing it stays hidden and out of reach (spec 03 9)

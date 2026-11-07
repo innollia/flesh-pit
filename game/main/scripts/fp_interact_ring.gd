@@ -35,6 +35,9 @@ var device: String = "mouse"
 var _a: float = 0.0
 
 const INK := Color(0.96, 0.93, 0.88)
+## Actions shown as their key cap even to a mouse player: no mouse button
+## does them (the vomit key; crouch, shown over the canary hole).
+const KEY_ACTIONS := ["fp_vomit", "fdk_crouch"]
 const DARK := Color(0.08, 0.07, 0.07)
 
 func _ready() -> void:
@@ -88,9 +91,10 @@ func _draw() -> void:
 	p = Vector2.ZERO
 	match device:
 		"pad":
-			_draw_pad(p)
+			if action == "fdk_crouch": _draw_stick_press(p)
+			else: _draw_pad(p)
 		"mouse":
-			if action == "fp_vomit": _draw_key(p, _key_label())
+			if action in KEY_ACTIONS: _draw_key(p, _key_label())
 			else: FPMenuKit.draw_mouse(self, p, hand_left, hand_right, _a, 22.0)
 		_:
 			_draw_key(p, _key_label())
@@ -111,9 +115,19 @@ func glyph_pos() -> Vector2:
 	var k := ui_scale()
 	return ring_center() + Vector2(cos(deg_to_rad(30.0)), sin(deg_to_rad(30.0))) * (17.0 + 16.0) * k
 
-## The same tooth-coloured key cap as the stomach and opening prompts.
+## The same tooth-coloured key cap as the stomach and opening prompts. A
+## wide cap (Ctrl) grows rightward so it never covers the ring.
 func _draw_key(p: Vector2, label: String) -> void:
-	FPMenuKit.draw_key(self, p, label, _a, 12)
+	var tw := FPMenuKit.FONT.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var h := roundf(12 * 1.6)
+	var w := maxf(roundf(tw + 12 * 0.9), h)
+	FPMenuKit.draw_key(self, p + Vector2((w - h) * 0.5, 0), label, _a, 12)
+
+## The pad's crouch is a left stick press: a stick ring with a dot pushed in.
+func _draw_stick_press(p: Vector2) -> void:
+	draw_arc(p, 7.0, 0.0, TAU, 20, Color(INK, 0.6 * _a), 1.4, true)
+	draw_circle(p, 4.2, Color(INK, 0.95 * _a))
+	draw_arc(p, 9.5, PI * 1.15, PI * 1.85, 8, Color(INK, 0.8 * _a), 1.2, true)
 
 func _draw_pad(p: Vector2) -> void:
 	# Face-button diamond with the left (X) button filled.
@@ -135,4 +149,7 @@ func _key_label() -> String:
 				var s := OS.get_keycode_string(code)
 				if s != "":
 					return s
-	return "V" if action == "fp_vomit" else "F"
+	match action:
+		"fp_vomit": return "V"
+		"fdk_crouch": return "Ctrl"
+	return "F"
