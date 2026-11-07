@@ -26,6 +26,9 @@ AUDIO = ROOT / "game" / "audio"
 MANIFEST = AUDIO / "manifest.json"
 SOUND_LIST = AUDIO / "SOUND_LIST.md"
 OUT = ROOT / "build" / "sound_gallery.html"
+CAND_GROUP = "후보곡"  # unused candidate songs: music_lab.html songs + sounds SOUND_LIST marks "재생 안 함"
+CAND_MARK = "재생 안 함"
+LAB_HTML = "music_lab.html"
 
 # sfx purpose groups: (group title, id prefixes or exact ids).  First match wins.
 SFX_GROUPS: list[tuple[str, tuple[str, ...]]] = [
@@ -42,7 +45,7 @@ SFX_GROUPS: list[tuple[str, tuple[str, ...]]] = [
     ("효과음 · 화면", ("ui_",)),
 ]
 WIRE_SECTION_MARK = "신호 연결"  # SOUND_LIST heading of the signal-wiring sounds
-ORDER = ["오류", "배경 묶음", "배경음악", "엔딩 노래 층", "반복음 · 배경 층", "반복음 · 씹기",
+ORDER = ["오류", CAND_GROUP, "배경 묶음", "배경음악", "엔딩 노래 층", "반복음 · 배경 층", "반복음 · 씹기",
          "반복음 · 기타", WIRE_SECTION_MARK + " 소리"] + [g for g, _ in SFX_GROUPS] + \
         ["효과음 · 기타", "등록 안 됨"]
 
@@ -121,6 +124,8 @@ def expand_ids(cell: str) -> list[str]:
 
 
 def group_for(sid: str, snd: dict, info: dict | None) -> str:
+    if info and CAND_MARK in info["when"]:
+        return CAND_GROUP
     if info and WIRE_SECTION_MARK in info["section"]:
         return WIRE_SECTION_MARK + " 소리"
     if sid.startswith("mus_"):
@@ -137,6 +142,33 @@ def group_for(sid: str, snd: dict, info: dict | None) -> str:
         if any(sid.startswith(p) for p in prefixes):
             return title
     return "효과음 · 기타"
+
+
+def lab_dirs() -> list[Path]:
+    """build/ of this checkout, then of the main checkout when ROOT is a .claude/worktrees/* copy
+    (build/ is git-ignored, so a worktree does not have the lab songs)."""
+    dirs = [ROOT / "build"]
+    if ROOT.parent.name == "worktrees" and ROOT.parent.parent.name == ".claude":
+        dirs.append(ROOT.parent.parent.parent / "build")
+    return dirs
+
+
+def lab_songs() -> list[dict]:
+    """Parse the candidate songs out of build/music_lab.html: topic (h2), description (p), wav."""
+    for d in lab_dirs():
+        page = d / LAB_HTML
+        if not page.is_file():
+            continue
+        html = page.read_text(encoding="utf-8")
+        songs = []
+        for m in re.finditer(r"<section><h2>(.*?)</h2><p>(.*?)</p>.*?src=\"([^\"]+\.wav)\"", html, re.S):
+            topic, desc, src = m.groups()
+            wav = d / src
+            sec = wav_seconds(wav) if wav.is_file() else None
+            songs.append({"topic": topic, "desc": desc, "src": src, "ok": wav.is_file(),
+                          "sec": round(sec, 2) if sec else None})
+        return songs
+    return []
 
 
 def build() -> dict:
@@ -169,6 +201,21 @@ def build() -> dict:
             "listKind": info["kind"] if info else "", "section": info["section"] if info else "",
             "hold": bool(info and info["hold"]), "notes": notes.get(sid, []),
             "described": info is not None,
+        })
+
+    for song in lab_songs():
+        stem = Path(song["src"]).stem
+        if not song["ok"]:
+            errors.append(f"{stem}: 후보곡 파일이 없음 — {song['src']}")
+        items.append({
+            "id": stem, "group": CAND_GROUP, "kind": "loop", "loop": True, "loop_seconds": None,
+            "spatial": False,
+            "files": [{"label": "재생", "src": song["src"], "path": "build/" + song["src"],
+                       "ok": song["ok"], "sec": song["sec"]}],
+            "when": f"후보곡 · 주제 {song['topic']} (게임에는 아직 없음)", "feel": song["desc"],
+            "listKind": "후보곡", "section": "music_lab", "hold": False,
+            "notes": [f"주제: {song['topic']}", "후보 음악 6곡 중 하나 — build/music_lab.html"],
+            "described": True,
         })
 
     beds = []
@@ -221,6 +268,8 @@ button.playing{background:var(--acc);color:var(--acc-ink);border-color:var(--acc
 button.stop{border-color:var(--acc);color:var(--acc)}
 button[disabled]{opacity:.45;cursor:not-allowed;text-decoration:line-through}
 main{max-width:1100px;margin:0 auto;padding:8px 16px 60px}
+a.cand{display:block;margin:12px 0 0;padding:12px 16px;border-radius:10px;background:var(--acc);color:var(--acc-ink);font-weight:700;text-decoration:none}
+nav a.candpill{background:var(--acc);color:var(--acc-ink);font-weight:700}
 nav{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
 nav a{font-size:13px;color:var(--mute);text-decoration:none;background:var(--chip);padding:3px 9px;border-radius:999px}
 nav a:hover{color:var(--ink)}
@@ -251,12 +300,13 @@ label.lp{font-size:12.5px;color:var(--mute);display:flex;align-items:center;gap:
 <header><div class="bar">
 <h1>flesh-pit 소리 모음</h1>
 <span class="counts" id="counts"></span>
-<input type="search" id="q" placeholder="검색: id, 언제, 느낌, 파일 이름">
+<input type="search" id="q" placeholder="검색: id, 언제, 느낌, 파일 이름, 후보, 곡 주제">
 <label class="vol">음량 <input type="range" id="vol" min="0" max="1" step="0.01" value="0.7"></label>
 <button class="stop" id="stopall">모두 멈춤</button>
 <button id="theme" title="밝게/어둡게">밝기</button>
 </div></header>
 <main>
+<a class="cand" id="candlink" href="#cand">후보곡 바로가기: 안 쓰는 후보 음악 <span id="candn"></span>곡 듣기</a>
 <nav id="nav"></nav>
 <div id="root"></div>
 </main>
@@ -292,7 +342,7 @@ function group(title, sub) {
   return groups.get(title);
 }
 function soundCard(it) {
-  const hay = [it.id, it.when, it.feel, it.kind, it.listKind, it.section, ...it.notes, ...it.files.map(f => f.path)].join(" ").toLowerCase();
+  const hay = [it.id, it.group, it.when, it.feel, it.kind, it.listKind, it.section, ...it.notes, ...it.files.map(f => f.path)].join(" ").toLowerCase();
   const loopBox = it.loop ? $("input", { type: "checkbox" }) : null;
   if (loopBox) loopBox.checked = true;
   const top = $("div", { class: "top" }, $("code", { text: it.id }),
@@ -350,9 +400,10 @@ function render() {
   const root = document.getElementById("root"), nav = document.getElementById("nav");
   const titles = [...DATA.order.filter(t => groups.has(t)), ...[...groups.keys()].filter(t => !DATA.order.includes(t))];
   titles.forEach((t, i) => {
-    const g = groups.get(t), id = "g" + i;
+    const g = groups.get(t), id = t === "후보곡" ? "cand" : "g" + i;
     g.sec = $("section", { id }, $("h2", {}, t + " ", $("small", { text: `${g.n}` + (g.sub ? " · " + g.sub : "") })), g.el);
-    root.append(g.sec); g.link = $("a", { href: "#" + id, text: `${t} ${g.n}` }); nav.append(g.link);
+    root.append(g.sec); g.link = $("a", { href: "#" + id, text: `${t} ${g.n}`, class: id === "cand" ? "candpill" : "" });
+    if (id === "cand") document.getElementById("candn").textContent = g.n; nav.append(g.link);
   });
 }
 function filter(q) {
@@ -380,12 +431,15 @@ document.getElementById("theme").addEventListener("click", () => {
 
 
 def main() -> int:
+    out = OUT
+    if len(sys.argv) > 2 and sys.argv[1] == "--out":
+        out = Path(sys.argv[2]).resolve()
     data = build()
     blob = json.dumps(data, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(PAGE.replace("__DATA__", blob), encoding="utf-8", newline="\n")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(PAGE.replace("__DATA__", blob), encoding="utf-8", newline="\n")
     c = data["counts"]
-    print(f"wrote {OUT.relative_to(ROOT).as_posix()}: {c['ids']} ids, {c['files']} files, "
+    print(f"wrote {out}: {c['ids']} ids, {c['files']} files, "
           f"{c['beds']} beds, {c['unreferenced']} unreferenced, {c['errors']} errors")
     for e in data["errors"]:
         print("  ERROR", e)
