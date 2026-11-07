@@ -1046,7 +1046,7 @@ func _process(delta: float) -> void:
 	vent.tick(delta)
 	vent.watch_bowl(delta, toilet.has_contents() and restroom.contains(player.global_position))
 	hand_motions.check_cancel()
-	_watch_tank_lean(delta)
+	_watch_leans(delta)
 	hand_motions.tick(delta)
 	tear_feel.tick(delta)
 	FPProfile.begin("eye_guard")
@@ -1918,6 +1918,8 @@ func esc_target() -> String:
 		return "mirror"
 	if Engine.get_process_frames() - _esc_guard_frame <= 1:
 		return ""
+	if hand_motions.vent_looking():
+		return "vent_look"
 	return "pause"
 
 ## One Esc press. Returns what it did ("" = nothing).
@@ -1936,6 +1938,8 @@ func handle_esc() -> String:
 			stand_up()
 		"mirror":
 			mirror.close()
+		"vent_look":
+			_end_lean()
 		"pause":
 			open_pause_menu()
 	return t
@@ -2093,7 +2097,7 @@ func place_tooth_at_vent() -> bool:
 		return false
 	var first := vent.pile == 1
 	progression.teeth_in_hand -= 1
-	if first:
+	if first and not hand_motions.vent_looking():
 		hand_motions.play_pour(1)
 	return true
 
@@ -2127,12 +2131,12 @@ func _repeat_tooth_op(delta: float) -> void:
 			_tooth_op = ""
 			return
 
+## Both leans lock the body and end on frantic movement (LEAN_FRANTIC
+## movement presses within LEAN_FRANTIC_WINDOW seconds); backing off ends
+## them too (fp_hand_motions TANK_CANCEL).
 ## The lean over the tank ends when the eye leaves it (looking away), the
-## lid goes back on, or there is nothing left to pick or put back. While
-## leaning the body stays put: left/right walk the head round the tank
-## (still bent over it, LEAN_ORBIT_MAX each way), backing off (S) ends it
-## (fp_hand_motions TANK_CANCEL) and so does frantic movement (LEAN_FRANTIC
-## movement presses within LEAN_FRANTIC_WINDOW seconds).
+## lid goes back on, or there is nothing left to pick or put back; left/right
+## walk the head round the tank (still bent over it, LEAN_ORBIT_MAX each way).
 const LEAN_ORBIT_SPEED := 1.6
 const LEAN_ORBIT_MAX := 1.2
 const LEAN_FRANTIC := 4
@@ -2140,9 +2144,9 @@ const LEAN_FRANTIC_WINDOW := 1.0
 var _lean_off_t := 0.0
 var _lean_presses: Array[float] = []
 var _lean_clock := 0.0
-func _watch_tank_lean(delta: float) -> void:
-	player.move_locked = hand_motions.tank_leaning()
-	if not hand_motions.tank_leaning():
+func _watch_leans(delta: float) -> void:
+	player.move_locked = hand_motions.leaning()
+	if not hand_motions.leaning():
 		_lean_off_t = 0.0
 		_lean_presses.clear()
 		return
@@ -2152,20 +2156,61 @@ func _watch_tank_lean(delta: float) -> void:
 			_lean_presses.append(_lean_clock)
 	_lean_presses = _lean_presses.filter(func(t): return _lean_clock - t <= LEAN_FRANTIC_WINDOW)
 	if _lean_presses.size() >= LEAN_FRANTIC:
-		hand_motions.release_tank_lean()
-		player.move_locked = false
-		return
+		_end_lean()
+	elif hand_motions.vent_looking():
+		_steer_vent_look(delta)
+	else:
+		_steer_tank_lean(delta)
+
+func _end_lean() -> void:
+	hand_motions.release_tank_lean()
+	hand_motions.release_vent_look()
+	player.move_locked = false
+
+func _steer_tank_lean(delta: float) -> void:
 	var turn := Input.get_action_strength("fdk_move_right") - Input.get_action_strength("fdk_move_left")
 	hand_motions.lean_orbit = clampf(hand_motions.lean_orbit + turn * LEAN_ORBIT_SPEED * delta, -LEAN_ORBIT_MAX, LEAN_ORBIT_MAX)
 	var empty: bool = progression.teeth <= 0 and progression.teeth_in_hand <= 0
 	if tank_lid.on_tank or tank_lid.held or empty:
-		hand_motions.release_tank_lean()
-		player.move_locked = false
+		_end_lean()
 		return
 	_lean_off_t = 0.0 if interact_target() == "tank_teeth" else _lean_off_t + delta
 	if _lean_off_t > 0.4:
-		hand_motions.release_tank_lean()
-		player.move_locked = false
+		_end_lean()
+
+## Head in under the open vent: the mouse and left/right turn the eye across
+## the offer within VENT_PAN_MAX (the aim stays on the vent), and with
+## nothing left to trade the head comes back out by itself.
+const VENT_PAN_MAX := Vector2(0.62, 0.34)
+const VENT_PAN_KEYS := 1.1
+const VENT_LOOK_IDLE := 1.6
+var _vent_pan_base := Vector2.ZERO
+var _vent_look_idle := 0.0
+
+func _begin_vent_look() -> bool:
+	if not restroom.contains(player.global_position):
+		return false
+	if not hand_motions.vent_looking():
+		hand_motions.play_vent_look()
+		_vent_pan_base = Vector2(player._yaw, player._pitch)
+		_vent_look_idle = 0.0
+	return true
+
+func _steer_vent_look(delta: float) -> void:
+	if not vent.is_open or not restroom.contains(player.global_position) or _settling or _seated or ended:
+		_end_lean()
+		return
+	var turn := Input.get_action_strength("fdk_move_right") - Input.get_action_strength("fdk_move_left")
+	player._yaw -= turn * VENT_PAN_KEYS * delta
+	var pan := Vector2(wrapf(player._yaw - _vent_pan_base.x, -PI, PI), player._pitch - _vent_pan_base.y)
+	pan = pan.clamp(-VENT_PAN_MAX, VENT_PAN_MAX)
+	player._yaw = _vent_pan_base.x + pan.x
+	player._pitch = _vent_pan_base.y + pan.y
+	hand_motions.vent_pan = pan
+	var idle: bool = progression.teeth_in_hand <= 0 and vent.pile <= 0 and vent.offers.is_empty()
+	_vent_look_idle = _vent_look_idle + delta if idle else 0.0
+	if _vent_look_idle > VENT_LOOK_IDLE:
+		_end_lean()
 
 func try_pick_tank_item() -> bool:
 	return scoop_teeth() > 0
@@ -2177,15 +2222,25 @@ func try_pick_tank_item() -> bool:
 func use_vent(hold_action: String = "fp_interact") -> void:
 	if not vent.is_open:
 		vent.open(progression.teeth + progression.teeth_in_hand, progression.teeth_in_hand, tank_lid != null and not tank_lid.on_tank)
+		if progression.teeth_in_hand > 0 or not vent.offers.is_empty():
+			_begin_vent_look()
 	elif progression.teeth_in_hand > 0:
+		_begin_vent_look()
 		_start_tooth_op("place", hold_action)
 	elif not vent.offers.is_empty():
-		# F takes the offer the eye is nearest, as the right button does
-		# (2026-11-02 play: F on the offered items did nothing). Leaving
+		# The first press puts the head in under the hands (user 2026-11-07);
+		# inside, F takes the offer the eye is nearest, as the right button
+		# does (2026-11-02 play: F on the offered items did nothing). Leaving
 		# them is walking off (the being holds them for next time).
-		take_vent_offer()
+		if hand_motions.vent_looking() or not _begin_vent_look():
+			take_vent_offer()
 	elif progression.tumors.carried_count() > 0:
 		vent.place_weird("tumor") # it will not take it; the tumor stays in hand
+	elif hand_motions.vent_looking():
+		# head in, the being still looking at the pile: a stray press is not
+		# the grate shutting on the trade
+		if vent.pile <= 0:
+			vent.close()
 	elif vent.offers.is_empty():
 		vent.close()
 
@@ -2198,7 +2253,8 @@ func place_teeth_at_vent() -> Array[String]:
 	for i in range(n):
 		vent.add_tooth(progression)
 	progression.teeth_in_hand = 0 # the being keeps them all
-	hand_motions.play_pour(n)
+	if not hand_motions.vent_looking():
+		hand_motions.play_pour(n)
 	return vent.appraise(progression)
 
 func take_vent_offer(id: String = "") -> bool:
@@ -2431,6 +2487,9 @@ func _interaction_aim(point: Vector3, degrees: float, reach: float, target_name:
 func interact_target() -> String:
 	if tank_lid != null and tank_lid.held:
 		return "tank_lid"
+	# coming back out the eye is not where it aims: F in that moment goes back in
+	if hand_motions.kind == "vent_lean":
+		return "vent"
 	if belt_swap != null and belt_swap.can_act():
 		return "belt"
 	var candidates: Array = FPInteractions.get_candidates(self)
@@ -2948,6 +3007,7 @@ func serialize() -> Dictionary:
 	}
 
 func deserialize(data: Dictionary) -> void:
+	hand_motions.stop_vent_look()
 	_restore_frame_camera()
 	_terrain_eye_delta = Vector3.ZERO
 	_terrain_eye_pose = Vector3.ZERO

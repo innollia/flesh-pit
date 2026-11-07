@@ -10,6 +10,7 @@ const K := preload("res://main/art/fp_art_kit.gd")
 ## eye, cradled in the hook of the fingers.
 ## Public: set_open(0..1), play_open(), play_offer(), play_withdraw(),
 ## set_offer_items(kinds), take_item(i), item_node(i), hand_count(),
+## begin_look(eye), end_look(), look_pose() (the head in under the vent),
 ## set_pile(n), play_spill(kinds, floor_y). set_eyes(), blink() and set_eye_mood() stay callable for the
 ## vent logic: the eyes never show, the mood only makes the fingers fidget.
 
@@ -419,13 +420,25 @@ func set_offer_items(kinds: Array) -> void:
             FPItemArt.set_layers(item, _black_cover.layers)
             slot.rotation_degrees = Vector3(0, 0, -6.0 + 4.0 * float(i % 3))
             slot.scale = Vector3.ONE * ITEM_SCALE
+            rig["item_top"] = _top_of(item)
             _offers.append(slot)
     _set_curl(0.0)
+    # new hands come out holding as they will be seen
+    _look_w = 1.0 if looking() else 0.0
     var lit := _black_cover.layers
     for n in _arms.find_children("*", "VisualInstance3D", true, false):
         (n as VisualInstance3D).layers = lit
     _snap = true
     _place_hands(0.0)
+
+## The highest point of an item above its own origin.
+static func _top_of(item: Node3D) -> float:
+    var top := 0.0
+    for n in item.find_children("*", "MeshInstance3D", true, false):
+        var mi := n as MeshInstance3D
+        var box: AABB = (item.global_transform.affine_inverse() * mi.global_transform if item.is_inside_tree() else mi.transform) * mi.get_aabb()
+        top = maxf(top, box.end.y)
+    return top
 
 ## Take the item in `index` (the player's hand picks it); the others are
 ## pulled back into the dark at once.
@@ -467,7 +480,7 @@ func _pose_fingers() -> void:
             var k: float = f[3]
             # a slow breath through the fingers, quicker when the being is impatient
             var fidget := sin(_time * lerpf(1.6, 5.0, _mood) + i * 0.9 + ri * 1.7) * lerpf(0.02, 0.05, _mood)
-            var c := lerpf(CURL_REST, CURL_GRIP, _curl) + fidget
+            var c := lerpf(lerpf(CURL_REST, LOOK_CURL, _look_w), CURL_GRIP, _curl) + fidget
             # the fingers close round the item: the tips come back over its front
             for j in range(3):
                 (f[j] as Node3D).rotation.x = -c * k * float(JOINT_SHARE[j])
@@ -517,14 +530,78 @@ func _cluster_target(eye: Vector3) -> Vector3:
         t.y = minf(t.y, LIP_Y - 0.78)
     return t
 
+# --- the head in under the vent -------------------------------------------------
+
+## Where the eye sits for the look (local: LOOK_BACK out from the vent toward
+## where the head came from, LOOK_DOWN below the face) and how far along the
+## view the wrists of 3 hands float; each hand past the third pushes them
+## LOOK_AHEAD_PER_HAND further up to a full row and LOOK_AHEAD_PAST_ROW past
+## it, so 8 still fit. The view rises at LOOK_RISE.
+const LOOK_BACK := 0.6
+const LOOK_DOWN := 0.84
+const LOOK_RISE := 0.3
+const LOOK_AHEAD := 0.4
+const LOOK_AHEAD_PER_HAND := 0.07
+const LOOK_AHEAD_PAST_ROW := 0.02
+## The hands hang under the wrist: the wrists float this much above the
+## middle of the view so the hands, not the forearms, are in the centre.
+const LOOK_WRIST_UP := 0.1
+## The fan bends round the eye less up close, so the outer hands stay in frame.
+const LOOK_ARC := 0.5
+## Up close the items are this much of their real size: the hand shows, not the item.
+const LOOK_ITEM_SCALE := 0.54
+## The head always comes in from this side of the vent: the open room, with
+## the hanging grate edge-on at the side of the view.
+const LOOK_FROM := Vector3(0.33, 0.0, 1.0)
+## Up close the fingers stay long (LOOK_CURL) and hook over the item's top
+## edge at LOOK_HOOK (hand frame), the item hanging below the hand: from the
+## eye the whole hand shows, not an item with fingertips on it.
+const LOOK_CURL := 0.9
+const LOOK_HOOK := Vector3(0.0, -0.108, 0.03)
+## The wrist drops further up close: a hand hanging across the view, not one
+## pointing along it, shows its whole length.
+const LOOK_WRIST_MAX := 0.85
+var _look_flat := Vector3.ZERO
+## 0..1 how far the hands have changed to the close-up hold.
+var _look_w := 0.0
+
+## Which way the head comes in from, seen from the vent.
+func begin_look(_eye_world: Vector3) -> void:
+    _look_flat = LOOK_FROM.normalized()
+
+func end_look() -> void:
+    _look_flat = Vector3.ZERO
+
+func looking() -> bool:
+    return _look_flat != Vector3.ZERO
+
+func _look_dir() -> Vector3:
+    return (Vector3.UP * LOOK_RISE - _look_flat).normalized()
+
+func _look_eye() -> Vector3:
+    return _look_flat * LOOK_BACK + Vector3.DOWN * LOOK_DOWN
+
+## The eye of the look, in world space. It never depends on the offer, so
+## the head holds still while hands come and go.
+func look_pose() -> Transform3D:
+    var eye := to_global(_look_eye())
+    var at := to_global(_look_eye() + _look_dir())
+    return Transform3D(Basis.looking_at(at - eye, Vector3.UP), eye)
+
+func _look_cluster() -> Vector3:
+    var dir := _look_dir()
+    var up := (Vector3.UP - dir * dir.y).normalized()
+    var ahead := LOOK_AHEAD + LOOK_AHEAD_PER_HAND * float(clampi(_count - 3, 0, 2)) + LOOK_AHEAD_PAST_ROW * float(maxi(_count - ROW_MAX, 0))
+    return _look_eye() + dir * ahead + up * LOOK_WRIST_UP
+
 ## The hands follow the player slowly; every hand keeps a neutral wrist on
 ## the way down and only turns its palm to the eye as the forearm swings out.
 func _place_hands(delta: float) -> void:
     if _count <= 0 or _rigs.is_empty():
         return
-    var eye := _eye()
-    var target := _cluster_target(eye)
-    var k := 1.0 if _snap else 1.0 - exp(-2.5 * delta)
+    var eye := _look_eye() if looking() else _eye()
+    var target := _look_cluster() if looking() else _cluster_target(eye)
+    var k := 1.0 if _snap else 1.0 - exp((-6.0 if looking() else -2.5) * delta)
     _center = _center.lerp(target, k)
     # the row runs across the line of sight, level
     var fwd := _center - eye
@@ -535,6 +612,8 @@ func _place_hands(delta: float) -> void:
     var view_up := _side.cross(fwd.normalized()).normalized()
     if view_up.y < 0.0:
         view_up = -view_up
+    _look_w = move_toward(_look_w, 1.0 if looking() else 0.0, delta * 3.0)
+    var item_scale := lerpf(ITEM_SCALE, LOOK_ITEM_SCALE, _look_w)
     var rows := int(ceil(float(_count) / float(ROW_MAX)))
     var e := _extend
     for i in range(_count):
@@ -550,7 +629,8 @@ func _place_hands(delta: float) -> void:
         # back, between the arms of the front row, clear of the player's hands
         if rows > 1:
             a += SPACING * (0.25 if row % 2 == 1 else -0.25)
-        var w_end := _center + _side * a + view_up * b - fwd.normalized() * (a * a * 1.1 - 0.12 * float(row)) + sway
+        var arc := LOOK_ARC if looking() else 1.1
+        var w_end := _center + _side * a + view_up * b - fwd.normalized() * (a * a * arc - 0.12 * float(row)) + sway
         # where the arm leaves the opening: under its hand, kept inside the frame
         var lip := Vector3(_center.x * 0.3, LIP_Y, _center.z * 0.3) + _side * a * 0.9 + Vector3(view_up.x, 0, view_up.z) * b * 0.6
         lip.x = clampf(lip.x, -SIZE + 0.045, SIZE - 0.045)
@@ -558,6 +638,10 @@ func _place_hands(delta: float) -> void:
         var elbow := lip - Vector3(0, _grate_drop(lip, w_end), 0)
         rig["mirror"] = -1.0 if a < -0.001 else 1.0
         _pose_arm(rig, lip, elbow, w_end, e, eye, delta)
+        var slot: Node3D = rig["slot"]
+        slot.scale = Vector3.ONE * item_scale
+        var hooked := LOOK_HOOK + Vector3.DOWN * float(rig.get("item_top", 0.0)) * item_scale
+        slot.position = HOLD.lerp(hooked, _look_w)
 
 ## How far the elbow must hang below the lip so the forearm passes under
 ## the open grate (it hangs down from the -X edge) instead of through it.
@@ -607,7 +691,7 @@ func _pose_arm(rig: Dictionary, lip: Vector3, elbow: Vector3, w_end: Vector3, e:
     var g := a_dir
     var bend := a_dir.angle_to(Vector3.DOWN)
     if bend > 0.001:
-        g = a_dir.slerp(Vector3.DOWN, minf(1.0, WRIST_MAX * swing / bend))
+        g = a_dir.slerp(Vector3.DOWN, minf(1.0, lerpf(WRIST_MAX, LOOK_WRIST_MAX, _look_w) * swing / bend))
     var n := to_eye - g * to_eye.dot(g)
     if n.length() < 0.05:
         n = Vector3(-_side.z, 0, _side.x)
