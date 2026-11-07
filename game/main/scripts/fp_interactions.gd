@@ -205,13 +205,13 @@ static func handle_settling_input(main: Node3D, entry_frame: int, _entry_action:
 	# Over the bowl the lever is out of view: the right hand (R / right
 	# click) reaches back and presses it, as it does seated. F presses it
 	# only when the cursor is on it; anything else stands up.
-	for action in ["fp_pick", "key_r", "mouse_right"]:
+	for action in ["fp_pick", "mouse_right"]:
 		if fresh.has(action):
 			main.flush()
 			return "flush"
 	if is_lever_aimed(main, main.settle_camera):
 		# the left hand button (left click / E) on the aimed lever, as F
-		for action in ["fp_interact", "key_f", "fdk_eat"]:
+		for action in ["fp_interact", "fdk_eat"]:
 			if fresh.has(action):
 				main.flush()
 				return "flush"

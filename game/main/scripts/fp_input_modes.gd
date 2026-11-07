@@ -80,17 +80,15 @@ static func _add(action: String, ev: InputEvent) -> void:
 				return
 	InputMap.action_add_event(action, ev)
 
-## R03: checks if any of the settlement exit inputs were pressed (V, move keys, climb key, F, Esc, LMB, RMB, gamepad).
+## R03: the settlement inputs held now: the rebindable actions, Esc, both mouse buttons and the pad stick.
 static func settlement_inputs() -> Dictionary:
 	var state := {}
 	for action in ["fp_vomit", "fp_interact", "fp_pick", "fdk_eat", "fdk_jump", "ui_cancel",
 		"fdk_move_forward", "fdk_move_back", "fdk_move_left", "fdk_move_right"]:
 		state[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
-	# Movement and Space are read only through their (rebindable) actions
-	# above: a key the player moved away must not stand them up any more.
-	var keys := {"key_v": KEY_V, "key_f": KEY_F, "key_r": KEY_R, "key_escape": KEY_ESCAPE}
-	for id in keys:
-		state[id] = Input.is_key_pressed(keys[id]) or Input.is_physical_key_pressed(keys[id])
+	# Every rebindable key is read only through its action above: a key the
+	# player moved away must not stand them up or press the lever any more.
+	state["key_escape"] = Input.is_key_pressed(KEY_ESCAPE) or Input.is_physical_key_pressed(KEY_ESCAPE)
 	state["mouse_left"] = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	state["mouse_right"] = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 	for pad in Input.get_connected_joypads():

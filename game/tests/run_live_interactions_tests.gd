@@ -4,6 +4,7 @@ var m: Node3D
 var passed := 0
 var failed := 0
 var folder: String
+const KEYS_PATH := "user://keybinds_test_live_interactions.json"
 
 func _init() -> void:
 	var isolated_runner: bool = str(get_script().resource_path).replace("\\", "/").contains("/.dryforge/evidence/checks/")
@@ -51,6 +52,7 @@ func game_at(point: Vector3) -> void:
 		m.queue_free()
 		await frames(2)
 	m = load("res://main/scenes/main.tscn").instantiate()
+	m.user_keybinds_path = KEYS_PATH
 	m.save_path = folder.path_join("test.bin")
 	root.add_child(m)
 	await frames(6)
@@ -65,7 +67,92 @@ func shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(folder.path_join(name + ".png"))
 
+func click(button: MouseButton) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = button
+	event.pressed = true
+	Input.parse_input_event(event)
+	await frames(3)
+	event = event.duplicate()
+	event.pressed = false
+	Input.parse_input_event(event)
+	await frames(3)
+
+## Over the bowl with something in it, through the moved vomit key and the
+## normal input path. The settle camera starts on the bowl; `on_lever` points it
+## at the lever, as the cursor would.
+func vomit_with_moved_key(on_lever: bool) -> void:
+	m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+	aim(m.toilet_point())
+	await frames(3)
+	m.stomach.add_flesh(25.0)
+	await press(KEY_N)
+	check(m.is_settling(), "the moved vomit key enters the vomit view")
+	await frames(150)
+	if on_lever:
+		aim(m.lever_point())
+		await frames(2)
+		m.settle_camera.look_at(m.lever_point(), Vector3.UP)
+		await frames(2)
+		check(FPInteractions.is_lever_aimed(m, m.settle_camera), "lever aimed for the moved keys")
+	else:
+		m.settle_camera.look_at(m.toilet_point(), Vector3.UP)
+		await frames(2)
+
+## The player moved V, F and R. The old keys are dead over the bowl and on the
+## lever, the new ones take their place, and both mouse buttons stay on their hands.
+func moved_keys_in_vomit_view() -> void:
+	await game_at(Vector3(-1.25, 0.9, 0.72))
+	check(m.rebind_key("fp_vomit", "N") and m.rebind_key("fp_interact", "K") and m.rebind_key("fp_pick", "P"), "moved V, F and R")
+	aim(m.toilet_point())
+	await frames(3)
+	m.stomach.add_flesh(25.0)
+	await press(KEY_V)
+	check(not m.is_settling(), "old V no longer starts vomiting")
+	for code in [KEY_V, KEY_F, KEY_R]:
+		await vomit_with_moved_key(true)
+		var bowl: float = m.toilet.bowl_flesh
+		check(bowl > 0.0, "the bowl has something to flush")
+		await press(code)
+		check(m.is_settling(), "old %s does not stand up" % OS.get_keycode_string(code))
+		check(is_equal_approx(m.toilet.bowl_flesh, bowl), "old %s does not press the lever" % OS.get_keycode_string(code))
+		if m.is_settling():
+			await press(KEY_W)
+	await vomit_with_moved_key(true)
+	await press(KEY_K)
+	check(not m.is_settling() and is_zero_approx(m.toilet.bowl_flesh), "moved interact key presses the aimed lever")
+	await vomit_with_moved_key(false)
+	await press(KEY_P)
+	check(not m.is_settling() and is_zero_approx(m.toilet.bowl_flesh), "moved right-hand key reaches back for the lever")
+	await vomit_with_moved_key(false)
+	await press(KEY_N)
+	check(not m.is_settling() and m.toilet.has_contents(), "moved vomit key stands up and keeps the bowl")
+	await vomit_with_moved_key(false)
+	await press(KEY_K)
+	check(not m.is_settling() and m.toilet.has_contents(), "moved interact key off the lever stands up")
+	await vomit_with_moved_key(false)
+	await click(MOUSE_BUTTON_LEFT)
+	check(not m.is_settling() and m.toilet.has_contents(), "left click off the lever stands up")
+	await vomit_with_moved_key(true)
+	await click(MOUSE_BUTTON_LEFT)
+	check(not m.is_settling() and is_zero_approx(m.toilet.bowl_flesh), "left click on the aimed lever presses it")
+	await vomit_with_moved_key(false)
+	await click(MOUSE_BUTTON_RIGHT)
+	check(not m.is_settling() and is_zero_approx(m.toilet.bowl_flesh), "right click reaches back for the lever")
+	check(m.sit_down(), "seated with the moved keys")
+	m.toilet.bowl_flesh = 25.0
+	await press(KEY_R)
+	check(m.is_seated() and is_equal_approx(m.toilet.bowl_flesh, 25.0), "old R does not press the lever seated")
+	await press(KEY_P)
+	check(m.is_seated() and is_zero_approx(m.toilet.bowl_flesh), "moved right-hand key presses the lever seated")
+	m.toilet.bowl_flesh = 25.0
+	await click(MOUSE_BUTTON_RIGHT)
+	check(m.is_seated() and is_zero_approx(m.toilet.bowl_flesh), "right click presses the lever seated")
+	m.reset_keybinds()
+	check(FPKeybindMenu.key_of("fp_vomit") == "V" and not FileAccess.file_exists(KEYS_PATH), "moved keys go back to the defaults")
+
 func run() -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(KEYS_PATH))
 	await game_at(Vector3(-1.25, 0.9, 0.72))
 	aim(m.toilet_point())
 	await frames(30)
@@ -203,5 +290,6 @@ func run() -> void:
 	check(m._mirror_open and m.hand_motions.kind == "watch", "raw Tab still raises approved B after retrieval")
 	check(m.hands_rig.get_node("HandRight").position.y < -0.5, "B still sends right arm out of view after retrieval")
 	await press(KEY_TAB)
+	await moved_keys_in_vomit_view()
 	print("Live interactions: %d passed, %d failed" % [passed, failed])
 	quit(1 if failed else 0)
