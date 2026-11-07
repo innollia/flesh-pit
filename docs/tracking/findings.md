@@ -121,3 +121,7 @@
 ## 벨트 고리 교환은 F로 하지 않는다
 
 `run_belt_tests.gd` 끝의 "fp_interact from keyboard, pad and mouse" 확인은 벨트 교환이 F로 된다는 옛 전제를 담고 있다. 지금 규칙(business-rules "조작 우선순위" 2번)은 손 버튼만 교환한다. 검사 문구 정리는 범위 밖으로 남긴다.
+
+## 아직 아케이드 쪽으로 판정되는 효과음 (round7-sfx, 2026-11-08)
+
+발소리를 고치며 살 속에서 자주 나는 단발을 `tools/clap_arcade.py`로 쟀다(자기 설명 대 "arcade/8-bit/bitcrushed/beep" 네 문구의 softmax 몫, 변주 평균). tear_fat 0.98, nerve_twitch 0.99, regen_creak 1.0, tear_flesh 0.64~0.77이고 PS1 처리를 꺼도 거의 같다(소리 자체의 사인·톱니·삼각파 음 때문: tear_fat 95 Hz 사인과 Q 7 대역, nerve_twitch 600→960 Hz 삼각파 미끄럼, tear_flesh 62 Hz 톱니 신음). 2026-09-29부터 같은 파일이며 round5 배경이 조용해지면서 더 드러난다. regen_creak은 재생 경고라 손대지 않았고, 나머지는 사람이 들어 보고 고칠지 정한다. 재현: `C:/fpear/Scripts/python.exe -B -X utf8 tools/clap_arcade.py game/audio/sfx`.

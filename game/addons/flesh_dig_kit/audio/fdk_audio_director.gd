@@ -35,6 +35,13 @@ const NERVE_TISSUE := 1
 @export var body_beds: PackedStringArray = PackedStringArray(["body_a", "body_b"])
 ## Shell index from which the deeper bed is used.
 @export var deep_shell: int = 2
+## Each footstep's pitch is 1 +- this (0.04 = about two thirds of a semitone).
+@export var step_pitch_jitter: float = 0.04
+## Each footstep's level is step_gain_db +- this, dB.
+@export var step_gain_jitter_db: float = 1.5
+## Each tear's pitch is 1 +- this: one handful after another is never the
+## same rip.
+@export var tear_pitch_jitter: float = 0.03
 
 var bank: FDKSoundBank
 var terrain: Node = null
@@ -51,6 +58,14 @@ var shell: int = -1
 var last_played: String = ""
 var played_log: Array[String] = []
 var steps_played: int = 0
+## Footstep level a consumer sets, and the bus of the room the player is in
+## (footsteps and tears play there, the mouth's own sounds stay on `bus`);
+## room_bus empty plays everything on `bus`.
+var step_gain_db: float = 0.0
+var room_bus: StringName = &""
+var last_step_pitch: float = 1.0
+var last_step_db: float = 0.0
+var last_tear_pitch: float = 1.0
 
 ## Extra gain on every bed layer, dB (0 = as the bed is mixed). A consumer
 ## lowers the bed with it while its own music plays; bed_layer_db does not
@@ -168,6 +183,19 @@ func is_bed_layer_running(layer: String) -> bool:
 
 ## One-shot. With a world position and a spatial sound it plays in 3D.
 func play(id: String, world_pos: Variant = null, volume_db: float = 0.0) -> void:
+	_play(id, world_pos, volume_db, 1.0, bus)
+
+## One footstep: the surface/stage id, each step a little off in pitch and
+## level (step_pitch_jitter, step_gain_jitter_db) so a walk is not one sample
+## fired again and again, at step_gain_db, on room_bus when set.
+func play_step() -> void:
+	_ensure_core()
+	var r := bank.rng
+	last_step_pitch = 1.0 + r.randf_range(-step_pitch_jitter, step_pitch_jitter)
+	last_step_db = step_gain_db + r.randf_range(-step_gain_jitter_db, step_gain_jitter_db)
+	_play(footstep_id(), null, last_step_db, last_step_pitch, room_bus if room_bus != &"" else bus)
+
+func _play(id: String, world_pos: Variant, volume_db: float, pitch: float, bus_name: StringName) -> void:
 	_ensure_core()
 	if not bank.has(id):
 		return
@@ -184,7 +212,8 @@ func play(id: String, world_pos: Variant = null, volume_db: float = 0.0) -> void
 		var p3 := AudioStreamPlayer3D.new()
 		p3.stream = stream
 		p3.volume_db = volume_db
-		p3.bus = bus
+		p3.pitch_scale = pitch
+		p3.bus = bus_name
 		p3.unit_size = 3.0
 		p3.max_distance = 40.0
 		add_child(p3)
@@ -195,7 +224,8 @@ func play(id: String, world_pos: Variant = null, volume_db: float = 0.0) -> void
 		var p2 := AudioStreamPlayer.new()
 		p2.stream = stream
 		p2.volume_db = volume_db
-		p2.bus = bus
+		p2.pitch_scale = pitch
+		p2.bus = bus_name
 		add_child(p2)
 		p2.play()
 		p2.finished.connect(p2.queue_free)
@@ -283,7 +313,9 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 	var tissue := 0
 	if terrain != null and terrain.has_method("tissue_at"):
 		tissue = int(terrain.call("tissue_at", world_pos))
-	play(String(TISSUE_TEAR.get(tissue, "tear_flesh")), world_pos)
+	_ensure_core()
+	last_tear_pitch = 1.0 + bank.rng.randf_range(-tear_pitch_jitter, tear_pitch_jitter)
+	_play(String(TISSUE_TEAR.get(tissue, "tear_flesh")), world_pos, 0.0, last_tear_pitch, room_bus if room_bus != &"" else bus)
 	if tissue == NERVE_TISSUE:
 		play("nerve_twitch", world_pos)
 	_swallow_timer = swallow_delay
@@ -301,7 +333,7 @@ func on_footstep_bob(offset: Vector3) -> void:
 	var dy := y - _prev_bob
 	if _prev_dy < 0.0 and dy >= 0.0 and y < 0.0:
 		steps_played += 1
-		play(footstep_id())
+		play_step()
 	_prev_bob = y
 	if dy != 0.0:
 		_prev_dy = dy

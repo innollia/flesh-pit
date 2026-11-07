@@ -86,12 +86,31 @@ var _body_events: Node
 ## The shell's song out in the flesh (audio/fp_flesh_music.gd).
 var _flesh_music: Node
 
+## Footsteps and tears play in the room the player is in: the Room bus, a
+## short reverb sent to SFX (so the SFX slider still sets them). The tiled
+## restroom rings a little and stays bright, the flesh is short and damped.
+## They were dry samples that the louder beds before 2026-11-07 used to cover;
+## over the quieter beds they stood bare on top (docs/design/sound-music.md
+## "발소리와 뜯기의 방"). Chewing and swallowing are inside the head and stay dry.
+const ROOM_BUS := &"Room"
+const ROOMS := {
+	"tile": {"room_size": 0.34, "damping": 0.4, "spread": 0.8, "hipass": 0.12, "dry": 1.0, "wet": 0.2},
+	"flesh": {"room_size": 0.2, "damping": 0.85, "spread": 0.6, "hipass": 0.15, "dry": 1.0, "wet": 0.16},
+}
+## Footsteps in the flesh, dB: back toward where they sat in the old beds
+## (own-band margin about 0..+6 dB instead of +1..+9), still over the bed.
+const FLESH_STEP_DB := -3.0
+var _room := ""
+
 func _ready() -> void:
 	main = get_parent()
 	director = FDKAudioDirector.new()
 	director.name = "AudioDirector"
 	director.manifest_path = MANIFEST
 	add_child(director)
+	_ensure_room_bus()
+	director.room_bus = ROOM_BUS
+	_set_room("tile")
 	# background music per place, never in the flesh (audio/fp_music.gd)
 	var music: Node = preload("res://audio/fp_music.gd").new()
 	music.name = "Music"
@@ -291,6 +310,36 @@ func _body_bed() -> String:
 			return b
 	return director.body_bed_for_shell()
 
+func _ensure_room_bus() -> void:
+	FPSettings.ensure_buses()
+	if AudioServer.get_bus_index(ROOM_BUS) >= 0:
+		return
+	var i := AudioServer.bus_count
+	AudioServer.add_bus(i)
+	AudioServer.set_bus_name(i, ROOM_BUS)
+	AudioServer.set_bus_send(i, &"SFX")
+	AudioServer.add_bus_effect(i, AudioEffectReverb.new())
+
+## The Room bus's reverb for "tile" or "flesh", and the footstep level there.
+func _set_room(room: String) -> void:
+	if room == _room:
+		return
+	_room = room
+	director.step_gain_db = FLESH_STEP_DB if room == "flesh" else 0.0
+	var i := AudioServer.get_bus_index(ROOM_BUS)
+	if i < 0 or AudioServer.get_bus_effect_count(i) < 1:
+		return
+	var rv := AudioServer.get_bus_effect(i, 0) as AudioEffectReverb
+	if rv == null:
+		return
+	var p: Dictionary = ROOMS[room]
+	for k in p.keys():
+		rv.set(k, p[k])
+
+## The footstep room now: "tile" or "flesh".
+func room() -> String:
+	return _room
+
 func _hook(sig: String, cb: Callable) -> void:
 	if main.has_signal(sig):
 		main.connect(sig, cb)
@@ -310,6 +359,7 @@ func _process_inner(_delta: float) -> void:
 	if in_room != _in_room:
 		_in_room = in_room
 		director.set_surface("tile" if in_room else "flesh")
+		_set_room("tile" if in_room else "flesh")
 		director.set_bed("restroom" if in_room else director.body_bed_for_shell(), 2.0)
 	# depth shell
 	if player != null and not in_room:

@@ -5,8 +5,12 @@ SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
 // id: step_tile_s1 -- foot on hard restroom tile. Stage 1: heavier heel, and a wet smear of flesh under the sole.
+// 2026-11-08 (round7-sfx): no sine heel, no narrow 3.4 kHz click and no 60 ms
+// slap echo; those made one identical tick-boop per step. The heel is
+// low-passed noise, the sole a broad scuff, the tiled room the Room bus.
 W = 1.0
-tick = noise(0, 0, SEED) * clamp(t / 0.0006, 0, 1) * exp(neg(t) / 0.008) * 1.0 |> bp(@, 3400 * PITCH, 5.0)
-heel = sine((110 / W + 30) * PITCH) * clamp(t / 0.003, 0, 1) * exp(neg(t) / (0.03 * W)) * (0.25 * W)
-smear = noise(0, 0, SEED2) * clamp((t - 0.01) / 0.02, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / (0.05 * W)) * ((W - 1) * 0.35 + 0.05) |> bp(@, 900, 2.0)
-out((tick + heel + smear) |> delay(@, 0.06, 0.25, 1.0, 0.25))
+heel = noise(0, 0, SEED2 + 7) * clamp(t / 0.002, 0, 1) * exp(neg(t) / (0.025 * W)) * (0.8 * W) |> lp(@, (240 / W + 90) * PITCH, 0.7)
+sole = noise(0, 0, SEED) * clamp(t / 0.001, 0, 1) * exp(neg(t) / 0.012) * 0.45 |> bp(@, 2300 * PITCH, 1.1)
+scuff = noise(0, 0, SEED + 3) * clamp((t - 0.006) / 0.01, 0, 1) * exp(neg(clamp(t - 0.006, 0, 100)) / 0.05) * 0.08 |> hp(@, 1200, 0.7)
+smear = noise(0, 0, SEED2) * clamp((t - 0.01) / 0.02, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / (0.05 * W)) * ((W - 1) * 0.35 + 0.05) |> bp(@, 900, 1.6)
+out((heel + sole + scuff + smear) |> lp(@, 6500, 0.7))
