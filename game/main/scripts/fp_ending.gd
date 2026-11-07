@@ -36,7 +36,7 @@ func _ready() -> void:
 	_credits.anchor_bottom = 0.55
 	_credits.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_credits.add_theme_font_override("font", FPMenuKit.FONT)
-	_credits.text = "flesh-pit"
+	_credits.text = "Vorare Viscera"
 	# centred and outlined: it sits over the busy overhead city, not a plain sky
 	_credits.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_credits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
