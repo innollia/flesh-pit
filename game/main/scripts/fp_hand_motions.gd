@@ -18,7 +18,7 @@ extends RefCounted
 const DUR := {
     "scoop": 0.55, "pour": 0.85, "take": 1.15, "take2": 1.25,
     "vomit_toilet": 2.4, "vomit_floor": 2.4, "gag": 1.3, "wash": 2.6,
-    "belt": 0.75, "cycle": 0.35, "watch": 1.0e9, "tank_lean": 1.0e9,
+    "belt": 0.75, "cycle": 0.35, "watch": 1.0e9, "tank_lean": 1.0e9, "vent_lean": 1.0e9,
     "press": 0.6,
 }
 const CANCEL_TIME := 0.25
@@ -46,6 +46,29 @@ const DIP_TIME := 0.25
 var _dip_t := 1.0
 ## Radians the leaned head has walked round the tank mouth (main drives it).
 var lean_orbit := 0.0
+## Head in under the open vent (user 2026-11-07, the tank's lean for the
+## being's hands): the eye goes to the pose the vent art composes, the body
+## stays locked where it stood and both hands sink out of the frame. Backing
+## off, jumping, V, Esc or taking an item bring the head back out. The eye
+## runs on a clock of its own so a take can start with the head still in.
+## Esc is main's (handle_esc: it takes the head out before the pause menu).
+const VENT_LOOK_CANCEL := ["fdk_move_back", "fdk_jump", "fp_vomit"]
+const VENT_LOOK_IN := 0.6
+const VENT_LOOK_OUT := 0.5
+## How far the head pushes past the straight path on the way, and tilts.
+const VENT_LOOK_PUSH := 0.07
+const VENT_LOOK_TILT := 0.07
+## The lens narrows to this share of the view: a hand a little further off
+## keeps its long fingers where a wide lens up close made it a big palm.
+const VENT_LOOK_FOV := 0.66
+## Both first-person hands and whatever they hold sink this far (rig metres).
+const VENT_RIG_DROP := Vector3(0.0, -0.5, 0.0)
+var _eye_w := 0.0
+var _lens_narrowed := false
+var _rig_drop := 0.0
+var _rig_rest := {}
+## Yaw and pitch (radians) the eye has turned from the middle of the offer.
+var vent_pan := Vector2.ZERO
 ## Offer kinds held with both hands.
 const BIG_ITEMS := ["blender", "big_saw", "blender_box", "saw_box"]
 const FLESH := Color(0.55, 0.12, 0.13)
@@ -147,6 +170,10 @@ func play_take(world_pos: Vector3, art_kind: String) -> void:
     if local.length() > 0.62:
         local = local.normalized() * 0.62
     local.z = minf(local.z, -0.3)
+    if _eye_w > 0.0:
+        # head in under the vent the lens is narrow: the hand comes up from
+        # below to the far side of the item, never across the eye
+        local = Vector3(local.x * 0.6, minf(local.y, -0.1), minf(local.z, -0.5))
     _target = local
     _clear_held()
     if rig != null:
@@ -251,6 +278,40 @@ func release_tank_lean() -> void:
 func tank_leaning() -> bool:
     return kind == "tank_lean" and not cancelled
 
+## The head goes in under the open vent (held until release_vent_look).
+func play_vent_look() -> void:
+    if vent_looking():
+        return
+    _start("vent_lean")
+    vent_pan = Vector2.ZERO
+    m.vent.art.call("begin_look", m.player.camera.global_position)
+
+func release_vent_look() -> void:
+    if kind == "vent_lean":
+        cancel()
+
+func vent_looking() -> bool:
+    return kind == "vent_lean" and not cancelled
+
+## Either lean: the body stays put and the walk keys steer the head.
+func leaning() -> bool:
+    return tank_leaning() or vent_looking()
+
+## Eye blend of the vent look, 0..1 (still above 0 while the head comes out).
+func vent_eye_weight() -> float:
+    return smoothstep(0.0, 1.0, _eye_w)
+
+## End the vent look at once with no way back to ease (a restored save).
+func stop_vent_look() -> void:
+    if kind == "vent_lean":
+        _finish()
+    _eye_w = 0.0
+    _rig_drop = 0.0
+    _apply_rig_drop()
+    _apply_vent_eye()
+    if m.vent != null and m.vent.art != null:
+        m.vent.art.call("end_look")
+
 ## One tooth in or out: the cupped hand dips.
 func dip() -> void:
     _dip_t = 0.0
@@ -288,7 +349,7 @@ func check_cancel() -> void:
         return
     if not busy() or cancelled or t < 0.06:
         return
-    for a in (TANK_CANCEL if kind == "tank_lean" else CANCEL_ACTIONS):
+    for a in (TANK_CANCEL if kind == "tank_lean" else VENT_LOOK_CANCEL if kind == "vent_lean" else CANCEL_ACTIONS):
         if InputMap.has_action(a) and Input.is_action_just_pressed(a):
             cancel()
             return
@@ -297,8 +358,10 @@ func check_cancel() -> void:
 
 func tick(delta: float) -> void:
     _apply_cup_root(delta)
+    _step_vent_eye(delta)
     if not busy():
         _apply_cam_rest()
+        _apply_vent_eye()
         return
     t += delta
     _dip_t += delta
@@ -315,6 +378,46 @@ func tick(delta: float) -> void:
         _held_mesh.visible = u >= TAKE_GRIP and u < TAKE_STOWED and weight() > 0.3
     if (cancelled and _cancel_w <= 0.0) or (not cancelled and t >= dur):
         _finish()
+    _apply_vent_eye()
+
+## The eye's own clock: in while the look holds, and through the grip of a
+## take that started inside it, so the hand closes on the item first.
+func _step_vent_eye(delta: float) -> void:
+    var taking := (kind == "take" or kind == "take2") and progress() < TAKE_GRIP and _eye_w > 0.0
+    var inside := vent_looking() or taking
+    _eye_w = move_toward(_eye_w, 1.0 if inside else 0.0, delta / (VENT_LOOK_IN if inside else VENT_LOOK_OUT))
+    _rig_drop = move_toward(_rig_drop, 1.0 if vent_looking() else 0.0, delta * 3.5)
+    _apply_rig_drop()
+    if _eye_w <= 0.0 and kind != "vent_lean" and m.vent != null and m.vent.art != null:
+        m.vent.art.call("end_look")
+
+## Applied after the camera rest and motion offsets; main's eye guard then
+## constrains the result like any other eye pose.
+func _apply_vent_eye() -> void:
+    if m.player == null or m.vent == null or m.vent.art == null:
+        return
+    var cam: Camera3D = m.player.camera
+    var w := vent_eye_weight()
+    if _eye_w > 0.0 or _lens_narrowed:
+        cam.fov = FPSettings.base_fov(cam) * lerpf(1.0, VENT_LOOK_FOV, w)
+        _lens_narrowed = _eye_w > 0.0
+    if _eye_w <= 0.0:
+        return
+    var pose: Transform3D = m.vent.art.call("look_pose")
+    pose.basis = Basis(Vector3.UP, vent_pan.x) * pose.basis * Basis(Vector3.RIGHT, vent_pan.y)
+    var push := sin(_eye_w * PI)
+    var out := cam.global_transform.interpolate_with(pose, w)
+    out.origin -= out.basis.z * VENT_LOOK_PUSH * push
+    out.basis = out.basis * Basis(Vector3.BACK, VENT_LOOK_TILT * push)
+    cam.global_transform = out
+
+func _apply_rig_drop() -> void:
+    for rig in rigs_of(m):
+        if not _rig_rest.has(rig):
+            if _rig_drop <= 0.0:
+                continue
+            _rig_rest[rig] = (rig as Node3D).position
+        (rig as Node3D).position = (_rig_rest[rig] as Vector3) + VENT_RIG_DROP * smoothstep(0.0, 1.0, _rig_drop)
 
 func _finish() -> void:
     kind = ""
@@ -388,8 +491,8 @@ func weight() -> float:
         if cancelled:
             ww *= clampf(_cancel_w, 0.0, 1.0)
         return ww
-    if kind == "tank_lean":
-        var wl := seg(t, 0.0, TANK_LEAN_IN)
+    if kind == "tank_lean" or kind == "vent_lean":
+        var wl := seg(t, 0.0, TANK_LEAN_IN if kind == "tank_lean" else VENT_LOOK_IN)
         if cancelled:
             wl *= clampf(_cancel_w, 0.0, 1.0)
         return wl
@@ -856,6 +959,9 @@ func _motion_pose(side: float, p: Dictionary) -> Dictionary:
             q["wrist_roll"] = lerpf(float(p["wrist_roll"]), -6.0, reach)
             var dip := Vector3(0.0, -0.03, 0.0) * sin(clampf((u - 0.3) / 0.3, 0.0, 1.0) * PI)
             q["pos"] = idle.lerp(_target + dip, reach)
+        "vent_lean":
+            # the rig itself sinks out of the frame (_apply_rig_drop)
+            return {}
         "tank_lean":
             var d := sin(clampf(_dip_t / DIP_TIME, 0.0, 1.0) * PI)
             if right:

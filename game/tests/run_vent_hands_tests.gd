@@ -186,6 +186,21 @@ func run() -> void:
 	check(m.aimed_offer() == want, "the aimed item is the outer one (%s)" % want)
 	var arms: Node3D = art.get_node("BeingArm")
 	var before: int = m.progression.tools.owned.size() if "owned" in m.progression.tools else -1
+	# the first F puts the head in under the hands (run_vent_look_tests.gd);
+	# inside, the eye turns to the outer hand and F takes that one
+	m.use_vent()
+	check(m.vent.offers.size() == 3 and m.hand_motions.vent_looking(), "F puts the head in, nothing taken yet")
+	await wait(1.0)
+	var turn := 0.08
+	for i in range(24):
+		if m.aimed_offer() == want:
+			break
+		if i == 10:
+			turn = -turn
+			m.player._yaw += 0.9 * -turn
+		m.player._yaw -= turn
+		await frames(3)
+	check(m.aimed_offer() == want, "inside, the eye reaches the outer hand (%s)" % m.aimed_offer())
 	m.use_vent()
 	check(m.vent.offers.is_empty(), "F takes the offer")
 	await wait(1.2)
