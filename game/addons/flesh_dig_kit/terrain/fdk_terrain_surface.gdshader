@@ -72,19 +72,27 @@ varying vec3 vwnrm;
 
 void vertex() {
     vec3 wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+    // Pull shape: mirrored by FDKPullShape.offset (fdk_pull_shape.gd), which
+    // the headless tests measure. Change both together.
+    // One rounded wet dome drawn out toward the eater along the shared
+    // direction only. The old sideways gather into the grip and its tight
+    // cone creased the low-poly faces into a star (2026-11-08).
     float pd = distance(wpos, press_center);
-    float pf = smoothstep(press_radius, 0.0, pd);
     float pa = press_amount;
     float dent = sin(clamp(pa / 0.55, 0.0, 1.0) * 1.5708) * (1.0 - smoothstep(0.55, 0.9, pa));
     float pull = smoothstep(0.45, 1.0, pa);
-    vec3 side = wpos - press_center;
     vec3 pn = normalize(press_toward + vec3(0.0, 1e-5, 0.0));
-    // The pull is the grip: the centre is drawn out toward the hand in a
-    // tight cone (pf^2) while the skin round it is gathered in, trembling
-    // harder as it nears the tear.
-    vec3 grip = -pn * pf * (0.16 * dent - 0.34 * pull * pf);
-    grip -= side * pf * 0.24 * pull;
-    grip += pn * pf * pull * (0.02 + 0.03 * pull) * sin(TIME * 47.0 + pd * 20.0);
+    float wide_t = clamp(1.0 - (pd / press_radius) * (pd / press_radius), 0.0, 1.0);
+    float wide = wide_t * wide_t;
+    float dome_r = press_radius * 0.7;
+    float dome_t = clamp(1.0 - (pd / dome_r) * (pd / dome_r), 0.0, 1.0);
+    float dome = dome_t * dome_t;
+    // one bell at every moment (wide dent narrowing into the dome), so the
+    // dent and the lift never meet as a ring-shaped trough
+    float bell = mix(wide, dome, pull);
+    float lift = (-0.16 * dent + 0.30 * pull) * bell;
+    lift += 0.012 * pull * pull * bell * sin(TIME * 47.0);
+    vec3 grip = pn * lift;
     if (snap_age < 0.9) {
         vec3 sn = normalize(snap_toward + vec3(0.0, 1e-5, 0.0));
         vec3 sv = wpos - snap_center;
@@ -185,24 +193,19 @@ void fragment() {
             wound = max(wound, w.w * smoothstep(r, r * 0.45, length(d)));
         }
     }
-    // Strain of the grip: the skin round the hands goes taut and pale and
-    // its fibres stand out red in rings drawn toward the grip, so the pull
-    // reads even where the fists cover the gripped spot itself.
+    // Strain of the grip (FDKPullShape.strain): the stretched skin goes
+    // taut, thin and wet toward the top of the dome, pinker and glossier,
+    // with a blood flush where it is drawn up from the wall. It depends on
+    // distance alone: the old radial red fibres read as a star (2026-11-08).
     float tension = 0.0;
     if (press_amount > 0.0 && !tile_mode) {
-        vec3 pv = vwpos - press_center;
-        float pdist = length(pv);
-        tension = smoothstep(0.3, 1.0, press_amount) * smoothstep(press_radius, 0.05, pdist);
-        vec3 pnf = normalize(press_toward + vec3(0.0, 1e-5, 0.0));
-        vec3 ta = normalize(cross(pnf, abs(pnf.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
-        vec3 tb = cross(pnf, ta);
-        float ang = atan(dot(pv, tb), dot(pv, ta));
-        // uneven fibres: wavering, of mixed width, broken up along their length
-        float wav = ang * 17.0 + 1.7 * sin(ang * 5.0 + pdist * 7.0) + pdist * 9.0;
-        float seg = fract(sin(floor(wav / 6.2832) * 17.3 + floor(pdist * 7.0) * 3.1) * 4375.85);
-        float fib = 0.5 + 0.5 * sin(wav);
-        col = mix(col, col * 1.8 + vec3(0.14, 0.03, 0.04), tension * 0.6);
-        col = mix(col, vec3(0.42, 0.015, 0.04), tension * tension * smoothstep(0.5, 0.92, fib) * (0.45 + 0.4 * seg));
+        float px = length(vwpos - press_center) / press_radius;
+        float bt = clamp(1.0 - px * px, 0.0, 1.0);
+        tension = smoothstep(0.3, 1.0, press_amount) * bt * bt;
+        // flush: a soft band low on the dome where the skin leaves the wall
+        float flush = smoothstep(0.05, 0.3, tension) * (1.0 - smoothstep(0.35, 0.8, tension));
+        col = mix(col, vec3(0.36, 0.02, 0.04), flush * 0.45);
+        col = mix(col, col * 1.55 + vec3(0.16, 0.05, 0.06), tension * 0.65);
     }
     col = mix(col, vec3(0.46, 0.02, 0.04), wound * 0.85);
     ALBEDO = mix(col * tint.rgb, fog_color, vfog);
