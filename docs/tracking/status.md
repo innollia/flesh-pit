@@ -1,5 +1,9 @@
 # 현재 상태
 
+## 기획서 보관과 2차 문서 (2026-11-07)
+
+1차 기획서를 `docs/archive/spec-v1/`로 옮기고(결정 0011) `docs/spec/README.md`에 안내를 남겼다. 지금 기준은 코드와 `docs/design/`이다. `docs/design/`에 개요, 조작과 표시, 소리와 음악, 환풍구 존재, 경제, 사용자 결정 모음을 코드 기준으로 적었다. `reward_scale.py`의 감사 표는 `docs/design/economy.md`로 옮겼고, `params.json`의 조직 값을 바이옴 조직이 들어간 코드 값에 맞췄다. 계산기 selftest 138개는 통과했다.
+
 ## 2026-11-04 배경음악 곳마다 다르게 (브랜치 audio-music)
 
 사용자 요청 "필요한 곳마다 서로 다른 느낌으로 더 만들어줘. mus_pause는 특히 안어울려." 새로 만들거나 바꾼 곡은 nkido 패치(`game/tools/audio/patches/mus_*.akkado`)이고 `tools/build_music.py`가 두 바퀴 렌더해 둘째 바퀴를 접어 루프로 만든다(lo-fi·마스터링은 Python, 결정적).

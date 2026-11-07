@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash
 - `<evidence>/trajectory.md`: step마다 명령, 플레이어 메모, 화면 글자, 들린 소리, 텔레메트리(플레이어는 못 본 것), 사건.
 - `<evidence>/player_report.md`: 플레이어의 마지막 피드백.
 - `<room>/session/obs_NNNN.png`(필요한 것만 연다), `<evidence>/tel_NNNN.json`, `<evidence>/godot.log`(SCRIPT ERROR, 경고).
-- 기획 의도: `docs/spec/00-overview.md`, `docs/spec/10-first-ten-minutes.md`, 필요하면 해당 장(`03-restroom.md`, `07-danger-navigation.md` 등). 의도된 어려움·멈춤은 문제로 올리지 않는다.
+- 기획 의도: `docs/design/overview.md`, `docs/archive/spec-v1/10-first-ten-minutes.md`, 필요하면 해당 장(`03-restroom.md`, `07-danger-navigation.md` 등). 의도된 어려움·멈춤은 문제로 올리지 않는다.
 - 이미 아는 문제: `docs/tracking/findings.md`. 같은 것이면 새로 올리지 않고 "기존"으로 표시한다.
 
 ## 규칙

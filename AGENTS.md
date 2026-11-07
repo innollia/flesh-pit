@@ -17,9 +17,10 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │   ├── engineering-notes.md → 면 방향·갱신·조준·복원에서 확인한 함정
 │   ├── operations.md → 실행과 격리 검사 절차
 │   ├── contracts.md → 키트 호출·신호·저장 소비자 계약
-│   ├── spec/ → 기획서 (00이 목록, 09가 경제 척도)
+│   ├── design/ → 2차 기획 문서, 지금 게임을 코드 기준으로 (overview가 목록, decisions-log가 사용자 결정 모음)
+│   ├── spec/README.md → 코드 주석의 옛 경로 안내
 │   ├── research/ → 참고 게임·조사 자료 (기준 아님)
-│   ├── archive/ → 끝난 계획·옛 진행 기록 (고치지 않음)
+│   ├── archive/ → 끝난 계획·옛 진행 기록·1차 기획서 spec-v1 (고치지 않음)
 │   ├── whiteboard/ → 기획·시스템 화이트보드 (Excalidraw & 캔버스 동기화)
 │   └── tracking/
 │       ├── status.md → 구현·검증 상태와 남은 게임 검증
@@ -36,7 +37,8 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │           ├── 0007-clean-room-playtest.md → 화면만 보는 플레이어와 증거로 판정하는 평가자
 │           ├── 0008-knife-gate-farther.md → 핵은 막까지 맨손, 칼은 원정 한 번 값
 │           ├── 0009-first-expedition-return.md → 첫 정산 전 밖 토하기는 헛구역질, 허리의 나침반
-│           └── 0010-biomes-per-shell.md → 껍질마다 바이옴 여러 개, 고정 배치
+│           ├── 0010-biomes-per-shell.md → 껍질마다 바이옴 여러 개, 고정 배치
+│           └── 0011-spec-archive.md → 1차 기획서 보관, 기준은 코드와 docs/design
 └── game/
     ├── main/AGENTS.md → 게임 조작·진행·표현·단일 저장
     ├── addons/flesh_dig_kit/AGENTS.md → 재사용 지형·먹기·몸·도구
@@ -53,6 +55,7 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 ## 작업 전 확인
 
 기본으로 docs/standards.md, docs/engineering-notes.md와 해당 디렉터리의 AGENTS.md를 읽는다.
+게임이 지금 어떤지와 사용자 결정은 docs/design/을 본다. 기획서는 보관됐고(결정 0011) 코드 주석의 docs/spec/ 경로는 docs/archive/spec-v1/에서 찾는다.
 지형 면·조준 수정 전에는 docs/engineering-notes.md의 공유 경계·면 방향·근접 카메라 항목과 docs/contracts.md의 히트·먹기 신호를 확인한다.
 재생 수치 수정 전에는 docs/business-rules.md의 보호·용해·수축·방벽 압력을 확인한다.
 저장 수정 전에는 docs/security.md와 docs/engineering-notes.md의 첫 렌더링 복원 조건을 확인한다.
