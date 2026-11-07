@@ -1,5 +1,13 @@
 # 현재 상태
 
+## 2026-11-07 토하기 화면 키와 검사 키 파일 격리 (round5-keys)
+
+토하기 화면이 V·F·R을 키 코드로 읽던 것을 없앴다. `FPInputModes.settlement_inputs()`는 이제 `fp_vomit`·`fp_interact`·`fp_pick`·`fdk_eat` 행동과 Esc·마우스 두 버튼·패드 스틱만 읽는다. 키를 옮기면 옛 V·F·R은 토하기 화면과 레버에서 아무 일도 하지 않고 새 키가 그 자리를 맡는다. 좌클릭=왼손, 우클릭=오른손, 레버 조준 판정, 앉은 자세 레버는 그대로다.
+
+`run_live_interactions_tests.gd`에 실제 입력 검사를 더했다. V·F·R을 N·K·P로 옮긴 뒤 옛 키 각각이 일어서지도 레버를 누르지도 않는 것, 새 키와 좌·우클릭이 조준 여부에 따라 레버를 누르거나 일어서는 것, 앉은 자세의 P·우클릭을 판정한다. 수정 전 94 통과 5 실패, 수정 후 99 통과 0 실패.
+
+Main을 띄우는 tests/·tools/의 스크립트 전부가 트리에 넣기 전에 `user_keybinds_path`를 자기 파일로 바꾼다. `capture_seat_keys.gd`는 저장 경로도 격리했다. `run_godot_checks.cjs`에 항상 도는 정적 검사 "checks and captures never reach the player key file"을 더했다. 수정 전 위반 156건, 수정 후 0건.
+
 ## 기획서 보관과 2차 문서 (2026-11-07)
 
 1차 기획서를 `docs/archive/spec-v1/`로 옮기고(결정 0011) `docs/spec/README.md`에 안내를 남겼다. 지금 기준은 코드와 `docs/design/`이다. `docs/design/`에 개요, 조작과 표시, 소리와 음악, 환풍구 존재, 경제, 사용자 결정 모음을 코드 기준으로 적었다. `reward_scale.py`의 감사 표는 `docs/design/economy.md`로 옮겼고, `params.json`의 조직 값을 바이옴 조직이 들어간 코드 값에 맞췄다. 계산기 selftest 138개는 통과했다.
