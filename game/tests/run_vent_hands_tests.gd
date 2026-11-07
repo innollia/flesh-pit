@@ -60,6 +60,25 @@ func eyes_shown() -> int:
 			n += 1
 	return n
 
+## An offered item's outline in its own frame (all its meshes).
+func item_box(item: Node3D) -> AABB:
+	var box := AABB()
+	var first := true
+	for n in item.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		var b: AABB = (item.global_transform.affine_inverse() * mi.global_transform) * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	return box
+
+## A finger's length from its knuckle to the end of its tip (nail
+## included), in the hand's own frame.
+func finger_len(hand: Node3D, i: int) -> float:
+	var mid: Node3D = hand.get_node("Finger%d/Mid" % i)
+	var tip: Node3D = mid.get_node("Tip")
+	var bone: MeshInstance3D = tip.get_node("Bone")
+	return absf(mid.position.y) + absf(tip.position.y) + absf(bone.get_aabb().position.y)
+
 func luminance(c: Color) -> float:
 	return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
 
@@ -93,16 +112,19 @@ func run() -> void:
 			own = own and item.is_visible_in_tree() and hand.name == "Palm" and not seen.has(hand)
 			seen[hand] = true
 		check(own, "each of the %d items lies in a hand of its own" % ids.size())
-		# held, not floating: the fingertips close on the item (index and
-		# middle tips within a few centimetres of it, in front of the palm)
+		# held, not floating: the fingertips hook the item (index and middle
+		# tips within a couple of centimetres of its outline; user 2026-11-08
+		# the item hangs from the fingertips so the long fingers show whole)
 		var grip := 0.0
 		for i in range(ids.size()):
 			var item: Node3D = art.call("item_node", i)
 			var hand: Node3D = item.get_parent()
+			var box := item_box(item)
 			for f in ["Finger0/Mid/Tip", "Finger1/Mid/Tip"]:
 				var tip: Node3D = hand.get_node(f)
-				var tip_end: Vector3 = tip.global_transform * Vector3(0, -0.02, 0)
-				grip = maxf(grip, tip_end.distance_to(item.global_position))
+				var tip_end: Vector3 = item.global_transform.affine_inverse() * (tip.global_transform * Vector3(0, -0.02, 0))
+				var nearest := tip_end.clamp(box.position, box.end)
+				grip = maxf(grip, (item.global_transform.basis * (tip_end - nearest)).length())
 		# spread: seen from the eye no two items sit on top of each other
 		var eye0: Vector3 = m.player.camera.global_position
 		var closest := PI
@@ -113,7 +135,7 @@ func run() -> void:
 				closest = minf(closest, di.angle_to(dj))
 		if ids.size() > 1:
 			check(closest > deg_to_rad(9.0), "the %d held items read apart from the eye (closest %.1f°)" % [ids.size(), rad_to_deg(closest)])
-		check(grip < 0.045, "every hand's fingers close on its item (farthest tip %.3f m)" % grip)
+		check(grip < 0.02, "every hand's fingertips hook its item (farthest tip %.3f m from its outline)" % grip)
 		var cands: Array = FPInteractions.get_candidates(m)
 		var aimable := true
 		for n in m.vent.offer_nodes():
@@ -154,6 +176,48 @@ func run() -> void:
 	lum /= maxf(1.0, float(cols.size()))
 	check(lum > 0.84, "the hand mesh itself is painted bright (mean %.2f)" % lum)
 	check(palm_mesh.material_override != null and palm_mesh.material_override != m.player.get("hands_material"), "the being's skin has its own material")
+	# --- 6. a beautiful hand (user 2026-11-08 "npc 손이 아직 덜 예뻐"): long
+	# slender fingers on a narrow palm, ring as long as the index, one smooth
+	# surface, the long fingers shown whole with the back of the hand to the eye
+	var lens: Array = []
+	for i in range(4):
+		lens.append(finger_len(hand0, i))
+	var knuckle: Vector3 = (hand0.get_node("Finger1") as Node3D).position
+	var back_len := absf(knuckle.y)
+	var breadth: float = palm_mesh.get_aabb().size.x
+	check(lens[1] >= back_len * 1.25, "the middle finger is long: %.3f m from the knuckle, %.2f of the back of the hand" % [lens[1], lens[1] / back_len])
+	check(breadth <= lens[1] * 0.78, "the palm is narrow: %.3f m across, %.2f of the middle finger" % [breadth, breadth / lens[1]])
+	check(absf(lens[2] - lens[0]) <= lens[1] * 0.04 and lens[3] < lens[0] * 0.9, "ring and index are nearly equal, the little finger shorter (%.3f %.3f %.3f %.3f)" % lens)
+	var smooth := true
+	for n in hand0.find_children("*", "MeshInstance3D", true, false):
+		var arr: Array = (n as MeshInstance3D).mesh.surface_get_arrays(0)
+		# the being's skin only, not the item it holds
+		if (n as MeshInstance3D).material_override != palm_mesh.material_override:
+			continue
+		var idx = arr[Mesh.ARRAY_INDEX]
+		var nv: int = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		var ni: int = (idx as PackedInt32Array).size() if idx is PackedInt32Array else 0
+		smooth = smooth and ni > nv
+	check(smooth, "hand and fingers are smooth shared-vertex surfaces, not loose facets")
+	var nails := 0
+	var tip_cols: PackedColorArray = (hand0.get_node("Finger1/Mid/Tip/Bone") as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	for c in tip_cols:
+		if c.a < 0.9 and c.r - c.g > 0.25:
+			nails += 1
+	check(nails > 20, "the nails are lacquered in a rose colour (%d nail vertices)" % nails)
+	var eye1: Vector3 = m.player.camera.global_position
+	var backs := 0
+	var open := 1.0
+	for i in range(3):
+		var hand: Node3D = (art.call("item_node", i) as Node3D).get_parent()
+		if hand.global_basis.z.dot(eye1 - hand.global_position) < 0.0:
+			backs += 1
+		var root: Vector3 = (hand.get_node("Finger1") as Node3D).global_position
+		var tip: Node3D = hand.get_node("Finger1/Mid/Tip")
+		var end: Vector3 = tip.global_transform * Vector3(0, -(tip.get_node("Bone") as MeshInstance3D).get_aabb().size.y * 0.8, 0)
+		open = minf(open, root.distance_to(end) / (finger_len(hand, 1) * hand.global_basis.y.length()))
+	check(backs == 3, "every hand shows its back and long fingers to the eye (%d of 3)" % backs)
+	check(open > 0.75, "the fingers hang long, not closed into a fist (knuckle to tip %.2f of the finger)" % open)
 	# --- 4. the wrist on the way down: never bent past the limit, straight in the duct
 	offer([])
 	await wait(0.8)

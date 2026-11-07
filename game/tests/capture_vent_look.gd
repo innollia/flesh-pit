@@ -69,6 +69,11 @@ func _run() -> void:
 	offer(EIGHT)
 	await frames(90)
 	await shot("hands_8")
+	# CAP_QUICK=1: only the normal view and the three counts (hand iteration)
+	if OS.get_environment("CAP_QUICK") != "":
+		m.queue_free()
+		quit(0)
+		return
 	offer(THREE)
 	await frames(90)
 	# the eye turned to the outer hand
