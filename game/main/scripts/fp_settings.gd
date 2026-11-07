@@ -26,6 +26,7 @@ static func defaults() -> Dictionary:
         "master": 0.8,
         "sfx": 1.0,
         "music": 0.8,
+        "voice": 1.0,
         "mouse_sensitivity": 1.0,
         "invert_y": false,
         "fov": 75.0,
@@ -39,7 +40,7 @@ static func sanitize(d: Dictionary) -> Dictionary:
     for k in out:
         if k != "version" and d.has(k):
             out[k] = d[k]
-    for k in ["master", "sfx", "music"]:
+    for k in ["master", "sfx", "music", "voice"]:
         out[k] = clampf(float(out[k]), 0.0, 1.0)
     out["mouse_sensitivity"] = clampf(float(out["mouse_sensitivity"]), SENS_MIN, SENS_MAX)
     out["invert_y"] = bool(out["invert_y"])
@@ -80,7 +81,7 @@ static func resolution_size(s: Dictionary) -> Vector2i:
 # --- applying -----------------------------------------------------------------
 
 static func ensure_buses() -> void:
-    for bus_name in ["SFX", "Music"]:
+    for bus_name in ["SFX", "Music", "Voice"]:
         if AudioServer.get_bus_index(bus_name) < 0:
             var i := AudioServer.bus_count
             AudioServer.add_bus(i)
@@ -92,6 +93,7 @@ static func apply_audio(s: Dictionary) -> void:
     _set_bus("Master", float(s["master"]))
     _set_bus("SFX", float(s["sfx"]))
     _set_bus("Music", float(s["music"]))
+    _set_bus("Voice", float(s.get("voice", 1.0)))
 
 static func _set_bus(bus_name: String, lin: float) -> void:
     var i := AudioServer.get_bus_index(bus_name)

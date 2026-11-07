@@ -1,5 +1,16 @@
 # 현재 상태
 
+## 환풍구 음성 준비 (round5-voice, 2026-11-07)
+
+- 음성은 사용자가 녹음한다. 대사 137줄(vent_lines 93, vent_biome_lines 35, vent_guide_lines 9)을 `game/audio/voice/<대사 id>.ogg|.wav`로 넣으면 나온다. 지금 파일은 0개라 게임은 자막만 나온다.
+- `audio/fp_vent_voice.gd`가 `line_spoken`을 받아 Voice 버스로 재생한다. 없는 파일은 자막만, 다음 대사는 파일 유무와 상관없이 앞 음성을 끊는다. 설정에 음성 슬라이더를 넣었다(기본 100%, 옛 설정 파일 호환).
+- 자막은 음성 길이를 따른다: 길이+0.2초, 최소 1초. 음성이 나오는 줄은 대기열을 건너뛰고, 끊긴 음성의 자막은 내려간다. 음성 없는 줄끼리는 기존 대기열 그대로다.
+- 대사 id는 문구와 분리되어 있어 문구를 고쳐도 파일 연결이 끊기지 않는다. 녹음과 문구가 달라진 줄은 `check_voice_files.py --stamp`의 기록과 비교해 찾는다.
+- 도구: `tools/build_voice_sheet.py`(녹음 대본 `build/voice_sheet.html`), `tools/check_voice_files.py`(없는 id, 대응 없는 파일, 형식·길이·음량, `--fix`).
+- 24비트 WAV의 EXTENSIBLE 머리말은 Godot가 거부한다. 폴더에서 읽을 때는 게임이 고쳐 읽고, import는 실패하므로 검사가 문제로 알리고 `--fix`가 고친다.
+- 검증: `run_voice_tests.gd` 42개 통과(수정 전 Parse Error), `tools/test_voice_tools.py` 14개 통과. 임시 톤으로 import 전, import 후, 내보낸 pck에서 ogg·wav 로드를 확인했다. 실제 음성은 들어 보지 않았다.
+- 남은 일: 사용자 녹음. 긴 파일은 LINE_GAP 2.5초 뒤 다음 대사에 끊길 수 있다.
+
 ## 2026-11-07 토하기 화면 키와 검사 키 파일 격리 (round5-keys)
 
 토하기 화면이 V·F·R을 키 코드로 읽던 것을 없앴다. `FPInputModes.settlement_inputs()`는 이제 `fp_vomit`·`fp_interact`·`fp_pick`·`fdk_eat` 행동과 Esc·마우스 두 버튼·패드 스틱만 읽는다. 키를 옮기면 옛 V·F·R은 토하기 화면과 레버에서 아무 일도 하지 않고 새 키가 그 자리를 맡는다. 좌클릭=왼손, 우클릭=오른손, 레버 조준 판정, 앉은 자세 레버는 그대로다.

@@ -132,7 +132,7 @@ func _cycle(list: Array, cur: String, dir: int) -> String:
 
 func _text_for(key: String) -> String:
     match key:
-        "master", "sfx", "music":
+        "master", "sfx", "music", "voice":
             return "%d%%" % roundi(float(settings[key]) * 100.0)
         "mouse_sensitivity":
             return "%.2fx" % float(settings[key])
@@ -151,7 +151,7 @@ func _fill() -> void:
     for key in sliders:
         var s: HSlider = sliders[key]
         var v := float(settings[key])
-        s.value = v * 100.0 if key in ["master", "sfx", "music"] else v
+        s.value = v * 100.0 if key in ["master", "sfx", "music", "voice"] else v
     for key in values:
         (values[key] as Label).text = _text_for(key)
     for key in steppers:
@@ -182,6 +182,7 @@ func _build() -> void:
     _slider_row(col, "master", "전체 음량", 0, 100, 5)
     _slider_row(col, "sfx", "효과음", 0, 100, 5)
     _slider_row(col, "music", "배경음", 0, 100, 5)
+    _slider_row(col, "voice", "음성", 0, 100, 5)
     _section(col, "시점")
     _slider_row(col, "mouse_sensitivity", "마우스 감도", FPSettings.SENS_MIN, FPSettings.SENS_MAX, 0.05)
     _stepper_row(col, "invert_y", "상하 반전")
@@ -234,7 +235,7 @@ func _slider_row(col: VBoxContainer, key: String, text: String, a: float, b: flo
     s.value_changed.connect(func(x: float):
         if _filling:
             return
-        set_value(key, x / 100.0 if key in ["master", "sfx", "music"] else x))
+        set_value(key, x / 100.0 if key in ["master", "sfx", "music", "voice"] else x))
     _focus_order.append(s)
 
 func _stepper_row(col: VBoxContainer, key: String, text: String) -> void:

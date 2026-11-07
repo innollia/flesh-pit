@@ -21,6 +21,10 @@ const LINES := {
 const FADE := 0.25
 const MIN_TIME := 1.8
 const PER_CHAR := 0.075
+## A line with a recorded voice stays for the clip plus this; a very short clip
+## still leaves VOICE_MIN_TIME to read it.
+const VOICE_TAIL := 0.2
+const VOICE_MIN_TIME := 1.0
 
 var label: Label
 var band: PanelContainer
@@ -120,6 +124,20 @@ func _show(text: String, seconds: float) -> void:
 	label.text = text
 	band.visible = text != ""
 	_left = seconds if seconds > 0.0 else maxf(MIN_TIME, text.length() * PER_CHAR)
+
+## The voice started saying this line now: the subtitle shows it now, for as
+## long as the clip, even if it was waiting behind another line.
+func follow_voice(line_id: String, seconds: float) -> void:
+	var t := line_text(line_id)
+	if t == "":
+		return
+	_queue = _queue.filter(func(q): return String(q[0]) != t)
+	_show(t, maxf(seconds + VOICE_TAIL, VOICE_MIN_TIME))
+
+## The voice was cut off: its subtitle goes too, the next waiting line follows.
+func voice_cut(line_id: String) -> void:
+	if current_text != "" and current_text == line_text(line_id):
+		_left = 0.0
 
 func queued() -> int:
 	return _queue.size()
