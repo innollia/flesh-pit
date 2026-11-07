@@ -39,7 +39,7 @@
 
 ## 배경 소리
 
-`game/audio/manifest.json`의 `beds`가 묶음이고 `fp_audio_hookup.gd`가 위치로 고른다. 살 속 묶음은 몸 소리, 심장, 바이옴 층을 쌓는다.
+`game/audio/manifest.json`의 `beds`가 묶음이고 `fp_audio_hookup.gd`가 위치로 고른다. 살 속 묶음은 몸 층이나 바이옴 층에 심장을 쌓는다.
 
 | 묶음 | 층 |
 |---|---|
