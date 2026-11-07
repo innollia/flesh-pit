@@ -1,5 +1,17 @@
 # 현재 상태
 
+### 살 속 음악 (round6-flesh-music, 2026-11-07)
+
+- 사용자 "살 팔때도 음악 들리기"에 따라 살 속에 껍질마다 곡 하나를 넣었다: 핵 `mus_flesh_core`(lab_emotion), 맨틀 `mus_flesh_mantle`(lab_materials), 겉껍질 `mus_flesh_surface`(lab_cycle). `game/audio/fp_flesh_music.gd`, 수치는 `game/audio/flesh_music.json`.
+- 껍질이 바뀌면 다음 마디 표시에서 3초 교차, 곡은 한 바퀴(약 100초) 뒤 8초에 걸쳐 사라지고 75초 쉰다. 쉼 중 다른 껍질이면 바로 시작. 쉼터 컨테이너는 쉼, Esc·키 설정은 멈춘 자리 유지, 화장실·엔딩은 사라짐. 시선·바이옴·무작위 없음.
+- 곡이 올라온 만큼 몸 배경을 6 dB 낮춘다(키트 `FDKAudioDirector.bed_gain_db`, 배경 단발도 따름). `song_melody`는 `1 - 곡 음량`만큼 물러나 곡의 쉼을 채운다.
+- 재빌드: `python -X utf8 tools/build_flesh_music.py`(lab 패치를 build/flesh-music에 복사해 nkido 렌더). 이번 렌더는 build/music-lab 후보와 바이트까지 같다.
+- 측정(`tools/measure_beds.py --flesh-music`, 효과음 자기 대역 여유 중앙값): 옷 뭉치 씹기 0.7 → 4.6, 조임 경고 0.4 → 3.6 dB. 배경별 최저값은 다섯 곳에서 오르고 body_b(발소리 4.3 → 3.4)와 fat_caves(10.4 → 10.3)에서 내려갔다. 곡의 여유는 −1.8 ~ −5.5 dB(일부 덮임).
+- 검사: `run_flesh_music_tests.gd` 45개(고치기 전 hookup에서는 노드 없음으로 실패). audio 421, music 102, bed 84 통과. 기본 목록 9묶음 전부 통과(131/120/11/16/42/265/38/99/17). 커밋 8586286.
+- 엔진 녹음(`capture/before.wav`, `capture/after.wav`, `capture_flesh_music.gd`): 살 속 구간 LUFS 핵 −27.5 → −32.7, 맨틀 −25.2 → −27.7, 겉껍질 −25.0 → −27.5(배경 6 dB 내림 + 곡). after의 핵 구간은 `mus_flesh_core`와 상관 0.37(before 0.04), 곡 시작 시점이 문 밖으로 나간 프레임과 맞다. 살 속 전체 음량이 2.5~5 dB 작아졌다.
+- 사람이 들어 보지 않았다. 곡이 들리는 크기, 배경을 6 dB 낮춘 몸 소리, 쉼 75초, 겉껍질 곡(144 BPM)이 파는 동안 지치지 않는지를 들어 봐야 한다.
+- 증거: 이 폴더 `before/`, `after/`(measure_beds), `margins_compare.txt`, `capture/`(엔진 녹음).
+
 ## 2026-11-07 환풍구 들여다보기
 
 사용자 지시: 물탱크 들여다보기처럼 카메라가 환풍구로 머리를 들이밀고 이동이 특수한 상태가 되어, 환풍구 NPC가 내미는 손이 예쁘게 잘 보이게 한다.

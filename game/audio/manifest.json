@@ -865,6 +865,27 @@
     "res://audio/sfx/hair_twang_v4.wav"
    ],
    "spatial": true
+  },
+  "mus_flesh_core": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_flesh_core.wav"
+   ],
+   "loop_seconds": 100.0
+  },
+  "mus_flesh_mantle": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_flesh_mantle.wav"
+   ],
+   "loop_seconds": 100.0
+  },
+  "mus_flesh_surface": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/mus_flesh_surface.wav"
+   ],
+   "loop_seconds": 101.875
   }
  },
  "beds": {

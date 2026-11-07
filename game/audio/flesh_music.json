@@ -1,0 +1,72 @@
+{
+ "_설명": "살 속 음악(audio/fp_flesh_music.gd). 껍질마다 한 곡. 곡 파일·길이·마디는 tools/build_flesh_music.py가 쓰고, 음량·쉼·페이드는 손으로 정한다(docs/design/sound-music.md).",
+ "shells": [
+  {
+   "song": "mus_flesh_core",
+   "gain_db": -6.0,
+   "source": "lab_emotion",
+   "loop_seconds": 100.0,
+   "phrases": [
+    0.0,
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0,
+    60.0,
+    70.0,
+    80.0,
+    90.0
+   ]
+  },
+  {
+   "song": "mus_flesh_mantle",
+   "gain_db": -6.0,
+   "source": "lab_materials",
+   "loop_seconds": 100.0,
+   "phrases": [
+    0.0,
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0,
+    60.0,
+    70.0,
+    80.0,
+    90.0
+   ]
+  },
+  {
+   "song": "mus_flesh_surface",
+   "gain_db": -3.0,
+   "source": "lab_cycle",
+   "loop_seconds": 101.875,
+   "phrases": [
+    0.0,
+    3.3333,
+    10.0,
+    13.3333,
+    16.6667,
+    20.8333,
+    28.3333,
+    33.3333,
+    38.3333,
+    43.3333,
+    53.3333,
+    59.1667,
+    65.8333,
+    71.875,
+    84.375,
+    91.875
+   ]
+  }
+ ],
+ "bed_duck_db": -6.0,
+ "rest_seconds": 75.0,
+ "fade_in": 3.0,
+ "crossfade": 3.0,
+ "end_fade": 8.0,
+ "pause_fade": 2.5,
+ "leave_fade": 2.0
+}

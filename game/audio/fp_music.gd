@@ -1,10 +1,10 @@
 extends Node
 
 ## Background music (tools/build_music.py), one loop per place where the
-## player stays and the spec allows music. docs/spec/08-presentation.md 3:
-## while digging there is no music, only the low drone (the ending song's
-## faint melody is the hookup's song_melody layer, not this), so out in the
-## flesh nothing here plays. The ending has its own hum (song layers).
+## player stays. Out in the flesh nothing here plays: the flesh has its own
+## songs, one per shell (audio/fp_flesh_music.gd, user 2026-11-07), and the
+## ending song's faint melody is the hookup's song_melody layer. The ending has
+## its own hum (song layers).
 ##
 ##   title     start screen (and its settings)          mus_title
 ##   keybind   key settings stage (from title or Esc)   mus_keybind

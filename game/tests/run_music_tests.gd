@@ -1,8 +1,8 @@
 extends SceneTree
 
 ## Background music (audio/fp_music.gd, tools/build_music.py). Each place
-## starts its own track on the Music bus, and nothing plays in the flesh
-## (docs/spec/08-presentation.md 3). The restroom and the bowl are one piece of
+## starts its own track on the Music bus, and none of them plays in the flesh
+## (the flesh's songs are audio/fp_flesh_music.gd, tests/run_flesh_music_tests.gd). The restroom and the bowl are one piece of
 ## music: parallel stems in one player, chosen by what the game says
 ## (audio/room_music.json), never swapped, never by where you look. The room's
 ## bed (hum, exhaust fan) goes on under it and leaves with the room. Real main
@@ -114,7 +114,7 @@ func _run() -> void:
 	m.player.global_position = c + Vector3(0, 0, -6.0)
 	await frames(2)
 	await run_for(OUT_S)
-	_ok(music.get("place") == "" and music.call("audible").is_empty(), "in the flesh no music plays (%s)" % str(music.call("audible")))
+	_ok(music.get("place") == "" and music.call("audible").is_empty(), "in the flesh none of fp_music's places plays (%s)" % str(music.call("audible")))
 	# the fan leaves with the room's hum, on the same 2 s fade
 	await frames(1)
 	_ok(d.current_bed != "restroom", "outside, the bed is the body's (%s)" % d.current_bed)
@@ -132,9 +132,9 @@ func _run() -> void:
 	for layer in BED_LAYERS:
 		_ok(d.bed_layer_db(layer) <= -60.0 and d.is_bed_layer_running(layer), "%s silent in the flesh, kept running for the way back" % layer)
 	await run_for(20.0)
-	_ok(music.call("audible").is_empty(), "and it stays silent while there (%s)" % str(music.call("audible")))
-	# what is heard there is the body's bed and the song's own faint tine
-	# (the spec's one exception), nothing from fp_music
+	_ok(music.call("audible").is_empty(), "and fp_music stays silent while there (%s)" % str(music.call("audible")))
+	# what is heard there is the body's bed, the shell's song
+	# (fp_flesh_music) and the ending song's faint tine in its rests
 	print("    in the flesh: bed %s, song_melody layer %.2f" % [hk.get("director").current_bed, float(hk.call("layer_level", "song_melody"))])
 	m.player.global_position = c + Vector3(0, 0, -m.OUTER_RADIUS * 0.9)
 	await frames(2)
@@ -151,11 +151,11 @@ func _run() -> void:
 	await frames(2)
 	await run_for(OUT_S)
 	_ok(music.call("audible").is_empty(), "eyes open in the flesh: the music is gone within %.1f s" % OUT_S)
-	# Tab out in the flesh: the forearm screen opens, but the flesh has no music
+	# Tab out in the flesh: the forearm screen opens, fp_music's mirror track stays in the room
 	m.open_mirror()
 	await frames(2)
 	await run_for(3.0)
-	_ok(m.mirror.visible and music.get("place") == "" and music.call("audible").is_empty(), "Tab in the flesh stays silent (%s)" % music.get("place"))
+	_ok(m.mirror.visible and music.get("place") == "" and music.call("audible").is_empty(), "Tab in the flesh plays no fp_music track (%s)" % music.get("place"))
 	m.mirror.close()
 	m.player.set_physics_process(false)
 	await frames(2)
