@@ -561,17 +561,18 @@
   {
    "id": "amb_body_a",
    "kind": "loop",
-   "loop_seconds": 8.0,
-   "fade_seconds": 1.0,
-   "target_lufs": -19
+   "loop_seconds": 29.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -25.0,
+   "ps1": "off"
   },
   {
    "id": "amb_body_b",
    "kind": "loop",
-   "loop_seconds": 8.0,
-   "fade_seconds": 1.0,
-   "target_lufs": -18,
-   "ps1": "light"
+   "loop_seconds": 41.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -25.0,
+   "ps1": "off"
   },
   {
    "id": "amb_heart_a",
@@ -898,6 +899,150 @@
     "hp": 600,
     "lp": 9000
    }
+  },
+  {
+   "id": "amb_fat_caves",
+   "kind": "loop",
+   "loop_seconds": 23.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -24.0,
+   "ps1": "off"
+  },
+  {
+   "id": "amb_rib_vault",
+   "kind": "loop",
+   "loop_seconds": 37.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -26.0,
+   "ps1": "off"
+  },
+  {
+   "id": "amb_gut_folds",
+   "kind": "loop",
+   "loop_seconds": 31.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -25.0,
+   "ps1": "off"
+  },
+  {
+   "id": "amb_cloth_wads",
+   "kind": "loop",
+   "loop_seconds": 26.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -27.0,
+   "ps1": "off"
+  },
+  {
+   "id": "amb_hair_thicket",
+   "kind": "loop",
+   "loop_seconds": 34.0,
+   "fade_seconds": 3.0,
+   "target_lufs": -27.0,
+   "ps1": "off"
+  },
+  {
+   "id": "body_glug",
+   "kind": "sfx",
+   "seconds": 1.6,
+   "target_lufs": -27.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "flesh_press",
+   "kind": "sfx",
+   "seconds": 1.8,
+   "target_lufs": -27.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "body_groan",
+   "kind": "sfx",
+   "seconds": 3.2,
+   "target_lufs": -26.0,
+   "spatial": false,
+   "ps1": "off"
+  },
+  {
+   "id": "fat_blub",
+   "kind": "sfx",
+   "seconds": 1.3,
+   "target_lufs": -27.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "fat_slump",
+   "kind": "sfx",
+   "seconds": 2.2,
+   "target_lufs": -27.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "rib_creak",
+   "kind": "sfx",
+   "seconds": 1.7,
+   "target_lufs": -29.0,
+   "spatial": false,
+   "ps1": "off"
+  },
+  {
+   "id": "rib_knock",
+   "kind": "sfx",
+   "seconds": 2.4,
+   "target_lufs": -28.0,
+   "spatial": false,
+   "ps1": "off"
+  },
+  {
+   "id": "gut_squeeze",
+   "kind": "sfx",
+   "seconds": 2.8,
+   "target_lufs": -26.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "gut_trill",
+   "kind": "sfx",
+   "seconds": 1.4,
+   "target_lufs": -28.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "cloth_shift",
+   "kind": "sfx",
+   "seconds": 1.9,
+   "target_lufs": -28.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "cloth_snag",
+   "kind": "sfx",
+   "seconds": 0.5,
+   "target_lufs": -30.0,
+   "spatial": true,
+   "ps1": "off"
+  },
+  {
+   "id": "hair_sway",
+   "kind": "sfx",
+   "seconds": 2.4,
+   "target_lufs": -31.0,
+   "spatial": false,
+   "ps1": "off"
+  },
+  {
+   "id": "hair_twang",
+   "kind": "sfx",
+   "seconds": 1.0,
+   "target_lufs": -32.0,
+   "spatial": true,
+   "ps1": "off"
   }
  ],
  "beds": {
@@ -910,6 +1055,26 @@
   ],
   "body_b": [
    "amb_body_b",
+   "amb_heart_b"
+  ],
+  "fat_caves": [
+   "amb_fat_caves",
+   "amb_heart_a"
+  ],
+  "rib_vault": [
+   "amb_rib_vault",
+   "amb_heart_a"
+  ],
+  "gut_folds": [
+   "amb_gut_folds",
+   "amb_heart_a"
+  ],
+  "cloth_wads": [
+   "amb_cloth_wads",
+   "amb_heart_b"
+  ],
+  "hair_thicket": [
+   "amb_hair_thicket",
    "amb_heart_b"
   ]
  },

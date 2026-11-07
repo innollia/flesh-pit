@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: hair_twang -- one thick strand pulled tight lets go: a thin singing pluck that bends flat and dies.
+tb = clamp(t - 0.02, 0, 10)
+f = (2100 + (noise(1, 0, SEED) + 1) * 500) * PITCH
+s = sin(6.2832 * f * (tb - 0.05 * tb * tb)) + 0.4 * sin(6.2832 * f * 2.02 * tb)
+tk = noise(0, 0, SEED2) * exp(neg(tb) / 0.004) |> hp(@, 3000, 0.8)
+out((s * exp(neg(tb) / 0.2) * clamp(tb / 0.002, 0, 1) + tk * 0.5) * 0.6 |> hp(@, 900))

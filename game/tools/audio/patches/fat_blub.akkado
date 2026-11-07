@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: fat_blub -- one big slow bubble of grease swells, rises in pitch and bursts, a small one after it.
+b = (at, f, up, dec) -> {
+    tb = clamp(t - at, 0, 10)
+    sin(6.2832 * (f * tb + up * tb * tb)) * clamp(tb / 0.02, 0, 1) * exp(neg(tb) / dec) * gt(t, at)
+}
+pop = noise(0, 0, SEED) * gt(t, 0.42) * exp(neg(clamp(t - 0.42, 0, 10)) / 0.018) |> bp(@, 1100, 2.0)
+out((b(0.0, 150 * PITCH, 420, 0.3) + b(0.46, 330 * PITCH, 800, 0.1) * 0.6 + b(0.72, 240 * PITCH, 700, 0.13) * 0.5 + pop * 0.5) |> freeverb(@, 0.5, 0.85, 0.28, 0.7, 0.85, 0.35) |> hp(@, 90) |> lp(@, 2200))

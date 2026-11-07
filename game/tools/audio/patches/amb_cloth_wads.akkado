@@ -1,0 +1,23 @@
+// flesh-pit loop patch. bpm 60. The fold in loopify hides the wrap, so no rate here has to divide the loop.
+// id: amb_cloth_wads -- packed in wads of swallowed clothes: dead air, no room at all. Something settles: bursts of crumpling
+// fabric, uneven grains between 600 Hz and 3.5 kHz, a second or three long, with a faint settling between. Dry and muffled, the
+// opposite of the wet zones; the grain and the deadness are the identity.
+burst = (seed, th) -> {
+    b = clamp((noise(0.31, 0, seed) - th) * 3, 0, 1) |> lp(@, 1.4, 0.7)
+    b * b
+}
+crumple = (seed, r) -> {
+    clamp((noise(r, 0, seed) - 0.35) * 4, 0, 1) |> lp(@, 180, 0.7)
+}
+fold_l = noise(0, 0, 901) * crumple(907, 37) * (0.05 + burst(911, neg(0.1))) * 2.6 |> bp(@, 1500, 0.9)
+fold_r = noise(0, 0, 919) * crumple(929, 31) * (0.05 + burst(937, neg(0.1))) * 2.6 |> bp(@, 1300, 0.9)
+fine_l = noise(0, 0, 941) * crumple(947, 83) * (0.05 + burst(953, 0.0)) * 1.5 |> bp(@, 2900, 1.2)
+fine_r = left(noise(0, 0, 967) * crumple(971, 71) * (0.05 + burst(977, 0.03)) * 1.5) |> bp(@, 2600, 1.2)
+thud = (r, seed) -> {
+    tb = phasor(r) / r
+    noise(0, 0, seed) * clamp(tb / 0.02, 0, 1) * exp(neg(tb) / 0.09) * gt(noise(r, 0, seed + 1), 0.0) |> lp(@, 420, 0.8)
+}
+pad = thud(0.17, 983) * 0.7 + thud(0.11, 991) * 0.6
+l = fold_l + fine_l + pad |> lp(@, 4200, 0.7) |> hp(@, 160)
+r = fold_r + fine_r + pad |> lp(@, 4200, 0.7) |> hp(@, 160)
+out(stereo(l, r))

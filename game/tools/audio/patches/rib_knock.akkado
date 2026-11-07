@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: rib_knock -- somewhere far up a bone settles against another: two dull wooden knocks, the vault answers.
+k = (at) -> {
+    tb = clamp(t - at, 0, 10)
+    (sin(6.2832 * 196 * PITCH * tb) + 0.7 * sin(6.2832 * 511 * PITCH * tb) + 0.4 * sin(6.2832 * 873 * PITCH * tb)) * clamp(tb / 0.002, 0, 1) * exp(neg(tb) / 0.045) * gt(t, at)
+}
+out((k(0.05) + k(0.31) * 0.6) |> freeverb(@, 0.93, 0.3, 0.28, 0.7, 0.5, 0.85) |> hp(@, 150) |> lp(@, 3000))

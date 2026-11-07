@@ -1,0 +1,11 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: hair_sway -- a mass of long hair leans and drags over itself: a dry thin wave, very fine grains, no wind in it.
+env = clamp(t / 0.9, 0, 1) * clamp((2.3 - t) / 1.2, 0, 1)
+gr = clamp((noise(190, 0, SEED) - 0.15) * 3, 0, 1)
+hi = noise(0, 0, SEED) * env * env * gr * 2.6 |> hp(@, (3000 + t * 900) * PITCH, 0.8) |> lp(@, 9500, 0.7)
+out(hi)

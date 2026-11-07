@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: flesh_press -- meat pressed against meat: a slow wet squelch that tightens and sticks, then a tacky release.
+press = clamp(t / 0.9, 0, 1) * clamp((1.25 - t) / 0.35, 0, 1)
+rel = gt(t, 1.2) * clamp((1.75 - t) / 0.5, 0, 1)
+stick = gt(noise(30, 0, SEED), 0.2) |> lp(@, 90, 0.7)
+sq = noise(0, 0, SEED) * press * (0.6 + stick) * 2.6 |> bp(@, (620 - t * 260) * PITCH, 4.0)
+tack = noise(0, 0, SEED2) * rel * gt(noise(46, 0, SEED2), 0.45) * 1.6 |> bp(@, 1500 * PITCH, 2.0)
+out(sq + tack |> hp(@, 150) |> lp(@, 3000))

@@ -1,0 +1,11 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: body_groan -- the deep flesh takes a new load and the whole mass groans once, low and voiced, from far off.
+env = clamp(t / 1.0, 0, 1) * clamp((3.0 - t) / 1.4, 0, 1)
+f = (58 + 12 * clamp(t / 1.4, 0, 1) - 9 * clamp(t - 1.4, 0, 2) + (noise(3, 0, SEED) |> lp(@, 3, 0.7)) * 3) * PITCH
+v = saw(mono(f)) * env
+out((v |> bp(@, 230, 2.2)) * 1.6 + (v |> bp(@, 480, 5.0)) * 1.2 |> freeverb(@, 0.6, 0.7, 0.28, 0.7, 0.75, 0.4) |> hp(@, 80) |> lp(@, 1500))
