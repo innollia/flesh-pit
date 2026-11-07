@@ -52,6 +52,16 @@ var last_played: String = ""
 var played_log: Array[String] = []
 var steps_played: int = 0
 
+## Extra gain on every bed layer, dB (0 = as the bed is mixed). A consumer
+## lowers the bed with it while its own music plays; bed_layer_db does not
+## include it.
+var bed_gain_db: float = 0.0:
+	set(v):
+		if is_equal_approx(v, bed_gain_db):
+			return
+		bed_gain_db = v
+		for layer in _bed_players.keys():
+			_apply_bed_volume(layer)
 var _bed_players: Dictionary = {}
 var _bed_level: Dictionary = {}
 var _bed_target: Dictionary = {}
@@ -348,7 +358,8 @@ func _release_bed_layer(layer: String) -> void:
 	bank.forget(layer)
 
 func _apply_bed_volume(layer: String) -> void:
-	(_bed_players[layer] as AudioStreamPlayer).volume_db = _lin_to_db(float(_bed_level[layer]))
+	var db := _lin_to_db(float(_bed_level[layer]))
+	(_bed_players[layer] as AudioStreamPlayer).volume_db = db if db <= SILENT_DB else maxf(db + bed_gain_db, SILENT_DB)
 
 func _lin_to_db(v: float) -> float:
 	return SILENT_DB if v <= 0.0001 else maxf(linear_to_db(v), SILENT_DB)

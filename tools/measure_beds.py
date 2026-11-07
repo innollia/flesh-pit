@@ -20,6 +20,13 @@ drawn from its range). Writes <out>/<bed>.wav and <out>/beds.json:
   over_200    share of the bed's energy above 200 Hz, before SPEAKER
   masking     own-band margin (analyze_audio.masking_margin_db) of the game's
               constant sounds, median and worst of 24 places in the take
+
+--flesh-music adds what audio/fp_flesh_music.gd plays over the bed while a song
+is up: the bed's shell song (BED_SHELL, audio/flesh_music.json) at its gain_db,
+with the bed lowered by bed_duck_db. Then also
+
+  song_margin own-band margin of the song over the (lowered) bed, median of
+              8 places: how much of the song stands out of the body sounds
 """
 import argparse
 import json
@@ -39,7 +46,10 @@ BEDS = ["body_a", "body_b", "fat_caves", "rib_vault", "gut_folds", "cloth_wads",
 # settings defaults (main/scripts/fp_settings.gd): music 0.8, sfx 1.0
 MUSIC_DB = 20.0 * math.log10(0.8)
 # what the player does all the time in the flesh; first variation of each
-MASK_EVENTS = ["tear_flesh", "tear_fat", "chew_loop_a", "step_flesh_s1", "swallow", "regen_creak", "stomach_gurgle"]
+MASK_EVENTS = ["tear_flesh", "tear_fat", "chew_loop_a", "step_flesh_s1", "swallow", "regen_creak", "stomach_gurgle", "chew_strain"]
+# the shell each bed plays in (biomes.json "shell"; body_a is the core's and the
+# mantle's base bed, measured with the core's song; body_b is the surface's)
+BED_SHELL = {"body_a": 0, "fat_caves": 0, "rib_vault": 1, "gut_folds": 1, "body_b": 2, "cloth_wads": 2, "hair_thicket": 2}
 BANDS = [150.0 * 2 ** (i / 3.0) for i in range(17)]  # 150 Hz .. 7.6 kHz
 # a laptop speaker, roughly: nothing under 200 Hz, rolling off above 12 kHz
 SPEAKER = (200.0, 12000.0)
@@ -89,6 +99,25 @@ def bed_mix(audio, manifest, bed, seconds):
                 out[i:i + m] += x[:m] * 10.0 ** (db / 20.0)
             at += len(x) / RATE + rng.uniform(*ev["gap"])
     return out * 10.0 ** (MUSIC_DB / 20.0)
+
+
+def flesh_song(audio, manifest, bed, n):
+    """The shell's song as fp_flesh_music plays it (Music bus), and the bed gain."""
+    with open(os.path.join(audio, "flesh_music.json"), encoding="utf-8") as f:
+        cfg = json.load(f)
+    sh = cfg["shells"][BED_SHELL[bed]]
+    x = read(res_path(audio, manifest["sounds"][sh["song"]]["files"][0]))
+    x = np.tile(x, (n // len(x) + 1, 1))[:n]
+    return x * 10.0 ** ((sh["gain_db"] + MUSIC_DB) / 20.0), 10.0 ** (cfg["bed_duck_db"] / 20.0), sh["song"]
+
+
+def song_margin(song, bed):
+    got = []
+    n = 2 ** 18
+    for k in range(8):
+        i = k * (len(song) - n - 1) // 8
+        got.append(float(A.masking_margin_db(song[i:i + n], RATE, bed[i:i + n], RATE)["own_energy_weighted_margin_db"]))
+    return round(float(np.median(got)), 1)
 
 
 def bands_db(frames):
@@ -168,6 +197,7 @@ def main():
     ap.add_argument("--audio", default=os.path.join(HERE, "..", "game", "audio"))
     ap.add_argument("--out", required=True)
     ap.add_argument("--seconds", type=float, default=120.0)
+    ap.add_argument("--flesh-music", action="store_true", help="add the shell's song and the bed duck")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     with open(os.path.join(a.audio, "manifest.json"), encoding="utf-8") as f:
@@ -177,6 +207,12 @@ def main():
     shaped = {}
     for bed in BEDS:
         mix = bed_mix(a.audio, manifest, bed, a.seconds)
+        song_db = None
+        if a.flesh_music:
+            song, duck, sid = flesh_song(a.audio, manifest, bed, len(mix))
+            mix = mix * duck
+            song_db = song_margin(song, mix)
+            mix = mix + song
         pcm = (np.clip(mix, -1, 1) * 32767).astype("<i2")
         with wave.open(os.path.join(a.out, bed + ".wav"), "wb") as w:
             w.setnchannels(2)
@@ -197,6 +233,9 @@ def main():
             "over_200": round(float(spec[f >= 200].sum() / spec.sum()), 3),
             "masking": masking(a.audio, manifest, mix),
         }
+        if song_db is not None:
+            res["beds"][bed]["song"] = sid
+            res["beds"][bed]["song_margin"] = song_db
     pairs = {}
     for i, p in enumerate(BEDS):
         for q in BEDS[i + 1:]:
@@ -212,7 +251,7 @@ def main():
     print("bed            LUFS  spk   range swing >200   lowest margin (median / worst)")
     for k, v in res["beds"].items():
         worst = min(v["masking"].items(), key=lambda kv: kv[1]["median"])
-        print("%-14s %5.1f %5.1f %5.1f %5.1f %5.3f  %s %.1f / %.1f" % (k, v["lufs"], v["lufs_speaker"], v["range_db"], v["band_swing_db"], v["over_200"], worst[0], worst[1]["median"], worst[1]["worst"]))
+        print("%-14s %5.1f %5.1f %5.1f %5.1f %5.3f  %s %.1f / %.1f  chew %.1f strain %.1f%s" % (k, v["lufs"], v["lufs_speaker"], v["range_db"], v["band_swing_db"], v["over_200"], worst[0], worst[1]["median"], worst[1]["worst"], v["masking"]["chew_loop_a"]["median"], v["masking"]["chew_strain"]["median"], "  song %s %.1f" % (v["song"], v["song_margin"]) if "song" in v else ""))
     print("pairs mean %.2f  min %s %.2f  separable %.3f" % (res["mean_pair"], res["min_pair"][0], res["min_pair"][1], acc))
 
 

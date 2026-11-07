@@ -68,7 +68,7 @@ func step(delta: float, bed: String) -> void:
 			_wait = rng.randf_range(float(first[0]), float(first[1]))
 	if _voice != null:
 		_left -= delta
-		var db := director.bed_layer_db(_layer) if director != null else FDKAudioDirector.SILENT_DB
+		var db := director.bed_layer_db(_layer) + director.bed_gain_db if director != null else FDKAudioDirector.SILENT_DB
 		_voice.set("volume_db", db + _trim)
 		if _left <= 0.0 or db <= INAUDIBLE_DB:
 			_stop_voice()
@@ -122,7 +122,7 @@ func play_take(id: String, bed: String, trim_db: float = 0.0) -> void:
 	p.set("stream", stream)
 	p.set("bus", director.bus)
 	p.set("pitch_scale", pitch)
-	p.set("volume_db", director.bed_layer_db(_layer) + _trim)
+	p.set("volume_db", director.bed_layer_db(_layer) + director.bed_gain_db + _trim)
 	add_child(p)
 	if at is Vector3:
 		(p as Node3D).global_position = at

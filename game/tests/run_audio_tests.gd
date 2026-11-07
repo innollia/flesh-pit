@@ -166,6 +166,11 @@ func _layer_steps(delta: float) -> bool:
 			_main.set_physics_process(false)
 			_main.player.set_physics_process(false)
 			prog.mutation_tree._purchased["M03"] = true
+			# the tine sounds in the flesh music's rests (audio/fp_flesh_music.gd):
+			# hold that music in a rest here so the tine's own level is judged
+			var fm: Node = _hook.get_node_or_null("FleshMusic")
+			if fm != null:
+				fm.set_process(false)
 			_main.player.global_position = c + Vector3(0, 0, -6.0)
 			_face(c)
 		1:
@@ -173,7 +178,7 @@ func _layer_steps(delta: float) -> bool:
 			_ok(want > 0.5 and absf(lv.call("magnet_hum") - want) < 0.01, "D03 M03 facing the restroom hums in the ears (%.2f, game %.2f)" % [lv.call("magnet_hum"), want])
 			_ok((_hook.get_node("Layer_magnet_hum") as AudioStreamPlayer).volume_db > -6.0, "D03 the hum player is audible (%.1f dB)" % (_hook.get_node("Layer_magnet_hum") as AudioStreamPlayer).volume_db)
 			var m1: float = lv.call("song_melody")
-			_ok(m1 > 0.0 and absf(m1 - _main.melody_level() * _hook.MELODY_IN_FLESH) < 0.01, "D05 just outside the restroom the melody is faint (%.3f)" % m1)
+			_ok(m1 > 0.0 and absf(m1 - _main.melody_level() * _hook.MELODY_IN_FLESH * (1.0 - float(_hook.call("flesh_music_level")))) < 0.01, "D05 just outside the restroom, in a rest of the flesh's songs, the melody is faint (%.3f)" % m1)
 			_face(c + Vector3(0, 0, -20.0))
 		2:
 			_ok(lv.call("magnet_hum") == 0.0, "D03 facing away from the restroom the hum stops (%.2f)" % lv.call("magnet_hum"))

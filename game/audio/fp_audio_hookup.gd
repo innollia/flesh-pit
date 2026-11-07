@@ -83,6 +83,8 @@ var _pipe_water: Node
 var _voice: Node
 ## The flesh moving on its own: one-shots over the bed (audio/fp_body_events.gd).
 var _body_events: Node
+## The shell's song out in the flesh (audio/fp_flesh_music.gd).
+var _flesh_music: Node
 
 func _ready() -> void:
 	main = get_parent()
@@ -94,6 +96,10 @@ func _ready() -> void:
 	var music: Node = preload("res://audio/fp_music.gd").new()
 	music.name = "Music"
 	add_child(music)
+	# one song per shell out in the flesh (audio/fp_flesh_music.gd)
+	_flesh_music = preload("res://audio/fp_flesh_music.gd").new()
+	_flesh_music.name = "FleshMusic"
+	add_child(_flesh_music)
 	_pipe_water = preload("res://audio/fp_pipe_water.gd").new()
 	_pipe_water.name = "PipeWater"
 	_pipe_water.set("director", director)
@@ -221,12 +227,17 @@ func _layer_target(id: String) -> float:
 		"song_melody":
 			if ended:
 				return 0.0
-			return float(main.melody_level()) * MELODY_IN_FLESH if main.has_method("melody_level") else 0.0
+			# the tine fills the flesh music's rests and gives way to its songs
+			return float(main.melody_level()) * MELODY_IN_FLESH * (1.0 - flesh_music_level()) if main.has_method("melody_level") else 0.0
 		"song_hum":
 			return 1.0 if ended else 0.0
 		"song_voice2":
 			return 1.0 if ended and int(main.get("ending").get("voice_layers")) >= 2 else 0.0
 	return 0.0
+
+## 0..1, how far the flesh's song is up (0 in its rests and outside the flesh).
+func flesh_music_level() -> float:
+	return float(_flesh_music.call("level")) if _flesh_music != null else 0.0
 
 ## The ending (main.ending, FPEnding) is playing.
 func _ending_active() -> bool:
@@ -321,6 +332,9 @@ func _process_inner(_delta: float) -> void:
 	var prog = main.get("progression")
 	if prog != null and prog.has_method("mutation_amount"):
 		director.set_mutation_stage(int(clampf(float(prog.mutation_amount()), 0.0, 0.999) * 3.0))
+	# the body's bed steps back while a song of the flesh is up (flesh_music.json bed_duck_db)
+	if _flesh_music != null:
+		director.bed_gain_db = float(_flesh_music.call("data").get("bed_duck_db", 0.0)) * flesh_music_level()
 	_step_layers(_delta)
 	_step_rattle(_delta)
 	_chirp_cool = maxf(0.0, _chirp_cool - _delta)
