@@ -1,0 +1,86 @@
+// The pipe: a stopped column, so odd modes only. Slapped at the open end by a
+// palm for the bass; blown for the long moans; struck on the wall for clangs;
+// water running through it for gurgles.
+fn slap(f, g, v) -> {
+  a = (sine(f) + 0.95 * sine(f * 3.002)) * ar(g, 0.0015, 0.75) ^ 2
+  b = (0.75 * sine(f * 5.004) + 0.45 * sine(f * 7.006)) * ar(g, 0.0015, 0.34) ^ 2
+  c = (0.27 * sine(f * 9.01) + 0.13 * sine(f * 11.01)) * ar(g, 0.0015, 0.15) ^ 2
+  pop = (noise(0, 0, 41) |> lp(@, 1300)) * ar(g, 0.0002, 0.012) ^ 2 * 0.5
+  wall = (sine(1457) + 0.7 * sine(2333)) * ar(g, 0.0003, 0.3) ^ 2 * 0.04
+  (a + b + c + pop + wall) * v
+}
+fn moan(f, g, v) -> {
+  e = adsr(g, 0.9, 0.3, 0.8, 1.4)
+  mc = 0.7 * sine(f) + 0.9 * sine(f * 3) + 0.5 * sine(f * 5) + 0.22 * sine(f * 7)
+  air = (noise(0, 0, 42) |> bp(@, f * 3, 16)) * 0.55 + (noise(0, 0, 43) |> bp(@, f * 5, 20)) * 0.45
+  (mc + air) * e * v
+}
+fn clang(f, g, v) -> {
+  ca = (sine(f) + 0.7 * sine(f * 1.0035)) * ar(g, 0.0002, 3.2) ^ 2
+  cb = (0.55 * sine(f * 2.756) + 0.3 * sine(f * 2.762)) * ar(g, 0.0002, 1.6) ^ 2
+  cc = (0.22 * sine(f * 5.404) + 0.08 * sine(f * 8.933)) * ar(g, 0.0002, 0.6) ^ 2
+  (ca + cb + cc) * v
+}
+fn glug(f, g, v) -> {
+  gsw = ar(g, 0.0001, 0.05)
+  ge = ar(g, 0.0006, 0.16)
+  sine(f * (1 - 0.3 * gsw * gsw + 0.1 * (1 - ge))) * ge * ge * v
+}
+line = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~
+  [d2 ~ ~ ~ ~ d3:0.75 ~]
+  [d2 ~ ~ ~ ~ a2:0.75 ~]
+  [bb1 ~ ~ ~ ~ bb2:0.75 ~]
+  [bb1 ~ ~ bb2:0.7 ~ f2:0.75 ~]
+  [g2 ~ ~ ~ ~ g3:0.75 ~]
+  [g2 ~ ~ ~ ~ d3:0.75 ~]
+  [a2 ~ ~ ~ ~ a3:0.75 ~]
+  [eb2 ~ ~ eb3:0.7 ~ bb2:0.75 ~]
+
+  [d2 ~ ~ d3:0.8 ~ a2:0.9 c3:0.6]
+  [d2 ~ d2:0.6 d3:0.8 ~ a2:0.9 c3:0.6]
+  [bb1 ~ ~ bb2:0.8 ~ f2:0.9 ab2:0.6]
+  [g2 ~ g2:0.6 g3:0.8 ~ d3:0.9 f3:0.6]
+  [d2 ~ ~ d3:0.8 ~ a2:0.9 c3:0.6]
+  [d2 ~ d2:0.6 d3:0.8 ~ a2:0.9 c3:0.6]
+  [eb2 ~ ~ eb3:0.8 ~ bb2:0.9 db3:0.6]
+  [a2 ~ a2:0.6 a3:0.8 ~ e3:0.9 g3:0.6]
+
+  [f2:0.75 f2:0.45 f3:0.6 f2:0.68 c3:0.52 f2:0.7 f3:0.6]
+  [c2:0.75 c2:0.45 c3:0.6 c2:0.68 g2:0.52 c2:0.7 c3:0.6]
+  [bb1:0.75 bb1:0.45 bb2:0.6 bb1:0.68 f2:0.52 bb1:0.7 bb2:0.6]
+  [eb2 ~ ~ eb2 ~ eb3 ~]
+
+  ~ ~ ~ ~
+  [d2 ~ ~ ~ ~ a2:0.7 ~]
+  [bb1 ~ ~ ~ ~ f2:0.7 ~]
+  [g2 ~ ~ ~ ~ d3:0.7 ~]
+  [a2 ~ ~ ~ ~ e3:0.7 ~]
+  ~ ~ ~ ~ ~ ~ ~ ~
+>"
+drone = n"<
+  ~ ~ d2:0.2 ~ d2:0.2 ~ eb2:0.2 ~
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+  bb1:0.36 g2:0.36 eb2:0.36 a2:0.36
+  ~ ~ ~ ~
+  d2:0.2 ~ eb2:0.2 d2:0.16
+  ~ ~ ~ ~
+>"
+ring = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~ a4:0.5 ~ ~ ~ ~ ~ ~ ~ a4:0.5 ~ ~ ~ ~ ~ ~ ~
+  a4:0.5 ~ ~ ~ ~ ~ ~ ~ a4:0.5 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+>"
+gur = n"<
+  ~ ~ ~ ~ ~ [~ ~ [f3 a3 c4 f4 a4 c5 f5]@4 ~] ~ ~
+  ~ ~ ~ ~ ~ [~ ~ [g3 bb3 d4 g4 bb4 d5 g5]@4 ~] ~ ~
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+  ~ ~ ~ ~ ~ ~ [~ ~ [eb3 g3 bb3 eb4 g4 bb4 eb5]@4 ~] ~
+  ~ ~ ~ ~ ~ ~ [~ ~ [eb3 g3 bb3 eb4 g4 bb4 eb5]@4 ~] ~
+  ~ ~ ~ ~
+>"
+sdry = poly(line, slap, 6)
+mdry = poly(drone, moan, 3)
+cdry = poly(ring, clang, 3)
+wdry = poly(gur, glug, 6) * 0.55
+sdry + mdry + cdry + wdry <>(1)
+(sdry * 0.3 + mdry * 0.7 + cdry + wdry) * 0.4 |> dattorro(@, 0.7, 9) |> hp(@, 180) <>(2)

@@ -1,0 +1,82 @@
+// Wet meat. A slab dropped on a slab for the kick: heavy lossy body, tuned to
+// the bass. An open palm for the backbeat. Both are followed by a stream of
+// tiny wet bubbles breaking, and a wrung handful is that stream sung in pitch.
+fn wet(lo, hi, th, seed) -> {
+  p = noise(0, 0, seed) > th
+  r = sah(noise(0, 0, seed + 1) * 0.5 + 0.5, p)
+  fc = lo * (hi / lo) ^ r
+  (p |> bp(@, fc, 13)) * 11
+}
+fn drop(f, g, v) -> {
+  pe = ar(g, 0.0005, 0.04)
+  a = ar(g, 0.0012, 0.2)
+  body = tanh(sine(f * (1 + 0.85 * pe * pe)) * a * a * 2.2)
+  th = (noise(0, 0, 61) |> bp(@, 310, 1.6)) * ar(g, 0.0005, 0.07) ^ 2 * 1.1
+  sl = (noise(0, 0, 62) |> bp(@, 1300, 0.8)) * ar(g, 0.0002, 0.02) ^ 2 * 0.8
+  (body + th + sl) * v
+}
+fn palm(f, g, v) -> {
+  pbody = tanh(sine(f) * ar(g, 0.0008, 0.1) ^ 2 * 1.6) * 0.7
+  psl = (noise(0, 0, 63) |> bp(@, 1800, 0.7)) * ar(g, 0.0002, 0.04) ^ 2 * 1.7
+  plo = (noise(0, 0, 64) |> bp(@, 470, 1.1)) * ar(g, 0.0004, 0.07) ^ 2 * 0.9
+  (pbody + psl + plo) * v
+}
+kp = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+  g2:0.6 g2:0.6 a2:0.6 eb3:0.6
+  [d3 ~ ~ ~ ~ d3:0.85 ~]
+  [d3 ~ d3:0.5 ~ ~ d3:0.85 ~]
+  [bb2 ~ ~ ~ ~ bb2:0.85 ~]
+  [g2 ~ g2:0.5 ~ ~ g2:0.85 ~]
+  [d3 ~ ~ ~ ~ d3:0.85 ~]
+  [d3 ~ d3:0.5 ~ ~ d3:0.85 ~]
+  [eb3 ~ ~ ~ ~ eb3:0.85 ~]
+  [a2 ~ a2:0.5 ~ ~ a2:0.85 ~]
+  [f2 ~ f2:0.7 ~ ~ f2:0.9 ~]
+  [c3 ~ c3:0.7 ~ ~ c3:0.9 ~]
+  [bb2 ~ bb2:0.7 ~ ~ bb2:0.9 ~]
+  [eb3 ~ ~ eb3 ~ ~ ~]
+  ~ ~ ~ ~
+  [d3:0.8 ~ ~ ~ ~ d3:0.6 ~]
+  bb2:0.8
+  [g2:0.8 ~ ~ ~ ~ g2:0.6 ~]
+  a2:0.8
+  d3:0.42 d3:0.42 ~ ~ ~ ~ ~ ~
+>" as kq
+sp = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+  [~ ~ ~ f3:0.9 ~ ~ ~]
+  [~ ~ ~ f3:0.9 ~ ~ f3:0.55]
+  [~ ~ ~ f3:0.9 ~ ~ ~]
+  [~ ~ ~ g3:0.9 ~ ~ g3:0.55]
+  [~ ~ ~ f3:0.9 ~ ~ ~]
+  [~ ~ ~ f3:0.9 ~ ~ f3:0.55]
+  [~ ~ ~ g3:0.9 ~ ~ ~]
+  [~ ~ ~ a3:0.9 ~ ~ a3:0.55]
+  [~ ~ ~ a3 ~ [~ a3:0.5] a3:0.8]
+  [~ ~ ~ g3 ~ [~ g3:0.5] g3:0.8]
+  [~ ~ ~ f3 ~ [~ f3:0.5] f3:0.8]
+  [~ ~ ~ ~ ~ g3 ~]
+  ~ ~ ~ ~
+  ~
+  [~ ~ ~ f3:0.6 ~ ~ ~]
+  ~
+  [~ ~ ~ a3:0.6 ~ ~ ~]
+  ~ ~ ~ ~ ~ ~ ~ ~
+>" as sq
+wr = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ [~ ~ [e6:0.8 d6:0.8 c6:0.8 a5:0.8 g5:0.8 e5:0.8]@4 ~]
+  ~ ~ ~ [~@5 [a5:0.7 c6:0.7 e6:0.7]@2] ~ ~ ~ [~@4 [a5:0.85 c#6:0.85 e6:0.85 a6:0.85]@3]
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ [~ ~ [a5:0.5 g5:0.5 e5:0.5 c#5:0.5 a4:0.5]@4 ~]
+  ~ ~ ~ ~ ~ ~ ~ ~
+>" as wq
+drops = poly(kp, drop, 4)
+palms = poly(sp, palm, 4)
+we = ar(kq.trig, 0.004, 0.32) ^ 2 * 0.6 + ar(sq.trig, 0.002, 0.55) ^ 2 * 1.0
+wets = wet(420, 2600, 0.9978, 71) * we
+wre = adsr(wq.gate, 0.015, 0.05, 0.9, 0.06) * wq.vel
+sq2 = (wet(wq.freq * 0.84 + 100, wq.freq * 1.2 + 100, 0.986, 65) + (noise(0, 0, 67) |> bp(@, 280, 1.4)) * 0.25) * wre
+lv = v"<1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1.4 1.4 1.4 1.4 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>" as lq
+dry = (drops + palms * 0.8 + wets * 0.7 + sq2 * 0.45) * lq.freq
+dry <>(1)
+(drops * 0.15 + palms * 0.5 + wets * 0.5 + sq2 * 0.4) |> dattorro(@, 0.6, 9) |> hp(@, 180) <>(2)

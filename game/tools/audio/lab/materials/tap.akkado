@@ -1,0 +1,65 @@
+// The tap. A drop is a resonating air bubble whose pitch climbs as it closes,
+// a tick of impact, an overtone bubble, and a faint ring from the glazed basin.
+// 24 BPM: one cycle is one bar of 7/8 (3+2+2), 2.5 s. 44 bars: 40 + 4 of tail.
+fn plip(f, g, v) -> {
+  sw = ar(g, 0.0001, 0.05)
+  e = ar(g, 0.0006, 0.26)
+  tone = sine(f * (1 - 0.17 * sw * sw + 0.012 * (1 - e))) * e * e
+  over = sine(f * 2.01) * ar(g, 0.016, 0.06) ^ 2 * 0.2
+  bas = (sine(412) + 0.7 * sine(1133) + 0.3 * sine(2214)) * ar(g, 0.0003, 0.4) ^ 2 * 0.05
+  clk = (noise(0, 0, 11) |> hp(@, 3000)) * ar(g, 0.0001, 0.005) ^ 2 * 0.16
+  (tone + over + bas + clk) * v
+}
+pat = n"<
+  [a5 ~ ~ ~ ~ ~ ~]
+  [a5 ~ ~ d6 ~ ~ ~]
+  [a5 ~ ~ d6 ~ d5 ~]
+  [a5 ~ ~ d6 ~ d5 f5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ g5:0.72 eb6 ~ eb5 g5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ g5:0.72 d6 ~ d5 g5:0.72]
+  [bb5 ~ g5:0.72 d6 ~ d5 g5:0.72]
+  [c#6 ~ a5:0.72 e6 ~ e5 a5:0.72]
+  [bb5 ~ g5:0.72 eb6 ~ eb5 g5:0.72]
+
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ g5:0.72 d6 ~ d5 g5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ g5:0.72 eb6 ~ eb5 g5:0.72]
+  [c#6 ~ a5:0.72 e6 ~ e5 a5:0.72]
+
+  [c6 ~ a5:0.72 f6 ~ f5 a5:0.72]
+  [c6 ~ g5:0.72 e6 ~ e5 g5:0.72]
+  [bb5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [bb5 ~ g5:0.72 eb6 ~ eb5 ~]
+
+  [bb5 ~ ~ ~ ~ ~ ~]
+  [bb5 ~ ~ ~ ~ ~ ~]
+  [bb5 ~ ~ ~ ~ ~ ~]
+  [c#6 ~ ~ ~ ~ e5 ~]
+
+  [a5 ~ ~ d6 ~ d5 f5:0.72]
+  [bb5 ~ ~ d6 ~ d5 f5:0.72]
+  [bb5 ~ ~ d6 ~ d5 g5:0.72]
+  [c#6 ~ ~ e6 ~ e5 a5:0.72]
+
+  [a5 ~ f5:0.72 d6 ~ d5 f5:0.72]
+  [a5 ~ ~ d6 ~ d5 f5:0.72]
+  [bb5 ~ ~ eb6 ~ eb5 ~]
+  [a5 ~ ~ d6 ~ ~ ~]
+  ~ ~ ~ ~
+>"
+lv = v"<1 1 1 1 1 1 1 1 0.72 0.72 0.72 0.72 0.72 0.72 0.72 0.72 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>" as lq
+dry = poly(pat, plip, 10) * lq.freq
+dry <>(1)
+dry * 0.34 |> dattorro(@, 0.66, 9) |> hp(@, 180) <>(2)

@@ -1,0 +1,156 @@
+// lab_emotion: 40 bars of 3/4 at 72 beats per minute. One cycle is one bar (bpm 24), 100 s.
+//  A  bars  0-7   sour. Harmony sinks F E Eb Db, notes sag flat, ticks fall anywhere.
+//  B  bars  8-15  shame. A shy lullaby in Db; ticks start finding the beat.
+//  C  bars 16-25  relief. The tune whole; the sag now slides UP into the note.
+//  D  bars 26-33  sweet. Same tune higher, in thirds, too much sugar; ticks are a melody.
+//  E  bars 34-39  more. Hungry grabs climbing to F; F major's third sags over the seam.
+bpm = 24
+
+// slow per-bar controls, 40 values each
+s  = glide(v"1 1 1 1 1 1 .85 .75  .55 .5 .4 .35 .3 .2 .15 .1  .08 .05 .03 0 0 0 0 0 0 0  0 0 0 0 0 0 0 0  0 .1 .2 .35 .55 .8", 1.5)
+sw = glide(v"0 0 0 0 0 0 0 0  .05 .1 .1 .15 .15 .2 .2 .2  .3 .4 .5 .55 .6 .7 .75 .8 .85 .9  1 1 1 1 1 1 1 1  1 1 .9 .6 .4 .2", 1.5)
+wetn = glide(v"1 1 1 1 1 1 1 1  .9 .8 .7 .6 .5 .4 .3 .2  .1 .1 .05 0 0 0 0 0 0 0  0 0 0 0 0 0 0 0  0 0 .2 .4 .7 .9", 1.5)
+wd = glide(v".15 .15 .15 .15 .2 .2 .25 .25  .3 .35 .4 .45 .5 .55 .6 .7  .75 .8 .8 .85 .85 .9 .9 .9 .95 .95  1 1 1 1 1 1 1 1  1 1 1 .8 .5 .3", 1.5)
+dr = glide(v".62 .62 .62 .62 .62 .62 .64 .64  .66 .66 .68 .68 .7 .7 .72 .74  .8 .8 .82 .84 .84 .86 .86 .86 .9 .94  1 1 1 1 1 1 1 1  1.05 1.08 1.1 .95 .8 .68", 1.2)
+
+lead_v = (freq, gate, vel, trig, {sag, pre, dur}) -> {
+  ntime = dur * 2.5 + 0.02
+  sweep = phasor(1 / (ntime + 0.5), 0, trig)
+  droop = pow(sweep, 2.5) * 1.5 * sag
+  lift = (1 - adsr(gate, 0.2, 0.01, 1, 0.2)) * pre
+  shake = sine(4.7) * (0.09 + 0.17 * s) * adsr(gate, 0.4, 0.1, 1, 0.3)
+  f = freq * pow(2, (shake - droop - lift) / 12)
+  twin = f * (1 + 0.0105 * s)
+  body = sine(f) + saw(f) * (0.28 + 0.34 * sw) + saw(twin) * s * 0.3 + sine(2 * f) * 0.3
+  body |> lp(@, f * (1.9 + 3.2 * sw) + 260) |> hp(@, 170) |> @ * adsr(gate, 0.085, 0.1, 0.9, 0.36) * vel
+}
+
+keys_v = (freq, gate, vel, trig) -> {
+  d = 0.0006 + 0.0042 * s
+  e = ar(trig, 0.006, 1.7)
+  e2 = ar(trig, 0.004, 0.55)
+  (sine(freq * (1 + d)) + sine(freq * (1 - d)) + sine(freq * (2 + 0.018 * s)) * 0.5 * e2 + sine(freq * (3 + 0.07 * s)) * 0.22 * e2 + sine(freq * 4.02) * 0.1 * ar(trig, 0.002, 0.14)) * e * vel
+}
+
+bass_v = (freq, gate, vel) -> (sine(freq) * 0.7 + sine(2 * freq) + sine(3 * freq) * 0.75 + sine(4 * freq) * 0.5 + sine(5 * freq) * 0.28 + sine(6 * freq) * 0.14) * adsr(gate, 0.018, 0.5, 0.55, 0.4) * vel
+
+pad_v = (freq, gate, vel) -> {
+  pdet = 0.003 + 0.0095 * s
+  (saw(freq * (1 - pdet)) + saw(freq) + saw(freq * (1 + pdet))) |> lp(@, 620 + 1200 * sw + 110 * sine(0.4)) |> hp(@, 150) |> @ * adsr(gate, 0.9, 0.2, 0.9, 1.3) * vel
+}
+
+heart_v = (freq, gate, vel, trig) -> {
+  hf = 62 + 46 * ar(trig, 0.001, 0.05)
+  (sine(hf) + sine(2 * hf) * 0.85 + sine(3 * hf) * 0.6 + sine(4 * hf) * 0.35 + sine(6 * hf) * 0.14) * ar(trig, 0.003, 0.17) * vel
+}
+
+tick_v = (freq, gate, vel, trig) -> {
+  tf = freq * (0.62 + 0.38 * (1 - ar(trig, 0.0005, 0.024)))
+  (sine(tf) + sine(2 * tf) * 0.32 + sine(3 * tf) * 0.1) * ar(trig, 0.002, 0.03 + 0.16 * (1 - wetn)) * vel
+}
+
+gulp_v = (freq, gate, vel, trig) -> {
+  gf = 150 + 300 * ar(trig, 0.09, 0.1)
+  (sine(gf) + sine(2 * gf) * 0.5 + sine(3 * gf) * 0.25) * ar(trig, 0.02, 0.22) * vel
+}
+
+// ---- score: one top-level element per bar, 40 in every line
+// lead and under are one long group over the 40 bars (weights in beats): a note that
+// crosses a barline then ends properly, which an overrun into a rest bar did not.
+lead = n"[ab4@1.7 ~@4.3
+  ab4@1.5 g4@.5 f4{sag:1.1}@2.6 ~@1.4  gb4@1.5 f4@.5 eb4{sag:1}@2.6 ~@1.4  f4@1.5 eb4@.5 db4{sag:0.5}@3.2 ~@.8
+  ~@12  ab4{pre:1}@2 f4@1 gb4@1.5 ~@1.5 f4{pre:1}@2 eb4@2.5 ~@1.5
+  f4{pre:1}@2 eb4@.5 f4@.5 ab4@1.5 bb4@.5 ab4@1 bb4{pre:1}@2 db5@1 eb5@1.5 db5@.5 bb4@1
+  ab4{pre:1}@2 f4@1 gb4@1.5 f4@.5 eb4@1 f4{pre:1}@1 db4@2.6 ~@2.4 bb4{pre:1}@2 db5@1 d5{pre:0.5}@1.6 bb4@1.4
+  g5{pre:1}@2 f5@.5 g5@.5 bb5@1.5 c6@.5 bb5@1 c6{pre:1}@2 eb6@1 f6@1.5 eb6@.5 c6@1
+  bb5{pre:1}@2 g5@1 ab5@1.5 g5@.5 f5@1 g5{pre:1}@1 eb5@2.6 ~@2.4
+  db5@1 e5@.5 gb5@.5 ab5{pre:1}@1 db5@.75 e5@.25 gb5@.5 ab5@.5 a5{pre:1}@1 e5@.5 gb5@.5 ab5@.5 a5@.5 b5{pre:1}@1
+  c6{pre:1}@1.8 a5@1.2 f5@1 e5{pre:0.4}@2 a4{sag:1}@3]/40"
+
+under = n"[~@78
+  eb5{pre:0.5}@2 d5@.5 eb5@.5 g5@1.5 ab5@.5 g5@1 ab5{pre:0.5}@2 c6@1 d6@1.5 c6@.5 ab5@1
+  g5{pre:0.5}@2 eb5@1 f5@1.5 eb5@.5 d5@1 eb5{pre:0.5}@1 c5@2.6 ~@2.4
+  db4@1 e4@.5 gb4@.5 ab4@1 db4@.75 e4@.25 gb4@.5 ab4@.5 a4@1 e4@.5 gb4@.5 ab4@.5 a4@.5 b4@1
+  c5@1.8 a4@1.2 ~@6]/40"
+
+tune_k = n"~ ~ ~ ~ ~ ~ ~ ~  [f5@2 eb5@.5 f5@.5] [ab5@1.5 bb5@.5 ab5@1] [bb5@2 db6@1] [eb6@1.5 db6@.5 bb5@1] ~ ~ ~ ~
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+  [g6@2 f6@.5 g6@.5] [bb6@1.5 c7@.5 bb6@1] [c7@2 eb7@1] [f7@1.5 eb7@.5 c7@1] [bb6@2 g6@1] [ab6@1.5 g6@.5 f6@1] [g6@1 eb6@2] ~
+  ~ ~ ~ ~ ~ ~"
+
+keys_l = n"[ab3,c4] [~@1.5 gb4:0.6@1.5] [ab3,c4] [~@2 f4:0.6@1] [gb3,bb3] [~@1.5 bb3:0.6@1.5] [f3,ab3] [~@2 eb4:0.6@1]
+  [f3 ~ db4] [ab3 ~ eb4] [f3 ~ db4] [gb3 ~ db4] [f3 ~ db4] [gb3 ~ eb4] [f3 ~ eb4] [gb3 ~ eb4]
+  [f3 ~ db4] [ab3 ~ eb4] [f3 ~ db4] [gb3 ~ db4] [f3 ~ db4] [gb3 ~ eb4] [f3 ~ eb4] [gb3 ~ eb4] [f3 ~ db4] [ab3 ~ f4]
+  [g3 ~ bb3 ~ bb3 ~] [bb3 ~ d4 ~ d4 ~] [g3 ~ c4 ~ c4 ~] [ab3 ~ c4 ~ c4 ~] [g3 ~ bb3 ~ bb3 ~] [ab3 ~ d4 ~ d4 ~] [g3 ~ bb3 ~ bb3 ~] [ab3 ~ eb4 ~ eb4 ~]
+  [ab3 ~ e4 ~ b4 ~] [ab3 ~ e4 ~ b4 ~] [ab3 ~ e4 ~ b4 ~] [a3,c4] [a3:0.8,c4:0.8] [a3:0.6,c4:0.6]"
+
+keys_r = n"gb4 ~ f4 ~ e4 ~ eb4 ~
+  [~ ab3 ~] [~ c4 ~] [~ bb3 ~] [~ bb3 ~] [~ ab3 ~] [~ c4 ~] [~ ab3 ~] [~ db4 ~]
+  [~@3 ab3@2 ab3:0.6@1] [~@3 c4@2 c4:0.6@1] [~@3 bb3@2 bb3:0.6@1] [~@3 bb3@2 bb3:0.6@1] [~@3 ab3@2 ab3:0.6@1] [~@3 c4@2 c4:0.6@1] [~@3 ab3@2 ab3:0.6@1] [~@3 db4@2 db4:0.6@1] [~@3 bb3@2 bb3:0.6@1] [~@3 d4@2 d4:0.6@1]
+  [~ eb4 ~ eb4 ~ eb5] [~ f4 ~ f4 ~ f5] [~ eb4 ~ eb4 ~ eb5] [~ eb4 ~ eb4 ~ eb5] [~ eb4 ~ eb4 ~ eb5] [~ f4 ~ f4 ~ f5] [~ f4 ~ f4 ~ f5] [~ f4 ~ f4 ~ f5]
+  [~ b3 ~ ab4 ~ e5] [~ b3 ~ ab4 ~ e5] [~ b3 ~ ab4 ~ e5] f4 f4:0.8 f4:0.6"
+
+bass = n"f2:0.65 ~ e2:0.65 ~ eb2:0.65 ~ db2:0.65 ~
+  db2:0.75 c3:0.75 bb2:0.75 gb2:0.75 ab2:0.75 ab2:0.75 db2:0.75 ab2:0.75
+  [db2@2 ab2:0.6@1] [c3@2 ab2:0.6@1] [bb2@2 f2:0.6@1] [gb2@2 db3:0.6@1] [ab2@2 db3:0.6@1] [ab2@2 eb3:0.6@1] [db2@2 ab2:0.6@1] [ab2@2 eb2:0.6@1] [bb2@2 f2:0.6@1] [bb2@2 f3:0.6@1]
+  [eb2@1.5 bb2:0.6@1 eb3:0.6@.5] [d3@1.5 bb2:0.6@1 d3:0.6@.5] [c3@1.5 g2:0.6@1 c3:0.6@.5] [ab2@1.5 eb3:0.6@1 ab2:0.6@.5] [bb2@1.5 eb3:0.6@1 bb2:0.6@.5] [bb2@1.5 f3:0.6@1 bb2:0.6@.5] [eb2@1.5 bb2:0.6@1 eb3:0.6@.5] [bb2@1.5 f3:0.6@1 bb2:0.6@.5]
+  e2 e2 e2 f2 f2:0.8 f2:0.6"
+
+pad = n"[ab3,c4,gb4] [ab3,c4,gb4] [ab3,c4,f4] [ab3,c4,f4] [gb3,bb3,e4] [gb3,bb3,e4] [f3,ab3,eb4] [f3,ab3,eb4]
+  [f3,ab3,db4] [ab3,c4,eb4] [f3,bb3,db4] [gb3,bb3,db4] [f3,ab3,db4] [gb3,c4,eb4] [f3,ab3,eb4] [gb3,db4,eb4]
+  [f3,ab3,db4] [ab3,c4,eb4] [f3,bb3,db4] [gb3,bb3,db4] [f3,ab3,db4] [gb3,c4,eb4] [f3,ab3,eb4] [gb3,db4,eb4] [f3,bb3,db4] [ab3,d4,f4]
+  [g3,bb3,eb4] [bb3,d4,f4] [g3,c4,eb4] [ab3,c4,eb4] [g3,bb3,eb4] [ab3,d4,f4] [g3,bb3,f4] [ab3,eb4,f4]
+  [ab3,b3,e4] [ab3,b3,e4] [ab3,b3,e4] [a3,c4,f4] [a3,c4,f4] [a3,c4,f4]"
+
+heart = n"~ ~ ~ ~ ~ ~ ~ ~
+  [c3:0.55@.12 c3:0.33@.88] ~ [c3:0.55@.12 c3:0.33@.88] ~ [c3:0.55@.12 c3:0.33@.88] ~ [c3:0.55@.12 c3:0.33@.88] ~
+  [c3:0.75@.12 c3:0.46@.88]!10
+  [c3@.12 c3:0.62@.88]!8
+  [c3@.12 c3:0.62@.38 c3:0.8@.12 c3:0.5@.38]!3 ~ ~ ~"
+
+ticks = n"[~@.7 a5@.2 ~@2.1] [~@1.9 e6@.2 ~@.9] [c#6@.2 ~@2.3 g6@.2 ~@.3] [~@1.1 b5@.2 ~@1.7] [~@.4 f#6@.2 ~@.5 d6@.2 ~@1.7] [~@2.2 a#5@.2 ~@.6] [~@1.2 g#6@.2 ~@.3 e6@.2 ~@1.1] [~@.2 c6@.2 ~@1.1 f6@.2 ~@1.3]
+  [~@.6 ab5@.2 ~@.8 db6@.2 ~@.5 f6@.2 ~@.5] [~@.6 eb6@.2 ~@.6 ab6@.2 ~@1.4] [~@.55 db6@.2 ~@.75 f6@.2 ~@.6 bb5@.2 ~@.5] [~@.5 bb5@.25 ~@.75 db6@.25 ~@.25 gb6@.25 ~@.75]
+  [~@.5 ab5@.25 ~@.75 f6@.25 ~@1.25] [~@.5 c6@.25 ~@.75 eb6@.25 ~@.25 gb6@.25 ~@.75] [~@.5 ab5@.3 ~@.7 eb6@.3 ~@.2 f6@.3 ~@.7] [~@.5 gb6@.3 ~@.7 db6@.3 ~@1.2]
+  [~ f6 ~ db6 ~ ab5] [~ eb6 ~ ab6 ~ c6] [~ f6 ~ db6 ~ bb5] [~ gb6 ~ db6 ~ bb5] [~ f6 ~ ab6 ~ db6] [~ eb6 ~ gb6 ~ c6] [~ f6 ~ ab6 ~ eb6] [~ gb6 ~ eb6 ab6 db6] [~ f6 ~ bb6 db6 f6] [~ f6 ~ ab6 bb6 d7]
+  [~ bb6 ~ g6 eb6 bb6] [~ d7 ~ bb6 f6 d7] [~ c7 ~ g6 eb6 c7] [~ c7 ~ ab6 eb6 c7] [~ bb6 ~ g6 eb6 bb6] [~ d7 ~ ab6 f6 d7] [~ bb6 ~ g6 eb6 f6] [~ ab6 ~ f6 eb6 bb5]
+  [~ e6 ~ ab6 b6 e7] [~ e6 ~ ab6 b6 e7] [~ ab6 b6 e7 ab7 b6] [~ f6 ~ a6 c7 f7] [~@.6 c7@.2 ~@1.1 a6@.2 ~@.9] [~@1.4 e6@.2 ~@1.4]"
+
+gulp = n"~ ~ ~ ~ ~ ~ ~ [~@.82 c3@.18]
+  ~ ~ ~ ~ ~ ~ ~ ~
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ [~@.85 c3@.15]
+  ~ ~ ~ ~ ~ ~ ~ [~@.87 c3@.13]
+  ~ ~ ~ ~ ~ ~"
+
+// ---- voices
+ld = lead |> poly(@, lead_v, 5) |> @ * 0.17
+un = under |> poly(@, lead_v, 5) |> @ * 0.10
+tk = tune_k |> poly(@, keys_v, 6) |> @ * 0.085
+kl = keys_l |> poly(@, keys_v, 10) |> @ * 0.15
+kr = keys_r |> poly(@, keys_v, 8) |> @ * 0.15
+bs = bass |> poly(@, bass_v, 5) |> @ * 0.115
+pd = pad |> poly(@, pad_v, 8) |> @ * 0.035
+ht = heart |> poly(@, heart_v, 4) |> @ * 0.30
+tc = ticks |> poly(@, tick_v, 6) |> @ * 0.15
+gp = gulp |> poly(@, gulp_v, 2) |> @ * 0.15
+
+// close breath: bands from two different noises, so the pair stays a pair
+br = pow(0.5 - 0.5 * sine(0.2), 2) * (0.7 + 0.3 * sw) + pow(0.5 - 0.5 * sine(0.5), 2) * 0.6 * sw * wd
+air_l = noise(0, 0, 101) |> lp(@, 1500 + 300 * sine(0.2)) |> hp(@, 340) |> @ * br * 0.12
+air_r = noise(0, 0, 977) |> lp(@, 1500 - 300 * sine(0.2)) |> hp(@, 340) |> @ * br * 0.12
+
+// ---- final stereo: pan and width live here, after every filter
+haas = pd |> delay(@, 0.011 + 0.002 * sine(0.13), 0, 0, 1)
+send = ld * 0.8 + un * 0.8 + tk * 1.2 + (kl + kr) * 0.8 + pd * 0.9 + tc * 0.8 + bs * 0.12
+wet = send * (0.2 + 0.5 * wd) |> dattorro(@, 0.62, 18, damping: 0.55)
+
+g = 0.26
+// poly() and filters hand back a duplicated pair, and a second argument to bus() is then
+// ignored. Fold each side down to one channel and build the pair only here.
+fn pair(l, r) -> stereo(mono(l), mono(r))
+bus(1, pair((ld + un * 0.7) * dr * g, (ld + un * 1.3) * dr * g))
+bus(2, pair((tk + kl * (1 + 0.5 * wd) + kr * (1 - 0.5 * wd)) * dr * g, (tk + kl * (1 - 0.5 * wd) + kr * (1 + 0.5 * wd)) * dr * g))
+bus(3, pair((bs + ht + gp) * dr * g, (bs + ht + gp) * dr * g))
+bus(4, pair(pd * dr * g, (pd * (1 - 0.6 * wd) + haas * 0.6 * wd) * dr * g))
+bus(5, pair(tc * (1 + 0.6 * wd * sine(0.37)) * dr * g, tc * (1 - 0.6 * wd * sine(0.37)) * dr * g))
+bus(6, pair(air_l * g, air_r * g))
+bus(7, pair(left(wet) * dr * g, right(wet) * dr * g))

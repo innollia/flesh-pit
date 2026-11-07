@@ -1,0 +1,134 @@
+//@ common
+// filters answer with a duplicated pair; stay mono until the very end
+fn lpm(x, c, q) -> mono(lp(x, c, q))
+fn bpn(x, c, q) -> mono(bp(x, c, q))
+fn hpm(x, c) -> mono(hp(x, c))
+amt = glide(heft, 0.03)
+
+//@ drums
+fn kick_v(tr, dec) -> {
+    env = ar(tr, 0.0008, dec)
+    pe = ar(tr, 0.0005, 0.04)
+    body = tanh(sine(54 + 230 * pe * pe, 0, tr) * env * 2.6)
+    knock = sine(196, 0, tr) * ar(tr, 0.0005, 0.03) * 0.55 + sine(412, 0, tr) * ar(tr, 0.0005, 0.014) * 0.28
+    click = bpn(noise(0, 0, 11), 3500, 0.8) * ar(tr, 0.0002, 0.005) * 0.55
+    body + knock + click
+}
+kick_tr = gateup(kick_p)
+kick_a = sah(kick_p, kick_tr)
+kickbig_tr = gateup(kickbig_p)
+kickbig_a = sah(kickbig_p, kickbig_tr)
+kick = kick_v(kick_tr, 0.15) * kick_a + kick_v(kickbig_tr, 0.28) * kickbig_a
+out(kick * (0.45 + 0.55 * amt) * 0.6)
+
+//@ perc
+fn snare_v(tr, dec, seed) -> {
+    nz = bpn(noise(0, 0, seed), 3000, 0.55) * ar(tr, 0.0004, dec) * 1.5
+    tonal = (sine(188, 0, tr) + sine(311, 0, tr) * 0.7) * ar(tr, 0.0004, 0.05) * 0.7
+    nz + tonal
+}
+fn hat_v(tr, dec, seed) -> {
+    metal = (sine(5130) + sine(6710) + sine(8290) + sine(9930)) * 0.05
+    (metal + hpm(noise(0, 0, seed), 6000)) * ar(tr, 0.0003, dec)
+}
+snare_tr = gateup(snare_p)
+snare_a = sah(snare_p, snare_tr)
+snarebig_tr = gateup(snarebig_p)
+snarebig_a = sah(snarebig_p, snarebig_tr)
+hat_tr = gateup(hat_p)
+hat_a = sah(hat_p, hat_tr)
+ohat_tr = gateup(ohat_p)
+ohat_a = sah(ohat_p, ohat_tr)
+crash_tr = gateup(crash_p)
+crash_a = sah(crash_p, crash_tr)
+tom_tr = gateup(tom_p)
+tom_a = sah(tom_p, tom_tr)
+sn = snare_v(snare_tr, 0.085, 21) * snare_a
+snbig = snare_v(snarebig_tr, 0.18, 22) * snarebig_a
+hats = hat_v(hat_tr, 0.02, 31) * hat_a + hat_v(ohat_tr, 0.1, 32) * ohat_a
+crash = hpm(noise(0, 0, 41), 1800) * ar(crash_tr, 0.0005, 0.9) * crash_a
+tomn = sine(mtof(tomp), 0, tom_tr) * ar(tom_tr, 0.0005, 0.05) * tom_a
+snd = sn * 0.45 + snbig * 0.8 + crash * 0.5
+wet = hp(freeverb(snd * 0.6, 0.8, 0.45), 120)
+pl = (sn + snbig * 1.2 + crash * 0.9 + hats * 0.7 + tomn * 0.4) * amt * 0.42
+pr = (sn + snbig * 1.2 + crash * 0.9 + hats * 1.2 + tomn * 0.9) * amt * 0.42
+out(stereo(pl, pr) + wet * amt * 0.4)
+
+//@ gnaw
+// tooth: a short FM bite, the ratio leaves 2 as the rounds get stranger
+tooth_tr = gateup(tooth_p)
+tooth_a = sah(tooth_p, tooth_tr)
+rip_tr = gateup(rip_p)
+rip_a = sah(rip_p, rip_tr)
+tenv = ar(tooth_tr, 0.0004, 0.032)
+tidx = ar(tooth_tr, 0.0004, 0.012)
+tf = mtof(toothp)
+tooth = sine(tf + sine(tf * toothr) * tf * 4 * tidx) * tenv * tooth_a
+// rip: granular noise dragged upward over a resonant saw
+renv = ar(rip_tr, 0.0005, 0.11)
+rrise = 1 - renv
+grain = gt(noise(230, 0, 51), 0)
+ripn = bpn(noise(0, 0, 52), 1000 + 4200 * rrise, 1.6) * grain * renv * 1.6
+ripb = lpm(saw(mtof(ripp + 12 * rrise)), 900 + 3600 * rrise, 2.5) * renv * 0.4
+rip = (ripn + ripb) * rip_a
+// riser: the pressure in the throat
+rise = bpn(noise(0, 0, 61), glide(risef, 0.05), 3) * glide(riselvl, 0.05)
+gl_ = (tooth * 0.4 + rip + rise * 0.8) * amt * 0.6
+gr_ = (tooth * 0.9 + rip * 0.6 + rise * 0.6) * amt * 0.6
+out(stereo(gl_, gr_))
+
+//@ bass
+kick_tr = gateup(kick_p)
+kick_a = sah(kick_p, kick_tr)
+kickbig_tr = gateup(kickbig_p)
+kickbig_a = sah(kickbig_p, kickbig_tr)
+bass_tr = gateup(bass_p)
+bass_a = sah(bass_p, bass_tr)
+tear_tr = gateup(tear_p)
+tear_a = sah(tear_p, tear_tr)
+duck = 1 - 0.5 * max(ar(kick_tr, 0.002, 0.085), ar(kickbig_tr, 0.002, 0.085))
+bpch = glide(bassp, 0.012) - glide(bassfall, 0.1) - 4 * ar(tear_tr, 0.0005, 0.02)
+bf = mtof(bpch)
+bsrc = saw(bf) + sqr(bf * 1.0037) * 0.55 + sine(bf) * 0.5
+benv = ar(bass_tr, 0.0015, glide(bassdec, 0.002))
+bcut = glide(basscut, 0.01) + glide(basstop, 0.002) * ar(bass_tr, 0.001, 0.05)
+bamp = max(benv * bass_a, glide(basshold, 0.01)) * glide(basslvl, 0.004)
+bass = tanh(lpm(bsrc * 0.42, bcut, 2.6) * bamp * 3)
+out(bass * duck * amt * 0.6)
+
+//@ chord
+kick_tr = gateup(kick_p)
+kick_a = sah(kick_p, kick_tr)
+kickbig_tr = gateup(kickbig_p)
+kickbig_a = sah(kickbig_p, kickbig_tr)
+mid_tr = gateup(mid_p)
+mid_a = sah(mid_p, mid_tr)
+tear_tr = gateup(tear_p)
+tear_a = sah(tear_p, tear_tr)
+duck = 1 - 0.42 * max(ar(kick_tr, 0.002, 0.085), ar(kickbig_tr, 0.002, 0.085))
+fn cv(p, m, drop) -> saw(mtof(glide(p, 0.008) - drop)) * glide(m, 0.004)
+fl = glide(fall, 0.1) - 3 * ar(tear_tr, 0.0005, 0.02)
+cha = cv(vp0, vm0, fl) + cv(vp2, vm2, fl * 1.08) + cv(vp4, vm4, fl * 1.16) + cv(vp6, vm6, fl * 1.24)
+chb = cv(vp1, vm1, fl * 1.04) + cv(vp3, vm3, fl * 1.12) + cv(vp5, vm5, fl * 1.2)
+mcut = glide(midcut, 0.02) + glide(midtop, 0.002) * ar(mid_tr, 0.001, 0.07)
+menv = ar(mid_tr, 0.002, glide(middec, 0.002))
+mamp = max(menv * mid_a, glide(midhold, 0.01)) * glide(midlvl, 0.004)
+rg = 1 - ring + ring * sine(311)
+mda = lpm(cha * 0.5, mcut, 1.3) * mamp * rg
+mdb = lpm(chb * 0.5, mcut, 1.3) * mamp * rg
+wet = hp(freeverb((mda + mdb) * 0.2, 0.8, 0.45), 120)
+out(stereo(mda * duck * 0.75 + mdb * duck * 0.25, mdb * duck * 0.75 + mda * duck * 0.25) * amt + wet * amt * 0.4)
+
+//@ lead
+lead_tr = gateup(lead_p)
+lead_a = sah(lead_p, lead_tr)
+lpch = glide(leadp, 0.035) - glide(fall, 0.1) * 1.5 + sine(5.6) * 0.15
+lamp = glide(leadlvl, 0.02) * (1 - 0.32 * ar(lead_tr, 0.001, 0.03))
+lcut = 2300 + 2600 * ar(lead_tr, 0.002, 0.25) + 900 * glide(ring, 0.1)
+lda = lpm(saw(mtof(lpch) * 0.998), lcut, 1.6) * lamp
+ldb = lpm(saw(mtof(lpch) * 1.002), lcut, 1.6) * lamp
+lsub = lpm(sqr(mtof(lpch - 12)), 2200, 0.8) * lamp * glide(leadsub, 0.05)
+lm = (lda + ldb) * 0.5 + lsub * 0.5
+wet = hp(freeverb(lm * 0.3, 0.8, 0.45), 120)
+echo = hp(delay(lm * 0.5, 0.3125, 0.42, 0.0, 1.0), 200)
+out(stereo(lda + lsub * 0.4, ldb + lsub * 0.4) * amt * 0.5 + (wet * 0.5 + echo * 0.35) * amt)

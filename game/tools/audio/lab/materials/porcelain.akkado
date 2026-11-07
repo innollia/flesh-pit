@@ -1,0 +1,57 @@
+// Porcelain: struck bowls (bowl-mode ratios with split doublets), a heavy lid
+// that rocks and rattles to rest, and a wet finger on a rim, where stick-slip
+// locks to one mode: the slow beating doublet, chatter at the onset, friction.
+fn bowl(f, g, v) -> {
+  a = (sine(f) + 0.55 * sine(f * 1.0021)) * ar(g, 0.0002, 2.2) ^ 2
+  b = (0.3 * sine(f * 2.76) + 0.17 * sine(f * 2.771)) * ar(g, 0.0002, 1.1) ^ 2
+  c = (0.15 * sine(f * 5.4) + 0.06 * sine(f * 8.93)) * ar(g, 0.0002, 0.4) ^ 2
+  tick = (noise(0, 0, 21) |> hp(@, 3500)) * ar(g, 0.0001, 0.006) ^ 2 * 0.14
+  (a + b + c + tick) * v
+}
+fn lid(f, g, v) -> {
+  la = (sine(f) + 0.7 * sine(f * 1.58)) * ar(g, 0.0002, 0.5) ^ 2
+  lb = (0.55 * sine(f * 2.41) + 0.35 * sine(f * 3.33) + 0.25 * sine(f * 4.72)) * ar(g, 0.0002, 0.17) ^ 2
+  (la + lb) * v
+}
+fn rim(f, g, v) -> {
+  e = adsr(g, 0.13, 0.1, 0.9, 0.4)
+  sl = ar(g, 0.0002, 0.12)
+  fr = f * (1 - 0.03 * sl * sl + 0.0028 * sine(4.3))
+  tone = sine(fr) + 0.55 * sine(fr * 1.0034) + 0.15 * sine(fr * 2) + 0.05 * sine(fr * 3) + 0.03 * sine(fr * 2.76)
+  rough = (noise(0, 0, 22) |> lp(@, 30)) * 3
+  chat = 1 + rough * (0.08 + 0.5 * sl)
+  fric = (noise(0, 0, 23) |> bp(@, 2500, 1.2)) * 0.05
+  (tone * chat * e + fric * e) * v
+}
+hit = n"<
+  ~ ~ ~ ~ a5:0.8 [bb5:0.85 ~ ~ a5:0.6 ~ ~ ~] g5:0.85 [f5:0.8 ~ ~ ~ ~ d5:0.7 ~]
+  f6:0.55 ~ f6:0.55 ~ d6:0.55 ~ e6:0.55 ~
+  ~ ~ ~ ~ ~ ~ ~ ~
+  [a4:0.34@3 c5:0.34@2 f5:0.34@2] [e5:0.34@5 c5:0.34@2] [d5:0.34@3 f5:0.34@4] [eb5:0.34@5 ~@2]
+  ~ ~ ~ ~
+  [~ ~ ~ d6:0.45 ~ ~ ~] [~ ~ ~ d6:0.45 ~ ~ ~] [~ ~ ~ d6:0.45 ~ ~ ~] [~ ~ ~ c#6:0.45 ~ ~ ~]
+  a5:0.6 [f5:0.55 ~ ~ d5:0.45 ~ ~ ~] eb5:0.6 d5:0.55
+  ~ ~ ~ ~
+>"
+rattle = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~
+  ~ ~ ~ ~ ~ ~ ~ [~@6 [a4:0.55@92 a4:0.34@65 a4:0.2@45 a4:0.12@32 a4:0.08@22 ~@101]]
+  ~ ~ ~ ~ ~ ~ ~ ~
+  ~ ~ ~ [~@5 [d4:0.9@92 d4:0.56@65 d4:0.35@45 d4:0.22@32 d4:0.13@22 d4:0.08@15 ~@443]]
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+>"
+melody = n"<
+  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+  [d5@3 f5@2 a5@2] [bb5@3 a5@4] [d6@5 c6@2] [bb5@3 g5@4]
+  [d5@3 f5@2 a5@2] [c6@3 a5@4] [bb5@5 g5@2] [a5@3 c#6@4]
+  [a5@3 c6@2 f6@2] [e6@5 c6@2] [d6@3 f6@4] [eb6@5 ~@2]
+  d6 [bb5@3 d6@2 g6@2] [g6@5 f6@2] [e6@3 c#6@4]
+  [d6@5 a5@2] [bb5@3 f5@4] [g5@5 bb5@2] a5
+  ~ ~ ~ ~ ~ ~ ~ ~
+>"
+lv = v"<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0.52 0.54 0.56 0.58 0.6 0.62 0.64 0.62 0.64 0.66 0.68 0.8 0.84 0.88 0.8 0.68 0.6 0.52 0.44 0 0 0 0 0 0 0 0>" as lq
+struck = poly(hit, bowl, 8)
+top = poly(rattle, lid, 6)
+sing = poly(melody, rim, 4) * lq.freq * 0.5
+struck + top + sing <>(1)
+(struck + top + sing) * 0.42 |> dattorro(@, 0.72, 9) |> hp(@, 180) <>(2)

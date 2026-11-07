@@ -1,0 +1,162 @@
+// lab_story: the room is the middle of something.
+// 40 bars of limping 7/8 (2+2+3). bpm 24 with one cycle = one bar = 2.5 s.
+// Long lines are one pattern of 280 eighths stretched with .slow(40).
+//
+// Rule of the piece: the traveller's motif (5-1-2-3-2) always stops on degree 2.
+// Only the thing behind the grate finishes it (5-1-2-3-2-1), in Ab, a tritone from
+// home, in an even 6/8 and in just intonation (field c = cents). Its last Ab is
+// taken up a half step to A, the first note of the motif, and the walk goes on.
+//
+// bars  0- 7 room    8-15 floor drops   16-27 trek
+// bars 28-33 grate  34-39 stubborn climb, a high E hangs across the seam
+bpm = 24
+
+// ---------------------------------------------------------------- automation, one value per bar
+a_box   = slew(v"[0.95 0.95 0.95 0.95 0.95 0.95 0.95 0.95 0.9 0.85 0.8 0.75 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.9]".slow(40), 0.5)
+a_pad   = slew(v"[0.75 0.75 0.75 0.75 0.75 0.75 0.75 0.8 0.85 0.9 0.95 1 1 1 1 1 0.6 0.6 1 1 1 1 1 1 1.1 1.15 0.85 0.5 0.25 0.25 0.25 0.25 0.25 0.3 1 1.1 1.25 1.4 1.5 1]".slow(40), 0.7)
+a_cut   = slew(v"[2600 2600 2600 2600 2600 2600 2600 2600 1100 1100 1000 1000 1000 1000 1000 1000 1000 1000 1100 1100 1100 1200 1200 1300 1400 1400 1100 900 900 900 900 900 900 900 1500 1700 2100 2600 3000 2400]".slow(40), 900)
+a_low   = slew(v"[0 0 0 0 0 0 0 0.1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0.8 0.5 0.5 0.5 0.5 0.5 0.6 1 1 1 1 1 0.4]".slow(40), 0.7)
+a_lead  = slew(v"[0.3 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1.1 0.75]".slow(40), 0.8)
+a_breath= slew(v"[0 0 0 0 0 0 0 0.15 0.45 0.5 0.55 0.6 0.65 0.7 0.7 0.7 0.7 0.75 0.75 0.8 0.8 0.85 0.85 0.85 0.85 0.9 0.9 0.9 0.55 0.55 0.5 0.5 0.5 0.6 0.85 0.9 0.95 1 1 0.4]".slow(40), 0.4)
+a_room  = slew(v"[0.8 0.8 0.8 0.8 0.8 0.8 0.8 0.7 0.25 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.45]".slow(40), 0.5)
+a_hall  = slew(v"[0.12 0.12 0.12 0.12 0.15 0.15 0.2 0.25 0.35 0.4 0.45 0.5 0.5 0.55 0.55 0.6 0.6 0.6 0.65 0.65 0.65 0.7 0.7 0.7 0.75 0.75 0.75 0.75 0.3 0.25 0.25 0.25 0.3 0.35 0.65 0.7 0.75 0.85 0.95 0.5]".slow(40), 0.5)
+a_small = slew(v"[0.55 0.55 0.55 0.55 0.55 0.55 0.5 0.45 0.3 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.2 0.45]".slow(40), 0.5)
+
+// A breath every 100/14 s, so it comes round exactly on the loop.
+breath_raw = 0.5 + 0.5 * sine(0.14)
+breath = breath_raw * breath_raw
+
+// ---------------------------------------------------------------- instruments
+fn box_i({freq, trig, vel}) -> {
+    e1 = ar(trig, 0.002, 1.3)
+    e2 = ar(trig, 0.001, 0.4)
+    e3 = ar(trig, 0.001, 0.09)
+    (sine(freq + sine(freq * 4.02) * freq * 0.45 * e2) * e1
+        + sine(freq * 2) * 0.28 * e2
+        + sine(freq * 6.27) * 0.09 * e3) * vel
+}
+
+fn pluck_i({freq, trig, vel}) -> {
+    pluck_cut = 170 + (700 + 2600 * vel) * ar(trig, 0.002, 0.17)
+    body = saw(freq) * ar(trig, 0.003, 0.8) |> lp(@, pluck_cut, 0.9)
+    (body * 0.9 + sine(freq) * ar(trig, 0.003, 0.55) * 0.5 + sine(freq * 2) * ar(trig, 0.002, 0.3) * 0.3) * vel
+}
+
+fn pad_a({freq, gate, vel}) -> {
+    (saw(freq * 0.9975) + saw(freq * 2.0048) * 0.3) * adsr(gate, 0.7, 0.2, 0.9, 1.3) * vel
+        |> lp(@, a_cut, 0.8)
+}
+
+fn pad_b({freq, gate, vel}) -> {
+    (saw(freq * 1.0024) + saw(freq * 1.9957) * 0.3) * adsr(gate, 0.75, 0.2, 0.9, 1.3) * vel
+        |> lp(@, a_cut * 1.07 + 3, 0.8)
+}
+
+fn kind_tone(f) -> {
+    sine(f) + sine(f * 2) * 0.12 + sine(f * 3) * 0.38 + sine(f * 5) * 0.18 + sine(f * 7) * 0.08
+}
+
+fn kind_chord({freq, gate, vel, c}) -> {
+    kind_tone(freq * pow(2, c / 1200)) * adsr(gate, 0.45, 0.2, 0.85, 0.7) * vel
+}
+
+fn heart_i({freq, trig, vel}) -> {
+    sweep = 58 + 60 * ar(trig, 0.001, 0.05)
+    (sine(sweep) * ar(trig, 0.004, 0.2) + sine(sweep * 2) * 0.55 * ar(trig, 0.003, 0.11)
+        + sine(410) * 0.42 * ar(trig, 0.001, 0.035)) * vel
+}
+
+// ---------------------------------------------------------------- box: ticks and the motif
+box_ticks = n"[d5:.3@2 a5:.2@2 e5:.2@3] [d5:.3@2 f#5:.2@2 a5:.2@3] [d5:.3@2 g5:.2@2 b5:.2@3] [d5:.3@2 f#5:.2@2 a5:.2@3] [b4:.3@2 f#5:.2@2 a5:.2@3] [b4:.3@2 g5:.2@2 b5:.2@3] [a4:.3@2 e5:.2@2 d5:.2@3] [a4:.3@2 e5:.2@2 b4:.2@3] [bb4:.27@2 f5:.18@2 d5:.18@3] [bb4:.25@2 f5:.17@2 e5:.17@3] [g4:.22@2 d5:.15@2 bb4:.15@3] [g4:.2@2 d5:.13@2 bb4:.13@3] [eb5:.16@2 g5:.1@2 bb5:.1@3] [eb5:.12@2 g5:.08@5] ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~"
+box_motif = n"[~@7 a5:.56@2 d6:.59@2 e6:.62@3 f#6:.62@2 e6:.53@5 a5:.53@2 d6:.56@2 e6:.59@3 g6:.62@2 f#6:.56@2 e6:.53@3 b5:.5@2 a5:.46@2 f#5:.43@3 e5:.46@7 ~@7 a5:.5@2 d6:.53@2 e6:.56@3 f6:.56@2 e6:.46@5 g5:.4@2 bb5:.4@2 c6:.43@3 d6:.37@2 c6:.31@5 ~@196]".slow(40)
+box_sig = (box_ticks |> poly(@, box_i, 16, release: 2.2)) + (box_motif |> poly(@, box_i, 8, release: 2.2))
+
+// Far lights, only heard in the hall.
+far_p = n"[~@129 a6:.2@10 e6:.18@18 d6:.16@17 g6:.2@9 ab6:.2@7 eb6:.18@51 a6:.2@4 f#6:.18@35]".slow(40)
+far_sig = far_p |> poly(@, box_i, 6, release: 2.2)
+
+// ---------------------------------------------------------------- pad
+pad_p = n"[[d4,a4,d5,e5]@7 [d4,f#4,a4,e5]@7 [d4,g4,b4,d5]@7 [d4,f#4,a4,e5]@7 [b3,f#4,a4,d5]@7 [b3,f#4,g4,d5]@7 [a3,e4,a4,d5]@7 [a3,e4,a4,b4]@7 [f3,d4,f4,a4]@14 [d3,bb3,d4,f4]@14 [bb2,g3,d4,f4]@14 [c3,g3,eb4,a4]@7 [a2,e3,d4,g4,bb4]@7 [d3,a3,f4,a4]@7 [d3,a3,e4,f4]@7 [bb2,f3,d4,a4]@7 [g2,bb3,d4,f4]@7 [d3,a3,d4,f4]@14 [bb2,f3,d4,f4]@7 [c3,g3,c4,f4]@7 [f3,c4,f4,ab4]@7 [f3,c4,g4,ab4]@7 [db3,ab3,f4,c5]@7 [bb2,f3,db4,ab4]@7 ~@42 [d3,a3,f4,a4]@7 [bb2,f3,d4,a4]@7 [g2,b3,d4,g4]@7 [e2,g3,d4,b4]@7 [bb2,d4,a4,e5]@7 [a2,b3,d4,g4]@7]".slow(40)
+pad_l = pad_p |> poly(@, pad_a, 24, release: 1.5)
+pad_r = pad_p |> poly(@, pad_b, 24, release: 1.5)
+
+// ---------------------------------------------------------------- the body under the floor
+lowe = n"[~@56 bb2@14 g2@14 eb2@14 c2@7 a1@7 d2@14 bb1@7 g1@7 d2@14 bb1@7 c2@7 f2@14 db2@7 bb1@7 ~@42 d2@7 bb1@7 g1@7 e2@7 bb1@7 a1@7]".slow(40)
+low_f = mtof(glide(lowe.note, 0.25, "cosine"))
+low_env = slew(lowe.gate, 2.5)
+low_src = saw(low_f) + saw(low_f * 2.003) * 0.5 + sqr(low_f * 0.5) * 0.35
+low_sig = low_src * low_env |> lp(@, 290 + 900 * breath * a_breath, 1.1) |> hp(@, 62) |> @ * (0.45 + 0.55 * breath)
+
+// ---------------------------------------------------------------- the walk (2+2+3, it limps)
+walk_p = n"~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ [d2:.78@2 a2:.55@2 d3:.62@2 f4:.36] [d2:.78@2 a2:.55@2 d3:.62@2 e4:.36] [bb1:.78@2 f2:.55@2 bb2:.62@2 d4:.36] [g1:.78@2 d2:.55@2 g2:.62@2 bb3:.36] [d2:.78@2 a2:.55@2 d3:.62@2 f4:.36] [d2:.78@2 a2:.55@2 d3:.62@2 f4:.36] [bb1:.78@2 f2:.55@2 bb2:.62@2 d4:.36] [c2:.78@2 g2:.55@2 c3:.62@2 f4:.36] [f2:.85@2 c3:.6@2 f3:.66 ab4:.4 c4:.42] [f2:.85@2 c3:.6@2 f3:.66 g4:.4 c4:.42] [db2:.75@2 ab2:.45@2 db3:.42@3] [bb1:.55@2 f2:.28@5] ~ ~ ~ ~ ~ ~ [d2:.85@2 a2:.6@2 d3:.66@2 f4:.42] [bb1:.85@2 f2:.6@2 bb2:.66@2 d4:.42] [g1:.95@2 d2:.66 g2:.46 d3:.7 b3:.5 g3:.54] [e2:.95@2 b2:.66 e3:.46 b3:.7 g4:.5 e4:.54] [bb1:.95@2 f2:.66 bb2:.46 f3:.7 d4:.5 bb3:.54] [a1:.8@2 e2:.42@5]"
+walk_sig = walk_p |> poly(@, pluck_i, 12, release: 1.6)
+
+step_l = n"~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.7@4 c4:.6@3] [c4:.8@4 c4:.6@3] [c4:.8@4 c4:.6@3] [c4:.7@4 c4:.4@3] [c4:.5@7] ~ ~ ~ ~ ~ ~ [c4:.8@4 c4:.6@3] [c4:.8@4 c4:.6@3] [c4:.9@4 c4:.7@3] [c4:.9@4 c4:.7@3] [c4:.9@4 c4:.7@3] [c4:.7@7]"
+step_r = n"~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.5@5] [~@2 c4:.6@5] [~@2 c4:.6@5] [~@2 c4:.4@5] [~@2 c4:.25@5] ~ ~ ~ ~ ~ ~ [~@2 c4:.6@5] [~@2 c4:.6@5] [~@2 c4:.7@5] [~@2 c4:.7@5] [~@2 c4:.7@5] [~@2 c4:.4@5]"
+fn step_a({trig, vel}) -> noise(0, 0, 101) * ar(trig, 0.001, 0.05) * vel |> bp(@, 2300 + 900 * ar(trig, 0.001, 0.03), 1.1)
+fn step_b({trig, vel}) -> noise(0, 0, 977) * ar(trig, 0.001, 0.05) * vel |> bp(@, 2900 + 800 * ar(trig, 0.001, 0.03), 1.1)
+step_lp = step_l |> poly(@, step_a, 3, release: 0.2)
+step_rp = step_r |> poly(@, step_b, 3, release: 0.2)
+
+// ---------------------------------------------------------------- heart in the wall: lub, dub
+heart_p = n"~ ~ ~ ~ ~ ~ ~ ~ ~ ~ [c2:.4@5 c2:.25@16] [c2:.42@5 c2:.26@16] [c2:.44@5 c2:.27@16] [c2:.46@5 c2:.28@16] [c2:.48@5 c2:.3@16] [c2:.5@5 c2:.3@16] [c2:.52@5 c2:.32@16] [c2:.54@5 c2:.33@16] [c2:.55@5 c2:.34@16] [c2:.56@5 c2:.35@16] [c2:.58@5 c2:.36@16] [c2:.6@5 c2:.37@16] [c2:.6@5 c2:.37@16] [c2:.62@5 c2:.38@16] [c2:.62@5 c2:.38@16] [c2:.64@5 c2:.4@16] [c2:.64@5 c2:.4@16] [c2:.66@5 c2:.4@16] [c2:.3@5 c2:.2@16] ~ [c2:.28@5 c2:.18@16] ~ [c2:.26@5 c2:.17@16] ~ [c2:.66@5 c2:.42@16] [c2:.68@5 c2:.42@16] [c2:.7@5 c2:.44@16] [c2:.72@5 c2:.45@16] [c2:.74@5 c2:.46@16] ~"
+heart_sig = heart_p |> poly(@, heart_i, 4, release: 0.3)
+
+// ---------------------------------------------------------------- the solo: bowed, alone
+le = n"[e6:.5@7 ~@77 a3:.5@2 d4:.55@2 e4:.62@3 f4:.66@2 e4:.58@5 c4:.55@2 eb4:.6@2 f4:.64@3 g4:.68@2 e4:.55@5 ~@14 d4:.6@2 f4:.66@2 a4:.74@3 bb4:.78@2 a4:.68@2 g4:.66@3 f4:.66@2 e4:.55@5 ~@6 a4:.6 d5:.82@3 c5:.66 bb4:.7@3 c5:.76@4 g4:.6@3 c5:.78@2 f5:.84@2 g5:.92@3 ab5:.96@2 g5:.7@5 ~@56 a4:.8@2 d5:.84@2 e5:.9@3 f5:.92@2 e5:.76@5 a4:.82@2 d5:.88@2 g5:.94@3 e5:.9@2 a5:.96@2 b5@3 e6@14]".slow(40)
+lead_amp = slew(le.gate * le.vel, 6)
+lead_f = mtof(glide(le.note, 0.08, "cosine")) * (1 + (sine(5.3) * 0.0042 + sine(0.37) * 0.0011) * lead_amp)
+lead_src = saw(lead_f) + saw(lead_f * 1.0019) * 0.5 + noise(0, 0, 313) * 0.035
+lead_bright = lead_src * lead_amp |> lp(@, 900 + 4600 * lead_amp, 0.8)
+lead_sig = (lead_bright * 0.3 + bp(lead_bright, 520, 1.6) * 0.8 + bp(lead_bright, 1250, 2.0) * 0.9 + bp(lead_bright, 2800, 1.8) * 0.5) * a_lead
+
+// ---------------------------------------------------------------- behind the grate
+ku = n"[~@148 f5{vel:.13,c:0}@2 e5{vel:.1,c:0}@4 ~@28 c5{vel:.2,c:0}@2 f5{vel:.24,c:0}@2 g5{vel:.28,c:0}@3 ab5{vel:.3,c:0}@2 g5{vel:.3,c:0}@5 eb5{vel:.72,c:2}@3 ab5{vel:.75,c:0}@3 bb5{vel:.75,c:4}@3 c6{vel:.75,c:-14}@3 bb5{vel:.75,c:4}@3 ab5{vel:.7,c:0}@9 c6{vel:.72,c:-14}@3 bb5{vel:.75,c:4}@3 ab5{vel:.75,c:0}@3 f5{vel:.75,c:-16}@3 eb5{vel:.7,c:2}@3 ab5{vel:.8,c:0}@3 ~@42]".slow(40)
+kl = n"[~@196 g4{vel:.43,c:-12}@3 c5{vel:.45,c:-14}@3 db5{vel:.45,c:-2}@3 eb5{vel:.45,c:2}@3 db5{vel:.45,c:-2}@3 c5{vel:.42,c:-14}@9 eb5{vel:.43,c:2}@3 db5{vel:.45,c:-2}@3 c5{vel:.45,c:-14}@3 ab4{vel:.45,c:0}@3 g4{vel:.42,c:-12}@3 c5{vel:.48,c:-14}@3 ~@42]".slow(40)
+ku_amp = slew(ku.gate * ku.vel, 7)
+kl_amp = slew(kl.gate * kl.vel, 7)
+ku_f = mtof(glide(ku.note, 0.09, "cosine")) * pow(2, ku.c / 1200) * (1 + sine(3.9) * 0.0016)
+kl_f = mtof(glide(kl.note, 0.09, "cosine")) * pow(2, kl.c / 1200) * (1 + sine(3.9) * 0.0016)
+kind_c = n"[~@196 [ab2{c:0},ab3{c:0},eb4{c:2},ab4{c:0},c5{c:-14}]@6 [f2{c:0},ab3{c:16},c4{c:2},eb4{c:-31},g4{c:4}]@6 [db2{c:0},f3{c:-14},bb3{c:-16},db4{c:0},ab4{c:2}]@6 [ab2{c:0},ab3{c:0},eb4{c:2},ab4{c:0},c5{c:-14}]@6 [db2{c:0},e3{c:16},bb3{c:-16},db4{c:0},ab4{c:2}]@6 [eb2{c:2},ab3{c:0},c4{c:-14},eb4{c:2},ab4{c:0}]@6 [eb2{c:0},g3{c:-14},db4{c:-31},e4{c:12},g4{c:-14}]@6 ~@42]".slow(40)
+kind_chords = kind_c |> poly(@, kind_chord, 12, release: 0.8)
+kind_boxp = n"[~@220 ab5:.16@3 c6:.16@3 eb6:.16@3 c6:.16@3 eb6:.16@3 ab6:.16@3 ~@42]".slow(40)
+kind_box = kind_boxp |> poly(@, box_i, 6, release: 2.2)
+kind_raw = kind_tone(ku_f) * ku_amp + kind_tone(kl_f) * kl_amp + kind_chords * 0.22 + kind_box * 1.2
+kind_sig = kind_raw
+    |> comb(@, 0.00171, 0.42, dry: 0.8, wet: 0.7)
+    |> comb(@, 0.00293, 0.36, dry: 0.8, wet: 0.7)
+    |> comb(@, 0.00471, 0.28, dry: 0.8, wet: 0.7)
+    |> hp(@, 240)
+    |> lp(@, 5200)
+
+// ---------------------------------------------------------------- air and light
+br_l = (noise(0, 0, 211) |> lp(@, 3800) |> bp(@, 300 + 800 * breath * a_breath, 1.1)) * (breath_raw * 0.35 + breath * 0.65) * a_breath
+br_r = (noise(0, 0, 509) |> lp(@, 3700) |> bp(@, 305 + 790 * breath * a_breath, 1.1)) * (breath_raw * 0.35 + breath * 0.65) * a_breath
+hum = (sine(146.83) + sine(293.66) * 0.5 + sine(440.5) * 0.55 + sine(587.3) * 0.22 + sine(734.2) * 0.34 + sine(1027.9) * 0.18) * (1 + sine(7.3) * 0.05)
+sheen_src = noise(0, 0, 613) |> hp(@, 5000) |> lp(@, 9500)
+
+// ---------------------------------------------------------------- mix
+g_box = 0.24
+g_pad = 0.032
+g_low = 0.05
+g_walk = 0.42
+g_step = 0.4
+g_heart = 0.5
+g_lead = 0.085
+g_kind = 0.016
+g_br = 0.2
+g_hum = 0.0055
+
+mid = box_sig * g_box * a_box + low_sig * g_low * a_low + heart_sig * g_heart + lead_sig * g_lead + kind_sig * g_kind + (hum + sheen_src * 0.05) * g_hum * a_room
+
+send_hall = box_sig * g_box * 1.2 * a_hall + far_sig * g_box * 1.5 + lead_sig * g_lead * 1.1 * a_hall + walk_sig * g_walk * 0.45 * a_hall + (left(pad_l) + left(pad_r)) * g_pad * 0.6 * a_pad * a_hall + low_sig * g_low * 0.25 * a_low + kind_sig * g_kind * 0.05
+hall = dattorro(send_hall, 0.9, 32, dry: 0, wet: 1, damping: 0.55, mod_depth: 0.25, lfo_rate: 0.56)
+send_small = box_sig * g_box * a_small + kind_sig * g_kind * 0.4 + (left(pad_l) + left(pad_r)) * g_pad * 0.2 * a_small
+smallroom = fdn(send_small, 0.3, 0.6, dry: 0, wet: 1)
+
+wall = walk_sig * g_walk
+dl = left(mid) * 0.71 + left(pad_l) * g_pad * a_pad + left(wall) * 0.5 + left(step_lp) * g_step * 1.0 + left(step_rp) * g_step * 0.3 + br_l * g_br + left(far_sig) * g_box * 0.25 + left(hall) * 1.5 + left(smallroom) * 0.6
+dr = left(mid) * 0.71 + left(pad_r) * g_pad * a_pad + left(wall) * 0.86 + left(step_rp) * g_step * 1.0 + left(step_lp) * g_step * 0.3 + br_r * g_br + left(far_sig) * g_box * 0.25 + right(hall) * 1.5 + right(smallroom) * 0.6
+
+master((s) -> s)
+out(dl * 0.4 |> hp(@, 34), dr * 0.4 |> hp(@, 34.5))
