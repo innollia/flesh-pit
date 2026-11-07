@@ -1,0 +1,12 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: fat_slump -- a heavy slab of fat slides down a wall and settles: a long sagging smear ending in a soft flop.
+sl = clamp(t / 0.5, 0, 1) * clamp((1.5 - t) / 0.7, 0, 1)
+smear = noise(0, 0, SEED) * sl * (0.5 + gt(noise(21, 0, SEED2), 0.1)) * 2.4 |> bp(@, (520 - t * 230) * PITCH, 5.0)
+tf = clamp(t - 1.4, 0, 10)
+flop = noise(0, 0, SEED2) * gt(t, 1.4) * clamp(tf / 0.012, 0, 1) * exp(neg(tf) / 0.12) * 1.8 |> lp(@, 420, 1.0)
+out(smear + flop |> freeverb(@, 0.5, 0.85, 0.28, 0.7, 0.85, 0.3) |> hp(@, 110) |> lp(@, 1800))

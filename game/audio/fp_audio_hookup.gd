@@ -81,6 +81,8 @@ var _rng := RandomNumberGenerator.new()
 ## The water in the restroom's pipes: one-shots at long gaps (audio/fp_pipe_water.gd).
 var _pipe_water: Node
 var _voice: Node
+## The flesh moving on its own: one-shots over the bed (audio/fp_body_events.gd).
+var _body_events: Node
 
 func _ready() -> void:
 	main = get_parent()
@@ -100,6 +102,10 @@ func _ready() -> void:
 	_voice = preload("res://audio/fp_vent_voice.gd").new()
 	_voice.name = "Voice"
 	add_child(_voice)
+	_body_events = preload("res://audio/fp_body_events.gd").new()
+	_body_events.name = "BodyEvents"
+	_body_events.set("director", director)
+	add_child(_body_events)
 	call_deferred("_wire")
 
 func _wire() -> void:
@@ -107,6 +113,8 @@ func _wire() -> void:
 	var stomach = main.get("stomach")
 	var player = main.get("player")
 	director.terrain = main.get("terrain")
+	_body_events.set("terrain", main.get("terrain"))
+	_body_events.set("listener", player)
 	if chewer is FDKChewer:
 		director.connect_chewer(chewer)
 		chewer.cell_torn.connect(_remember_torn)
@@ -308,6 +316,7 @@ func _process_inner(_delta: float) -> void:
 	if want != director.current_bed:
 		director.set_bed(want, 2.0)
 	_pipe_water.call("step", _delta, director.current_bed == "restroom")
+	_body_events.call("step", _delta, director.current_bed)
 	# mutation stage from how much of the body has changed (0..1, as the hands)
 	var prog = main.get("progression")
 	if prog != null and prog.has_method("mutation_amount"):

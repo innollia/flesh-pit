@@ -1,0 +1,10 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: cloth_snag -- a seam gives: a short run of threads popping one after another, dry, with nothing wet in it.
+env = clamp(t / 0.03, 0, 1) * clamp((0.48 - t) / 0.2, 0, 1)
+pops = clamp(noise(60 + t * 90, 0, SEED) - 0.4, 0, 1) * 4
+out(noise(0, 0, SEED2) * env * pops * 2.2 |> bp(@, 2300 * PITCH, 1.3) |> lp(@, 5200, 0.7) |> hp(@, 500))

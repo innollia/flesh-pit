@@ -1,0 +1,23 @@
+// flesh-pit loop patch. bpm 60. The fold in loopify hides the wrap, so no rate here has to divide the loop.
+// id: amb_fat_caves -- a warm greasy cave: slow thick bubbles rise and burst in grease at uneven spacing, an oily ooze comes
+// and goes under them. Round, close and dull: nothing above 2 kHz, the bubbles' pitch (180-620 Hz) is the identity.
+// tb is seconds since this bubble's phasor turned; a bubble only sounds when the sample-and-hold says so, so most turns are empty.
+blub = (r, f, up, dec, seed, th) -> {
+    tb = phasor(r) / r
+    on = gt(noise(r, 0, seed), th)
+    fm = 1 + 0.45 * noise(r, 0, seed + 3)
+    sin(6.2832 * (f * fm * tb + up * tb * tb)) * clamp(tb / 0.006, 0, 1) * exp(neg(tb) / dec) * on
+}
+tide = (noise(0.13, 0, 311) + 1) * 0.5 |> lp(@, 0.2, 0.7)
+tide2 = (noise(0.09, 0, 317) + 1) * 0.5 |> lp(@, 0.16, 0.7)
+big_l = blub(0.61, 190, 420, 0.13, 401, 0.1) + blub(0.37, 240, 620, 0.17, 409, 0.0)
+big_r = blub(0.47, 210, 500, 0.15, 419, 0.1) + blub(0.29, 170, 380, 0.2, 421, 0.0)
+small_l = blub(2.3, 420, 900, 0.05, 431, 0.2) + blub(1.37, 340, 760, 0.07, 433, 0.25)
+small_r = blub(1.9, 460, 1000, 0.05, 439, 0.2) + blub(1.13, 380, 820, 0.07, 443, 0.25)
+ooze_l = noise(0, 0, 449) * gt(noise(7.3, 0, 457), 0.15) |> lp(@, 60, 0.7) |> bp(@, 300 + tide * 260, 5.0)
+ooze_r = noise(0, 0, 461) * gt(noise(6.1, 0, 463), 0.15) |> lp(@, 60, 0.7) |> bp(@, 340 + tide2 * 220, 5.0)
+l = big_l * (0.35 + tide2) + small_l * (0.2 + 0.5 * tide) + ooze_l * (0.25 + 1.1 * tide)
+r = big_r * (0.35 + tide) + small_r * (0.2 + 0.5 * tide2) + ooze_r * (0.25 + 1.1 * tide2)
+wet_l = l |> freeverb(@, 0.55, 0.85, 0.28, 0.7, 0.8, 0.4) |> lp(@, 1900) |> hp(@, 90)
+wet_r = r |> freeverb(@, 0.55, 0.85, 0.28, 0.7, 0.8, 0.4) |> lp(@, 1900) |> hp(@, 90)
+out(stereo(wet_l, wet_r))

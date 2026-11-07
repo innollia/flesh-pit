@@ -1,0 +1,13 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: cloth_shift -- a wad of clothes sags under its own weight: heavy fabric folds over itself, dead and close, a soft stop.
+env = clamp(t / 0.2, 0, 1) * clamp((1.7 - t) / 0.8, 0, 1)
+gr = clamp((noise(44, 0, SEED) - 0.2) * 4, 0, 1) |> lp(@, 170, 0.7)
+sheet = noise(0, 0, SEED) * env * gr * 3 |> bp(@, (1250 - t * 300) * PITCH, 0.9)
+tf = clamp(t - 1.55, 0, 10)
+stop = noise(0, 0, SEED2) * gt(t, 1.55) * clamp(tf / 0.02, 0, 1) * exp(neg(tf) / 0.08) * 1.6 |> lp(@, 380, 0.8)
+out(sheet + stop |> lp(@, 3800, 0.7) |> hp(@, 140))

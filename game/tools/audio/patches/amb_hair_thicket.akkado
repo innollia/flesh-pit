@@ -1,0 +1,28 @@
+// flesh-pit loop patch. bpm 60. The fold in loopify hides the wrap, so no rate here has to divide the loop.
+// id: amb_hair_thicket -- a forest of hair: something like a draught combs through it, a wave of thin dry sound that crosses
+// from one ear to the other and dies (gaps of silence between), single strands tick and sing as they spring back.
+// Everything is high and thin, 2.5-7 kHz; it must not be a steady hiss, so the wave is sparse separate grains and strands stand alone.
+sweep = (r, ph, seed) -> {
+    p = phasor(r) + ph
+    s = p - floor(p)
+    a = clamp(s / 0.28, 0, 1) * clamp((0.62 - s) / 0.3, 0, 1)
+    a * a * gt(noise(r, 0, seed), neg(0.5))
+}
+a1 = 0.05 + sweep(0.127, 0.0, 121)
+a2 = 0.05 + sweep(0.089, 0.4, 127)
+a3 = sweep(0.067, 0.7, 131)
+grain_l = clamp((noise(83, 0, 137) - 0.45) * 4, 0, 1)
+grain_r = clamp((noise(71, 0, 139) - 0.45) * 4, 0, 1)
+comb_l = noise(0, 0, 149) * grain_l * (a1 + a2 * 0.3 + a3 * 0.8) * 1.5 |> hp(@, 2400, 0.8) |> lp(@, 7500, 0.7)
+comb_r = noise(0, 0, 151) * grain_r * (a1 * 0.3 + a2 + a3 * 0.8) * 1.5 |> hp(@, 2400, 0.8) |> lp(@, 7500, 0.7)
+strand = (r, f, seed) -> {
+    tb = phasor(r) / r
+    on = gt(noise(r, 0, seed), 0.0)
+    fm = 1 + 0.3 * noise(r, 0, seed + 2)
+    sin(6.2832 * f * fm * tb * (1 + 0.01 * tb)) * clamp(tb / 0.002, 0, 1) * exp(neg(tb) / 0.16) * on
+}
+sing_l = strand(1.03, 2650, 157) * 0.3 + strand(0.61, 4100, 163) * 0.2
+sing_r = strand(0.83, 3050, 167) * 0.3 + strand(0.53, 3600, 173) * 0.2
+tick_l = noise(0, 0, 179) * clamp(noise(9, 0, 181) - 0.72, 0, 1) * 5 |> hp(@, 2500, 0.8)
+tick_r = noise(0, 0, 191) * clamp(noise(8, 0, 193) - 0.72, 0, 1) * 5 |> hp(@, 2500, 0.8)
+out(stereo(comb_l + sing_l + tick_l |> hp(@, 800), comb_r + sing_r + tick_r |> hp(@, 800)))

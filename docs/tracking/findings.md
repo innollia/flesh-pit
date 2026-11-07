@@ -105,3 +105,11 @@
 
 - 재현: 같은 문구의 대사가 자막이 떠 있는 동안 두 번 들어오면 둘 다 대기한다. `FPSubtitles.show_text()`의 `_queue.has(text)`가 `[text, seconds]` 배열이 든 대기열에서 문자열을 찾기 때문이다.
 - 범위: 대기열 상한은 3이고 vent의 LINE_GAP·CHATTER_REPEAT가 같은 줄의 연속을 대부분 막아 플레이에서 보지 못했다. 음성 작업과 무관한 기존 동작이라 그대로 두었다.
+
+## 바이옴 안에서는 살아 있는 재생 삐걱임이 안 난다
+
+`FDKAudioDirector.advance`의 재생 삐걱임(life_interval)은 `current_bed in body_beds`일 때만 돈다. `body_beds`는 body_a·body_b뿐이라 바이옴 배경(fat_caves 등)에서는 실제로 재생 중인 자리가 있어도 삐걱임이 없다. 재현: 바이옴에서 살을 뜯고 기다리면 `played_log`에 regen_creak이 없다. 소리만의 문제이고 수축 경고(contraction_warning)는 바이옴에서도 난다. round5-beds 범위 밖이라 그대로 두었다.
+
+## 화장실 대기 중 청크 재생성이 예산을 넘는다
+
+`run_perf_budget_tests.gd`의 "idle in the restroom, chunks are hardly re-meshed"가 180프레임에 174~178회로 한도 12를 넘어 실패한다. dryforge/text-game의 23a3377 소리 연결·manifest로 되돌려도 같은 실패(174회)라 round5-beds와 무관하다. 재현: `FP_CHECK_SUITES=run_perf_budget_tests.gd node --test game/tests/run_godot_checks.cjs`. 원인은 찾지 않았다.

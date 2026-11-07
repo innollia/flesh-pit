@@ -1,0 +1,34 @@
+// flesh-pit loop patch. bpm 60. The fold in loopify hides the wrap, so no rate here has to divide the loop.
+// id: amb_gut_folds -- inside an intestine: a slow wave of squeezing passes through every 4-10 s (uneven), and with it a fast run
+// of small rising blips (9-13 a second, 300-1100 Hz), liquid forced along a tube, far quicker and higher than the fat's slow bubbles. Between waves only wet ticks.
+// The old layer was a 38 Hz thump no speaker plays; the wave's gurgle is the identity now, the thump is a 120 Hz push.
+wave_at = (r, seed) -> {
+    tb = phasor(r) / r
+    on = gt(noise(r, 0, seed), neg(0.35))
+    clamp(tb / 1.3, 0, 1) * clamp((4.2 - tb) / 2.2, 0, 1) * on
+}
+w_l = 0.05 + wave_at(0.17, 601) + wave_at(0.113, 607)
+w_r = 0.05 + wave_at(0.149, 613) + wave_at(0.097, 617)
+blip = (rate, f, up, seed) -> {
+    tp = phasor(rate) / rate
+    go = gt(noise(rate, 0, seed), neg(0.2))
+    fm = 1 + 0.5 * noise(rate, 0, seed + 1)
+    sin(6.2832 * (f * fm * tp + up * tp * tp)) * clamp(tp / 0.002, 0, 1) * exp(neg(tp) / 0.035) * go
+}
+climb_l = 1 + 0.6 * (noise(0.8, 0, 619) |> lp(@, 1.1, 0.7))
+climb_r = 1 + 0.6 * (noise(0.7, 0, 631) |> lp(@, 1.0, 0.7))
+gur_l = (blip(13.1, 420, 5200, 641) + blip(8.7, 650, 7000, 647)) * w_l
+gur_r = (blip(11.3, 460, 4800, 653) + blip(9.7, 590, 6400, 659)) * w_r
+gur2_l = noise(0, 0, 661) * clamp(noise(19, 0, 667), 0, 1) * w_l * 1.8 |> bp(@, 620 * climb_l, 6.0)
+gur2_r = noise(0, 0, 673) * clamp(noise(17, 0, 677), 0, 1) * w_r * 1.8 |> bp(@, 560 * climb_r, 6.0)
+push_l = noise(0, 0, 679) * w_l * 0.3 |> lp(@, 170, 1.2)
+push_r = noise(0, 0, 687) * w_r * 0.3 |> lp(@, 170, 1.2)
+tick = (r, f, seed) -> {
+    tk = phasor(r) / r
+    sin(6.2832 * (f * tk + 900 * tk * tk)) * clamp(tk / 0.002, 0, 1) * exp(neg(tk) / 0.03) * gt(noise(r, 0, seed), 0.1)
+}
+ticks_l = tick(2.3, 520, 683) * 0.3 + tick(1.3, 760, 691) * 0.24
+ticks_r = tick(1.9, 610, 701) * 0.3 + tick(1.1, 840, 709) * 0.24
+l = gur_l + gur2_l + push_l + ticks_l |> freeverb(@, 0.3, 0.8, 0.28, 0.7, 0.9, 0.2) |> hp(@, 80)
+r = gur_r + gur2_r + push_r + ticks_r |> freeverb(@, 0.3, 0.8, 0.28, 0.7, 0.9, 0.2) |> hp(@, 80)
+out(stereo(l, r))

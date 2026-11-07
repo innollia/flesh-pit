@@ -6,6 +6,8 @@ fp_audio_hookup은 게임과 키트의 신호를 받아 소리 디렉터와 mani
 
 배경음악(fp_music, hookup의 자식)은 시작 화면·키 설정·Esc·환풍구·변이 화면·변기 정산의 상태만 읽어 Music 버스의 반복음을 고르고, 살 속에서는 아무것도 틀지 않는다(화장실 자체의 음악은 보류). 새로 만들거나 바꾸는 곡은 nkido 패치(`tools/audio/patches/mus_*.akkado`)로 만들고 `tools/build_music.py`가 두 바퀴 렌더해 둘째 바퀴를 루프로 접는다. 트리가 멈춘 메뉴에서도 돌도록 PROCESS_MODE_ALWAYS다.
 
+살 속 사건(fp_body_events, hookup의 자식)은 지금 배경의 표(manifest `bed_events`)에서 단발을 불규칙 간격으로 고른다. 한 번에 한 목소리, Music 버스, 음량은 그 배경의 자기 층을 따라간다. 위치가 있는 단발은 밀도를 걸어 나가 찾은 실제 벽에서 나고(단발당 밀도 읽기 32번 이하), 벽이 없으면 위치 없이 난다. 게임 상태와 난수는 건드리지 않는다. 뜻이 있는 소리(regen_creak, 수축 경고, stomach_gurgle)는 재사용하지 않는다. 배경은 자기 층 + 그 껍질의 심장이고 바이옴이 몸 층을 깔지 않는다. 고치면 `python -X utf8 tools/build_biome_beds.py [id...]`, 비교는 `tools/measure_beds.py`와 `tools/clap_beds.py`(`C:/fpear` venv). `build_audio.py`는 `bed_events`를 지우므로 그 뒤에 다시 돌린다.
+
 화장실 배관 물소리(fp_pipe_water, hookup의 자식)는 화장실 배경이 재생될 때만 자기 난수로 띄엄띄엄 단발을 고르고, 음량은 배경 층을 따라간다. 게임 난수와 진행을 건드리지 않는다.
 
 manifest 경로와 실제 스트림의 존재, 씹기 유지와 중단 시 루프, 문·토하기·정산·도구 이벤트를 실제 연결로 확인한다. FP_AUDIO_LOG=1은 재생 로그만 켜며 게임 상태와 저장을 바꾸지 않는다. 남아 있는 과거 HOOKUP 설명보다 현재 Main의 실제 연결과 신호를 확인한다.

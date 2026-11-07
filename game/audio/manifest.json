@@ -315,14 +315,14 @@
    "files": [
     "res://audio/loops/amb_body_a.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 29.0
   },
   "amb_body_b": {
    "kind": "loop",
    "files": [
     "res://audio/loops/amb_body_b.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 41.0
   },
   "amb_heart_a": {
    "kind": "loop",
@@ -493,35 +493,35 @@
    "files": [
     "res://audio/loops/amb_fat_caves.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 23.0
   },
   "amb_rib_vault": {
    "kind": "loop",
    "files": [
     "res://audio/loops/amb_rib_vault.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 37.0
   },
   "amb_gut_folds": {
    "kind": "loop",
    "files": [
     "res://audio/loops/amb_gut_folds.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 31.0
   },
   "amb_cloth_wads": {
    "kind": "loop",
    "files": [
     "res://audio/loops/amb_cloth_wads.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 26.0
   },
   "amb_hair_thicket": {
    "kind": "loop",
    "files": [
     "res://audio/loops/amb_hair_thicket.wav"
    ],
-   "loop_seconds": 8.0
+   "loop_seconds": 34.0
   },
   "song_melody": {
    "kind": "loop",
@@ -735,6 +735,136 @@
     "res://audio/loops/mus_room_reckon.wav"
    ],
    "loop_seconds": 80.0
+  },
+  "body_glug": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/body_glug_v1.wav",
+    "res://audio/sfx/body_glug_v2.wav",
+    "res://audio/sfx/body_glug_v3.wav",
+    "res://audio/sfx/body_glug_v4.wav"
+   ],
+   "spatial": true
+  },
+  "flesh_press": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/flesh_press_v1.wav",
+    "res://audio/sfx/flesh_press_v2.wav",
+    "res://audio/sfx/flesh_press_v3.wav",
+    "res://audio/sfx/flesh_press_v4.wav"
+   ],
+   "spatial": true
+  },
+  "body_groan": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/body_groan_v1.wav",
+    "res://audio/sfx/body_groan_v2.wav",
+    "res://audio/sfx/body_groan_v3.wav",
+    "res://audio/sfx/body_groan_v4.wav"
+   ],
+   "spatial": false
+  },
+  "fat_blub": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/fat_blub_v1.wav",
+    "res://audio/sfx/fat_blub_v2.wav",
+    "res://audio/sfx/fat_blub_v3.wav",
+    "res://audio/sfx/fat_blub_v4.wav"
+   ],
+   "spatial": true
+  },
+  "fat_slump": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/fat_slump_v1.wav",
+    "res://audio/sfx/fat_slump_v2.wav",
+    "res://audio/sfx/fat_slump_v3.wav",
+    "res://audio/sfx/fat_slump_v4.wav"
+   ],
+   "spatial": true
+  },
+  "rib_creak": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/rib_creak_v1.wav",
+    "res://audio/sfx/rib_creak_v2.wav",
+    "res://audio/sfx/rib_creak_v3.wav",
+    "res://audio/sfx/rib_creak_v4.wav"
+   ],
+   "spatial": false
+  },
+  "rib_knock": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/rib_knock_v1.wav",
+    "res://audio/sfx/rib_knock_v2.wav",
+    "res://audio/sfx/rib_knock_v3.wav",
+    "res://audio/sfx/rib_knock_v4.wav"
+   ],
+   "spatial": false
+  },
+  "gut_squeeze": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/gut_squeeze_v1.wav",
+    "res://audio/sfx/gut_squeeze_v2.wav",
+    "res://audio/sfx/gut_squeeze_v3.wav",
+    "res://audio/sfx/gut_squeeze_v4.wav"
+   ],
+   "spatial": true
+  },
+  "gut_trill": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/gut_trill_v1.wav",
+    "res://audio/sfx/gut_trill_v2.wav",
+    "res://audio/sfx/gut_trill_v3.wav",
+    "res://audio/sfx/gut_trill_v4.wav"
+   ],
+   "spatial": true
+  },
+  "cloth_shift": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/cloth_shift_v1.wav",
+    "res://audio/sfx/cloth_shift_v2.wav",
+    "res://audio/sfx/cloth_shift_v3.wav",
+    "res://audio/sfx/cloth_shift_v4.wav"
+   ],
+   "spatial": true
+  },
+  "cloth_snag": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/cloth_snag_v1.wav",
+    "res://audio/sfx/cloth_snag_v2.wav",
+    "res://audio/sfx/cloth_snag_v3.wav",
+    "res://audio/sfx/cloth_snag_v4.wav"
+   ],
+   "spatial": true
+  },
+  "hair_sway": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/hair_sway_v1.wav",
+    "res://audio/sfx/hair_sway_v2.wav",
+    "res://audio/sfx/hair_sway_v3.wav",
+    "res://audio/sfx/hair_sway_v4.wav"
+   ],
+   "spatial": false
+  },
+  "hair_twang": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/hair_twang_v1.wav",
+    "res://audio/sfx/hair_twang_v2.wav",
+    "res://audio/sfx/hair_twang_v3.wav",
+    "res://audio/sfx/hair_twang_v4.wav"
+   ],
+   "spatial": true
   }
  },
  "beds": {
@@ -751,29 +881,229 @@
    "amb_heart_b"
   ],
   "fat_caves": [
-   "amb_body_a",
-   "amb_heart_a",
-   "amb_fat_caves"
+   "amb_fat_caves",
+   "amb_heart_a"
   ],
   "rib_vault": [
-   "amb_body_a",
-   "amb_heart_a",
-   "amb_rib_vault"
+   "amb_rib_vault",
+   "amb_heart_a"
   ],
   "gut_folds": [
-   "amb_body_a",
-   "amb_heart_a",
-   "amb_gut_folds"
+   "amb_gut_folds",
+   "amb_heart_a"
   ],
   "cloth_wads": [
-   "amb_body_b",
-   "amb_heart_b",
-   "amb_cloth_wads"
+   "amb_cloth_wads",
+   "amb_heart_b"
   ],
   "hair_thicket": [
-   "amb_body_b",
-   "amb_heart_b",
-   "amb_hair_thicket"
+   "amb_hair_thicket",
+   "amb_heart_b"
   ]
+ },
+ "bed_events": {
+  "body_a": {
+   "first_gap": [
+    8.0,
+    20.0
+   ],
+   "gap": [
+    12.0,
+    34.0
+   ],
+   "takes": [
+    {
+     "id": "body_glug",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "flesh_press",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  "body_b": {
+   "first_gap": [
+    8.0,
+    20.0
+   ],
+   "gap": [
+    14.0,
+    38.0
+   ],
+   "takes": [
+    {
+     "id": "body_groan",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "flesh_press",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "body_glug",
+     "db": [
+      -8.0,
+      -3.0
+     ]
+    }
+   ]
+  },
+  "fat_caves": {
+   "first_gap": [
+    6.0,
+    16.0
+   ],
+   "gap": [
+    9.0,
+    28.0
+   ],
+   "takes": [
+    {
+     "id": "fat_blub",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "fat_slump",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "body_glug",
+     "db": [
+      -8.0,
+      -3.0
+     ]
+    }
+   ]
+  },
+  "rib_vault": {
+   "first_gap": [
+    8.0,
+    20.0
+   ],
+   "gap": [
+    12.0,
+    36.0
+   ],
+   "takes": [
+    {
+     "id": "rib_creak",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "rib_knock",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  "gut_folds": {
+   "first_gap": [
+    6.0,
+    16.0
+   ],
+   "gap": [
+    10.0,
+    30.0
+   ],
+   "takes": [
+    {
+     "id": "gut_squeeze",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "gut_trill",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "body_glug",
+     "db": [
+      -6.0,
+      -1.0
+     ]
+    }
+   ]
+  },
+  "cloth_wads": {
+   "first_gap": [
+    8.0,
+    20.0
+   ],
+   "gap": [
+    12.0,
+    34.0
+   ],
+   "takes": [
+    {
+     "id": "cloth_shift",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "cloth_snag",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  "hair_thicket": {
+   "first_gap": [
+    8.0,
+    20.0
+   ],
+   "gap": [
+    12.0,
+    34.0
+   ],
+   "takes": [
+    {
+     "id": "hair_sway",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    },
+    {
+     "id": "hair_twang",
+     "db": [
+      -5.0,
+      0.0
+     ]
+    }
+   ]
+  }
  }
 }

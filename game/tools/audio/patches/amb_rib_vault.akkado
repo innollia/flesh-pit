@@ -1,0 +1,26 @@
+// flesh-pit loop patch. bpm 60. The fold in loopify hides the wrap, so no rate here has to divide the loop.
+// id: amb_rib_vault -- a tall cold vault of bone: air leans on the gaps between ribs and they sound like blown bottles, each note
+// on its own slow gust of 5-9 s with stillness between, in a big hard room. A tone with breath on it, not broad noise:
+// the hollow notes (290-1250 Hz) and the long tail are the identity.
+pipe = (rate, f, seed, level) -> {
+    tg = phasor(rate) / rate
+    on = gt(noise(rate, 0, seed), neg(0.3))
+    g = clamp(tg / 2.6, 0, 1) * clamp((6.5 - tg) / 3.2, 0, 1) * on
+    flut = 1 + 0.25 * (noise(6, 0, seed + 1) |> lp(@, 4, 0.7))
+    drift = 1 + 0.012 * (noise(0.5, 0, seed + 2) |> lp(@, 0.6, 0.7))
+    tone = sine(mono(f * drift)) * 0.6
+    breath = noise(0, 0, seed + 3) * 5 |> bp(@, f, 28)
+    (tone + breath) * g * g * flut * level
+}
+tok = (rate, seed, th) -> {
+    tk = phasor(rate) / rate
+    hit = gt(noise(rate, 0, seed), th)
+    (sin(6.2832 * 214 * tk) + 0.6 * sin(6.2832 * 563 * tk)) * clamp(tk / 0.003, 0, 1) * exp(neg(tk) / 0.05) * hit
+}
+air_l = pipe(0.127, 292, 811, 1.0) + pipe(0.097, 437, 823, 0.8) + pipe(0.151, 742, 829, 0.5) + pipe(0.073, 1243, 839, 0.28)
+air_r = pipe(0.109, 311, 853, 1.0) + pipe(0.139, 466, 857, 0.8) + pipe(0.083, 702, 859, 0.5) + pipe(0.101, 1171, 863, 0.28)
+far_l = tok(0.19, 877, 0.2) * 0.3
+far_r = tok(0.13, 881, 0.1) * 0.3
+wet_l = air_l + far_l |> freeverb(@, 0.88, 0.3, 0.28, 0.7, 0.6, 0.55) |> hp(@, 170) |> lp(@, 3600)
+wet_r = air_r + far_r |> freeverb(@, 0.88, 0.3, 0.28, 0.7, 0.6, 0.55) |> hp(@, 170) |> lp(@, 3600)
+out(stereo(wet_l, wet_r))

@@ -1,13 +1,21 @@
-// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
-// id: amb_body_a -- inside the first shells: a low irregular wet gurgle/pressure bed, no steady engine-like drone.
-// the heart is amb_heart_a, digestion and creaks are random one-shots played by the kit.
-swell = (sine(0.125) + 1) * 0.5
-wob1 = (sine(0.041) + 1) * 0.5
-wob2 = (sine(0.067) + 1) * 0.5
-gurgle_l = noise(0, 0, 641) * gt(noise(3.1, 0, 643), 0.30 + wob1 * 0.15) * (0.30 + swell * 0.08) |> lp(@, 260 + wob1 * 60, 0.9) |> hp(@, 32)
-gurgle_r = noise(0, 0, 647) * gt(noise(2.7, 0, 653), 0.30 + wob2 * 0.15) * (0.30 + swell * 0.08) |> lp(@, 260 + wob2 * 60, 0.9) |> hp(@, 32)
-air_l = noise(0, 0, 601) * 0.24 |> lp(@, 480, 0.7) |> hp(@, 90)
-air_r = noise(0, 0, 607) * 0.24 |> lp(@, 480, 0.7) |> hp(@, 90)
-mid_l = noise(0, 0, 613) * (0.40 + swell * 0.10) |> bp(@, 420 + wob2 * 40, 2.2)
-mid_r = noise(0, 0, 619) * (0.40 + swell * 0.10) |> bp(@, 420 + wob1 * 40, 2.2)
-out(stereo(gurgle_l + air_l + mid_l, gurgle_r + air_r + mid_r))
+// flesh-pit loop patch. bpm 60. The fold in loopify hides the wrap, so no rate here has to divide the loop.
+// id: amb_body_a -- plain flesh, shallow: tight and close, the meat around you slowly leans in and lets go (a swell every 6-12 s,
+// uneven), wet strands part in the swell. Mid-low pressure shaped like a closed mouth (formants near 330 and 760 Hz),
+// no steady layer: between swells only a damp stillness. The heart is amb_heart_a, the events are audio/fp_body_events.gd.
+lean = (r, seed) -> {
+    tb = phasor(r) / r
+    clamp(tb / 3.2, 0, 1) * clamp((7.5 - tb) / 3.8, 0, 1) * gt(noise(r, 0, seed), neg(0.5))
+}
+s_l = 0.12 + lean(0.121, 201) + lean(0.085, 211) * 0.7
+s_r = 0.12 + lean(0.113, 223) + lean(0.079, 227) * 0.7
+br_l = noise(0, 0, 229) * s_l |> bp(@, 330 + s_l * 80, 3.0)
+br_r = noise(0, 0, 233) * s_r |> bp(@, 345 + s_r * 80, 3.0)
+fm_l = noise(0, 0, 239) * s_l * s_l |> bp(@, 760 + s_l * 120, 5.0)
+fm_r = noise(0, 0, 241) * s_r * s_r |> bp(@, 720 + s_r * 120, 5.0)
+part_l = noise(0, 0, 251) * gt(noise(16, 0, 257), 0.55) * s_l |> lp(@, 1500, 0.8) |> hp(@, 400, 0.8)
+part_r = noise(0, 0, 263) * gt(noise(14, 0, 269), 0.55) * s_r |> lp(@, 1500, 0.8) |> hp(@, 400, 0.8)
+damp_l = noise(0, 0, 271) * 0.09 |> bp(@, 240, 1.0)
+damp_r = noise(0, 0, 277) * 0.09 |> bp(@, 260, 1.0)
+l = br_l * 1.5 + fm_l * 1.3 + part_l * 0.8 + damp_l |> freeverb(@, 0.2, 0.9, 0.28, 0.7, 0.92, 0.14) |> hp(@, 90)
+r = br_r * 1.5 + fm_r * 1.3 + part_r * 0.8 + damp_r |> freeverb(@, 0.2, 0.9, 0.28, 0.7, 0.92, 0.14) |> hp(@, 90)
+out(stereo(l, r))

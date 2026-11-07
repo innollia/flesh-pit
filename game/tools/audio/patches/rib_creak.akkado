@@ -1,0 +1,15 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: rib_creak -- a rib bows under the weight: dry bone stick-slip, hollow, far above; a slow rasp through narrow woody notes.
+env = clamp(t / 0.25, 0, 1) * clamp((1.5 - t) / 0.6, 0, 1)
+r = (17 + 12 * t + sine(0.9) * 6) * PITCH
+p = phasor(r)
+pulse = exp(neg(p) / 0.08) * env
+a = pulse |> bp(@, 910 * PITCH, 16.0)
+b = pulse |> bp(@, 1480 * PITCH, 18.0)
+c = pulse |> bp(@, 2230 * PITCH, 20.0)
+out((a * 9 + b * 7 + c * 4) |> freeverb(@, 0.9, 0.3, 0.28, 0.7, 0.6, 0.6) |> hp(@, 300))

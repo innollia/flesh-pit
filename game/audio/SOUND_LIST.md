@@ -32,8 +32,19 @@
 | amb_restroom | loop 배경 | 화장실 안 | 형광등 60Hz 윙·지직, 환풍기, 고른 공기 쉭 소리(8초마다 차오르던 물줄기 층을 2026-11-04에 고르게 폈다) |
 | amb_restroom_fan | loop 배경 16 s | 화장실 안(restroom 배경 층) | 낡은 욕실 환풍기: 덕트를 지나는 고른 바람, 날개 다섯 장의 낮은 웅(112.5Hz), 가끔 헐거운 날개창이 한 바퀴마다 달각, 오래가지 않음 |
 | pipe_trickle / pipe_run / pipe_glug / pipe_tick | sfx 4종 각 4변주 | 화장실 안, 끝난 뒤 45~150초 조용하다가 하나씩(들어온 뒤 첫 번은 25~70초, `audio/fp_pipe_water.gd`) | 벽 속 배관의 물: 짧은 졸졸 / 한동안 흐르고 끝에 공기 빨리는 꾸르륵 / 꾸르륵만 / 금속 똑. 방을 나가면 배경과 같이 사라진다 |
-| amb_body_a + amb_heart_a | loop 배경 | 얕은 껍질(0~1) | 낮은 압력 드론 + 느린 심장(0.75Hz 쿵-쿵, 70~250Hz의 부드러운 잡음 뭉치와 희미한 닿는 소리, 노트북 스피커에서도 들림) |
-| amb_body_b + amb_heart_b | loop 배경 | 깊은 껍질(2~) | 더 낮고 빽빽한 드론 + 더 느리고 무거운 심장(0.625Hz, 둘째 박이 늦고 차다) |
+| amb_body_a + amb_heart_a | loop 배경 29 s | 얕은 껍질(0~1) | 살이 다가왔다 물러나는 느린 부풂(6~12초, 불규칙), 입을 다문 듯한 330·760Hz 대역, 젖은 가닥이 갈라지는 소리 + 느린 심장(0.75Hz 쿵-쿵) |
+| amb_body_b + amb_heart_b | loop 배경 41 s | 깊은 껍질(2~) | 위의 무게가 누르는 긴 압박(10~18초 간격), 몸 전체의 낮은 신음(170~520Hz 배음), 정점의 젖은 잔금 + 더 느리고 무거운 심장(0.625Hz) |
+| amb_fat_caves + amb_heart_a | loop 배경 23 s | 지방 동굴 | 굵고 느린 기름 방울(180~620Hz)이 띄엄띄엄 오르고 터짐, 번들거리는 스밈, 2kHz 위 없음 |
+| amb_rib_vault + amb_heart_a | loop 배경 37 s | 갈비 궁륭 | 뼈 틈을 부는 빈 병 음(290~1250Hz)이 각자의 돌풍(5~9초)으로 떴다 사라짐, 큰 울림 |
+| amb_gut_folds + amb_heart_a | loop 배경 31 s | 창자 주름 | 4~10초마다 지나가는 쥐어짜는 파도와 빠른 물방울 연타(초당 9~13개, 300~1100Hz), 파도 사이 젖은 똑똑 |
+| amb_cloth_wads + amb_heart_b | loop 배경 26 s | 옷 뭉치 | 울림 없는 죽은 공기, 천이 구겨지는 알갱이(600Hz~3.5kHz)가 몇 초씩, 푹신한 쿵 |
+| amb_hair_thicket + amb_heart_b | loop 배경 34 s | 털 덤불 | 양쪽을 건너가는 성긴 마른 알갱이 파도(2.5~7kHz), 튕겨 돌아오는 가닥의 틱과 가는 노래 |
+| body_glug / flesh_press / body_groan | sfx 3종 각 4변주 | 살 속, 띄엄띄엄(audio/fp_body_events.gd) | 벽 속 꿀렁임, 살이 눌렸다 끈적하게 떨어짐, 깊은 몸의 신음 한 번 |
+| fat_blub / fat_slump | sfx 2종 각 4변주 | 지방 동굴 | 큰 기름 방울이 터짐, 지방 덩이가 흘러내려 털썩 |
+| rib_creak / rib_knock | sfx 2종 각 4변주 | 갈비 궁륭 | 마른 뼈의 삐걱임(재생 삐걱임·수축 경고와 다른 900~2200Hz), 먼 곳의 둔한 뼈 두 번 |
+| gut_squeeze / gut_trill | sfx 2종 각 4변주 | 창자 주름 | 주름이 조이며 액체가 밀려감, 가스가 도는 빠른 꾸르륵 |
+| cloth_shift / cloth_snag | sfx 2종 각 4변주 | 옷 뭉치 | 천 뭉치가 처져 내림, 솔기 실밥이 툭툭 끊어짐 |
+| hair_sway / hair_twang | sfx 2종 각 4변주 | 털 덤불 | 긴 털 더미가 쓸림, 굵은 한 가닥이 튕김 |
 | shell_transition | sfx | 더 깊은 껍질로 넘어갈 때 | 몸 전체가 뒤틀리는 낮아지는 신음, 압력 |
 | depth_marker | sfx | 새 깊이 도달 | 멀리서 낮게 부풀어 오름. 급격한 시작 없음 |
 
