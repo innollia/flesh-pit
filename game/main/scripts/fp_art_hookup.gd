@@ -135,6 +135,7 @@ func setup(main: Node3D) -> void:
 	hand_compass.name = "HandCompass"
 	hand_compass.set("target", m.RESTROOM_CENTER)
 	hand_compass.set("on_top", true) # the hand's squashed depth would hide it
+	hand_compass.visible = false # on the waist until the left hand takes it
 	held_teeth = _make_held_teeth()
 	arm_hair_right = HairScene.instantiate()
 	arm_hair_right.name = "ArmHairRight"
