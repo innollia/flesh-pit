@@ -74,6 +74,19 @@ func pick(id: String) -> AudioStream:
 		return null
 	return stream(id, pick_index(id))
 
+## Like pick, but a loop sound comes back as a copy that plays once, for a
+## one-shot player (its finished signal must come).
+func pick_once(id: String) -> AudioStream:
+	var s := pick(id)
+	if not (s is AudioStreamWAV and is_loop(id)):
+		return s
+	var key := "%s#%d#once" % [id, int(_last.get(id, 0))]
+	if not _cache.has(key):
+		var once := (s as AudioStreamWAV).duplicate() as AudioStreamWAV
+		once.loop_mode = AudioStreamWAV.LOOP_DISABLED
+		_cache[key] = once
+	return _cache[key]
+
 ## Lets go of the cached streams of one sound (a bed layer that stopped).
 func forget(id: String) -> void:
 	for key in _cache.keys():

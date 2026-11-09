@@ -199,7 +199,9 @@ func _play(id: String, world_pos: Variant, volume_db: float, pitch: float, bus_n
 	_ensure_core()
 	if not bank.has(id):
 		return
-	var stream := bank.pick(id)
+	# a loop-kind sound fired as an event (the squeeze strain is the chew
+	# strain layer) plays once: a looping one-shot never finishes or frees
+	var stream := bank.pick_once(id)
 	if stream == null:
 		return
 	last_played = id
