@@ -4,10 +4,25 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: door_open -- latch clicks, hinge creaks as a light restroom door swings.
-latch = noise(0, 0, SEED) * (clamp((t - 0.02) / 0.001, 0, 1) * exp(neg(clamp(t - 0.02, 0, 100)) / 0.012)) * 0.8 |> bp(@, 3100 * PITCH, 3.0)
-latch_t = sine(1800 * PITCH) * (clamp((t - 0.02) / 0.001, 0, 1) * exp(neg(clamp(t - 0.02, 0, 100)) / 0.03)) * 0.25
-creak_env = clamp((t - 0.1) / 0.1, 0, 1) * clamp((0.9 - t) / 0.2, 0, 1)
-rate = (30 + clamp(t, 0, 1) * 45) * PITCH
-creak = saw(rate) * creak_env * 0.35 |> bp(@, 950 * PITCH, 6.0)
-out((latch + latch_t + creak) |> delay(@, 0.07, 0.3, 1.0, 0.3))
+// id: door_open -- a heavy old restroom door: the latch bolt clunks back, the
+// hinge pins grind as the weight swings, the panel's body hums under it.
+// 2026-11-09 (round8-sfx): was a 1.8 kHz sine tick, a saw sweeping 30 -> 75 Hz
+// through a narrow (Q 6) 950 Hz band and one 70 ms slap echo, which read as a
+// squeaky toy. Now every synth part is noise: the creak is stick-slip bursts at an
+// uneven 18..40 per second through broad wood resonances, the weight is
+// low-passed noise, there is no echo.
+hit = clamp((t - 0.01) / 0.002, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / 0.03)
+latch = noise(0, 0, SEED) * hit * 0.7 |> bp(@, 1250 * PITCH, 1.1)
+bolt = noise(0, 0, SEED2 + 3) * hit * 0.9 |> lp(@, 260 * PITCH, 0.7)
+cenv = clamp((t - 0.16) / 0.12, 0, 1) * clamp((1.25 - t) / 0.35, 0, 1)
+wob = noise(3, 0, SEED2) * 0.5 + 0.5
+rate = (18 + wob * 14 + clamp(t - 0.16, 0, 1) * 8) * PITCH
+slip = gt(saw(rate), 0.55) * (0.6 + noise(23, 0, SEED + 9) * 0.4)
+grind = noise(0, 0, SEED + 1) * slip * cenv
+creak = (grind |> bp(@, 520 * PITCH, 2.2)) * 0.9 + (grind |> bp(@, 1350 * PITCH, 2.5)) * 0.45 + (grind |> bp(@, 2600 * PITCH, 2.0)) * 0.12
+weight = noise(0, 0, SEED2 + 5) * cenv * 0.55 |> lp(@, 140 * PITCH, 0.7)
+panel = noise(0, 0, SEED + 4) * slip * cenv * 0.5 |> lp(@, 300 * PITCH, 0.9)
+// The hinge's own voice is a CC0 recording of a creaking door (sounds.json
+// real_layer, a different stretch per variation, bent down); this patch gives
+// the bolt, the weight and the wood under it.
+out((latch + bolt + creak * 0.3 + weight + panel) |> hp(@, 45, 0.7))

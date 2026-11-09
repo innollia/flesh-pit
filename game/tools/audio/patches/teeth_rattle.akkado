@@ -1,0 +1,23 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: teeth_rattle -- one clatter of teeth tumbling down into the water tank:
+// a few small hard bits knocking on porcelain under water, a plop. The hookup
+// plays it every 0.22..0.45 s for the length of the settlement rattle.
+// 2026-11-09 (round8-sfx): the rattle used coin_drop, three sines at 2.1, 3.4
+// and 5.2 kHz rung every quarter second; over the flush that was a canary
+// chirping (canary_chirp sits at 3.4 kHz). No oscillator here: the knocks are
+// noise through a broad band, muffled by the water.
+k1 = clamp(t / 0.001, 0, 1) * exp(neg(t) / 0.008)
+k2 = clamp((t - 0.045) / 0.001, 0, 1) * exp(neg(clamp(t - 0.045, 0, 100)) / 0.007) * 0.6
+k3 = clamp((t - 0.11) / 0.001, 0, 1) * exp(neg(clamp(t - 0.11, 0, 100)) / 0.006) * 0.4
+knock = noise(0, 0, SEED) * (k1 + k2 + k3) |> bp(@, 1300 * PITCH, 0.8)
+bone = noise(0, 0, SEED2) * (k1 + k2 * 0.8) * 0.6 |> lp(@, 450 * PITCH, 0.7)
+penv = clamp((t - 0.08) / 0.02, 0, 1) * exp(neg(clamp(t - 0.08, 0, 100)) / 0.08)
+plop = noise(0, 0, SEED + 1) * gt(noise(50, 0, SEED2 + 2), 0.2) * penv * 0.4 |> bp(@, 600 * PITCH, 1.5)
+// A CC0 recording of falling stones, low-passed (sounds.json real_layer, a
+// different fall per variation), carries the clatter; this adds the water.
+out((knock * 0.4 + bone + plop) * 0.6 |> lp(@, 2600, 0.7) |> hp(@, 80, 0.7))

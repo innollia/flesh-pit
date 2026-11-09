@@ -38,6 +38,35 @@ REAL = {
     "stomach_gurgle": "a realistic recording of a stomach gurgling",
     "regen_creak": "realistic creak of wet flesh growing",
     "nerve_twitch": "realistic wet twitch of a muscle",
+    # round8-sfx (2026-11-09)
+    "door_open": "a heavy old wooden door creaking open on its hinges",
+    "door_close": "a heavy old wooden door slamming shut",
+    "toilet_flush": "a realistic recording of a toilet flushing",
+    "teeth_rattle": "small hard objects rattling into a toilet tank of water",
+    "scissors_snip": "a blade cutting through wet raw meat",
+    "saw_stroke": "a saw cutting through raw meat",
+    # chains as the game fires them together (tools/mix_sfx_chains.py)
+    "knife_tear": "tearing and cutting wet raw meat",
+    "saw_tear": "sawing and tearing wet raw meat",
+    "flush_chain": "a realistic recording of a toilet flushing",
+}
+
+## What the owner heard instead (round8-sfx, 2026-11-09): one more label per
+## id, its own softmax against the real description only, so "confuse_share"
+## says how far the sound leans to what it was mistaken for.
+CONFUSE = {
+    "door_open": "a squeaky rubber toy",
+    "door_close": "a squeaky rubber toy",
+    "toilet_flush": "a small bird chirping and screaming",
+    "teeth_rattle": "a small bird chirping and screaming",
+    "tear_flesh": "a gunshot",
+    "tear_fat": "a gunshot",
+    "tear_nerve": "a gunshot",
+    "scissors_snip": "a gun being cocked and fired",
+    "saw_stroke": "a gun being cocked and fired",
+    "knife_tear": "a gun being cocked and fired",
+    "saw_tear": "a gun being cocked and fired",
+    "flush_chain": "a small bird chirping and screaming",
 }
 
 
@@ -50,6 +79,7 @@ def main():
     proc = ClapProcessor.from_pretrained(MODEL)
     model = ClapModel.from_pretrained(MODEL).eval()
     res = {}
+    confuse = {}
     for sid in ids:
         labels = [REAL[sid]] + ARCADE
         with torch.no_grad():
@@ -63,9 +93,19 @@ def main():
                 ae = ae / ae.norm(dim=-1, keepdim=True)
                 s = torch.softmax((ae @ te.T)[0] * model.logit_scale_a.exp(), dim=0).numpy()
             shares.append(float(s[1:].sum()))
+            if sid in CONFUSE:
+                with torch.no_grad():
+                    tc = model.get_text_features(**proc(text=[REAL[sid], CONFUSE[sid]], return_tensors="pt", padding=True))
+                    tc = tc / tc.norm(dim=-1, keepdim=True)
+                    c = torch.softmax((ae @ tc.T)[0] * model.logit_scale_a.exp(), dim=0).numpy()
+                confuse.setdefault(sid, []).append(float(c[1]))
         if shares:
             res[sid] = round(float(np.mean(shares)), 3)
-            print("%-16s arcade_share %.3f" % (sid, res[sid]))
+            line = "%-16s arcade_share %.3f" % (sid, res[sid])
+            if sid in confuse:
+                res[sid + ":confuse"] = round(float(np.mean(confuse[sid])), 3)
+                line += "  confuse_share %.3f (%s)" % (res[sid + ":confuse"], CONFUSE[sid])
+            print(line)
     if out:
         with open(out, "w", encoding="utf-8") as f:
             json.dump(res, f, indent=1)

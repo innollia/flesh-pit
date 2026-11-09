@@ -4,8 +4,19 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: scissors_snip -- quiet texture bed under the CC0 recording (stage 5). The recording carries the identity.
-env = clamp(t / 0.004, 0, 1) * exp(neg(t) / 0.08)
-body = noise(0, 0, SEED) * env |> bp(@, 3000 * PITCH, 2.5)
-grit = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.4) * env * 0.5 |> bp(@, 5700 * PITCH, 4.0)
-out((body + grit) * 0.04)
+// id: scissors_snip -- the blades close through a mouthful of flesh (the knife
+// slot's tear, under the tear itself): a wet shear, fibres parting, a squelch.
+// 2026-11-09 (round8-sfx): was a CC0 recording of dry scissors (four metal
+// snips in 1.2 s, the same take in all four variations) over a faint noise bed;
+// under each tear it was the "철컥" of a gun being worked. Now no metal: the
+// shear swells over 15 ms through a broad band and the blades are muffled by
+// the meat between them.
+cut = clamp(t / 0.015, 0, 1) * exp(neg(t) / 0.07)
+shear = noise(0, 0, SEED) * cut * 0.5 |> bp(@, 1700 * PITCH, 0.8)
+fibre = noise(0, 0, SEED2) * gt(noise(500, 0, SEED2 + 1), 0.7) * cut * 0.6 |> bp(@, 1200 * PITCH, 0.9)
+senv = clamp((t - 0.04) / 0.03, 0, 1) * exp(neg(clamp(t - 0.04, 0, 100)) / 0.12)
+squelch = noise(0, 0, SEED + 2) * gt(noise(40, 0, SEED + 3), 0.25) * senv * 0.55 |> bp(@, 450 * PITCH, 1.5)
+press = noise(0, 0, SEED2 + 4) * senv * 0.3 |> lp(@, 260 * PITCH, 0.7)
+// Recordings carry it (sounds.json real_layer: a wet tear and a mud squelch,
+// a different stretch per variation); this sits under them.
+out((shear + fibre + squelch + press) * 0.4 |> lp(@, 4500, 0.7) |> hp(@, 70, 0.7))

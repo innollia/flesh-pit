@@ -4,12 +4,26 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: toilet_flush -- lever clack, a rush of water that swirls down, then the cistern refilling.
-clack = noise(0, 0, SEED) * (clamp((t - 0.0) / 0.001, 0, 1) * exp(neg(clamp(t - 0.0, 0, 100)) / 0.02)) * 0.8 |> bp(@, 2000, 2.0)
-rush_env = clamp((t - 0.08) / 0.15, 0, 1) * clamp((2.3 - t) / 0.8, 0, 1)
-rcf = (3000 - clamp(t / 2.2, 0, 1) * 2100) * PITCH
-rush = noise(0, 0, SEED2) * rush_env * 0.55 |> lp(@, rcf, 0.9)
-swirl = noise(0, 0, SEED) * rush_env * 0.30 |> bp(@, 600 + sine(3.5) * 250, 4.0)
-refill_env = clamp((t - 1.8) / 0.4, 0, 1) * clamp((3.0 - t) / 0.3, 0, 1)
-refill = noise(0, 0, SEED2) * refill_env * 0.18 |> hp(@, 2500)
-out((clack + rush + swirl + refill) |> delay(@, 0.085, 0.3, 1.0, 0.3))
+// id: toilet_flush -- the lever thunks, water rushes down and swirls out with a
+// gurgle, the pipe under the floor carries it off, the cistern refills low.
+// 2026-11-09 (round8-sfx): the last second was noise high-passed at 2.5 kHz
+// (over half the energy above 2.5 kHz, "refill"), and the bowl's swirl a Q 4
+// band wobbling at 3.5 Hz; with the tank rattle's pitched tinks on top the
+// flush read as a canary screaming. Now everything stays under about 2 kHz:
+// rush, bubbling gurgle bursts at wandering centres, a pipe's low run, and a
+// muffled refill trickle.
+lev = clamp(t / 0.003, 0, 1) * exp(neg(t) / 0.04)
+lever = noise(0, 0, SEED) * lev * 0.6 |> bp(@, 900, 1.0)
+thunk = noise(0, 0, SEED2 + 7) * lev * 0.7 |> lp(@, 220, 0.7)
+renv = clamp((t - 0.08) / 0.2, 0, 1) * clamp((2.4 - t) / 0.9, 0, 1)
+rcf = (2000 - clamp(t / 2.2, 0, 1) * 1300) * PITCH
+rush = noise(0, 0, SEED2) * renv * 0.55 |> lp(@, rcf, 0.7)
+genv = clamp((t - 0.6) / 0.4, 0, 1) * clamp((2.8 - t) / 0.6, 0, 1)
+gcf = (420 + noise(11, 0, SEED + 3) * 180) * PITCH
+glug = noise(0, 0, SEED + 1) * gt(noise(16, 0, SEED2 + 3), 0.1) * genv * 0.7 |> bp(@, gcf, 2.2)
+pipe = noise(0, 0, SEED2 + 1) * clamp((t - 0.3) / 0.5, 0, 1) * clamp((3.2 - t) / 0.8, 0, 1) * 0.5 |> lp(@, 160 * PITCH, 0.7)
+fenv = clamp((t - 1.9) / 0.5, 0, 1) * clamp((3.4 - t) / 0.4, 0, 1)
+fill = noise(0, 0, SEED + 4) * gt(noise(60, 0, SEED + 5), 0.3) * fenv * 0.22 |> bp(@, 750 * PITCH, 1.0)
+// The CC0 flush recording carries the water: its first 3 s (the rush, before
+// the hissing refill the old build used) and its last gurgle (sounds.json).
+out((lever + thunk + rush * 0.4 + glug + pipe + fill) * 0.6 |> lp(@, 3500, 0.7) |> hp(@, 40, 0.7))

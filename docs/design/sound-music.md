@@ -107,7 +107,18 @@
 
 측정(사람이 들은 것이 아니다): 소리 높이 뚜렷함(정점 뒤 50 ms 자기상관 최대) 가장 높은 발소리 0.55(step_tile_s2) → 0.24, step_flesh_s2 0.51 → 0.15. CLAP의 "아케이드/8비트/비트크러시/삐" 몫은 step_tile_s1 0.56 → 0.08, step_tile_s2 0.29 → 0.04, step_flesh_s2 0.24 → 0.001. 곡 있는 살 속 발소리 자기 대역 여유(파일 기준)는 4.2~9.9 dB이고 실제로는 3 dB 낮은 1.2~6.9 dB다. 씹기·조임 경고·뜯기·삼키기 여유는 바뀌지 않았다. 엔진 녹음은 `game/tests/capture_steps.gd`, 비교는 `tools/measure_steps.py`, `tools/clap_arcade.py`.
 
-CLAP이 아직 아케이드 쪽으로 보는 소리: tear_fat(0.98), nerve_twitch(0.99), regen_creak(1.0, 경고음이라 손대지 않음), tear_flesh(0.64~0.77). 처음(2026-09-29)부터 사인·톱니·삼각파 음이 섞인 패치이며, 고칠지는 사람이 들어 보고 정한다.
+CLAP이 아직 아케이드 쪽으로 보는 소리: regen_creak(1.0, 경고음이라 손대지 않음). tear_fat·nerve_twitch·tear_flesh는 아래 round8에서 다시 만들었다.
+
+### 문, 칼로 뜯기, 레버 물 내림 (round8-sfx, 2026-11-09)
+
+사용자가 2026-11-09에 "문열리는 소리 이상함", "살 뜯을때 철컥 탕 소리는 총쏘는거잖아", "변기 물내릴때 소리가 카나리아 비명지르는거랑 유사함"이라고 했다. 실제로 나는 소리를 연결에서 찾아 쟀다.
+- 문 열기는 화장실 `is_door_open`이 바뀔 때 hookup이 내는 door_open 하나다. 1.8 kHz 사인 딸깍, 30→75 Hz 톱니를 Q 6의 950 Hz 대역에 통과시킨 삐걱, 70 ms 메아리 한 번이었다. 가장 센 음정선이 주변보다 19 dB 높았다. 이제 걸쇠·무게는 잡음, 경첩은 CC0 문 삐걱 녹음(`s5/bss0616`)을 0.8배로 낮춰 변주마다 다른 구간을 쓴다(음정선 5~10 dB). door_close는 말이 없어서 그대로 뒀다.
+- 칼을 든 손으로 뜯으면 키트 디렉터의 tear_*와 `scissors_snipped`의 scissors_snip이 같은 프레임에 난다. scissors_snip은 마른 가위 녹음 1.2초(금속 딸깍 네 번, 네 변주가 같은 녹음)였고 tear_flesh에는 4 ms 어택의 58 Hz 사인 쿵이 있었다(150 Hz 아래가 최대치의 −7 dB). 철컥 + 탕이다. 이제 칼은 젖은 찢김과 진창 녹음으로 살을 자르는 소리이고, tear_flesh는 사인·톱니 없이 찢김 녹음(`tear/fs133440`)과 진창 철벅임(`mud/fs0495`)이 변주마다 다른 구간으로 나고 잡음 섬유가 밑에 깔린다. tear_fat(95 Hz 사인·Q 7)과 nerve_twitch(삼각파·65 Hz 사인)도 같은 식으로 고쳤다. saw_stroke는 사람 말이 없고 CLAP이 실제 녹음으로 봐서(0.01) 그대로다.
+- 레버를 당기면 toilet_flush와 물탱크 달그락이 같이 난다. 달그락은 coin_drop(2.1/3.4/5.2 kHz 사인 팅, 음정선 30 dB)을 0.22~0.45초마다 다시 냈고 canary_chirp가 3.4 kHz다. 물 내림 녹음은 3초부터 잘라 써서 물탱크가 쉭 차오르는 부분(2.5 kHz 위가 85 ms 창의 76 %)이 들어 있었다. 이제 달그락은 자기 소리 teeth_rattle(떨어지는 돌 녹음을 1.6 kHz 아래로, 음정 없음)이고, 물 내림은 녹음의 처음 3초(쏟아짐)와 끝의 꾸르륵, 2 kHz 아래의 잡음 배관이다.
+
+측정(사람이 들은 것이 아니다, `tools/measure_sfx_char.py`, `tools/mix_sfx_chains.py`, `tools/clap_arcade.py`): 엔진 녹음(`game/tests/capture_round8_sfx.gd`)에서 문 열기 음정선 19.2 → 7.1 dB, 레버 묶음 음정선 15.4 dB(3.5 kHz) → 7.5 dB, 2.5 kHz 위 몫 −2.6 → −8.6 dB. CLAP "작은 새" 몫은 레버 묶음 0.24 → 0.00, "고무 장난감"은 문 0.995 → 0.38, 아케이드 몫은 tear_fat 0.99 → 0.62, nerve_twitch 0.99 → 0.56, tear_flesh 0.77 → 0.51. 칼 묶음은 "총" 0.10 → 0.09, 아케이드 0.90 그대로다(`docs/tracking/findings.md`). tear_fat의 배경 위 자기 대역 여유는 가장 나쁜 곳에서 6~10 dB → 1~3 dB(여전히 배경 위)로 줄었다. 좁게 울리던 대역이 넓은 녹음으로 바뀐 값이다.
+
+`real_layer`는 이제 목록(여러 녹음을 더함)과 `offsets_s`(변주 후보마다 다른 구간), `follow_pitch`(후보의 높이를 녹음에도), `delay_s`를 받는다(`build_audio.load_real_layer`). 이런 소리는 녹음을 섞은 뒤 변주를 고른다.
 
 ## 엔딩 노래
 

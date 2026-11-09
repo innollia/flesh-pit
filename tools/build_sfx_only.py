@@ -37,6 +37,11 @@ def build_one(s, spec, rate, out_dir, ps1_override=""):
         B.render(B.variant_patch(patch, seed, seed2, pitch), raw, float(s["seconds"]), rate)
         data, _ = B.A.read_wav(raw)
         mono = data.mean(axis=1, keepdims=True)
+        if B.real_varies(s.get("real_layer")):
+            rv = B.load_real_layer(s.get("real_layer"), rate, float(s["seconds"]), c - 1, pitch)
+            take = min(rv.size, mono.shape[0])
+            mono = mono.copy()
+            mono[:take, 0] += rv[:take]
         cands.append((B.A.integrated_lufs(mono, rate), mono))
     targets = json.load(open(os.path.join(AUDIO_TOOLS, "targets.json"), encoding="utf-8"))
     var_t = targets["variation"]
@@ -51,7 +56,7 @@ def build_one(s, spec, rate, out_dir, ps1_override=""):
         if best is None or key < best[0]:
             best = (key, combo)
     chosen = best[1] if best else tuple(range(keep))
-    real = B.load_real_layer(s.get("real_layer"), rate, float(s["seconds"]))
+    real = None if B.real_varies(s.get("real_layer")) else B.load_real_layer(s.get("real_layer"), rate, float(s["seconds"]))
     level = B.ps1_level(s, spec.get("ps1_default", "off"), ps1_override)
     written = []
     for n, i in enumerate(chosen, start=1):

@@ -122,6 +122,11 @@
 
 `run_belt_tests.gd` 끝의 "fp_interact from keyboard, pad and mouse" 확인은 벨트 교환이 F로 된다는 옛 전제를 담고 있다. 지금 규칙(business-rules "조작 우선순위" 2번)은 손 버튼만 교환한다. 검사 문구 정리는 범위 밖으로 남긴다.
 
-## 아직 아케이드 쪽으로 판정되는 효과음 (round7-sfx, 2026-11-08)
+## 아직 아케이드 쪽으로 판정되는 효과음 (round7-sfx 2026-11-08, round8-sfx 2026-11-09 갱신)
 
-발소리를 고치며 살 속에서 자주 나는 단발을 `tools/clap_arcade.py`로 쟀다(자기 설명 대 "arcade/8-bit/bitcrushed/beep" 네 문구의 softmax 몫, 변주 평균). tear_fat 0.98, nerve_twitch 0.99, regen_creak 1.0, tear_flesh 0.64~0.77이고 PS1 처리를 꺼도 거의 같다(소리 자체의 사인·톱니·삼각파 음 때문: tear_fat 95 Hz 사인과 Q 7 대역, nerve_twitch 600→960 Hz 삼각파 미끄럼, tear_flesh 62 Hz 톱니 신음). 2026-09-29부터 같은 파일이며 round5 배경이 조용해지면서 더 드러난다. regen_creak은 재생 경고라 손대지 않았고, 나머지는 사람이 들어 보고 고칠지 정한다. 재현: `C:/fpear/Scripts/python.exe -B -X utf8 tools/clap_arcade.py game/audio/sfx`.
+round7에서 `tools/clap_arcade.py`(자기 설명 대 "arcade/8-bit/bitcrushed/beep" 네 문구의 softmax 몫, 변주 평균)로 tear_fat 0.98, nerve_twitch 0.99, regen_creak 1.0, tear_flesh 0.64~0.77을 쟀다. round8-sfx에서 앞의 셋의 사인·톱니·삼각파를 빼고 CC0 녹음(변주마다 다른 구간)을 깔아 tear_fat 0.99 → 0.62, nerve_twitch 0.99 → 0.56, tear_flesh 0.77 → 0.51이 됐다(모델 수치이고 사람이 들은 것이 아니다). 남은 것:
+- regen_creak 1.0: 재생 경고라 손대지 않았다.
+- 칼로 뜯을 때의 묶음(tear_flesh + scissors_snip + 0.3초 뒤 swallow, `tools/mix_sfx_chains.py`의 knife_tear)은 arcade 0.90 → 0.90으로 그대로다. "총을 장전하고 쏨" 몫은 0.10 → 0.09, 파일 하나로는 tear_flesh "총소리" 0.15 → 0.04. 묶음의 arcade 몫이 어디서 오는지는 찾지 못했다(swallow 혼자 0.41).
+- teeth_rattle(물탱크 달그락) 파일 하나는 arcade 0.97, "작은 새" 0.40이다. 레버 묶음(flush_chain)으로는 arcade 0.98 → 0.01, "작은 새" 0.24 → 0.00이다.
+
+재현: `C:/fpear/Scripts/python.exe -B -X utf8 tools/clap_arcade.py game/audio/sfx`, 묶음은 `python -X utf8 tools/mix_sfx_chains.py game/audio/sfx <dir>`로 만든 뒤 그 폴더에.
