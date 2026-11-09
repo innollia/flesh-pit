@@ -1081,6 +1081,9 @@ func _process(delta: float) -> void:
 		_process_seated()
 		return
 	if _mirror_open:
+		# the hands hold the forearm up to read it: no grab goes on (the
+		# chew loop used to keep sounding while the mirror stayed open)
+		chewer.stop()
 		_process_mirror_look()
 		return
 	if Input.is_action_just_pressed("ui_cancel") and handle_esc() != "":
