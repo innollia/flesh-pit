@@ -19,10 +19,13 @@ func _initialize() -> void:
 	var sfx_dir := OS.get_environment("FP_SFX_DIR")
 	if sfx_dir != "":
 		_test_round8_sfx(sfx_dir)
+		var loop_dir := OS.get_environment("FP_LOOP_DIR")
+		_test_round9_hand_tear(sfx_dir, sfx_dir if loop_dir == "" else loop_dir)
 		print("--- %d passed, %d failed ---" % [_passed, _failed])
 		quit(1 if _failed > 0 else 0)
 		return
 	_test_round8_sfx("res://audio/sfx")
+	_test_round9_hand_tear("res://audio/sfx", "res://audio/loops")
 	_test_manifest_files()
 	_test_no_repeat()
 	_test_bed_transition()
@@ -589,6 +592,51 @@ func _test_round8_sfx(dir: String) -> void:
 		var got := float(worst.get(l[0], 999.0))
 		print("  round8 %s worst %.2f (limit %.2f)" % [l[0], got, float(l[1])])
 		_ok(got < float(l[1]), "round8 %s (%s worst %.2f < %.2f)" % [l[2], l[0], got, float(l[1])])
+
+## round9-hand-tear (2026-11-09): tearing with the bare hand still went
+## "철컥 탕". The knife fix did not touch what only the hand path leans on:
+## every grab restarts the chew loop from its first sample, which opened on
+## its loudest bite (a dry rusk crunch through PS1 grit and a comb room, over
+## a 85 Hz / 58 Hz sine jaw knock with a 3-4 ms attack): the clack. 0.3 s
+## after each tear the swallow played a 90-95 Hz line 15 dB over its
+## neighbours, louder under 150 Hz than anywhere else (a sine larynx knock
+## and the recording's chest thump): the bang. Bare fingers slipping off
+## membrane or muscle (grab_refuse) were a 130 Hz sine thup, the loudest part
+## of that sound. Checked on the files (FP_SFX_DIR / FP_LOOP_DIR = old
+## folders fail every line):
+##   boom      as round8, all four variations (old swallow -3, grab_refuse -2)
+##   clarity   as round8 (old grab_refuse 0.73)
+##   start     first 150 ms of a chew loop over the whole loop, dB, where
+##             each grab starts it (old +6: it opened on its loudest bite)
+func _test_round9_hand_tear(sfx_dir: String, loop_dir: String) -> void:
+	var worst := {}
+	for id in ["swallow", "grab_refuse"]:
+		for v in range(1, 5):
+			var x := _wav_left("%s/%s_v%d.wav" % [sfx_dir, id, v])
+			if x.size() < 4800:
+				_ok(false, "%s_v%d is there in %s" % [id, v, sfx_dir])
+				continue
+			var m := _char(x)
+			for k in ["boom", "clarity"]:
+				var key := "%s.%s" % [id, k]
+				worst[key] = maxf(float(worst.get(key, -999.0)), float(m[k]))
+	for id in ["chew_loop_a", "chew_loop_b"]:
+		var x := _wav_left("%s/%s.wav" % [loop_dir, id])
+		if x.size() < 48000:
+			_ok(false, "%s is there in %s" % [id, loop_dir])
+			continue
+		worst["%s.start" % id] = _db(_power(x, 0, 7200)) - _db(_power(x))
+	var lim := [
+		["swallow.boom", -7.0, "the swallow after a tear has no low thump"],
+		["grab_refuse.boom", -10.0, "fingers slipping off tough flesh have no low thup"],
+		["grab_refuse.clarity", 0.45, "fingers slipping off tough flesh ring at no one pitch"],
+		["chew_loop_a.start", -10.0, "a bare-hand grab does not open on a loud bite (chew_loop_a)"],
+		["chew_loop_b.start", -10.0, "a bare-hand grab does not open on a loud bite (chew_loop_b)"],
+	]
+	for l in lim:
+		var got := float(worst.get(l[0], 999.0))
+		print("  round9 %s worst %.2f (limit %.2f)" % [l[0], got, float(l[1])])
+		_ok(got < float(l[1]), "round9 %s (%s worst %.2f < %.2f)" % [l[2], l[0], got, float(l[1])])
 
 ## tone / hi_share / boom / clarity of one take (see _test_round8_sfx).
 func _char(x: PackedFloat32Array) -> Dictionary:

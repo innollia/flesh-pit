@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Renders named loop patches through the same chain as
-game/tools/audio/build_audio.py (nkido, loopify fold, rotate, PS1, DC, master)
+game/tools/audio/build_audio.py (nkido, loopify fold, CC0 real_layer, rotate, PS1, DC,
+master)
 and writes only those loops, leaving manifest.json and every other sound alone.
 
     python -X utf8 tools/render_loop_patches.py amb_heart_a amb_heart_b amb_restroom
@@ -26,8 +27,6 @@ import loopify  # noqa: E402
 
 def render_loop(entry, spec, out_dir, work):
     sid = entry["id"]
-    if entry.get("real_layer"):
-        raise SystemExit(sid + " mixes in a recording; only build_audio.py renders that")
     rate = int(spec["rate"])
     loop = float(entry["loop_seconds"])
     fade = float(entry["fade_seconds"])
@@ -38,6 +37,12 @@ def render_loop(entry, spec, out_dir, work):
     B.render(patch, raw, loop + fade + 0.25, rate)
     loopify.fold_file(raw, folded, int(round(loop * rate)), int(round(fade * rate)), quiet=True)
     data, _ = A.read_wav(folded)
+    # the CC0 recording layer, summed as build_audio.py does (round9-hand-tear)
+    real = B.load_real_layer(entry.get("real_layer"), rate, loop)
+    if real is not None:
+        take = min(real.size, data.shape[0])
+        data = data.copy()
+        data[:take, :] += real[:take, None]
     rot = int(round(float(entry.get("rotate_seconds", 0.0)) * rate))
     if rot:
         data = np.roll(data, -rot, axis=0)

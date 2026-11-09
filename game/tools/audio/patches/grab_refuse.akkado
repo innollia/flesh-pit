@@ -4,12 +4,12 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: grab_refuse -- bare fingers dig into tough rubbery muscle: a tight creak rising as it
-// stretches, then the grip slips off with a dull wet thup and the flesh springs back. Nothing splits.
-stretch_env = clamp(t / 0.06, 0, 1) * clamp((0.3 - t) / 0.03, 0, 1)
-ticks = gt(noise(55 * PITCH, 0, SEED), 0.25)
-creak = noise(0, 0, SEED2) * ticks * stretch_env * 0.75 |> bp(@, (480 + clamp(t / 0.3, 0, 1) * 900) * PITCH, 6.0)
-slip_env = (clamp((t - 0.28) / 0.004, 0, 1) * exp(neg(clamp(t - 0.28, 0, 100)) / 0.05))
-thup = sine(130 * PITCH * (1 - clamp((t - 0.28) * 3, 0, 0.5))) * slip_env * 0.8
-squelch = noise(0, 0, SEED) * (clamp((t - 0.29) / 0.01, 0, 1) * exp(neg(clamp(t - 0.29, 0, 100)) / 0.07)) * 0.28 |> lp(@, 900, 0.8)
-out(creak + thup + squelch)
+// id: grab_refuse -- bare fingers dig into tough rubbery muscle: a wet strain swelling as it
+// stretches, then the grip slips off with a soft wet slide (the mud recording over it). Nothing
+// splits. No sine thup and no ticking narrow creak (round9-hand-tear: a 130 Hz sine with a 4 ms
+// attack and a Q 6 stick-slip ratchet read as a clack and a bang).
+stretch_env = clamp(t / 0.12, 0, 1) * clamp((0.32 - t) / 0.06, 0, 1)
+strain = noise(0, 0, SEED2) * stretch_env * 0.5 |> bp(@, (420 + clamp(t / 0.3, 0, 1) * 500) * PITCH, 1.4)
+grit = noise(0, 0, SEED) * gt(noise(30 * PITCH, 0, SEED), 0.55) * stretch_env * 0.18 |> lp(@, 1400, 0.7)
+slide = noise(0, 0, SEED) * (clamp((t - 0.27) / 0.03, 0, 1) * exp(neg(clamp(t - 0.27, 0, 100)) / 0.09)) * 0.35 |> bp(@, 650 * PITCH, 1.2)
+out(strain + grit + slide)
