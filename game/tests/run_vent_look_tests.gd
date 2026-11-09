@@ -125,13 +125,26 @@ func run() -> void:
 ## The eye travels in over time, the body stays and cannot walk.
 func _going_in() -> void:
 	await reset()
+	# teeth in the hand go on the lip first, the head out (user 2026-11-09)
 	m.progression.teeth_in_hand = 12
 	var from := eye()
 	var body: Vector3 = m.player.global_position
 	check(m.interact_target() == "vent", "looking at the shut vent aims at it")
 	m._interact()
 	check(m.vent.is_open, "F opens the vent")
-	check(looking(), "F with teeth in hand puts the head in")
+	check(not looking(), "F with teeth in hand keeps the head out")
+	await frames(2)
+	m._interact()
+	await frames(2)
+	check(m.progression.teeth_in_hand == 11 and m.vent.pile == 1 and not looking(), "F places a tooth standing")
+	m._tooth_op = ""
+	m.progression.teeth_in_hand = 0
+	m.vent.pile = 0
+	offer(THREE)
+	await wait(1.2)
+	from = eye()
+	m._interact()
+	check(looking(), "F at the offer with an empty hand puts the head in")
 	var path: Array[Vector3] = []
 	var t := 0.0
 	while t < 0.75:
@@ -158,12 +171,6 @@ func _going_in() -> void:
 	check(looking(), "walking forward keeps the head in")
 	check(m.player.global_position.distance_to(body) < 0.03, "walking is locked (body moved %.3f m)" % m.player.global_position.distance_to(body))
 	check(m.interact_target() == "vent", "the aim stays on the vent")
-	# one tooth at a time, no pour taking the head back out
-	var before: int = m.progression.teeth_in_hand
-	m._interact()
-	await frames(2)
-	check(m.progression.teeth_in_hand == before - 1 and m.vent.pile == 1, "F places a tooth from inside")
-	check(looking(), "and the head stays in")
 
 func _on_screen_px(p: Vector3, size: Vector2) -> Vector2:
 	var cam: Camera3D = m.player.camera
@@ -269,15 +276,16 @@ func _spill() -> void:
 	m.progression.teeth_in_hand = m.progression.vent_absurd_threshold() + 5
 	m._interact()
 	await wait(0.8)
-	check(looking(), "in with an absurd handful")
+	check(not looking(), "an absurd handful goes on standing")
 	var n: int = m.progression.teeth_in_hand
 	m.place_teeth_at_vent()
 	check(n > 0 and m.progression.teeth_in_hand == 0, "the handful goes on the lip")
 	await frames(2)
-	check(looking(), "the head stays in through the pour")
 	check(m.vent.art.call("spill_count") > 0, "the overpay spills (%d)" % m.vent.art.call("spill_count"))
+	await wait(0.3)
+	check(looking(), "teeth given: the head goes in under the offer during the spill")
 	await wait(1.0)
-	check(looking(), "and through the spill")
+	check(looking(), "and it stays in through the spill")
 
 func _ways_out() -> void:
 	for a in ["fdk_move_back", "fdk_jump", "ui_cancel"]:
@@ -304,12 +312,8 @@ func _ways_out() -> void:
 	check(not looking(), "frantic movement brings the head out")
 	# nothing left to trade: out by itself
 	await reset()
-	m.progression.teeth_in_hand = 1
-	m._interact()
-	await frames(2)
-	m._interact()
-	check(looking() and m.progression.teeth_in_hand == 0, "the last tooth goes on from inside")
-	m.vent.appraise(m.progression)
+	await go_in()
+	check(looking(), "in at an offer")
 	m.vent._clear_offers()
 	await wait(m.VENT_LOOK_IDLE + 1.0)
 	check(not looking(), "with nothing left to trade the head comes back out")

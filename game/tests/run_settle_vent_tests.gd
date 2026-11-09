@@ -282,6 +282,9 @@ func _f_take() -> void:
     m.place_teeth_at_vent()
     var before: Array = m.vent.offers.duplicate()
     _assert(not before.is_empty(), "FTAKE the being offers something")
+    # the frame after the teeth: the head goes in under the offer by itself
+    m._lean_into_paid_offer()
+    _assert(m.hand_motions.vent_looking(), "FTAKE teeth given: the head goes in under the offer")
     var junk: int = m.progression.junk_taken
     var feed: int = m.progression.canary_feed
     var barriers: int = m.progression.barriers

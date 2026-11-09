@@ -33,6 +33,9 @@ signal grab_refused(tissue: int, world_pos: Vector3)
 ## V away from the toilet and rest points before the first lever settlement:
 ## the body retches but nothing comes up (decision 0009).
 signal dry_heaved
+## Teeth shut in the tank knocked its lid (the first-trade nudge, below
+## _step_teeth_nudges); the audio plays a clink of teeth at the tank.
+signal tank_teeth_knocked
 
 const SAVE_VERSION := 5
 
@@ -1054,6 +1057,7 @@ func _process(delta: float) -> void:
 	FPProfile.end("eye_guard")
 	_vent_watch(delta)
 	_update_tank_teeth()
+	_step_teeth_nudges(delta)
 	FPProfile.end("main_pre")
 	if ended:
 		ending.tick(delta)
@@ -2091,6 +2095,69 @@ func _update_tank_teeth() -> void:
 	if restroom.tank_art != null:
 		restroom.tank_art.call("set_teeth", shown)
 
+## Where teeth come from and where they go, shown in the room and not said
+## (user 2026-11-09 "이빨을 챙겨야 한다는 것에 대한 넛지가 부족함"; the
+## being calls them 봉, which never says "teeth"):
+## - the open grate: an empty hand grasping at the air while teeth wait in
+##   the tank and the hand is empty, the lip glinting while the player holds
+##   teeth (FPVent.nudge_for);
+## - the shut grate knocks in its frame every GRATE_KNOCK_EVERY s while the
+##   player stands in the room with teeth in hand;
+## - before the first trade, teeth shut in the tank knock its lid every
+##   TANK_KNOCK_EVERY s while the player is in the room with an empty hand.
+const GRATE_KNOCK_EVERY := 3.0
+const TANK_KNOCK_FIRST := 2.0
+const TANK_KNOCK_EVERY := 5.0
+var _grate_knock_t := 0.0
+var _tank_knock_t := 0.0
+
+func _step_teeth_nudges(delta: float) -> void:
+	vent.update_nudge(progression.teeth, progression.teeth_in_hand)
+	_lean_into_paid_offer()
+	var calm: bool = not ended and not _settling and not _seated and not _mirror_open and not is_opening() and restroom.contains(player.global_position)
+	if grate_knock_due() and calm:
+		_grate_knock_t += delta
+		if _grate_knock_t >= GRATE_KNOCK_EVERY:
+			_grate_knock_t = 0.0
+			vent.art.call("jostle")
+	else:
+		_grate_knock_t = GRATE_KNOCK_EVERY * 0.5
+	if tank_knock_due() and calm:
+		_tank_knock_t += delta
+		if _tank_knock_t >= TANK_KNOCK_EVERY:
+			_tank_knock_t = 0.0
+			restroom.tank_art.call("jostle")
+			tank_teeth_knocked.emit()
+	else:
+		_tank_knock_t = TANK_KNOCK_EVERY - TANK_KNOCK_FIRST
+
+## Teeth given and items held out for them: the head goes in under the
+## vent by itself (user 2026-11-09: the move came on opening, before any
+## tooth, and never after paying). Teeth still in the hand keep it out
+## for more; a shut grate or a withdrawn offer drops it.
+func _lean_into_paid_offer() -> void:
+	if not vent.offer_after_pay:
+		return
+	if not vent.is_open or vent.offers.is_empty():
+		vent.offer_after_pay = false
+		return
+	if progression.teeth_in_hand > 0 or _tooth_op != "" or _settling or _seated or _mirror_open or ended:
+		return
+	vent.offer_after_pay = false
+	_begin_vent_look()
+
+## The shut grate wants the teeth in the player's hand.
+func grate_knock_due() -> bool:
+	return not vent.is_open and progression.teeth_in_hand > 0 and vent.absent_left <= 0.0 and vent.art != null
+
+## Teeth shut in the tank, nothing in the hand, no trade ever made.
+func tank_knock_due() -> bool:
+	return progression.teeth > 0 and progression.teeth_in_hand <= 0 and tank_lid != null and tank_lid.on_tank 		and not vent.paid_ever() and restroom.tank_art != null and not _tank_rattling()
+
+## The settlement's own rattle of teeth going in is still sounding.
+func _tank_rattling() -> bool:
+	return toilet != null and toilet.is_rattling()
+
 ## Pick one tooth out of the open tank.
 func scoop_teeth() -> int:
 	if tank_lid == null or tank_lid.on_tank:
@@ -2243,14 +2310,21 @@ func try_pick_tank_item() -> bool:
 
 ## `hold_action`: the input that keeps placing teeth while held (F, or the
 ## left hand button when the left hand pressed).
+## Teeth in the hand always go on the lip first, standing where the hand
+## and the lip are in view (user 2026-11-09: opening with teeth in hand put
+## the head straight in under the vent, the hands sunk out of the frame and
+## the lip out of view, so no tooth could be seen going in); the head goes
+## in only for what the being holds out.
 func use_vent(hold_action: String = "fp_interact") -> void:
 	if not vent.is_open:
 		vent.open(progression.teeth + progression.teeth_in_hand, progression.teeth_in_hand, tank_lid != null and not tank_lid.on_tank)
-		if progression.teeth_in_hand > 0 or not vent.offers.is_empty():
+		if progression.teeth_in_hand <= 0 and not vent.offers.is_empty():
 			_begin_vent_look()
 	elif progression.teeth_in_hand > 0:
-		_begin_vent_look()
 		_start_tooth_op("place", hold_action)
+	elif vent.offers.is_empty() and vent.bring_out_held():
+		# the offer it held back for the teeth, now the hand is empty
+		_begin_vent_look()
 	elif not vent.offers.is_empty():
 		# The first press puts the head in under the hands (user 2026-11-07);
 		# inside, F takes the offer the eye is nearest, as the right button

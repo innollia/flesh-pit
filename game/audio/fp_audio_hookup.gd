@@ -220,6 +220,12 @@ func _wire() -> void:
 	_hook("grab_refused", func(_tissue, pos): play_event("grab_refuse", pos))
 	# V out in the flesh before the first settlement: retching, nothing comes up
 	_hook("dry_heaved", func(): play_event("gag"))
+	# teeth shut in the tank knock its lid before the first trade: a clink
+	# and a second one just after, the settlement's tooth clink at the tank
+	_hook("tank_teeth_knocked", func():
+		play_event("tank_rattle", _toilet_pos())
+		_rattle_left = maxf(_rattle_left, 0.3)
+		_rattle_next = 0.12)
 	for id in LAYER_IDS:
 		_start_layer(id)
 

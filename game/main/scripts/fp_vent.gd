@@ -392,7 +392,7 @@ func open(teeth_available: int = 0, in_hand: int = 0, lid_off: bool = false) -> 
         else:
             _say(_ev("여닫기_%d" % toggles, "toggle.%d" % toggles))
         _chain_step = _chain.size()
-        if not _held.is_empty() and absent_left <= 0.0:
+        if not _held.is_empty() and absent_left <= 0.0 and in_hand <= 0:
             _set_offers(_held)
             _held = []
         return
@@ -409,8 +409,13 @@ func open(teeth_available: int = 0, in_hand: int = 0, lid_off: bool = false) -> 
         elif _left_at >= 0.0:
             _say(_ev("잠깐_갔다옴", "leave.back"))
         _left_at = -1.0
-        _set_offers(_held)
-        _held = []
+        # teeth in the hand come first (user 2026-11-09 "이빨을 넣기도 전에
+        # 화면이 보상 받을 때 화면"): the held offer stays up the duct until
+        # they are on the lip (the being then looks at the whole) or the
+        # hand is empty (bring_out_held)
+        if in_hand <= 0:
+            _set_offers(_held)
+            _held = []
         _chain_step = _chain.size()
         return
     if not _met:
@@ -542,6 +547,8 @@ func add_tooth(prog: FPProgression) -> bool:
         if art != null:
             art.call("set_offer_items", [])
         _clear_offers()
+    # an offer held back for the teeth in the hand: it looks again at the total
+    _held = []
     pile += 1
     _pile_t = 0.0
     _pile_prog = prog
@@ -582,6 +589,7 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
             if prog.vent.is_unlocked(id, float(prog.deepest_shell)) and not prog._maxed(id):
                 all.append(id)
         _set_offers(all)
+        offer_after_pay = true
         return all
     if placed >= prog.vent_absurd_threshold():
         _say(_ev("터무니없이", "amount.absurd"))
@@ -603,6 +611,7 @@ func place_teeth(placed: int, prog: FPProgression) -> Array[String]:
             _say(_ev("많이", "amount.lots") if float(placed) >= float(top) * LOTS_MULT else _ev("적당히", "amount.fair"))
         _maybe_remark()
     _set_offers(ids)
+    offer_after_pay = true
     return ids
 
 ## The granted spill tumbles out of the duct onto the floor and is then
@@ -859,3 +868,50 @@ func offer_center() -> Vector3:
 ## Offers waiting for the next open (left unpicked).
 func held_offers() -> Array[String]:
     return _held
+
+## The offer held back while the player stood there with teeth in hand
+## (open), pushed out now the hand is empty. False when there is none.
+func bring_out_held() -> bool:
+    if not is_open or _held.is_empty() or not offers.is_empty() or pile > 0 or absent_left > 0.0:
+        return false
+    _set_offers(_held)
+    _held = []
+    return true
+
+# --- asking for teeth without a word ------------------------------------------
+
+## The open grate asks for teeth with what it shows, not with words (user
+## 2026-11-09 "이빨을 챙겨야 한다는 것에 대한 넛지가 부족함"; the being's
+## own word for them, 봉, does not say "teeth"):
+##   "beg"  one empty hand comes down and grasps at the air: teeth wait in
+##          the tank and the player's hand is empty;
+##   "lip"  the near lip glints where teeth go: the player holds teeth and
+##          none are on it yet;
+##   ""     otherwise (shut, gone, an offer out, teeth on the lip, nothing
+##          to bring).
+var nudge := ""
+## An offer pushed out for teeth just paid (place_teeth): main puts the head
+## in under it once the player's hand is empty, then clears this.
+var offer_after_pay := false
+
+static func nudge_for(open: bool, away: bool, offering: bool, on_lip: int, held_back: bool, in_tank: int, in_hand: int) -> String:
+    if not open or away or offering or on_lip > 0:
+        return ""
+    if in_hand > 0:
+        return "lip"
+    if in_tank > 0 and not held_back:
+        return "beg"
+    return ""
+
+## Main calls this every frame with the teeth in the tank and in the hand.
+func update_nudge(in_tank: int, in_hand: int) -> void:
+    var k := nudge_for(is_open, absent_left > 0.0, not offers.is_empty(), pile, not _held.is_empty(), in_tank, in_hand)
+    if k == nudge:
+        return
+    nudge = k
+    if art != null and art.has_method("set_nudge"):
+        art.call("set_nudge", k)
+
+## Whether the player has ever paid teeth (the first trade done).
+func paid_ever() -> bool:
+    return _paid_ever
