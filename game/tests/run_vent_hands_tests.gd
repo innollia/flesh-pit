@@ -4,7 +4,8 @@ extends SceneTree
 ## 1. the offer is held out close in front of the eye ("가까이서 보게"),
 ## 2. one hand per offered item, three or more, each an aim point of its own,
 ## 3. bright skin (brighter than the player's own),
-## 4. the wrist stays near the forearm line all the way down,
+## 4. the wrist stays near the forearm line all the way down (a soft
+##    extension at most), the elbow softly bent (user 2026-11-09),
 ## 5. no eyes in the duct, in any state.
 ## The trade itself (F takes the aimed item, the others go back up) holds.
 
@@ -71,6 +72,27 @@ func item_box(item: Node3D) -> AABB:
 		first = false
 	return box
 
+## How an offered item sits on its palm: [gap in metres between the item's
+## underside and the highest palm-skin vertex inside its footprint (minus:
+## pressed in), palm vertices in that footprint, item middle over the palm].
+func palm_contact(item: Node3D) -> Array:
+	var hand: Node3D = item.get_parent()
+	var palm: MeshInstance3D = hand.get_node("Hand")
+	var box := item_box(item)
+	var to_item := item.global_transform.affine_inverse() * palm.global_transform
+	var top := -INF
+	var n := 0
+	for v in palm.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
+		var q: Vector3 = to_item * v
+		if q.x > box.position.x and q.x < box.end.x and q.y > box.position.y and q.y < box.end.y:
+			top = maxf(top, q.z)
+			n += 1
+	var s: float = item.global_basis.z.length()
+	var mid: Vector3 = palm.global_transform.affine_inverse() * (item.global_transform * box.get_center())
+	var pb: AABB = palm.get_aabb()
+	var on := mid.x > pb.position.x and mid.x < pb.end.x and mid.y > pb.position.y and mid.y < pb.end.y
+	return [(box.position.z - top) * s if n > 0 else 1.0, n, on]
+
 ## A finger's length from its knuckle to the end of its tip (nail
 ## included), in the hand's own frame.
 func finger_len(hand: Node3D, i: int) -> float:
@@ -112,19 +134,19 @@ func run() -> void:
 			own = own and item.is_visible_in_tree() and hand.name == "Palm" and not seen.has(hand)
 			seen[hand] = true
 		check(own, "each of the %d items lies in a hand of its own" % ids.size())
-		# held, not floating: the fingertips hook the item (index and middle
-		# tips within a couple of centimetres of its outline; user 2026-11-08
-		# the item hangs from the fingertips so the long fingers show whole)
-		var grip := 0.0
+		# held, not floating (user 2026-11-09 "물건이 손에 잘 안 올라가있음"):
+		# each item lies on its open palm, its underside on the real palm skin
+		# under it (palm mesh vertices inside its footprint), its middle over
+		# the palm
+		var gap_worst := 0.0
+		var over := true
 		for i in range(ids.size()):
 			var item: Node3D = art.call("item_node", i)
-			var hand: Node3D = item.get_parent()
-			var box := item_box(item)
-			for f in ["Finger0/Mid/Tip", "Finger1/Mid/Tip"]:
-				var tip: Node3D = hand.get_node(f)
-				var tip_end: Vector3 = item.global_transform.affine_inverse() * (tip.global_transform * Vector3(0, -0.02, 0))
-				var nearest := tip_end.clamp(box.position, box.end)
-				grip = maxf(grip, (item.global_transform.basis * (tip_end - nearest)).length())
+			var g := palm_contact(item)
+			gap_worst = maxf(gap_worst, absf(g[0]))
+			over = over and g[1] >= 6 and g[2]
+		check(over, "every item lies over its own palm (%d items)" % ids.size())
+		check(gap_worst < 0.004, "every item rests on the palm skin (worst gap %.4f m)" % gap_worst)
 		# spread: seen from the eye no two items sit on top of each other
 		var eye0: Vector3 = m.player.camera.global_position
 		var closest := PI
@@ -135,7 +157,6 @@ func run() -> void:
 				closest = minf(closest, di.angle_to(dj))
 		if ids.size() > 1:
 			check(closest > deg_to_rad(9.0), "the %d held items read apart from the eye (closest %.1f°)" % [ids.size(), rad_to_deg(closest)])
-		check(grip < 0.02, "every hand's fingertips hook its item (farthest tip %.3f m from its outline)" % grip)
 		var cands: Array = FPInteractions.get_candidates(m)
 		var aimable := true
 		for n in m.vent.offer_nodes():
@@ -206,18 +227,35 @@ func run() -> void:
 			nails += 1
 	check(nails > 20, "the nails are lacquered in a rose colour (%d nail vertices)" % nails)
 	var eye1: Vector3 = m.player.camera.global_position
-	var backs := 0
+	var palms := 0
 	var open := 1.0
+	var bends: Array = []
+	var low_elbow := INF
 	for i in range(3):
 		var hand: Node3D = (art.call("item_node", i) as Node3D).get_parent()
-		if hand.global_basis.z.dot(eye1 - hand.global_position) < 0.0:
-			backs += 1
+		var pn: Vector3 = hand.global_basis.z.normalized()
+		if pn.y > 0.25 and pn.dot((eye1 - hand.global_position).normalized()) > 0.25:
+			palms += 1
 		var root: Vector3 = (hand.get_node("Finger1") as Node3D).global_position
 		var tip: Node3D = hand.get_node("Finger1/Mid/Tip")
 		var end: Vector3 = tip.global_transform * Vector3(0, -(tip.get_node("Bone") as MeshInstance3D).get_aabb().size.y * 0.8, 0)
 		open = minf(open, root.distance_to(end) / (finger_len(hand, 1) * hand.global_basis.y.length()))
-	check(backs == 3, "every hand shows its back and long fingers to the eye (%d of 3)" % backs)
-	check(open > 0.75, "the fingers hang long, not closed into a fist (knuckle to tip %.2f of the finger)" % open)
+		# the elbow: the upper arm down out of the opening, the forearm on to the wrist
+		var rig_root: Node3D = hand.get_parent()
+		var up_dir: Vector3 = (rig_root.get_node("UpperArm") as Node3D).global_basis.y.normalized()
+		var fore_dir: Vector3 = -(rig_root.get_node("Forearm") as Node3D).global_basis.y.normalized()
+		bends.append(rad_to_deg((-up_dir).angle_to(fore_dir)))
+		# the bend shows: the elbow well out of the opening, not hidden at its lip
+		var el_pos: Vector3 = (rig_root.get_node("Elbow") as Node3D).global_position
+		low_elbow = minf(low_elbow, FPRestroom.VENT_CENTER.y - el_pos.y)
+	check(palms == 3, "every hand turns its open palm up to the eye to offer (%d of 3)" % palms)
+	check(open > 0.75, "the fingers stay long and open, not closed into a fist (knuckle to tip %.2f of the finger)" % open)
+	var bent := true
+	for bd in bends:
+		bent = bent and bd > 18.0 and bd < 75.0
+	check(bent, "every arm bends softly at the elbow, none a straight pole (%s°)" % str(bends))
+	check(low_elbow > 0.15, "every elbow shows below the opening (highest %.2f m under it)" % low_elbow)
+	check(bends.max() - bends.min() > 4.0, "each arm bends its own way (%s°)" % str(bends))
 	# --- 4. the wrist on the way down: never bent past the limit, straight in the duct
 	offer([])
 	await wait(0.8)
