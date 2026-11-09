@@ -1,8 +1,8 @@
 // flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
-// id: chew_loop_a -- chewing in the mouth, right under the ears: bite, squelch, jaw knock. 4 chews per 1.6 s loop.
+// id: chew_loop_a -- chewing in the mouth, right under the ears: bite, squelch. No sine jaw knock
+// (round9-hand-tear: an 85 Hz knock with a 3 ms attack at every grab read as a clack and a bang). 4 chews per 1.6 s loop.
 trig = trigger(2.5)
-bite = ar(trig, 0.005, 0.09)
+bite = ar(trig, 0.02, 0.09)
 squelch = noise(0, 0, 101) * bite * 0.6 |> bp(@, 750, 3.2)
 wetc = noise(0, 0, 211) * gt(noise(120, 0, 307), 0.35) * ar(trig, 0.02, 0.22) * 0.6 |> lp(@, 2200, 0.8)
-jaw = sine(85) * ar(trig, 0.003, 0.05) * 0.5
-out((squelch + wetc + jaw) * 0.06)
+out((squelch + wetc) * 0.06)

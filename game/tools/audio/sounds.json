@@ -196,7 +196,28 @@
    "spatial": true,
    "bed": [
     "body_a"
-   ]
+   ],
+   "ps1": "off",
+   "real_layer": {
+    "sample": "mud/fs0495.wav",
+    "offsets_s": [
+     1.0,
+     1.75,
+     2.5,
+     4.5,
+     6.25,
+     6.5,
+     7.0,
+     7.75
+    ],
+    "dur_s": 0.28,
+    "delay_s": 0.26,
+    "gain_db": 2.0,
+    "pitch": 0.9,
+    "follow_pitch": true,
+    "hp": 180,
+    "lp": 1800
+   }
   },
   {
    "id": "gag_dry",
@@ -224,9 +245,10 @@
     "dur_s": 0.65,
     "gain_db": 14.0,
     "pitch": 0.95,
-    "hp": 50,
+    "hp": 350,
     "lp": 4500
-   }
+   },
+   "ps1": "off"
   },
   {
    "id": "stomach_gurgle",
@@ -675,16 +697,17 @@
     "body_a",
     "body_b"
    ],
-   "rotate_seconds": 0.2,
+   "rotate_seconds": 1.05,
    "real_layer": {
     "sample": "chew2/fs0407.wav",
     "offset_s": 5.0,
     "dur_s": 1.6,
     "gain_db": 20.0,
     "pitch": 1.05,
-    "hp": 100,
-    "lp": 5500
-   }
+    "hp": 140,
+    "lp": 1600
+   },
+   "ps1": "off"
   },
   {
    "id": "chew_loop_b",
@@ -696,16 +719,17 @@
     "body_a",
     "body_b"
    ],
-   "rotate_seconds": 0.2,
+   "rotate_seconds": 1.05,
    "real_layer": {
     "sample": "chew2/fs0407.wav",
     "offset_s": 9.5,
     "dur_s": 1.6,
     "gain_db": 20.0,
     "pitch": 0.85,
-    "hp": 90,
-    "lp": 5000
-   }
+    "hp": 140,
+    "lp": 1500
+   },
+   "ps1": "off"
   },
   {
    "id": "chew_strain",
