@@ -1049,6 +1049,10 @@ func set_pile(n: int) -> void:
 func pile_count() -> int:
     return _pile.multimesh.visible_instance_count if _pile != null else 0
 
+## How far the offer is held out now (0 up in the duct, 1 held out).
+func offer_extend() -> float:
+    return _extend if _wanted else 0.0
+
 ## 0 = the arms are up in the black duct, 1 = held out in front of the player.
 func set_offer_extend(t: float) -> void:
     _extend = clampf(t, 0.0, 1.0)

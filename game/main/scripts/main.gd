@@ -916,6 +916,8 @@ func _build_settle_camera() -> void:
 const OPENING_SEAT_PITCH := -0.28
 var opening_view: FPOpening
 var subtitles: FPSubtitles
+## Name and count tags over the items the vent holds out.
+var offer_labels: FPOfferLabels
 var hand_blood_mat: ShaderMaterial
 
 func _setup_restroom_front() -> void:
@@ -926,6 +928,10 @@ func _setup_restroom_front() -> void:
 	subtitles.name = "Subtitles"
 	add_child(subtitles)
 	vent.line_spoken.connect(func(id: String): subtitles.show_line(id))
+	offer_labels = FPOfferLabels.new()
+	offer_labels.name = "OfferLabels"
+	offer_labels.vent = vent
+	add_child(offer_labels)
 	hand_blood_mat = FPHandBlood.make_material()
 	FPHandBlood.attach(hands_rig, hand_blood_mat)
 
