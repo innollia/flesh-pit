@@ -165,3 +165,39 @@ func capture_setup() -> Dictionary:
     set_lid_open(1.0)
     set_amount(0.75)
     return {"cam_pos": Vector3(0.32, 0.78, 0.7), "look_at": Vector3(0, 0.18, 0), "env": "restroom", "fov": 50.0, "fill_energy": 0.25}
+
+## Teeth shut in the tank knock its lid (FPVent nudge, user 2026-11-09
+## "이빨을 챙겨야 한다는 것에 대한 넛지가 부족함"): the lid hops a few mm
+## and rocks back into its seat. Only while the lid sits on the tank; a
+## carried or dropped lid is left alone.
+const JOSTLE_TIME := 0.5
+const JOSTLE_LIFT := 0.014
+const JOSTLE_ROCK := 4.5
+var _jostle_t := -1.0
+var _lid_seat := Transform3D.IDENTITY
+
+func jostle() -> void:
+    if _lid.get_parent() != self:
+        return
+    if _jostle_t < 0.0:
+        _lid_seat = _lid.transform
+    _jostle_t = 0.0
+
+func jostling() -> bool:
+    return _jostle_t >= 0.0
+
+func _process(delta: float) -> void:
+    if _jostle_t < 0.0:
+        return
+    _jostle_t += delta
+    if _lid.get_parent() != self:
+        _jostle_t = -1.0 # picked up mid-knock: the hand owns it
+        return
+    if _jostle_t >= JOSTLE_TIME:
+        _jostle_t = -1.0
+        _lid.transform = _lid_seat
+        return
+    var u := _jostle_t / JOSTLE_TIME
+    # three quick knocks dying away
+    var k := absf(sin(u * PI * 3.0)) * (1.0 - u)
+    _lid.transform = _lid_seat * Transform3D(Basis(Vector3.BACK, deg_to_rad(JOSTLE_ROCK) * k * signf(sin(u * PI * 1.5) - 0.3)), Vector3(0, JOSTLE_LIFT * k, 0))

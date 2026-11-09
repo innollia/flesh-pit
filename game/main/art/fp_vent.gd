@@ -81,6 +81,7 @@ func _ready() -> void:
     # (docs/spec/03-restroom.md §7), one hand per item. The player picks
     # one up by hand, the others go back up.
     _build_pile()
+    _build_glint()
     _arms = K.pivot(self, "BeingArm")
     _arms.visible = false
     set_offer_items(["spray_cheap", "barrier", "junk"])
@@ -582,6 +583,8 @@ func hand_count() -> int:
 ## many there are. An empty list sends the arms back up.
 func set_offer_items(kinds: Array) -> void:
     _wanted = not kinds.is_empty()
+    if _wanted:
+        _beg = false
     if kinds.is_empty():
         if _extend > 0.0 and is_inside_tree():
             _hand_to(0.0, 0.3, Tween.EASE_IN)
@@ -696,13 +699,17 @@ func _pose_fingers() -> void:
             # a slow breath through the fingers, quicker when the being is impatient
             var fidget := sin(_time * lerpf(1.6, 5.0, _mood) + i * 0.9 + ri * 1.7) * lerpf(0.02, 0.05, _mood)
             var cv := lerpf(lerpf(CURL_REST, LOOK_CURL, _look_w), CURL_GRIP, _curl) + fidget
+            if _beg:
+                # nothing in it: the fingers open wide and close on the air, over and over
+                cv = lerpf(BEG_OPEN, BEG_CLOSE, _beg_grasp(i))
             # the fingers rise softly round the item in the palm (toward +Z)
             (f[0] as Node3D).basis = Basis(Vector3.BACK, deg_to_rad(float(FINGERS[i][4]) * c)) * Basis(Vector3.RIGHT, -cv * k * float(JOINT_SHARE[0]))
             for j in range(1, 3):
                 (f[j] as Node3D).rotation.x = -cv * k * float(JOINT_SHARE[j])
         var th: Array = rig["thumb"]
-        (th[0] as Node3D).basis = _thumb_basis(c) * Basis(Vector3.RIGHT, -0.5 * _curl)
-        (th[1] as Node3D).rotation_degrees = Vector3(-14.0 - 30.0 * _curl, 0, 0)
+        var tc := _beg_grasp(0) if _beg else _curl
+        (th[0] as Node3D).basis = _thumb_basis(c) * Basis(Vector3.RIGHT, -0.5 * tc)
+        (th[1] as Node3D).rotation_degrees = Vector3(-14.0 - 30.0 * tc, 0, 0)
 
 func _hand_to(target: float, secs: float, ease_type: Tween.EaseType) -> void:
     if _hand_tw != null:
@@ -712,6 +719,8 @@ func _hand_to(target: float, secs: float, ease_type: Tween.EaseType) -> void:
 
 func _process(delta: float) -> void:
     _time += delta
+    _step_glint()
+    _step_jostle(delta)
     if not _spill.is_empty():
         step_spill(delta)
     if _arms != null and _arms.visible:
@@ -1172,3 +1181,125 @@ func capture_setup() -> Dictionary:
         K.quad(st, t, Vector3(-1.2, 0, -1.2), Vector3(1.2, 0, -1.2), Vector3(SIZE + 0.06, 0, -SIZE - 0.06), Vector3(-SIZE - 0.06, 0, -SIZE - 0.06), Vector3.DOWN, Color(0.9, 0.9, 0.9))
     K.add_mesh(self, "CaptureCeiling", K.finish(st, 2.0), K.mat("tex_tile_wall_64.png", 0.1, false))
     return {"cam_pos": Vector3(0.42, -0.95, 0.68), "look_at": Vector3(0, 0.05, 0), "env": "restroom", "fov": 60.0}
+
+# --- asking for teeth without a word (FPVent.nudge_for) --------------------------
+
+## "beg": one empty hand comes down out of the dark, short of the eye, and
+## grasps at the air; "lip": the near lip, where teeth go, glints; "" neither.
+const BEG_EXTEND := 0.72
+const BEG_OPEN := 0.05
+const BEG_CLOSE := 1.25
+## Grasps per second, and how far each finger lags the one before.
+const BEG_RATE := 0.75
+const BEG_LAG := 0.07
+var _beg := false
+var _nudge := ""
+var _glint: MeshInstance3D
+var _glint_mat: StandardMaterial3D
+
+func set_nudge(kind: String) -> void:
+    _nudge = kind
+    _glint.layers = _black_cover.layers
+    _glint.visible = kind == "lip"
+    var beg := kind == "beg"
+    if beg == _beg:
+        return
+    if beg:
+        if _wanted:
+            return # an offer is out: its hands stay
+        _beg = true
+        while _rigs.is_empty():
+            _rigs.append(_new_rig(0))
+        _offers.clear()
+        _count = 1
+        for i in range(_rigs.size()):
+            var rig: Dictionary = _rigs[i]
+            (rig["root"] as Node3D).visible = i == 0
+            var slot: Node3D = rig["slot"]
+            for ch in slot.get_children():
+                slot.remove_child(ch)
+                ch.queue_free()
+            slot.visible = false
+            rig["item_top"] = 0.0
+        var lit := _black_cover.layers
+        for n in _arms.find_children("*", "VisualInstance3D", true, false):
+            (n as VisualInstance3D).layers = lit
+        _snap = true
+        _hand_to(BEG_EXTEND, 1.1, Tween.EASE_IN_OUT)
+    else:
+        _beg = false
+        if not _wanted:
+            _hand_to(0.0, 0.35, Tween.EASE_IN)
+
+func nudge_kind() -> String:
+    return _nudge
+
+func begging() -> bool:
+    return _beg and hand_count() > 0
+
+## 0 open .. 1 closed, finger `i` a little behind the one before it.
+func _beg_grasp(i: int) -> float:
+    var s := sin((_time * BEG_RATE - float(i) * BEG_LAG) * TAU)
+    return smoothstep(-0.6, 0.9, s)
+
+func _build_glint() -> void:
+    _glint = MeshInstance3D.new()
+    _glint.name = "LipGlint"
+    var sm := SphereMesh.new()
+    sm.radius = 0.034
+    sm.height = 0.045
+    sm.radial_segments = 10
+    sm.rings = 5
+    _glint.mesh = sm
+    _glint_mat = StandardMaterial3D.new()
+    # a lit spark of enamel: it shines against the black of the duct
+    _glint_mat.albedo_color = Color(0.95, 0.88, 0.66)
+    _glint_mat.emission_enabled = true
+    _glint_mat.emission = Color(1.0, 0.86, 0.55)
+    _glint_mat.emission_energy_multiplier = 0.0
+    _glint.material_override = _glint_mat
+    _glint.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    # the spot on the near lip where the first teeth land (_build_pile)
+    _glint.position = Vector3(0, -0.012, SIZE - 0.05)
+    _glint.visible = false
+    add_child(_glint)
+    _glint.layers = _black_cover.layers
+
+## A slow pulse, brighter and bigger together, like light catching enamel.
+func _step_glint() -> void:
+    if _glint == null or not _glint.visible:
+        return
+    var p := 0.5 + 0.5 * sin(_time * TAU * 0.8)
+    p = p * p
+    _glint_mat.emission_energy_multiplier = lerpf(0.3, 4.0, p)
+    _glint.scale = Vector3.ONE * lerpf(0.8, 1.6, p)
+
+func glint_shown() -> bool:
+    return _glint != null and _glint.visible
+
+## The shut grate knocks in its frame (teeth in the hand, the grate shut):
+## a short tilt on the hinge and back.
+const JOSTLE_TIME := 0.42
+const JOSTLE_DEG := 5.5
+var _jostle_t := -1.0
+
+func jostle() -> void:
+    _jostle_t = 0.0
+
+func jostling() -> bool:
+    return _jostle_t >= 0.0
+
+func _step_jostle(delta: float) -> void:
+    if _jostle_t < 0.0:
+        return
+    _jostle_t += delta
+    if not _black_cover.visible:
+        _jostle_t = -1.0 # it was opened: the hinge is the player's now
+        return
+    if _jostle_t >= JOSTLE_TIME:
+        _jostle_t = -1.0
+        _grate.rotation_degrees.z = 0.0
+        return
+    var u := _jostle_t / JOSTLE_TIME
+    # two knocks, the second smaller
+    _grate.rotation_degrees.z = -JOSTLE_DEG * absf(sin(u * TAU)) * (1.0 - u * 0.6)
