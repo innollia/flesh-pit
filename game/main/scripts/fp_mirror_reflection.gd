@@ -138,7 +138,10 @@ func sync(body_ok: bool = true, has_canary: bool = false) -> void:
 	body.visible = body_ok
 	var xf := art.global_transform.orthonormalized()
 	var g := xf * Vector3(0, GLASS_CY, GLASS_Z)
-	var visible_in_eye := body_ok and eye.is_position_in_frustum(g) and xf.basis.z.dot(eye.global_position - g) >= 0.03
+	# Any part of the glass on screen keeps the reflection live: testing only
+	# the glass centre blanked the whole mirror to its grey glass as soon as
+	# the centre left the view (2026-11-09 user: "거울 보이는 시야각, 범위").
+	var visible_in_eye := body_ok and glass_on_screen(art, eye) and xf.basis.z.dot(eye.global_position - g) >= 0.03
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if visible_in_eye else SubViewport.UPDATE_DISABLED
 	_quad.visible = visible_in_eye
 	# Both leaves show the same body. Updating equipment cannot depend on
@@ -147,7 +150,7 @@ func sync(body_ok: bool = true, has_canary: bool = false) -> void:
 	if _owns_body and body_ok:
 		var other = player.get_parent().get("mirror_view_right")
 		if other != null and other.art != null:
-			details_visible = details_visible or eye.is_position_in_frustum(other.art.to_global(Vector3(0, GLASS_CY, GLASS_Z)))
+			details_visible = details_visible or glass_on_screen(other.art, eye)
 	if _owns_body and details_visible:
 		if _signature() != _sig:
 			refresh()
@@ -168,6 +171,31 @@ func sync(body_ok: bool = true, has_canary: bool = false) -> void:
 	var rel := g - e2
 	cam.near = d
 	cam.frustum_offset = Vector2(rel.dot(xc), rel.dot(up))
+
+## The four glass corners of a leaf in world space.
+static func glass_corners(leaf: Node3D) -> Array[Vector3]:
+	var xf := leaf.global_transform.orthonormalized()
+	var out: Array[Vector3] = []
+	for c in [Vector2(-GLASS_W, -GLASS_HH), Vector2(GLASS_W, -GLASS_HH), Vector2(GLASS_W, GLASS_HH), Vector2(-GLASS_W, GLASS_HH)]:
+		out.append(xf * Vector3(c.x, GLASS_CY + c.y, GLASS_Z))
+	return out
+
+## Whether any part of the leaf's glass can be on the camera's screen: the
+## glass is off screen only when all four corners lie outside one frustum
+## plane (conservative, never culls a visible piece of glass).
+static func glass_on_screen(leaf: Node3D, camera: Camera3D) -> bool:
+	if leaf == null or camera == null:
+		return false
+	var corners := glass_corners(leaf)
+	for plane in camera.get_frustum():
+		var outside := true
+		for c in corners:
+			if not plane.is_point_over(c):
+				outside = false
+				break
+		if outside:
+			return false
+	return true
 
 func _signature() -> String:
 	if prog == null:

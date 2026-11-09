@@ -520,6 +520,16 @@ func refresh_equipment() -> void:
 	if tools.equipped != "" and not owns(tools.equipped):
 		tools.equipped = ""
 
+## After a load: a hand never holds what it could not have taken (the
+## compass and blender only in the left), and the active tool is one a hand
+## holds. The compass otherwise hangs on the waist (decision 0009).
+func _sanitize_hands() -> void:
+	if hands.right in LEFT_ONLY:
+		hands.set_item("", FDKToolKit.Hand.RIGHT)
+	refresh_equipment()
+	if tools.equipped != "" and not hands.holds(tools.equipped):
+		tools.equipped = hands.left if hands.left != "" else hands.right
+
 func equipped() -> String:
 	return tools.equipped
 
@@ -841,7 +851,9 @@ func deserialize(d: Dictionary) -> void:
 		hands.deserialize(d["hands"])
 	else:
 		hands.clear()
-		hands.set_item(tools.equipped, tools.hand_of(tools.equipped), tools.is_two_handed(tools.equipped))
+		# legacy saves held only the three tools; the compass stays on the waist
+		if tools.equipped in ["knife", "blender", "big_saw"]:
+			hands.set_item(tools.equipped, tools.hand_of(tools.equipped), tools.is_two_handed(tools.equipped))
 	if d.has("mutations"):
 		mutation_tree.deserialize(d["mutations"])
 	if d.has("tumors"):
@@ -867,6 +879,6 @@ func deserialize(d: Dictionary) -> void:
 		for k in ph.keys():
 			pending_hairs[k] = int(ph[k])
 
-	refresh_equipment()
+	_sanitize_hands()
 	# older saves: anyone who already owns a tool has traded, so has the belt
 	has_belt = bool(d.get("has_belt", owns("knife") or owns("blender") or owns("big_saw")))
