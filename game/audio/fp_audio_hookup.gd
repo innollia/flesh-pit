@@ -58,8 +58,10 @@ const EVENT_SOUNDS := {
 	"echo_click": "echo_click",
 	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
 	"squeeze": "chew_strain", "grab_refuse": "grab_refuse", "gag": "gag_dry",
-	# one clink of the settlement rattle (repeated for the rattle's length)
-	"tank_rattle": "coin_drop",
+	# one clatter of the settlement rattle (repeated for the rattle's length).
+	# Its own unpitched teeth knock (round8-sfx): coin_drop's 2-5 kHz sine
+	# tinks every quarter second over the flush read as a canary screaming.
+	"tank_rattle": "teeth_rattle",
 	# M23: the stiff arm hairs shiver before a squeeze
 	"hair_shiver": "hair_rustle",
 	# M15: the whole pile goes down in one gulp (not the stomach swallow)

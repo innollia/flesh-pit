@@ -4,10 +4,16 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: nerve_twitch -- touching a nerve: the surrounding flesh clenches and quivers, a squeak of pressure.
-env = (clamp((t - 0.01) / 0.03, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / 0.22))
+// id: nerve_twitch -- touching a nerve: the surrounding flesh clenches and
+// quivers, wet fibres tightening.
+// 2026-11-09 (round8-sfx): was a triangle squeak rising 600 -> 960 Hz and a
+// 65 Hz sine (pitch clarity 0.69, CLAP "arcade" 0.99). Now the quiver is a
+// broad band of noise fluttering at 17 Hz and the clench low-passed noise.
+env = clamp((t - 0.01) / 0.04, 0, 1) * exp(neg(clamp(t - 0.01, 0, 100)) / 0.22)
 trem = (sine(17 * PITCH) + 1) * 0.5
-quiver = noise(0, 0, SEED) * env * trem * 1.0 |> bp(@, 1100 * PITCH, 4.0)
-squeak = tri(600 * PITCH + clamp(t, 0, 0.3) * 1200) * env * 0.12 |> bp(@, 1500, 3.0)
-clench = sine(65 * PITCH) * env * 0.35
-out(quiver + squeak + clench)
+quiver = noise(0, 0, SEED) * env * trem * 0.9 |> bp(@, 1000 * PITCH, 1.4)
+tight = noise(0, 0, SEED2 + 1) * gt(noise(320, 0, SEED2), 0.78) * env * trem * 0.5 |> bp(@, 1900 * PITCH, 1.0)
+clench = noise(0, 0, SEED2 + 2) * env * 0.5 |> lp(@, 220 * PITCH, 0.7)
+// A CC0 recording of wet mouth noises (sounds.json real_layer, a different
+// stretch per variation) carries the wet; this gives the flutter.
+out((quiver + tight + clench) * 0.5 |> hp(@, 55, 0.7))

@@ -222,6 +222,16 @@
    ],
    "spatial": true
   },
+  "teeth_rattle": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/teeth_rattle_v1.wav",
+    "res://audio/sfx/teeth_rattle_v2.wav",
+    "res://audio/sfx/teeth_rattle_v3.wav",
+    "res://audio/sfx/teeth_rattle_v4.wav"
+   ],
+   "spatial": true
+  },
   "tank_lid": {
    "kind": "sfx",
    "files": [

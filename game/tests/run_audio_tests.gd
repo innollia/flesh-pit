@@ -14,6 +14,15 @@ func _init() -> void:
 
 func _initialize() -> void:
 	print("=== flesh-pit audio tests ===")
+	# FP_SFX_DIR=<folder of old wavs>: only the round8 file checks, on that
+	# folder (shows they fail on the old build), then quit.
+	var sfx_dir := OS.get_environment("FP_SFX_DIR")
+	if sfx_dir != "":
+		_test_round8_sfx(sfx_dir)
+		print("--- %d passed, %d failed ---" % [_passed, _failed])
+		quit(1 if _failed > 0 else 0)
+		return
+	_test_round8_sfx("res://audio/sfx")
 	_test_manifest_files()
 	_test_no_repeat()
 	_test_bed_transition()
@@ -34,6 +43,8 @@ var _hook: Node
 var _frames := 0
 
 func _process(_delta: float) -> bool:
+	if _main == null:
+		return true
 	_frames += 1
 	if _frames < 90:
 		return false
@@ -90,7 +101,7 @@ func _process(_delta: float) -> bool:
 		_main.terrain.contraction_warning.emit(Vector3(0, 1, 4))
 		_ok(d.last_played == "regen_creak", "a wall about to squeeze creaks first (%s)" % d.last_played)
 		_main.toilet.tank_rattle_started.emit(0.5, false)
-		_ok(d.last_played == "coin_drop", "teeth rattle down into the tank (%s)" % d.last_played)
+		_ok(d.last_played == "teeth_rattle", "teeth rattle down into the tank with their own knock, not the coin's tink (%s)" % d.last_played)
 		_main.toilet.tank_rattle_finished.emit()
 		# wire-sound 2026-11-03: signals that had no listener now sound
 		var ma = _main.mutation_apply
@@ -527,6 +538,217 @@ func _test_step_files() -> void:
 				spread_ok = false
 	_ok(worst < 0.4, "no footstep rings at one pitch (worst %s %.2f < 0.40)" % [worst_id, worst])
 	_ok(spread_ok, "each footstep's four variations are within 4 dB")
+
+## round8-sfx (2026-11-09), what the owner heard: the restroom door opening
+## "이상함" (a 1.8 kHz sine tick and a saw creak through a Q 6 band, a squeaky
+## toy), tearing flesh with the knife "철컥 탕 ... 총쏘는거" (a dry metal
+## scissors recording over a 58 Hz sine thump), the lever flush "카나리아
+## 비명" (the tank rattle's 2.1/3.4/5.2 kHz sine tinks every quarter second
+## over a flush whose last second was hiss above 2.5 kHz), and from round7
+## tear_fat / nerve_twitch ringing at one pitch. Checked on the files, all
+## four variations, the old build fails each (FP_SFX_DIR=<old folder>):
+##   tone      strongest line in the loud frames' mean spectrum over its
+##             third-octave neighbours, dB (old door 19, coin tink 30)
+##   hi_share  most of any 85 ms window above 2.5 kHz, dB (old flush -1)
+##   boom      peak 10 ms level under 150 Hz over the whole peak, dB (old
+##             tear_flesh -7, tear_fat -3, nerve_twitch -2)
+##   clarity   _pitch_clarity (old tear_fat 0.58, nerve_twitch 0.69)
+##   same take v1 vs v2 correlation (old knife: one recording in all four)
+## tools/measure_sfx_char.py gives the same numbers in Python.
+func _test_round8_sfx(dir: String) -> void:
+	var rattle: String = (load("res://audio/fp_audio_hookup.gd") as GDScript).get_script_constant_map()["EVENT_SOUNDS"]["tank_rattle"]
+	var worst := {}
+	var fails := {}
+	for id in ["door_open", rattle, "toilet_flush", "tear_flesh", "tear_fat", "nerve_twitch", "scissors_snip"]:
+		var takes: Array[PackedFloat32Array] = []
+		for v in range(1, 5):
+			var x := _wav_left("%s/%s_v%d.wav" % [dir, id, v])
+			if x.size() < 4800:
+				_ok(false, "%s_v%d is there in %s" % [id, v, dir])
+				continue
+			takes.append(x)
+			var m := _char(x)
+			for k in m.keys():
+				var key := "%s.%s" % [id, k]
+				worst[key] = maxf(float(worst.get(key, -999.0)), float(m[k]))
+		if takes.size() >= 2:
+			worst["%s.same" % id] = _similarity(takes[0], takes[1])
+	var lim := [
+		["door_open.tone", 14.0, "the door opening rings at no one pitch (no sine tick, no narrow creak)"],
+		[rattle + ".tone", 15.0, "the tank rattle (%s) has no pitched tink" % rattle],
+		[rattle + ".hi_share", -6.0, "the tank rattle (%s) has no band on top above 2.5 kHz" % rattle],
+		["toilet_flush.hi_share", -4.0, "the flush has no hiss or whistle on top above 2.5 kHz"],
+		["tear_flesh.boom", -8.0, "tearing flesh has no low boom"],
+		["tear_fat.boom", -8.0, "tearing fat has no low boom"],
+		["nerve_twitch.boom", -8.0, "the nerve twitch has no low boom"],
+		["tear_fat.clarity", 0.45, "tearing fat rings at no one pitch"],
+		["nerve_twitch.clarity", 0.45, "the nerve twitch rings at no one pitch"],
+		["scissors_snip.same", 0.95, "the knife's cut is not one recording in every variation"],
+	]
+	for l in lim:
+		var got := float(worst.get(l[0], 999.0))
+		print("  round8 %s worst %.2f (limit %.2f)" % [l[0], got, float(l[1])])
+		_ok(got < float(l[1]), "round8 %s (%s worst %.2f < %.2f)" % [l[2], l[0], got, float(l[1])])
+
+## tone / hi_share / boom / clarity of one take (see _test_round8_sfx).
+func _char(x: PackedFloat32Array) -> Dictionary:
+	var n := 4096
+	var frames: Array[PackedFloat64Array] = []
+	var energy: Array[float] = []
+	var hi: Array[float] = []
+	var at := 0
+	while at + n <= x.size():
+		var p := _fft_power(x, at, n)
+		var tot := 0.0
+		var top := 0.0
+		for b in range(p.size()):
+			tot += p[b]
+			if b * 48000.0 / n >= 2500.0:
+				top += p[b]
+		frames.append(p)
+		energy.append(tot)
+		hi.append(top / maxf(tot, 1e-20))
+		at += n
+	if frames.is_empty():
+		frames.append(_fft_power(x, 0, n))
+		energy.append(1.0)
+		hi.append(0.0)
+	var emax: float = energy.max()
+	var mean := PackedFloat64Array()
+	mean.resize(n / 2 + 1)
+	var used := 0
+	var share := 0.0
+	for i in range(frames.size()):
+		if energy[i] < emax * 0.01:
+			continue
+		used += 1
+		share = maxf(share, hi[i])
+		for b in range(mean.size()):
+			mean[b] += frames[i][b]
+	var db := PackedFloat64Array()
+	db.resize(mean.size())
+	for b in range(mean.size()):
+		db[b] = 10.0 * log(mean[b] / maxf(used, 1) + 1e-20) / log(10.0)
+	var tone := -99.0
+	var hz := 48000.0 / n
+	for b in range(int(150.0 / hz), int(8000.0 / hz) + 1):
+		var f := b * hz
+		var nb: Array[float] = []
+		for k in range(int(f / 1.26 / hz), mini(int(f * 1.26 / hz) + 1, db.size())):
+			nb.append(db[k])
+		nb.sort()
+		tone = maxf(tone, db[b] - nb[nb.size() / 2])
+	# sub-150 Hz punch: two-pole low-pass twice, 10 ms RMS peaks
+	var lo := _lowpass(_lowpass(x, 150.0), 150.0)
+	var lmax := 0.0
+	var amax := 0.0
+	at = 0
+	while at + 480 <= x.size():
+		lmax = maxf(lmax, _power(lo, at, at + 480))
+		amax = maxf(amax, _power(x, at, at + 480))
+		at += 480
+	return {"tone": tone, "hi_share": _db(share), "boom": _db(lmax) - _db(amax), "clarity": _pitch_clarity(x)}
+
+## Highest normalised cross-correlation of two takes' 10 ms envelopes
+## (1 = the same recording).
+func _similarity(a: PackedFloat32Array, b: PackedFloat32Array) -> float:
+	var ea := _levels(a, 480)
+	var eb := _levels(b, 480)
+	var m := mini(ea.size(), eb.size())
+	var best := -1.0
+	for lag in range(-5, 6):
+		var sa := 0.0
+		var sb := 0.0
+		var sab := 0.0
+		var cnt := 0
+		var ma := 0.0
+		var mb := 0.0
+		for i in range(m):
+			var j := i + lag
+			if j < 0 or j >= m:
+				continue
+			ma += ea[i]
+			mb += eb[j]
+			cnt += 1
+		ma /= maxf(cnt, 1)
+		mb /= maxf(cnt, 1)
+		for i in range(m):
+			var j := i + lag
+			if j < 0 or j >= m:
+				continue
+			sab += (ea[i] - ma) * (eb[j] - mb)
+			sa += (ea[i] - ma) * (ea[i] - ma)
+			sb += (eb[j] - mb) * (eb[j] - mb)
+		best = maxf(best, sab / sqrt(maxf(sa * sb, 1e-20)))
+	return best
+
+## Hann-windowed power spectrum of x[at, at + n), n a power of two.
+func _fft_power(x: PackedFloat32Array, at: int, n: int) -> PackedFloat64Array:
+	var re := PackedFloat64Array()
+	var im := PackedFloat64Array()
+	re.resize(n)
+	im.resize(n)
+	for i in range(n):
+		var v := x[at + i] if at + i < x.size() else 0.0
+		re[i] = v * (0.5 - 0.5 * cos(TAU * i / n))
+	var j := 0
+	for i in range(1, n):
+		var bit := n >> 1
+		while j & bit:
+			j ^= bit
+			bit >>= 1
+		j |= bit
+		if i < j:
+			var t := re[i]
+			re[i] = re[j]
+			re[j] = t
+	var size := 2
+	while size <= n:
+		var half := size >> 1
+		var step := -TAU / size
+		for start in range(0, n, size):
+			for k in range(half):
+				var wr := cos(step * k)
+				var wi := sin(step * k)
+				var a := start + k
+				var b := a + half
+				var tr := re[b] * wr - im[b] * wi
+				var ti := re[b] * wi + im[b] * wr
+				re[b] = re[a] - tr
+				im[b] = im[a] - ti
+				re[a] += tr
+				im[a] += ti
+		size <<= 1
+	var p := PackedFloat64Array()
+	p.resize(n / 2 + 1)
+	for i in range(p.size()):
+		p[i] = re[i] * re[i] + im[i] * im[i]
+	return p
+
+## Butterworth low-pass, two poles.
+func _lowpass(x: PackedFloat32Array, hz: float) -> PackedFloat32Array:
+	var w := TAU * hz / 48000.0
+	var a := sin(w) / sqrt(2.0)
+	var c := cos(w)
+	var a0 := 1.0 + a
+	var b0 := (1.0 - c) * 0.5 / a0
+	var b1 := (1.0 - c) / a0
+	var a1 := -2.0 * c / a0
+	var a2 := (1.0 - a) / a0
+	var y := PackedFloat32Array()
+	y.resize(x.size())
+	var x1 := 0.0
+	var x2 := 0.0
+	var y1 := 0.0
+	var y2 := 0.0
+	for i in range(x.size()):
+		var v := b0 * x[i] + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2
+		x2 = x1
+		x1 = x[i]
+		y2 = y1
+		y1 = v
+		y[i] = v
+	return y
 
 func _pitch_clarity(x: PackedFloat32Array) -> float:
 	var peak := 0

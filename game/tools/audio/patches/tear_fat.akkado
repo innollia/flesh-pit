@@ -4,11 +4,19 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: tear_fat -- greasy, soft, smearing. Less crackle than muscle, a slippery squelch that wobbles.
-env = (clamp((t - 0.04) / 0.04, 0, 1) * exp(neg(clamp(t - 0.04, 0, 100)) / 0.24))
-wob = sine(9 * PITCH) * 160
-cf = (540 + wob - clamp(t, 0, 1) * 260) * PITCH
-smear = noise(0, 0, SEED) * env * 0.55 |> bp(@, cf, 7.0)
-crk = noise(0, 0, SEED2) * gt(noise(60, 0, SEED2), 0.6) * env * 0.22 |> lp(@, 900, 0.8)
-slip = sine(95 * PITCH - t * 30) * env * 0.35
-out(smear + crk + slip)
+// id: tear_fat -- greasy, soft, smearing. Less crackle than muscle, a slippery
+// squelch that wobbles and sucks loose.
+// 2026-11-09 (round8-sfx): was a 95 Hz sine sliding down and a Q 7 band that
+// rang (pitch clarity 0.58, CLAP "arcade" 0.98). Now the slip is low-passed
+// noise and the smear a broad band whose centre wanders.
+env = clamp((t - 0.03) / 0.05, 0, 1) * exp(neg(clamp(t - 0.03, 0, 100)) / 0.24)
+wob = noise(9, 0, SEED2 + 1) * 140
+cf = (520 + wob - clamp(t, 0, 1) * 220) * PITCH
+smear = noise(0, 0, SEED) * env * 0.6 |> bp(@, cf, 1.8)
+suck = noise(0, 0, SEED2) * gt(noise(30, 0, SEED2 + 3), 0.35) * env * 0.35 |> bp(@, 300 * PITCH, 1.4)
+crk = noise(0, 0, SEED2 + 2) * gt(noise(240, 0, SEED + 5), 0.8) * env * 0.25 |> bp(@, 1100 * PITCH, 0.9)
+slip = noise(0, 0, SEED + 6) * env * 0.45 |> lp(@, 200 * PITCH, 0.7)
+// Recordings carry it (sounds.json real_layer: the fat tear, which was mixed
+// 40 dB under this patch before, and a low mud squelch, a different stretch
+// per variation); this sits under them.
+out((smear + suck + crk + slip) * 0.35 |> hp(@, 55, 0.7))

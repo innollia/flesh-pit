@@ -54,16 +54,48 @@
     "body_a",
     "body_b"
    ],
-   "real_layer": {
-    "sample": "tear/fs530919.wav",
-    "offset_s": 0.3,
-    "dur_s": 0.85,
-    "gain_db": 12.0,
-    "pitch": 0.92,
-    "hp": 90,
-    "lp": 5500
-   },
-   "ps1": "subtle"
+   "real_layer": [
+    {
+     "sample": "tear/fs133440.wav",
+     "offsets_s": [
+      0.25,
+      0.5,
+      1.75,
+      2.0,
+      3.5,
+      3.75,
+      4.0,
+      4.25
+     ],
+     "dur_s": 0.7,
+     "delay_s": 0.05,
+     "gain_db": 6.0,
+     "pitch": 0.9,
+     "follow_pitch": true,
+     "hp": 200,
+     "lp": 4500
+    },
+    {
+     "sample": "mud/fs0495.wav",
+     "offsets_s": [
+      1.0,
+      1.75,
+      2.5,
+      4.5,
+      6.25,
+      6.5,
+      7.0,
+      7.75
+     ],
+     "dur_s": 0.5,
+     "delay_s": 0.15,
+     "gain_db": 6.0,
+     "pitch": 0.85,
+     "hp": 150,
+     "lp": 4000
+    }
+   ],
+   "ps1": "off"
   },
   {
    "id": "tear_fat",
@@ -75,15 +107,47 @@
     "body_a",
     "body_b"
    ],
-   "real_layer": {
-    "sample": "tear/fs704771.wav",
-    "offset_s": 0.4,
-    "dur_s": 0.9,
-    "gain_db": -2.0,
-    "pitch": 0.85,
-    "hp": 60,
-    "lp": 3200
-   }
+   "real_layer": [
+    {
+     "sample": "tear/fs704771.wav",
+     "offsets_s": [
+      0.0,
+      0.4,
+      0.8,
+      1.0,
+      1.2,
+      1.4,
+      0.6,
+      2.2
+     ],
+     "dur_s": 0.8,
+     "gain_db": 20.0,
+     "pitch": 0.8,
+     "follow_pitch": true,
+     "hp": 250,
+     "lp": 2200
+    },
+    {
+     "sample": "mud/fs0495.wav",
+     "offsets_s": [
+      6.25,
+      7.0,
+      1.0,
+      2.5,
+      7.75,
+      4.5,
+      1.75,
+      6.5
+     ],
+     "dur_s": 0.6,
+     "delay_s": 0.05,
+     "gain_db": 4.0,
+     "pitch": 0.7,
+     "hp": 200,
+     "lp": 2000
+    }
+   ],
+   "ps1": "off"
   },
   {
    "id": "tear_nerve",
@@ -364,16 +428,61 @@
    "bed": [
     "body_a",
     "body_b"
+   ],
+   "ps1": "off",
+   "real_layer": [
+    {
+     "sample": "chew2/fs0352.wav",
+     "offsets_s": [
+      0.0,
+      0.3,
+      0.9,
+      1.2,
+      1.5,
+      1.8,
+      0.6,
+      2.7
+     ],
+     "dur_s": 0.6,
+     "gain_db": 10.0,
+     "pitch": 0.9,
+     "follow_pitch": true,
+     "hp": 200,
+     "lp": 2000
+    }
    ]
   },
   {
    "id": "door_open",
    "kind": "sfx",
-   "seconds": 1.0,
+   "seconds": 1.4,
    "target_lufs": -20,
    "spatial": true,
    "bed": [
     "restroom"
+   ],
+   "ps1": "off",
+   "real_layer": [
+    {
+     "sample": "s5/bss0616.wav",
+     "offsets_s": [
+      19.0,
+      20.0,
+      24.0,
+      28.0,
+      33.0,
+      23.0,
+      26.0,
+      32.0
+     ],
+     "dur_s": 1.15,
+     "delay_s": 0.12,
+     "gain_db": 12.0,
+     "pitch": 0.8,
+     "follow_pitch": true,
+     "hp": 70,
+     "lp": 4000
+    }
    ]
   },
   {
@@ -389,21 +498,45 @@
   {
    "id": "toilet_flush",
    "kind": "sfx",
-   "seconds": 3.0,
+   "seconds": 3.5,
    "target_lufs": -19,
    "spatial": true,
    "bed": [
     "restroom"
    ],
-   "real_layer": {
-    "sample": "toilet/fs609384.wav",
-    "offset_s": 3.0,
-    "dur_s": 3.0,
-    "gain_db": 1.0,
-    "pitch": 1.0,
-    "hp": 60,
-    "lp": 9000
-   }
+   "real_layer": [
+    {
+     "sample": "toilet/fs609384.wav",
+     "offsets_s": [
+      0.0,
+      0.15,
+      0.3,
+      0.05,
+      0.2,
+      0.1,
+      0.25,
+      0.35
+     ],
+     "dur_s": 3.0,
+     "gain_db": 2.0,
+     "pitch": 1.0,
+     "follow_pitch": true,
+     "hp": 50,
+     "lp": 3500
+    },
+    {
+     "sample": "toilet/fs609384.wav",
+     "offset_s": 39.2,
+     "dur_s": 1.7,
+     "delay_s": 1.8,
+     "gain_db": 6.0,
+     "pitch": 1.0,
+     "follow_pitch": true,
+     "hp": 50,
+     "lp": 2500
+    }
+   ],
+   "ps1": "off"
   },
   {
    "id": "coin_drop",
@@ -413,6 +546,38 @@
    "spatial": true,
    "bed": [
     "restroom"
+   ]
+  },
+  {
+   "id": "teeth_rattle",
+   "kind": "sfx",
+   "seconds": 0.35,
+   "target_lufs": -22,
+   "spatial": true,
+   "bed": [
+    "restroom"
+   ],
+   "ps1": "off",
+   "real_layer": [
+    {
+     "sample": "s5/bss1022.wav",
+     "offsets_s": [
+      1.4,
+      4.55,
+      5.95,
+      8.05,
+      12.95,
+      16.45,
+      18.55,
+      24.85
+     ],
+     "dur_s": 0.35,
+     "gain_db": 6.0,
+     "pitch": 0.75,
+     "follow_pitch": true,
+     "hp": 150,
+     "lp": 1600
+    }
    ]
   },
   {
@@ -774,23 +939,55 @@
   {
    "id": "scissors_snip",
    "kind": "sfx",
-   "seconds": 1.2,
-   "target_lufs": -20,
+   "seconds": 0.6,
+   "target_lufs": -23,
    "spatial": false,
    "stage": 5,
    "bed": [
     "body_a",
     "body_b"
    ],
-   "real_layer": {
-    "sample": "s5/bss0008.wav",
-    "offset_s": 4.5,
-    "dur_s": 1.2,
-    "gain_db": 9.7,
-    "pitch": 1.0,
-    "hp": 200,
-    "lp": 10000
-   }
+   "ps1": "off",
+   "real_layer": [
+    {
+     "sample": "tear/fs704771.wav",
+     "offsets_s": [
+      0.8,
+      1.0,
+      1.2,
+      1.4,
+      0.0,
+      0.4,
+      0.6,
+      2.2
+     ],
+     "dur_s": 0.45,
+     "gain_db": 18.0,
+     "pitch": 0.85,
+     "follow_pitch": true,
+     "hp": 150,
+     "lp": 2500
+    },
+    {
+     "sample": "mud/fs0495.wav",
+     "offsets_s": [
+      1.25,
+      2.0,
+      2.75,
+      4.75,
+      6.5,
+      7.25,
+      7.5,
+      8.25
+     ],
+     "dur_s": 0.45,
+     "delay_s": 0.04,
+     "gain_db": 4.0,
+     "pitch": 0.8,
+     "hp": 120,
+     "lp": 2500
+    }
+   ]
   },
   {
    "id": "saw_stroke",

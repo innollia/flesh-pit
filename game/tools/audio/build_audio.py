@@ -92,13 +92,36 @@ def _biquad_hp(mono, rate, cutoff):
     return mono
 
 
-def load_real_layer(spec_entry, rate, seconds):
+def real_varies(spec_entry):
+    """True when a real_layer differs per variation (an "offsets_s" list or
+    "follow_pitch"), so it has to be mixed into each candidate before the
+    variation pick (round8-sfx). A plain dict keeps the old one-take path."""
+    if not spec_entry:
+        return False
+    layers = spec_entry if isinstance(spec_entry, list) else [spec_entry]
+    return any("offsets_s" in e or e.get("follow_pitch") for e in layers)
+
+
+def load_real_layer(spec_entry, rate, seconds, variation=0, var_pitch=1.0):
     """Load a CC0 recording window, resample/pitch/filter/gain it to mono,
     trim or loop-tile it to `seconds`, and return a (seconds*rate,) array
     ready to be summed under the synth layer. Returns None when the entry
-    has no real_layer (pure synth, unchanged behaviour)."""
+    has no real_layer (pure synth, unchanged behaviour).
+
+    round8-sfx: the entry may be a list of layers (summed), a layer may give
+    "offsets_s" (one window per variation candidate, `variation` picks it, so
+    the four shipped takes are not one recording) and "follow_pitch" (the
+    candidate's pitch also bends the recording) and "delay_s" (start later)."""
     if not spec_entry:
         return None
+    if isinstance(spec_entry, list):
+        parts = [load_real_layer(e, rate, seconds, variation, var_pitch) for e in spec_entry]
+        return np.sum(parts, axis=0)
+    if "offsets_s" in spec_entry:
+        offs = spec_entry["offsets_s"]
+        spec_entry = dict(spec_entry, offset_s=offs[variation % len(offs)])
+    if spec_entry.get("follow_pitch"):
+        spec_entry = dict(spec_entry, pitch=float(spec_entry.get("pitch", 1.0)) * var_pitch)
     path = os.path.join(SAMPLES_SRC, spec_entry["sample"])
     with wave.open(path, "rb") as w:
         ch = w.getnchannels(); src_rate = w.getframerate(); n = w.getnframes()
@@ -130,6 +153,9 @@ def load_real_layer(spec_entry, rate, seconds):
     out[:fade_n] *= fade
     out[-fade_n:] *= fade[::-1]
     gain = 10.0 ** (float(spec_entry.get("gain_db", 0.0)) / 20.0)
+    lag = int(round(float(spec_entry.get("delay_s", 0.0)) * rate))
+    if lag > 0:
+        out = np.concatenate([np.zeros(lag), out[:max(out.size - lag, 0)]])
     return out * gain
 
 
@@ -325,6 +351,11 @@ def main():
                     render(variant_patch(patch, seed, seed2, pitch), raw, float(s["seconds"]), rate)
                 data, r = A.read_wav(raw)
                 mono = data.mean(axis=1, keepdims=True)
+                if real_varies(s.get("real_layer")):
+                    rv = load_real_layer(s.get("real_layer"), rate, float(s["seconds"]), c - 1, pitch)
+                    take = min(rv.size, mono.shape[0])
+                    mono = mono.copy()
+                    mono[:take, 0] += rv[:take]
                 cands.append((A.integrated_lufs(mono, rate), mono))
             keep = int(spec.get("variations_keep", 4))
             best = None
@@ -341,7 +372,7 @@ def main():
             chosen = best[1] if best else tuple(range(keep))
             raw_lufs_list = [cands[i][0] for i in chosen]
             mono_list = [cands[i][1][:, 0] for i in chosen]
-            real = load_real_layer(s.get("real_layer"), rate, float(s["seconds"]))
+            real = None if real_varies(s.get("real_layer")) else load_real_layer(s.get("real_layer"), rate, float(s["seconds"]))
             for n, i in enumerate(chosen, start=1):
                 mono = cands[i][1]
                 if real is not None:
