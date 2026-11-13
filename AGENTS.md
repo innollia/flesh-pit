@@ -18,6 +18,7 @@ Godot 4.7 Compatibility 프로젝트이며, 재사용 키트와 게임의 진행
 │   ├── operations.md → 실행과 격리 검사 절차
 │   ├── contracts.md → 키트 호출·신호·저장 소비자 계약
 │   ├── design/ → 2차 기획 문서, 지금 게임을 코드 기준으로 (overview가 목록, decisions-log가 사용자 결정 모음)
+│   │   └── core-fun.md → 핵심 재미·타겟층·기둥 정의 (사용자 승인 전 제안)
 │   ├── spec/README.md → 코드 주석의 옛 경로 안내
 │   ├── research/ → 참고 게임·조사 자료 (기준 아님)
 │   ├── archive/ → 끝난 계획·옛 진행 기록·1차 기획서 spec-v1 (고치지 않음)
