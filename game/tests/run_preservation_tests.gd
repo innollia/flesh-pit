@@ -108,6 +108,9 @@ func run() -> void:
     # lamp's glare is the entry adaptation (run_glare_t6_tests)
     check(m.restroom.find_children("*", "SpotLight3D", true, false).is_empty(), "no light stuck on the open door pointing out")
     check(m.restroom.get_node("RoomLight").shadow_enabled, "fixture shadows restored")
+    var room_light := m.restroom.get_node("RoomLight") as Light3D
+    check(room_light.light_color.b > room_light.light_color.r, "room light is cold white, apart from the warm eye lamp")
+    check(is_equal_approx(room_light.light_energy, 0.3), "room light keeps its brightness")
     m.progression.teeth_in_hand = 3
     m.progression.teeth = 5
     m.tank_lid.pick()

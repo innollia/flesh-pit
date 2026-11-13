@@ -72,13 +72,41 @@ def shade_from_height(h: np.ndarray, strength: float) -> np.ndarray:
     return np.clip(0.5 + (-gx * 0.7 - gy * 0.7) * strength, 0, 1)
 
 
+BRUISE = (150, 70, 110)
+BILE = (190, 150, 90)
+CAPILLARY = (96, 20, 40)
+COMPRESSIVE_STAIN = 0.35
+# Lifts the result back to the brightness of the plain pink version, so the
+# added darks do not cost close-range readability (docs/tracking/findings.md).
+COMPRESSIVE_GAIN = 1.04
+
+
 def compressive(size: int = 128) -> np.ndarray:
     # puffy, swollen, wet pink flesh: fat round bumps with dark creases
+    # (docs/tone-and-manner.md 3: bruise purple, bile, near-black corners).
     h = blobs(size, 60, 9, 22, 11) * 0.8 + pnoise(size, 10, 12) * 0.25
     lit = shade_from_height(h, 9.0)
     crease = np.clip(1 - h * 2.2, 0, 1) ** 2
-    base = ramp(h * 0.6 + lit * 0.4, [(0, (120, 38, 52)), (0.45, (196, 92, 104)), (0.8, (232, 146, 150)), (1, (250, 196, 196))])
-    base *= (1 - crease * 0.55)[..., None]
+    base = ramp(h * 0.6 + lit * 0.4, [(0, (70, 16, 28)), (0.45, (196, 92, 104)), (0.8, (232, 146, 150)), (1, (250, 196, 196))])
+    # blotches: one slow field, its top ~15% bruises, its bottom ~8% goes bilious
+    stain = pnoise(size, 2, 16)
+    hi, lo = np.quantile(stain, 0.85), np.quantile(stain, 0.08)
+    bruise = np.clip((stain - hi) / (stain.max() - hi) * 3, 0, 1) * COMPRESSIVE_STAIN
+    bile = np.clip((lo - stain) / (lo - stain.min()) * 3, 0, 1) * COMPRESSIVE_STAIN
+    base = base * (1 - bruise[..., None]) + np.array(BRUISE) * bruise[..., None]
+    base = base * (1 - bile[..., None]) + np.array(BILE) * bile[..., None]
+    # pores: many tiny pits
+    base -= (blobs(size, 220, 0.8, 1.6, 15) ** 2)[..., None] * 18
+    # capillaries: thin ridged-noise threads just under the surface. A slow
+    # presence field breaks them into patches; drawn everywhere at one weight
+    # they close into loops and read as a maze, not as vessels.
+    trunk = np.clip(((1 - np.abs(pnoise(size, 4, 14) - 0.5) * 2) ** 14 - 0.2) * 1.5, 0, 1)
+    twig = np.clip(((1 - np.abs(pnoise(size, 9, 17) - 0.5) * 2) ** 12 - 0.2) * 1.5, 0, 1)
+    presence = np.clip((pnoise(size, 2.5, 18) - 0.42) * 3.5, 0, 1)
+    vein = np.maximum(trunk, twig * presence * 0.7) * (0.5 + 0.5 * presence) * 0.5
+    base = base * (1 - vein[..., None]) + np.array(CAPILLARY) * vein[..., None]
+    base *= (1 - crease * 0.7)[..., None]
+    base *= COMPRESSIVE_GAIN
     wet = np.clip((lit - 0.78) * 5, 0, 1) * (pnoise(size, 16, 13) > 0.55)
     base += wet[..., None] * np.array([55, 50, 50])
     return base

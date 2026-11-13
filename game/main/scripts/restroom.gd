@@ -703,7 +703,7 @@ func _build_light() -> void:
     var y := 2 * HALF.y - 0.015
     var fixture := StandardMaterial3D.new()
     fixture.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-    fixture.albedo_color = Color(0.95, 0.93, 0.85)
+    fixture.albedo_color = Color(0.90, 0.95, 1.0)
     for spot in [Vector2(-0.15, 0.6), Vector2(0.4, -0.7)]:
         var disk := MeshInstance3D.new()
         disk.name = "CeilingDownlight"
@@ -724,7 +724,9 @@ func _build_light() -> void:
     l.light_cull_mask = ROOM_VISUAL_LAYER | (1 << 11) | (1 << 12) | (1 << 13)
     # Walls already separate render layers; six shadow faces were redundant.
     l.shadow_enabled = true
-    l.light_color = Color(1.0, 0.97, 0.91)
+    # Cold fluorescent white (docs/tone-and-manner.md 3). The flesh is lit by the
+    # warm eye lamp, so the two worlds part by colour temperature as well.
+    l.light_color = Color(0.90, 0.96, 1.0)
     add_child(l)
 
 func _build_collision() -> void:
