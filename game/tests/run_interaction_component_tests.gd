@@ -30,7 +30,7 @@ func run() -> void:
 	# Normal Main input/physics/render behavior is checked after final integration.
 	m.set_process(false)
 	m.player.set_physics_process(false)
-	m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+	m.player.global_position = Vector3(0.0, 0.9, -0.5)
 	m.player.camera.look_at(m.lever_point(), Vector3.UP)
 	await physics_frame
 	check(FPInteractions.is_lever_aimed(m, m.player.camera), "actual nearby lever is reachable and aimed")
@@ -49,7 +49,7 @@ func run() -> void:
 	m.player.global_position += Vector3.RIGHT * 3.0
 	m.player.camera.look_at(m.lever_point(), Vector3.UP)
 	check(not FPInteractions.is_lever_aimed(m, m.player.camera), "presentation aim cannot extend physical lever reach")
-	m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+	m.player.global_position = Vector3(0.0, 0.9, -0.5)
 	m.player.camera.look_at(m.lever_point(), Vector3.UP)
 	m.player.camera.rotate_y(PI)
 	check(not FPInteractions.is_lever_aimed(m, m.player.camera), "lever behind view is not aimed")

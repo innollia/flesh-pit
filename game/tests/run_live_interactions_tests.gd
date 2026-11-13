@@ -82,7 +82,7 @@ func click(button: MouseButton) -> void:
 ## normal input path. The settle camera starts on the bowl; `on_lever` points it
 ## at the lever, as the cursor would.
 func vomit_with_moved_key(on_lever: bool) -> void:
-	m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+	m.player.global_position = Vector3(0.0, 0.9, -0.5)
 	aim(m.toilet_point())
 	await frames(3)
 	m.stomach.add_flesh(25.0)
@@ -102,7 +102,7 @@ func vomit_with_moved_key(on_lever: bool) -> void:
 ## The player moved V, F and R. The old keys are dead over the bowl and on the
 ## lever, the new ones take their place, and both mouse buttons stay on their hands.
 func moved_keys_in_vomit_view() -> void:
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	check(m.rebind_key("fp_vomit", "N") and m.rebind_key("fp_interact", "K") and m.rebind_key("fp_pick", "P"), "moved V, F and R")
 	aim(m.toilet_point())
 	await frames(3)
@@ -153,7 +153,7 @@ func moved_keys_in_vomit_view() -> void:
 
 func run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(KEYS_PATH))
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	aim(m.toilet_point())
 	await frames(30)
 	check(m.interact_target() == "toilet", "actual bowl aim")
@@ -169,21 +169,21 @@ func run() -> void:
 	check(not m.is_settling() and m.player.is_physics_processing(), "raw W leaves vomit view")
 	check(m.toilet.has_contents(), "standing does not flush contents")
 	for code in [KEY_A, KEY_S, KEY_D, KEY_SPACE]:
-		m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+		m.player.global_position = Vector3(0.0, 0.9, -0.5)
 		aim(m.toilet_point())
 		await frames(3)
 		await press(KEY_V)
 		check(m.is_settling(), "V enters for alternate exit")
 		await press(code)
 		check(not m.is_settling(), "raw alternate exit %s" % OS.get_keycode_string(code))
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	aim(m.toilet_point())
 	await frames(3)
 	await press(KEY_F)
 	check(m.is_seated(), "empty bowl F seats")
 	await press(KEY_W)
 	check(not m.is_seated(), "raw W also leaves ordinary seated state")
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	m.toilet.bowl_flesh = 25.0
 	aim(m.lever_point())
 	await frames(3)
@@ -194,7 +194,7 @@ func run() -> void:
 	await frames(3)
 	await press(KEY_F)
 	check(m.tank_lid.held, "raw F picks lid")
-	aim(m.player.camera.global_position + Vector3.RIGHT)
+	aim(m.player.camera.global_position + Vector3.BACK) # away from the toilet
 	await frames(3)
 	await press(KEY_F)
 	check(not m.tank_lid.on_tank and not m.tank_lid.held, "raw F puts lid on floor")

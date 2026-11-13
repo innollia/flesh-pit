@@ -56,7 +56,7 @@ func event_input(kind: String, value: int, held: bool) -> void:
 		e.axis_value = -1.0 if held else 0.0
 		Input.parse_input_event(e)
 
-func new_game(position := Vector3(-1.25, 0.9, 0.72)) -> void:
+func new_game(position := Vector3(0.0, 0.9, -0.5)) -> void:
 	if is_instance_valid(m):
 		m.queue_free()
 		await frames(2)

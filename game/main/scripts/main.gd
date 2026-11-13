@@ -55,11 +55,16 @@ const VOMIT_BUTTON_OVERFILL := 0.35
 const WORLD_GEN_HALF := 10.0
 const SHELL_THICKNESS := FPWorldFeatures.SHELL_THICKNESS
 const OUTER_RADIUS := FPWorldFeatures.OUTER_RADIUS
-const START_POS := Vector3(FPRestroom.TOILET_X + 0.64, 0.95, FPRestroom.TOILET_Z)
-const START_YAW := -PI * 0.5 - 0.02
+## The toilet faces +Z, toward the door (FPRestroom.TOILET_YAW): standing up
+## from the seat the door is straight ahead, and coming in through the door
+## the bowl is.
+const START_POS := Vector3(FPRestroom.TOILET_X, 0.95, FPRestroom.TOILET_Z + 0.64)
+const START_YAW := PI - 0.02
 const START_PITCH := -0.32
-const SEAT_POS := Vector3(FPRestroom.TOILET_X + 0.30, 0.55, FPRestroom.TOILET_Z)
-const SEAT_YAW := -PI * 0.5
+const SEAT_POS := Vector3(FPRestroom.TOILET_X, 0.55, FPRestroom.TOILET_Z + 0.30)
+const SEAT_YAW := PI
+## Where the body stands after rising from the seat.
+const STAND_POS := Vector3(SEAT_POS.x, START_POS.y, SEAT_POS.z + 0.28)
 const OPENING_TIME := FPOpening.TOTAL
 const BODY_PROTECT_RADIUS := 0.9
 const CRUSH_TIME := 6.0
@@ -1001,7 +1006,7 @@ func _process_opening(delta: float) -> void:
 ## Poses the opening at time t (also used by captures and tests).
 func apply_opening_at(t: float) -> void:
 	var k := FPOpening.rise_at(t)
-	player.global_position = SEAT_POS.lerp(Vector3(SEAT_POS.x + 0.28, START_POS.y, SEAT_POS.z), k)
+	player.global_position = SEAT_POS.lerp(STAND_POS, k)
 	var pitch := lerpf(OPENING_SEAT_PITCH, 0.0, k)
 	# the view is held while seated and rising; mouse input in the meantime
 	# is dropped instead of snapping the view when the opening ends (s4)
@@ -1809,7 +1814,7 @@ func stand_up() -> bool:
 	if not _seated:
 		return false
 	_seated = false
-	player.global_position = Vector3(SEAT_POS.x + 0.28, START_POS.y, SEAT_POS.z)
+	player.global_position = STAND_POS
 	player.set("_pitch", 0.0)
 	player.camera_pivot.rotation.x = 0.0
 	player.set_physics_process(true)
@@ -3195,6 +3200,9 @@ func deserialize(data: Dictionary) -> void:
 	if pos.size() == 3:
 		player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
 	if v < 5 and terrain.density_at(player.global_position) >= terrain_config.iso_level:
+		player.global_position = START_POS
+	# a save from before the toilet moved to the back wall, standing where it is now
+	if restroom.toilet_blocks(player.global_position):
 		player.global_position = START_POS
 	_restore_drawings(data.get("drawings", []) as Array)
 	vent.restore_progress(data.get("vent_progress", {}), progression.has_belt)

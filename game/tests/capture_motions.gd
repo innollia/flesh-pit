@@ -38,13 +38,13 @@ func _process(_d: float) -> bool:
         m.restroom.set_door_open(false, true)
         match _shot:
             "pour", "take":
-                m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+                m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
                 m.progression.teeth_in_hand = 30
                 m.vent.open(30)
                 m.vent.close()
                 m.vent.open(30)
             "vomit_toilet":
-                m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+                m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
                 m.stomach.add_flesh(90.0)
                 m.progression.on_flesh_eaten(0, 90)
             "vomit_floor":

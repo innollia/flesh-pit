@@ -42,7 +42,7 @@ func _run() -> void:
 	# back at the bowl, a third full, never settled
 	m.stomach.add_flesh(50.0)
 	# standing in front of the bowl, as a player walks up to it
-	m.player.global_position = m.restroom.toilet.global_position + Vector3(0.75, 0.95, 0.0)
+	m.player.global_position = m.restroom.toilet.global_position + Vector3(0.0, 0.95, 0.75)
 	await frames(2)
 	look_at_point(m.restroom.toilet.global_position + Vector3(0.0, 0.4, 0.0))
 	await frames(30)

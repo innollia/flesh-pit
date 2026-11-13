@@ -46,7 +46,7 @@ func _run() -> void:
 	m.restroom.set_door_open(false, true)
 	var vent: Vector3 = FPRestroom.VENT_CENTER
 	var under_vent := Vector3(vent.x - 0.5, 0.95, vent.z - 0.5)
-	var at_toilet: Vector3 = m.restroom.toilet.global_position + Vector3(0.75, 0.95, 0.0)
+	var at_toilet: Vector3 = m.restroom.toilet.global_position + Vector3(0.0, 0.95, 0.75)
 	var tank: Vector3 = m.restroom.tank_art.to_global(Vector3(0, 0.3, 0))
 
 	# --- first expedition home: vomit 60 units, flush

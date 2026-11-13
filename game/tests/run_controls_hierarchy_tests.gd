@@ -134,11 +134,9 @@ func run() -> void:
 	await aim(m.canary_hole_point())
 	check(m.interact_target() != "canary", "standing, the hole is not a target")
 	# the sink still stops the body and still washes
+	# (the old sidestep ran until the toilet stopped it; the toilet now stands
+	# on the back wall, so the body starts square in front of the basin)
 	await fresh_game(Vector3(-1.3, 0.9, -0.3))
-	key(KEY_A, true)
-	face(PI * 0.5, 0.0)
-	await frames(60)
-	key(KEY_A, false)
 	face(PI * 0.5, 0.0)
 	key(KEY_W, true)
 	await frames(60)
@@ -151,7 +149,7 @@ func run() -> void:
 	check(m.interact_target() == "sink", "the basin is still the sink target (%s at %s)" % [m.interact_target(), m.player.global_position])
 
 	# --- tank: right click takes a tooth, the hand is never left bent --------
-	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	await fresh_game(Vector3(0.0, 0.9, -0.5))
 	m.progression.teeth = 12
 	m.tank_lid.pick()
 	m.tank_lid.drop()
@@ -321,7 +319,7 @@ func run() -> void:
 	if m.interact_target() == "":
 		check(FPInteractions.plan(m, "right") == "item:spray_cheap", "with nothing aimed the held item is used")
 	# the held lid: the right hand that holds it puts it down
-	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	await fresh_game(Vector3(0.0, 0.9, -0.5))
 	await aim(m.tank_lid.lid.global_position)
 	await tap_mouse(MOUSE_BUTTON_RIGHT)
 	check(m.tank_lid.held, "right click lifts the aimed lid")
@@ -332,13 +330,13 @@ func run() -> void:
 	check(m.tank_lid.held, "left click leaves the held lid in the right hand")
 	await tap_mouse(MOUSE_BUTTON_RIGHT)
 	check(not m.tank_lid.held and not m.tank_lid.on_tank, "right click puts the held lid down")
-	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	await fresh_game(Vector3(0.0, 0.9, -0.5))
 	await aim(m.tank_lid.lid.global_position)
 	await tap_mouse(MOUSE_BUTTON_LEFT)
 	check(not m.tank_lid.held, "left click does not lift the lid, the right hand does (%s, %s)" % [m.interact_target(), FPInteractions.plan(m, "left")])
 
 	# --- the lever: left click pulls it with the left hand --------------------
-	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	await fresh_game(Vector3(0.0, 0.9, -0.5))
 	m.toilet.bowl_flesh = 5.0
 	var flushes := [0]
 	m.flushed.connect(func(_t, _h): flushes[0] += 1)
@@ -408,7 +406,7 @@ func run() -> void:
 	Input.parse_input_event(motion)
 	await frames(3)
 	check(ring.device == "mouse", "looking with the mouse brings it back")
-	await fresh_game(Vector3(-1.25, 0.9, 0.72))
+	await fresh_game(Vector3(0.0, 0.9, -0.5))
 	ring = m.interact_ring
 	await aim(m.tank_lid.lid.global_position)
 	await frames(2)

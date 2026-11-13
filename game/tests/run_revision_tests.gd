@@ -33,7 +33,7 @@ func _run() -> void:
 	check(m.settings_menu.root.find_children("*", "PanelContainer", true, false).is_empty(), "settings has no floating panel")
 	var wall_mat: ShaderMaterial = m.restroom.get_node("Tiles").mesh.surface_get_material(0)
 	check(wall_mat.get_shader_parameter("tile_dimensions").is_equal_approx(Vector2(0.3, 0.3)), "wall tiles are square")
-	check(is_equal_approx(m.restroom.toilet.rotation.y, PI * 0.5), "toilet tank rests on left wall")
+	check(is_zero_approx(m.restroom.toilet.rotation.y) and is_zero_approx(m.restroom.toilet.position.x) and m.restroom.toilet.position.z < -FPRestroom.HALF.z + 0.1, "toilet tank rests on the back wall, the bowl facing the door")
 	check(m.restroom.get_node("Bathtub").mesh.get_aabb().size.x > FPRestroom.HALF.x * 1.9, "bathtub spans the back wall")
 	check(m.restroom.get_node("Shower").scale.x > 0, "shower remains in back-left corner")
 	check(m.restroom.mirror_art.door_surface_right != null, "cabinet has two mirrored doors")

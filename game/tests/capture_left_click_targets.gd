@@ -81,7 +81,7 @@ func _run() -> void:
 	await aim(m.door_handle_point())
 	await left_click_shots("door")
 	print("door open: ", m.restroom.is_door_open())
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	m.toilet.bowl_flesh = 5.0
 	await aim(m.lever_point())
 	print("lever target: ", m.interact_target())

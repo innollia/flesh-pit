@@ -189,7 +189,7 @@ func run() -> void:
 	await frames(2)
 
 	# --- standing up from the vomit view goes through the actions too
-	m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+	m.player.global_position = Vector3(0.0, 0.9, -0.5)
 	await frames(3)
 	m.stomach.add_flesh(8)
 	m.start_settlement()

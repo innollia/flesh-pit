@@ -67,7 +67,7 @@ func _run() -> void:
 	await frames(40)
 	await aim(door)
 	await shot("door-blender-right-only")
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	await aim(m.tank_lid.lid.global_position)
 	await shot("lid-right-only")
 	await aim(m.toilet_point())

@@ -45,7 +45,7 @@ func run() -> void:
 	check(not m.tank_lid.on_tank and not m.tank_lid.held, "the lid is off the tank")
 	var tank: Vector3 = m.restroom.tank_art.to_global(Vector3(0, 0.3, 0))
 	var mouth: Vector3 = m.restroom.tank_art.to_global(Vector3(0, 0.34, 0))
-	m.player.global_position = Vector3(-1.39, 0.9, 0.8)
+	m.player.global_position = Vector3(-0.08, 0.9, -0.64)
 	for i in range(20):
 		look_at_point(tank)
 		await physics_frame
@@ -104,7 +104,7 @@ func run() -> void:
 	var right: Node3D = m.hands_rig.get_hand_root("right")
 	check(right.basis.get_euler().length() > 1.0, "the right hand is turned palm-up while it holds teeth")
 	# the lid going back on ends a lean
-	m.player.global_position = Vector3(-1.39, 0.9, 0.8)
+	m.player.global_position = Vector3(-0.08, 0.9, -0.64)
 	for i in range(20):
 		look_at_point(tank)
 		await physics_frame
@@ -136,7 +136,7 @@ func run() -> void:
 	check(not ht.visible and right.basis.is_equal_approx(Basis.IDENTITY), "an empty hand is the rig's own hand again")
 	# F at the toilet settles like V, standing by it without aiming at it
 	m.stomach.add_flesh(20.0)
-	m.player.global_position = Vector3(-1.39, 0.9, 0.8)
+	m.player.global_position = Vector3(-0.08, 0.9, -0.64)
 	m.player._pitch = 0.6
 	await frames(3)
 	check(m.interact_target() == "" and m._near_toilet(), "standing by the toilet, aiming at nothing")

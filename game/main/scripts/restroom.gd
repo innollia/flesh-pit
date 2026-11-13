@@ -16,12 +16,20 @@ const BATH_LENGTH := 1.7
 ## Ceiling opening for the art vent (main.gd places it at x=z=0.75, its
 ## grate opening is 0.52 m square): [x0, z0, x1, z1].
 const VENT_HOLE := [-0.81, -1.04, -0.29, -0.52]
-## Where the vent sits (spec 03 §2): on the ceiling toward the wall facing
-## the toilet wall, straight ahead of the seat, so lifting the head about
-## 45 degrees on the toilet brings it into view. main.gd places FPVent here.
+## Where the vent sits: on the ceiling, above and to the right of the seat
+## (seen from the seat). It stayed here when the toilet moved to the back
+## wall: the duct is carved into saved terrain. main.gd places FPVent here.
 const VENT_CENTER := Vector3(-0.55, 2.0 * 1.3, -0.78)
-const TOILET_X := -HALF.x + 0.06
-const TOILET_Z := 0.72
+## The toilet stands against the back (-Z) wall, centred on the door in the
+## +Z wall and facing it (user 2026-11-14: walking in through the door the
+## bowl is straight ahead, so where to vomit is plain). Its origin is the
+## back of the tank on the floor; local +Z is the way the seat faces.
+const TOILET_X := 0.0
+const TOILET_Z := -HALF.z + 0.06
+const TOILET_YAW := 0.0
+## Footprint of the toilet's collision box in its own frame: width (x),
+## height, depth (z), centred 0.2 m out from the wall.
+const TOILET_BOX := Vector3(0.45, 0.8, 0.5)
 const SINK_Z := -0.3
 ## The canary hole (spec 03 §2, §9): low on the -X wall, in the corner under
 ## the sink. The sink's half-pedestal apron hides it from standing height;
@@ -60,6 +68,8 @@ var _lid_target: float = 0.0
 ## cabinet (the cabinet over the basin reaches world z -1.17; the riser at
 ## -1.05 stood inside it).
 const SHOWER_Z := -1.38
+## How far to the side of the toilet's centre the paper holder hangs.
+const PAPER_HOLDER_SIDE := 0.55
 
 func _ready() -> void:
     build()
@@ -318,7 +328,7 @@ func _build_toilet(mat: Material) -> void:
     toilet = Node3D.new()
     toilet.name = "Toilet"
     toilet.position = Vector3(TOILET_X, 0, TOILET_Z)
-    toilet.rotation.y = PI * 0.5
+    toilet.rotation.y = TOILET_YAW
     add_child(toilet)
     var white := Color(0.97, 0.97, 0.98)
     var shade := Color(0.88, 0.89, 0.91)
@@ -443,19 +453,26 @@ func _build_korean(mat: Material) -> void:
     _add(st, mat, "FloorDrain")
     st = SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    # Holder mounted on the left wall beside the relocated toilet.
-    var px := HALF.x
-    _box(st, Vector3(px - 0.03, 0.7, -0.95), Vector3(px, 0.78, -0.75), chrome, chrome_d)
-    var roll_a := PackedVector3Array()
-    var roll_b := PackedVector3Array()
-    for p in prof:
-        roll_a.append(Vector3(px - 0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.93))
-        roll_b.append(Vector3(px - 0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.8))
-    FDKLowPoly.loft(st, [roll_a, roll_b], [Color(0.98, 0.98, 0.97)], true, true)
     # ceiling exhaust vent: the main/art vent model sits in VENT_HOLE (main.gd)
     _add(st, mat, "KoreanFixtures")
     (get_node("KoreanFixtures") as Node3D).scale.x = -1.0
-    (get_node("KoreanFixtures") as Node3D).position.z = TOILET_Z + 0.90
+    # the shower and drain keep their place; they do not follow the toilet
+    (get_node("KoreanFixtures") as Node3D).position.z = 1.62
+    # Paper holder: goes with the toilet, on the wall behind it at the side
+    # away from the bath. Built with the wall at local x=0 and the room
+    # toward -X, then turned with the toilet.
+    st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    _box(st, Vector3(-0.03, 0.7, -0.1), Vector3(0.0, 0.78, 0.1), chrome, chrome_d)
+    var roll_a := PackedVector3Array()
+    var roll_b := PackedVector3Array()
+    for p in prof:
+        roll_a.append(Vector3(-0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.08))
+        roll_b.append(Vector3(-0.1 + p.x * 0.055, 0.66 + p.y * 0.055, 0.05))
+    FDKLowPoly.loft(st, [roll_a, roll_b], [Color(0.98, 0.98, 0.97)], true, true)
+    var holder := _add(st, mat, "PaperHolder")
+    holder.rotation.y = TOILET_YAW + PI * 0.5
+    holder.position = toilet.transform * Vector3(-PAPER_HOLDER_SIDE, 0, -0.06)
     _build_bath()
 
 func _build_bath() -> void:
@@ -726,7 +743,7 @@ func _build_collision() -> void:
         [Vector3(-(h.x + DOOR_HALF_W) * 0.5, h.y, h.z + t * 0.5), Vector3(h.x - DOOR_HALF_W, 2 * h.y, t)],
         [Vector3((h.x + DOOR_HALF_W) * 0.5, h.y, h.z + t * 0.5), Vector3(h.x - DOOR_HALF_W, 2 * h.y, t)],
         [Vector3(0, (DOOR_H + 2 * h.y) * 0.5, h.z + t * 0.5), Vector3(2 * DOOR_HALF_W, 2 * h.y - DOOR_H, t)],
-        [toilet.transform * Vector3(0, 0.4, 0.2), Vector3(0.5, 0.8, 0.45)],
+        [toilet.transform * Vector3(0, 0.4, 0.2), TOILET_BOX],
         # the wall-hung basin's bowl (fp_mirror BASIN_*: rim 0.885 m, 0.44 m
         # out from the wall, 0.30 m each side, tapering to 0.19 m out at its
         # 0.40 m underside). The ceramic apron that once hung to APRON_BOTTOM
@@ -774,6 +791,12 @@ func _process_inner(delta: float) -> void:
 ## 0 (shut) .. 1 (fully open), from the door's actual swing.
 func door_open_amount() -> float:
     return clampf(door_pivot.rotation.y / deg_to_rad(100.0), 0.0, 1.0)
+
+## Would a body standing at this world point be inside the toilet? (A save
+## made before the toilet moved can hold a spot where it now stands.)
+func toilet_blocks(p: Vector3) -> bool:
+    var l := toilet.to_local(p)
+    return absf(l.x) < TOILET_BOX.x * 0.5 + 0.2 and l.z < 0.2 + TOILET_BOX.z * 0.5 + 0.1 and l.z > -0.3 and l.y < TOILET_BOX.y + 1.0 and l.y > -0.2
 
 ## Is this world point inside the room box?
 func contains(p: Vector3) -> bool:

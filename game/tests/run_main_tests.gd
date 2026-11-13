@@ -90,7 +90,7 @@ func _run() -> void:
     _assert(m.vomit_button.shown, "vomit button appears past the overfill threshold")
     # toilet: vomit, then the flush settles
     prog.on_flesh_eaten(0, 10)
-    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
     var amount: float = m.stomach.fill
     m.request_vomit()
     _assert(m.is_settling() and m.settle_camera.current, "vomit at the toilet looks down into the bowl")
@@ -181,7 +181,7 @@ func _run_systems() -> void:
     var prog: FPProgression = m.progression
     # --- vent: pick teeth one at a time, place, take one
     prog.teeth = 20
-    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
     m.restroom.set_tank_open(true, true)
     m.tank_lid.pick() # the loose lid comes off the tank by hand
     m.tank_lid.drop()
@@ -360,7 +360,7 @@ func _run_death(m, prog: FPProgression) -> void:
     m.player.global_position = t3.global_position - Vector3(0, 0.6, 0.7)
     m.player.camera.look_at(t3.global_position, Vector3.UP)
     _assert(not m.pick_up_tumor(), "one bag holds only one tumor")
-    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
     var tt: int = prog.teeth
     m.start_settlement()
     var thrown: Array = m.toilet.bowl_tumors.duplicate()

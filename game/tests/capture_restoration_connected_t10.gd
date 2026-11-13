@@ -81,7 +81,7 @@ func mouse(held: bool) -> void:
 	Input.parse_input_event(event)
 
 func test_f_and_fixture_inputs() -> void:
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	aim(m.toilet_point())
 	await frames(3)
 	await press("fp_interact")
@@ -107,7 +107,7 @@ func test_f_and_fixture_inputs() -> void:
 	await frames(3)
 	await press("fp_interact")
 	check(m.restroom.is_door_open(), "같은 정상 루프에서 문을 다시 연다")
-	await game_at(Vector3(-1.25, 0.9, 0.72))
+	await game_at(Vector3(0.0, 0.9, -0.5))
 	var director: FDKAudioDirector = m.get_node("AudioHookup").director
 	aim(m.tank_lid.lid.global_position)
 	await frames(3)
@@ -335,7 +335,7 @@ func run() -> void:
 	m.finish_opening()
 	m.player.mouse_look_enabled = false
 	# 초기 배치만 설정하고 정상 Main/플레이어 루프에서 입력을 처리한다.
-	m.player.global_position = Vector3(-1.25, 0.9, 0.72)
+	m.player.global_position = Vector3(0.0, 0.9, -0.5)
 	aim(m.toilet_point())
 	await frames(4)
 	check(m.is_processing() and m.player.is_physics_processing(), "정상 process와 physics가 실행된다")

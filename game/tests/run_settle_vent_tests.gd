@@ -188,7 +188,7 @@ func _settlement() -> void:
     var m = _m
     var prog: FPProgression = m.progression
     prog.teeth = 0
-    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+    m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
     m.stomach.add_flesh(100.0)
     prog.on_flesh_eaten(0, 100)
     m.request_vomit()

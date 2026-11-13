@@ -26,7 +26,7 @@ func _process(_d: float) -> bool:
         var m = _main
         m.finish_opening()
         m.restroom.set_door_open(false, true)
-        m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+        m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
         m.stomach.add_flesh(90.0)
         m.progression.on_flesh_eaten(0, 90)
         m.request_vomit()

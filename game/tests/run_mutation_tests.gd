@@ -530,7 +530,7 @@ func _run_tumors() -> void:
 	m.player.global_position = t2.global_position - Vector3(0, 0.6, 0.7)
 	m.player.camera.look_at(t2.global_position, Vector3.UP)
 	_assert(m.pick_up_tumor() and prog.tumor_in_hand(), "a tumor is carried in one hand")
-	m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.6)
+	m.player.global_position = m.restroom.toilet.global_position + Vector3(0, 0.9, 0.8)
 	var teeth: int = prog.teeth
 	var kind: String = String(t2.get_meta("kind"))
 	m.start_settlement()
