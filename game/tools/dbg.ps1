@@ -1,5 +1,6 @@
 param([string]$Yaw, [string]$Pitch, [string]$X, [string]$Y, [string]$Z, [string]$Door = "")
-$godot = 'C:\Users\fixme\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe'
+$godot = 'C:\tools\godot\Godot_v4.7.2-stable_win64_console.exe'
+if (-not (Test-Path $godot)) { $godot = "$env:USERPROFILE\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe" }
 $proj = 'C:\Users\fixme\Desktop\flesh-pit-main\game'
 $a = @('--path', $proj, '--windowed', '--resolution', '1280x720', '--script', 'res://tools/_capture_debug.gd', '--', $Yaw, $Pitch, $X, $Y, $Z)
 if ($Door -ne "") { $a += $Door }

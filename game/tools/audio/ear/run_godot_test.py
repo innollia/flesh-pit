@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import subprocess, os
 
-GODOT = r"C:\Users\fixme\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe"
+GODOT = r"C:\tools\godot\Godot_v4.7.2-stable_win64_console.exe"
+if not os.path.exists(GODOT):
+    GODOT = os.path.expanduser("~") + r"\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe"
 PROJECT = r"C:\Users\fixme\Desktop\flesh-pit-main\game"
 SCRIPT = r"res://tests/run_audio_tests.gd"
 

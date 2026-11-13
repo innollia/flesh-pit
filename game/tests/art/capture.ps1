@@ -1,5 +1,6 @@
 param([string[]]$Names)
-$G = 'C:\Users\fixme\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe'
+$G = 'C:\tools\godot\Godot_v4.7.2-stable_win64_console.exe'
+if (-not (Test-Path $G)) { $G = "$env:USERPROFILE\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe" }
 $game = 'C:\Users\fixme\Desktop\flesh-pit-main\game'
 $lock = 'C:\projects\_locks\fleshpit-godot.lock'
 New-Item -ItemType Directory -Force C:\projects\_locks | Out-Null
