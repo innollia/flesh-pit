@@ -30,7 +30,8 @@ import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HERE = os.path.dirname(os.path.abspath(__file__))
-GODOT = shutil.which("godot_console") or "godot_console"
+GODOT_FALLBACK = r"C:\tools\godot\Godot_v4.7.2-stable_win64_console.exe"
+GODOT = shutil.which("godot_console") or (GODOT_FALLBACK if os.path.exists(GODOT_FALLBACK) else "godot_console")
 
 PLAYER_PROMPT = """너는 이 게임을 처음 하는 플레이어다. 게임에 대해 아는 것은 이 폴더의 manual.md뿐이다. 먼저 manual.md를 읽어라.
 

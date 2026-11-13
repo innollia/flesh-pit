@@ -1,7 +1,8 @@
 import json, os
 
-BASE = r"C:\Users\fixme\Desktop\flesh-pit-main\game\tools\audio\samples\src"
-OUT_DIR = r"C:\Users\fixme\Desktop\flesh-pit-main\game\tools\audio\ear\raw_probe_out"
+HERE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.normpath(os.path.join(HERE, "..", "samples", "src"))
+OUT_DIR = os.path.join(HERE, "raw_probe_out")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 import wave

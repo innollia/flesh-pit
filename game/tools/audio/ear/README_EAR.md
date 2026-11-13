@@ -7,12 +7,12 @@
 
 ## 실행 방법
 `
-C:\Users\<user>\Desktop\flesh-pit-main\game\tools\audio\ear\.venv\Scripts\python.exe ^
-  C:\Users\<user>\Desktop\flesh-pit-main\game\tools\audio\ear\ear.py ^
+game\tools\audio\ear\.venv\Scripts\python.exe ^
+  game\tools\audio\ear\ear.py ^
   --dir <wav들이 있는 폴더> ^
-  --intents C:\Users\<user>\Desktop\flesh-pit-main\game\tools\audio\ear\intents.json ^
-  --out-md C:\Users\<user>\Desktop\flesh-pit-main\game\tools\audio\ear\LISTEN_REPORT.md ^
-  --out-json C:\Users\<user>\Desktop\flesh-pit-main\game\tools\audio\ear\listen_report.json
+  --intents game\tools\audio\ear\intents.json ^
+  --out-md game\tools\audio\ear\LISTEN_REPORT.md ^
+  --out-json game\tools\audio\ear\listen_report.json
 `
 처음 실행 시 모델(CLAP ~600MB, AST ~350MB)을 허깅페이스에서 다운로드한다. 오래 걸리므로 백그라운드로 돌리고 로그 파일을 확인하는 방식을 권장한다.
 

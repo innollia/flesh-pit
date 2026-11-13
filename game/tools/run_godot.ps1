@@ -2,7 +2,7 @@ param([string]$Mode, [int]$Limit = 600, [string]$Extra = "")
 # Runs Godot on the flesh-pit project with a time limit. Mode: import | script <path> | window <path>
 $godot = 'C:\tools\godot\Godot_v4.7.2-stable_win64_console.exe'
 if (-not (Test-Path $godot)) { $godot = "$env:USERPROFILE\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe" }
-$proj = 'C:\Users\fixme\Desktop\flesh-pit-main\game'
+$proj = Split-Path -Parent $PSScriptRoot
 $logDir = Join-Path $proj 'logs'
 New-Item -ItemType Directory -Path $logDir -ErrorAction SilentlyContinue | Out-Null
 $log = Join-Path $logDir ('run_' + $Mode + '.log')

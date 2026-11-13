@@ -1,6 +1,7 @@
 # Regenerates game/main/art/textures/tex_minced_meat_128.png (ending sphere).
 # Raw meatball read: mottled red meat (low-freq light/dark patches, darker
 # strands) + fat as a few LARGE clumped blobs, not white pepper noise.
+import os
 import numpy as np
 from PIL import Image
 N = 128
@@ -38,6 +39,6 @@ for k in range(16):
 fatcol = np.array([0.93, 0.80, 0.70]) * (0.85 + 0.2 * mid[..., None])
 col = col * (1 - fatmask[..., None]) + fatcol * fatmask[..., None]
 col = np.clip(col, 0, 1)
-out = r"C:\Users\fixme\Desktop\flesh-pit-main\game\main\art\textures\tex_minced_meat_128.png"
+out = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "main", "art", "textures", "tex_minced_meat_128.png")
 Image.fromarray((col * 255).astype(np.uint8)).save(out)
 print("fat%", round(fatmask.mean() * 100, 1), "lum std", round(float(col.mean(axis=2).std()), 3))

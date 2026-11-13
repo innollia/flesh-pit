@@ -2,7 +2,7 @@
 # game/audio/listen/ 01~36을 최신 sfx/loops 렌더 결과로 갱신
 import shutil, os
 
-GAME_AUDIO = r"C:\Users\fixme\Desktop\flesh-pit-main\game\audio"
+GAME_AUDIO = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "audio")
 LISTEN = os.path.join(GAME_AUDIO, "listen")
 
 pairs = [

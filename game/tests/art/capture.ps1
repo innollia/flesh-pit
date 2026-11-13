@@ -1,7 +1,7 @@
 param([string[]]$Names)
 $G = 'C:\tools\godot\Godot_v4.7.2-stable_win64_console.exe'
 if (-not (Test-Path $G)) { $G = "$env:USERPROFILE\Downloads\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe" }
-$game = 'C:\Users\fixme\Desktop\flesh-pit-main\game'
+$game = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $lock = 'C:\projects\_locks\fleshpit-godot.lock'
 New-Item -ItemType Directory -Force C:\projects\_locks | Out-Null
 $w = 0; while ((Test-Path $lock) -and $w -lt 120) { Start-Sleep 5; $w++ }

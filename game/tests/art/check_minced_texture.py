@@ -1,8 +1,8 @@
 # Checks the ending sphere texture reads as raw meatball, not white pepper noise:
 # fat must form a few large clumps and the red meat must have brightness mottling.
-import sys, numpy as np
+import os, sys, numpy as np
 from PIL import Image
-im = np.asarray(Image.open(r"C:\Users\fixme\Desktop\flesh-pit-main\game\main\art\textures\tex_minced_meat_128.png").convert("RGB")).astype(float) / 255
+im = np.asarray(Image.open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "main", "art", "textures", "tex_minced_meat_128.png")).convert("RGB")).astype(float) / 255
 fat = (im.min(axis=2) > 0.6)
 lab = np.zeros(fat.shape, int); n = 0; sizes = []
 for y, x in zip(*np.nonzero(fat)):
