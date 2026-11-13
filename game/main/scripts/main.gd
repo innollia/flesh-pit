@@ -33,6 +33,13 @@ signal grab_refused(tissue: int, world_pos: Vector3)
 ## V away from the toilet and rest points before the first lever settlement:
 ## the body retches but nothing comes up (decision 0009).
 signal dry_heaved
+## The stomach is full and a bite at real, grippable flesh was refused: at
+## most once every FULL_REFUSE_EVERY seconds while the eat input is held
+## (FDKChewer.refused_full fires every frame). world_pos is the contact on the
+## wall. Nothing was dug and nothing went down; the audio owns its own sound.
+signal stomach_refused(world_pos: Vector3)
+## The same refusal for carrying hands that hold all they can.
+signal carry_refused(world_pos: Vector3)
 ## Teeth shut in the tank knocked its lid (the first-trade nudge, below
 ## _step_teeth_nudges); the audio plays a clink of teeth at the tank.
 signal tank_teeth_knocked
@@ -209,6 +216,30 @@ var _chew_ratio: float = 0.0
 ## sub-pixel raycast drift does not reset FDKChewer's progress every frame.
 var _chew_target: Vector3 = Vector3.INF
 var _chew_contact: Vector3 = Vector3.INF
+## A bite refused because nothing more fits (stomach, or carrying hands): the
+## wall is gripped and let go and the refusal is told at most this often.
+const FULL_REFUSE_EVERY := 0.9
+const FULL_PRESS_TIME := 0.3
+const FULL_PRESS := 0.35
+var _full_cool := 0.0
+var _full_frame := -100
+var _full_press_t := 0.0
+## True near the toilet or a rest point's bucket, where vomiting settles: the
+## only places a vomit key shows (decision 0009).
+var at_settle_spot := false
+## Flesh under the aim but beyond the arm (the one-cell tunnel the body cannot
+## follow, findings s4): the world point this frame (INF = none) and how long
+## the eat input has been held on it (decays when it is not).
+const REACH_SHORT_EXTRA := 1.0
+const DIG_HINT_AFTER := 1.0
+const DIG_HINT_LINGER := 2.5
+const DIG_HINT_PITCH := 15.0
+var reach_short_at: Vector3 = Vector3.INF
+var reach_short_t := 0.0
+var _reach_short_frame := -100
+var _dig_hint_left := 0.0
+var _dig_up_learned := false
+var _dig_down_learned := false
 ## Camera motion owns the desired local pose; terrain contact is temporary.
 var _terrain_eye_delta := Vector3.ZERO
 var _terrain_eye_pose := Vector3.ZERO
@@ -332,6 +363,7 @@ func _ready() -> void:
 	chewer.chew_progress.connect(func(r, _c): _chew_ratio = r)
 	chewer.cell_torn.connect(func(_p): _chew_ratio = 0.0)
 	chewer.released.connect(func(): _chew_ratio = 0.0)
+	chewer.refused_full.connect(_on_chew_refused_full)
 
 	stomach_view = FPStomachView.new()
 	stomach_view.name = "StomachView"
@@ -1049,6 +1081,7 @@ func _process(delta: float) -> void:
 	# the vomit key and mouth show only where vomiting settles (decision 0009):
 	# shown everywhere they taught emptying the stomach out in the flesh
 	var settle_spot := _near_toilet() or _near_rest_point() >= 0
+	at_settle_spot = settle_spot
 	vomit_button.shown = not _settling and settle_spot and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
 	# before the first settlement any mouthful is worth bringing back: the key
 	# shows at the bowl however full (2026-10-31 play: back half full, no cue)
@@ -1057,6 +1090,17 @@ func _process(delta: float) -> void:
 	opening_view.hints.lever_at = _first_lever_spot()
 	hands_rig.set_mutation(progression.mutation_amount())
 	hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
+	# an overfull stomach makes the same bite heavier: the pull trembles bigger
+	# and slower, the tear's jolt lands longer (never the chew time itself)
+	var overfull: float = stomach.overfill_ratio()
+	tear_feel.heavy = overfull
+	for rig in FPHandMotions.rigs_of(self):
+		rig.set_strain(overfull)
+	_full_press_t = maxf(0.0, _full_press_t - delta)
+	_dig_hint_left = maxf(0.0, _dig_hint_left - delta)
+	if Engine.get_process_frames() - _reach_short_frame > 1:
+		reach_short_at = Vector3.INF
+		reach_short_t = maxf(0.0, reach_short_t - delta * 0.5)
 	vent.tick(delta)
 	vent.watch_bowl(delta, toilet.has_contents() and restroom.contains(player.global_position))
 	hand_motions.check_cancel()
@@ -1238,6 +1282,11 @@ func _chew_step(delta: float) -> void:
 	if carry_mode and carried_flesh >= progression.carry_capacity():
 		# the hands are full: they push on the flesh, nothing more comes away
 		chewer.stop()
+		var full_hit := _look_hit()
+		if not full_hit.is_empty() and full_hit.collider.has_meta("fdk_terrain_chunk"):
+			_refuse_full(full_hit.position, player.get_look_ray()[1], false)
+		else:
+			terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 		return
 	if hands_rig.state == FDKHandsRig.HandState.TEAR:
 		terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
@@ -1250,6 +1299,8 @@ func _chew_step(delta: float) -> void:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
 		set_hand_reach(Vector3.INF)
+		if hit.is_empty():
+			_show_reach_short(delta)
 		return
 	# The hands reach the flesh actually held, wherever it sits on screen
 	# (looking down they used to clench at a fixed spot, or swung aside).
@@ -1269,6 +1320,80 @@ func _chew_step(delta: float) -> void:
 	else:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
+
+## Flesh straight ahead, past the arm: the point on it, or INF. Only tells
+## "cannot reach"; the aim, the reach and what may be torn are _look_hit's.
+func _reach_short_point() -> Vector3:
+	var ray: Array = player.get_look_ray()
+	var reach: float = progression.reach()
+	var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * (reach + REACH_SHORT_EXTRA))
+	q.exclude = [player.get_rid()]
+	var far := get_world_3d().direct_space_state.intersect_ray(q)
+	if far.is_empty() or not far.collider.has_meta("fdk_terrain_chunk"):
+		return Vector3.INF
+	var at: Vector3 = far.position
+	# a face the aim just rejected inside the reach, or a collider lagging a
+	# fresh hole, is not flesh out of reach
+	if ray[0].distance_to(at) <= reach or terrain.density_at(at + ray[1] * terrain_config.cell_size * 0.5) < terrain_config.iso_level:
+		return Vector3.INF
+	return at
+
+## The eat input is held and nothing is in reach. If flesh is there just past
+## the arm, both hands stretch at it with open fingers (FDKHandsRig
+## .on_reach_short); held long enough, the ring may show the key that digs up
+## or down (dig_key_hint). Nothing is pressed, torn or sounded.
+func _show_reach_short(delta: float) -> void:
+	var at := _reach_short_point()
+	if at == Vector3.INF:
+		return
+	reach_short_at = at
+	_reach_short_frame = Engine.get_process_frames()
+	reach_short_t = minf(reach_short_t + delta, DIG_HINT_AFTER * 2.0)
+	if reach_short_t >= DIG_HINT_AFTER:
+		_dig_hint_left = DIG_HINT_LINGER
+	for rig in FPHandMotions.rigs_of(self):
+		rig.on_reach_short(at)
+
+## The key cap the aim ring shows after the hands have stretched at flesh out
+## of reach for a while: "fdk_jump" looking up where Space climbs, "fdk_crouch"
+## looking down while standing, else "". Each goes away for good (this session;
+## nothing is saved) once its key is pressed while shown.
+func dig_key_hint() -> String:
+	if _dig_hint_left <= 0.0 or _seated or _mirror_open or is_pulling_canary():
+		return ""
+	var pitch := rad_to_deg(asin(clampf(float(player.get_look_ray()[1].y), -1.0, 1.0)))
+	if pitch >= DIG_HINT_PITCH and not _dig_up_learned and player.climb_enabled:
+		return "fdk_jump"
+	if pitch <= -DIG_HINT_PITCH and not _dig_down_learned and not player._is_crouching:
+		return "fdk_crouch"
+	return ""
+
+## One frame of a bite refused because nothing more fits: the stomach
+## (`stomach_full`) or the carrying hands. The wall at `at` is gripped and let
+## go (the terrain's press, FULL_PRESS_TIME) and the refusal is told once every
+## FULL_REFUSE_EVERY seconds, at once after a break. The stomach's refusal
+## also lurches the stomach mass and dips the head. No density changes.
+func _refuse_full(at: Vector3, dir: Vector3, stomach_full: bool) -> void:
+	var frame := Engine.get_process_frames()
+	if frame - _full_frame > 2:
+		_full_cool = 0.0
+	_full_frame = frame
+	_full_cool -= get_process_delta_time()
+	if _full_cool <= 0.0:
+		_full_cool = FULL_REFUSE_EVERY
+		_full_press_t = FULL_PRESS_TIME
+		if stomach_full:
+			stomach_view.heave()
+			if danger_show != null:
+				danger_show.heave()
+			stomach_refused.emit(at)
+		else:
+			carry_refused.emit(at)
+	var u := clampf(_full_press_t / FULL_PRESS_TIME, 0.0, 1.0)
+	terrain.set_press(at, -dir, FULL_PRESS * sin(PI * (1.0 - u)) if _full_press_t > 0.0 else 0.0)
+
+func _on_chew_refused_full(world_pos: Vector3) -> void:
+	_refuse_full(_chew_contact if _chew_contact != Vector3.INF else world_pos, player.get_look_ray()[1], true)
 
 ## The pull on the held flesh at `at` (look direction `dir`, progress
 ## `ratio`): the terrain's press, released while the hands show the tear,
@@ -1314,6 +1439,16 @@ func add_carried(shell: int, units: float) -> void:
 func swallow_torn(shell: int, units: float) -> void:
 	stomach.add_flesh(units)
 	progression.on_flesh_eaten(shell, units)
+	show_swallow(units)
+
+## The swallow of flesh a tear just sent down, on the swallow sound's beat
+## (FPStomachView.SWALLOW_DELAY after the tear): the stomach mass kicks up
+## once and the head nods. Visual only; carried flesh is not swallowed.
+func show_swallow(units: float) -> void:
+	if units <= 0.0:
+		return
+	stomach_view.swallow_kick(units, FPStomachView.SWALLOW_DELAY)
+	tear_feel.on_swallow(FPStomachView.SWALLOW_DELAY)
 
 ## Everything that moves on its own each frame (tests drive it directly).
 func step_world(delta: float) -> void:
@@ -1362,10 +1497,19 @@ func step_world(delta: float) -> void:
 		interact_ring.set("shown", target != "" and not _settling and not is_pulling_canary())
 		# standing over the canary hole: the crouch key cap says "get down"
 		var crouch_hint := target == "" and not _settling and canary_crouch_hint()
-		if crouch_hint:
-			interact_ring.set("action", "fdk_crouch")
+		# hands stretched at flesh out of reach: the key that digs up or down
+		# (one glyph by the ring: never beside another target's)
+		var key_hint := "fdk_crouch" if crouch_hint else (dig_key_hint() if target == "" and not _settling else "")
+		if key_hint != "" and not crouch_hint and Input.is_action_pressed(key_hint):
+			if key_hint == "fdk_jump":
+				_dig_up_learned = true
+			else:
+				_dig_down_learned = true
+			key_hint = ""
+		if key_hint != "":
+			interact_ring.set("action", key_hint)
 			interact_ring.set("shown", true)
-		if crouch_hint:
+		if key_hint != "":
 			interact_ring.set("hand_left", false)
 			interact_ring.set("hand_right", false)
 		elif target == "belt":
@@ -1376,7 +1520,8 @@ func step_world(delta: float) -> void:
 		else:
 			interact_ring.set("hand_left", target != "toilet" and not FPInteractions.right_hand_only(self, target))
 			interact_ring.set("hand_right", target != "toilet" and not FPInteractions.left_hand_only(target))
-		var stomach_key := stomach.fill_ratio() >= 1.0
+		# the stomach's key shows only where vomiting settles (decision 0009)
+		var stomach_key := stomach.fill_ratio() >= 1.0 and at_settle_spot
 		interact_ring.set("glyph_on", not (target == "toilet" and stomach_key))
 		opening_view.hints.vomit_muted = target == "toilet" or stomach_key
 		opening_view.hints.lever_left = not _settling
@@ -3043,6 +3188,7 @@ func _on_cell_torn(world_pos: Vector3) -> void:
 		add_carried(shell, chewer.last_units)
 	else:
 		progression.on_flesh_eaten(shell, chewer.last_units)
+		show_swallow(chewer.last_units)
 	tear_effects(world_pos)
 
 ## The centre of the terrain cell holding p: where a tear of that cell lands

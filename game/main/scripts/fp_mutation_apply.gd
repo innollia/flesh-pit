@@ -194,7 +194,8 @@ func step_timed(delta: float) -> void:
 		alien_since_tear += delta
 		if alien_since_tear >= ALIEN_EAT:
 			alien_since_tear = -1.0
-	if p.has_mutation("M22") and still and not m.restroom.contains(m.player.global_position):
+	# a full stomach takes nothing more, so the hand neither reaches nor tears
+	if p.has_mutation("M22") and still and not m.stomach.is_full() and not m.restroom.contains(m.player.global_position):
 		_alien_t += delta
 		var lead_in := _alien_t - (FPProgression.ALIEN_HAND_PERIOD - ALIEN_REACH)
 		alien_reach = clampf(lead_in / ALIEN_REACH, 0.0, 1.0) if lead_in > 0.0 and _alien_target() != Vector3.INF else 0.0
@@ -436,14 +437,15 @@ func _alien_target() -> Vector3:
 		return Vector3.INF
 	return at
 
-## M22 / tests: tear one cell in reach with the left hand, even when full.
+## M22 / tests: tear one cell in reach with the left hand. A full stomach
+## tears nothing (the cell would have nowhere to go), like the chewer.
 ## The cell goes straight down (spec: it eats), then the tear does to the
 ## game exactly what a chewer tear does (main.tear_effects: dug count, extra
 ## cells, published hole and its gore, nerve touch and regrowth); the sound
 ## hangs off alien_hand_tore in game/audio.
 func alien_tear() -> bool:
 	var at := _alien_target()
-	if at == Vector3.INF:
+	if at == Vector3.INF or m.stomach.is_full():
 		return false
 	at = m.cell_center(at) # where the chewer reports the same cell's tear
 	m.swallow_torn(m.shell_at(at), m.eat_cell_at(at))
@@ -476,6 +478,9 @@ func on_torn(world_pos: Vector3) -> void:
 	for i in range(n):
 		var at: Vector3 = world_pos + dir * m.terrain_config.cell_size * float(i + 1)
 		if m.terrain.density_at(at) < 0.5 or not m.terrain.is_edible_at(at):
+			break
+		# the extra cells go down with the bite: none is torn into a full stomach
+		if not m.carry_mode and m.stomach.is_full():
 			break
 		var units: float = m.eat_cell_at(at)
 		if m.carry_mode:

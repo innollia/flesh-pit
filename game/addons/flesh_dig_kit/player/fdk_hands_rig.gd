@@ -102,6 +102,11 @@ var aside: float = 0.0
 ## contact (Vector3.INF = none). The leading hand reaches toward it and
 ## tears from there instead of a fixed spot in front of the camera.
 var _reach_world: Vector3 = Vector3.INF
+var _short_world: Vector3 = Vector3.INF
+var _short_hold: float = 0.0
+var _short_amount: float = 0.0
+var crush: float = 0.0
+var strain: float = 0.0
 ## Hand root to fingertip in the grab pose (m): the root stops this far short
 ## of the point so the curled fingers, not the wrist, meet the flesh.
 const REACH_TIP := 0.16
@@ -109,6 +114,19 @@ const REACH_TIP := 0.16
 const REACH_MIN := 0.3
 const REACH_MAX := 0.56
 const ASIDE_OFFSET := Vector3(0.2, -0.16, 0.14)
+## Additions on top of the approved poses. Each is zero unless its game calls
+## it, and at zero every pose below is exactly what it was.
+## Out of reach: the flesh aimed at is farther than the arm. Both hands stretch
+## toward it, fingers open (never the grab's curl, never a clutch at the air),
+## and shake a little at full stretch. Only resting hands do it.
+const SHORT_HOLD := 0.12 ## seconds the stretch outlives the last on_reach_short call
+const SHORT_EASE := 0.22 ## seconds to stretch out / come back
+const SHORT_TREMBLE := 0.004
+## Crush (0..1): the resting hands are pressed together and toward the eye.
+const CRUSH_OFFSET := Vector3(-0.06, 0.0, 0.04)
+## Strain (0..1, an overfull stomach): the pull's tremble grows and slows.
+const STRAIN_AMP := 1.5
+const STRAIN_SLOW := 0.6
 ## Base/max scale of the carried-pile mesh (built at radius ~0.09/0.05/0.045m
 ## in _build_pile). 0.42 keeps the base pile within a hand's width and under
 ## ~20% of screen height at the default FOV/reach_distance; 0.62 is the cap
@@ -214,6 +232,36 @@ func clear_reach_point() -> void:
 
 func has_reach_point() -> bool:
     return _reach_world != Vector3.INF
+
+## The flesh under the aim is real but beyond the arm (world point). Call
+## every frame that holds; the stretch ends by itself SHORT_HOLD after the last
+## call. No chewer signal belongs to it and it never closes the fingers.
+func on_reach_short(world_pos: Vector3) -> void:
+    _short_world = world_pos
+    _short_hold = SHORT_HOLD
+
+## 0..1 how far the out-of-reach stretch is out (tests, game cues).
+func reach_short_amount() -> float:
+    return _short_amount
+
+## 0..1 how close a crush is: the resting hands press together.
+func set_crush(amount: float) -> void:
+    crush = clampf(amount, 0.0, 1.0)
+
+## 0..1 how overfull the eater is: the pull trembles bigger and slower.
+func set_strain(amount: float) -> void:
+    strain = clampf(amount, 0.0, 1.0)
+
+## Rig-local root position of a resting hand stretched at the out-of-reach
+## point: the arm's full span toward it, the two hands side by side.
+func _short_goal(side: float) -> Vector3:
+    if _short_world == Vector3.INF or not is_inside_tree():
+        return Vector3.INF
+    var local := to_local(_short_world)
+    var d := local.length()
+    if d < 0.01 or local.z > -0.05:
+        return Vector3.INF
+    return local / d * REACH_MAX + Vector3(0.07 * side, -0.06, 0.0)
 
 ## Rig-local root position for a hand reaching the grabbed point, or INF.
 func reach_goal(side: float, is_lead: bool) -> Vector3:
@@ -321,6 +369,10 @@ func step(delta: float) -> void:
             if _state_time >= SLIP_TIME:
                 state = HandState.IDLE
                 _state_time = 0.0
+    _short_hold = maxf(0.0, _short_hold - delta)
+    _short_amount = move_toward(_short_amount, 1.0 if _short_hold > 0.0 and state == HandState.IDLE else 0.0, delta / SHORT_EASE)
+    if _short_amount <= 0.0 and _short_hold <= 0.0:
+        _short_world = Vector3.INF
     _wet = maxf(0.0, _wet - delta * 0.08)
     _material.set_shader_parameter("wet", _wet)
     _material.set_shader_parameter("tint", Color(1, 1, 1).lerp(Color(0.78, 0.5, 0.55), mutation))
@@ -416,8 +468,9 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["t3"] += 14.0 * r
             p["wrist_pitch"] -= 22.0 * r
             pos += Vector3(0.015 * side * r, -0.02 * r, 0.075 * r)
-            var amp := (0.0015 + 0.009 * r * r) * reach
-            pos += Vector3(sin(_time * 53.0 + side * 2.0), cos(_time * 61.0 + side), sin(_time * 47.0)) * amp
+            var amp := (0.0015 + 0.009 * r * r) * reach * (1.0 + STRAIN_AMP * strain)
+            var slow := lerpf(1.0, STRAIN_SLOW, strain)
+            pos += Vector3(sin(_time * 53.0 * slow + side * 2.0), cos(_time * 61.0 * slow + side), sin(_time * 47.0 * slow)) * amp
             p["pos"] = pos
         HandState.TEAR:
             var tt := clampf(t / TEAR_TIME, 0.0, 1.0)
@@ -472,7 +525,18 @@ func _pose_for(h: Dictionary, delay: float) -> Dictionary:
             p["t1"] = lerpf(-8.0, idle["t1"], e)
             p["pos"] = Vector3(0.15 * side, -0.14, -0.44).lerp(idle["pos"], e)
             p["wrist_pitch"] = lerpf(45.0, idle["wrist_pitch"], e)
-    p["pos"] = _sway(p["pos"] as Vector3, side, aside * _aside_weight(t))
+    var rest := _aside_weight(t)
+    if _short_amount > 0.0 and state == HandState.IDLE and not is_carrying():
+        var far := _short_goal(side)
+        if far != Vector3.INF:
+            var out := _ease(_short_amount)
+            # joints stay the idle pose's: open fingers are what tells it from a grab
+            var shake := Vector3(sin(_time * 43.0 + side * 2.0), cos(_time * 37.0 + side), 0.0) * SHORT_TREMBLE * out
+            p["pos"] = (p["pos"] as Vector3).lerp(far, out) + shake
+            rest *= 1.0 - out # stretched hands do not swing aside
+    if crush > 0.0:
+        p["pos"] = (p["pos"] as Vector3) + Vector3(CRUSH_OFFSET.x * side, CRUSH_OFFSET.y, CRUSH_OFFSET.z) * crush * rest
+    p["pos"] = _sway(p["pos"] as Vector3, side, aside * rest)
     if side < 0.0 and hold_both:
         # both empty hands drop out of view together to take the tool
         p["pos"] = (p["pos"] as Vector3) + BOTH_DROP * _ease(_grip_t)

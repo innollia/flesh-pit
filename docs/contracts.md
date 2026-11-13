@@ -38,6 +38,12 @@ FDKHandsRig.set_reach_point(world_pos)는 실제 접촉이 유지되는 동안 �
 
 잡기가 거절되면 Chewer는 시작하지 않으므로 신호가 없다. 게임이 FDKHandsRig.on_grab_refused()를 불러 손이 오므렸다 미끄러져 돌아오는 SLIP 상태(0.5 s)를 보인다. 게임 쪽 거절 신호는 Main.grab_refused(tissue: int, world_pos: Vector3)이고 소리 연결이 구독한다. 첫 레버 정산 전 밖의 헛구역질은 Main.dry_heaved()로 알리고 소리 연결이 구독한다.
 
+위장이 가득 차서(FDKStomach.is_full()) 시작하지 못한 잡기는 FDKChewer.refused_full(world_pos: Vector3)로 알린다. try_start가 실제로 먹을 수 있는 살을 받았는데 위장 때문에만 거절한 경우이고, stop() 뒤에, 거절된 호출마다(입력을 누르고 있으면 매 프레임) 나간다. world_pos는 try_start가 받은 세계 위치다. 밀도와 위장은 변하지 않는다. 주기 제한은 게임이 한다: Main.stomach_refused(world_pos: Vector3)는 같은 거절을 누르고 있는 동안 0.9초(Main.FULL_REFUSE_EVERY)에 한 번, 끊겼다 다시 누르면 즉시 내고, world_pos는 벽의 실제 접점이다. 소리 연결은 Main.stomach_refused를 구독하고 grab_refuse(날붙이 필요)·gag_dry(여기선 못 토함)와 다른 소리를 붙인다. 들기 모드에서 손이 가득 찬 거절은 Main.carry_refused(world_pos: Vector3)이며 주기와 인자 뜻이 같다(Chewer 신호는 없다). 두 거절 모두 손 자세는 바꾸지 않고 지형 눌림(set_press 0.35, 0.3초)만 보인다. 위장 거절은 FPStomachView.heave()와 fp_danger_show.heave()(머리 숙임 0.35초)를 함께 부른다.
+
+FDKHandsRig에 더한 진입점 셋은 부르지 않으면 0이고, 0일 때 기존 IDLE·GRAB·TEAR·SLIP·RELEASE 자세 값은 그대로다. on_reach_short(world_pos)는 조준한 살이 팔보다 멀 때 게임이 매 프레임 부른다. 쉬는 손(IDLE)만 그 점을 향해 REACH_MAX까지 뻗고 손가락은 쉬는 자세 그대로 편 채 0.004 m로 떤다. 마지막 호출 0.12초 뒤 스스로 돌아온다. 쥐지 않으므로 GRAB·SLIP과 환풍구 넛지의 빈손 쥠과 구분된다. set_crush(0..1)은 쉬는 손을 가운데로 0.06 m, 눈 쪽으로 0.04 m 모으고 일하는 손에는 적용되지 않는다. set_strain(0..1)은 GRAB의 당김 떨림 진폭을 최대 2.5배, 주파수를 0.6배까지 바꾼다. 손 리그는 이 값들만 받고 위장·압사·지형을 읽지 않는다.
+
+FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩어리를 한 번 올렸다 내린다(4단위가 최대 한 번, 0.35초). Main.show_swallow(units)가 뜯김 0.3초 뒤(FPStomachView.SWALLOW_DELAY, 삼킴 소리와 같은 지연)로 부르며, 손에 드는 살에는 부르지 않는다. 표시일 뿐 위장 값을 바꾸지 않는다.
+
 한 손 도구(믹서기)는 FDKHandsRig.hold_left로 왼손에 쥔다. 손은 빈 채로 화면 아래로 내려갔다가 도구를 쥐고 올라오며, 내려놓을 때는 반대로 간다. 게임은 도구를 왼손 Wrist 자식으로 달고 left_grip_shown()이 참일 때만 보인다. 도구를 카메라 공간에 따로 두면 손보다 먼저 나타나고 걷기 흔들림을 따르지 않는다(2026-11-03).
 
 두 손 도구(큰 톱)는 FDKHandsRig.hold_both로 두 손에 쥔다. 두 손이 함께 화면 아래로 내려갔다가 도구를 쥐고 올라온다. 게임은 도구를 오른손 Wrist 자식으로 달고 both_grip_shown()이 참일 때만 보인다. 두 손은 서로 거울 자세이고 흔들림·aside·hold_shift·누르기를 똑같이 받으므로, 게임이 hold_both_pos.x를 두 손잡이 간격에 맞추면 왼손도 왼쪽 손잡이를 계속 쥔다. 톱질은 hold_shift로 두 손을 함께 민다(2026-11-03).

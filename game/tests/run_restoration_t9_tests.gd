@@ -191,7 +191,7 @@ func test_actual_eat_and_danger() -> void:
 	RenderingServer.force_draw(false)
 	print("T9 danger crush=", m.crush_progress(), " fov=", m.player.camera.fov, " offsets=", Vector2(m.player.camera.h_offset, m.player.camera.v_offset))
 	check(m.crush_progress() > 0.0 and m.player.camera.fov < 75.0, "실제 고립 공간 위험이 정상 카메라 시야를 좁힌다")
-	check(absf(m.player.camera.h_offset) + absf(m.player.camera.v_offset) > 0.0, "실제 위험의 기존 흔들림이 정상 루프에 남는다")
+	check(absf(m.player.camera.h_offset) + absf(m.player.camera.v_offset) > 0.0, "실제 위험의 맥박(또는 비집기 떨림)이 정상 루프의 카메라 오프셋에 남는다")
 	check(RenderingServer.frame_pre_draw.is_connected(m._guard_terrain_eye), "production 렌더 직전 보정 연결이 유지된다")
 
 func test_actual_nerve() -> void:

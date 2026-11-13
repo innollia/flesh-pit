@@ -225,9 +225,14 @@ func extra_checks() -> void:
 	cam.v_offset = -0.03
 	m._crush_t = m.progression.crush_time()
 	danger.tick(0.1)
-	check(is_equal_approx(cam.fov, 75.0 * 0.78), "crush narrows live base FOV by 22 percent")
-	check(is_equal_approx(cam.h_offset, 0.02 + sin(3.1) * 0.006), "31Hz shake adds to existing horizontal offset")
-	check(is_equal_approx(cam.v_offset, -0.03 + sin(3.6) * 0.005), "23Hz shake adds to existing vertical offset")
+	# a crush throbs (a beat on FOV and a small dip); the fine 31/23 Hz shudder
+	# is squeezing through's alone, so the two never read as one signal
+	var beat: float = danger.crush_beat()
+	var k: float = 0.78 - danger.BEAT_FOV * beat
+	check(beat > 0.0 and beat <= 1.0, "a full crush is on a beat (%.2f)" % beat)
+	check(is_equal_approx(cam.fov, 75.0 * k), "crush narrows live base FOV by 22 percent plus the beat")
+	check(is_equal_approx(cam.h_offset, 0.02), "a crush adds no sideways shudder to the existing horizontal offset")
+	check(is_equal_approx(cam.v_offset, -0.03 - danger.BEAT_DIP * beat), "the beat's dip adds to the existing vertical offset")
 	var applied := Vector2(cam.h_offset, cam.v_offset)
 	danger.apply_camera()
 	check(applied.is_equal_approx(Vector2(cam.h_offset, cam.v_offset)), "predraw reapplication is idempotent")
@@ -237,9 +242,9 @@ func extra_checks() -> void:
 	danger.apply_camera()
 	# T5 draws its 200-degree fisheye over the camera's own 75-degree base
 	var live: float = 75.0
-	check(is_equal_approx(cam.fov, live * 0.78), "late mutation FOV write recomposes against live T5 base")
+	check(is_equal_approx(cam.fov, live * k), "late mutation FOV write recomposes against live T5 base")
 	var eye: FPFisheyeView = m.mutation_apply.fisheye
-	check(eye.is_active() and is_equal_approx(eye.live_fov(), 200.0 * 0.78), "crush narrows the T5 fisheye by the same 22 percent")
+	check(eye.is_active() and is_equal_approx(eye.live_fov(), 200.0 * k), "crush narrows the T5 fisheye by the same 22 percent and beat")
 	m._crush_t = 0.0
 	danger.apply_camera()
 	check(is_equal_approx(cam.fov, live) and is_equal_approx(eye.live_fov(), 200.0), "escape releases squeeze to live mutation FOV")
@@ -250,7 +255,7 @@ func extra_checks() -> void:
 	check(is_equal_approx(cam.fov, 66.0), "zero crush preserves a hand pose's 66 degree FOV")
 	m._crush_t = m.progression.crush_time()
 	danger.apply_camera()
-	check(is_equal_approx(cam.fov, 66.0 * 0.78), "crush composes against hand pose FOV rather than forcing 75")
+	check(is_equal_approx(cam.fov, 66.0 * k), "crush composes against hand pose FOV rather than forcing 75")
 	m._crush_t = 0.0
 	danger.apply_camera()
 	check(is_equal_approx(cam.fov, 66.0), "escape restores hand pose FOV")

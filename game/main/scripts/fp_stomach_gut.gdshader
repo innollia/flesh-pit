@@ -8,6 +8,8 @@ shader_type canvas_item;
 uniform float fill = 0.0;
 uniform float over = 0.0;
 uniform float time = 0.0;
+// 0..1: one swallow (or a refused bite) passing: the filled end bulges once
+uniform float gulp = 0.0;
 uniform vec2 rect_size = vec2(240.0, 48.0);
 uniform float pixel = 2.0;
 
@@ -47,6 +49,7 @@ void fragment() {
     float t = r0 * (0.85 + 0.15 * full_here + over * (0.5 + 0.7 * lumps) * full_here
             + 0.07 * squeeze * (0.3 + over));
     t *= 1.0 - 0.22 * pinch * (1.0 - 0.6 * over);
+    t *= 1.0 + 0.3 * gulp * smoothstep(0.14, 0.0, abs(u - fill)) * step(0.001, fill);
     t = min(t, rect_size.y * 0.46);
     float cy = rect_size.y * 0.5 + sin(u * 4.5 + time * 0.6) * 1.2;
     vec2 a = vec2(left, cy);

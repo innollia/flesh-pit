@@ -12,6 +12,7 @@ extends Node
 ##   chew_progress(ratio, target_cell) -- 0..1 progress toward the current tear, every frame while chewing
 ##   cell_torn(world_pos)           -- tear completed at world_pos (a.k.a. "tear")
 ##   released()                     -- chewing stopped (input released or target lost), curl should relax to idle
+##   refused_full(world_pos)        -- try_start on real edible flesh was refused only because the stomach is full
 ## No backend code here reads or assumes anything about hand meshes, hand
 ## animation state, or visuals -- that is frontend scope.
 
@@ -19,6 +20,11 @@ signal grab_started(target_cell: Vector3i)
 signal chew_progress(ratio: float, target_cell: Vector3i) ## ratio 0..1 within the current chew, for squeeze/stretch visuals
 signal cell_torn(world_pos: Vector3) ## a.k.a. "tear" in the frontend contract
 signal released()
+## The stomach is full (FDKStomach.is_full()): try_start(world_pos) found real
+## edible flesh there and still began nothing. Emitted after stop(), on every
+## refused call (each frame the input is held); a game rations how often it
+## shows or sounds. Nothing is dug and nothing reaches the stomach.
+signal refused_full(world_pos: Vector3)
 
 @export var terrain: FDKTerrainField
 @export var stomach: FDKStomach
@@ -42,6 +48,7 @@ func try_start(world_pos: Vector3) -> void:
 		return
 	if stomach != null and stomach.is_full():
 		stop() # the stomach clock has run out: nothing more goes down
+		refused_full.emit(world_pos)
 		return
 	var result := terrain.world_to_cell(world_pos)
 	var chunk_coord: Vector3i = result[0]

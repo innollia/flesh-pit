@@ -128,6 +128,10 @@ func on_cell_torn(world_pos: Vector3) -> int:
 	for off in [side, -side, up, -up, dir, side + up, side - up, -side + up, -side - up, dir + side, dir - side, dir + up, dir - up, dir * 2.0]:
 		if extra >= FDKTissueRules.SAW_TEAR_CELLS - 1:
 			break
+		# the stomach clock ends for the stroke's extra cells too: a cell that
+		# cannot go down is not torn (eaten flesh = removed density)
+		if m.stomach.is_full():
+			break
 		var p: Vector3 = world_pos + off * cs
 		if m.terrain.density_at(p) < 0.5 or not FDKTissueRules.can_grab(m.terrain.tissue_at(p), "big_saw"):
 			continue

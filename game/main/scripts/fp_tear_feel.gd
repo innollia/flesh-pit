@@ -20,6 +20,18 @@ const WOUND_LIFE := 14.0
 const SNAP_OFF := 99.0
 const SNAP_END := FDKChunk.SNAP_END
 const JOLT_TIME := 0.3
+## An overfull stomach makes the same tear heavier (heavy 0..1 = the stomach's
+## overfill ratio at the tear): a longer, bigger, slower jolt that widens less.
+const JOLT_TIME_HEAVY := 0.5
+const JOLT_AMP := 0.035
+const JOLT_AMP_HEAVY := 1.4
+const JOLT_DECAY := 3.5
+const JOLT_DECAY_HEAVY := 2.2
+const JOLT_WIDEN := 0.05
+const JOLT_WIDEN_HEAVY := 0.02
+## The swallow that follows a tear that is eaten: a small nod of the head.
+const NOD_TIME := 0.18
+const NOD_DROP := 0.008
 const STRAND_LIFE := 0.6
 const BLOOD := Color(0.86, 0.07, 0.1)
 
@@ -37,6 +49,12 @@ var _wound_push_wait := 0.0
 var _strands: Array = []
 var _strand_mm: MultiMeshInstance3D
 var _jolt_t := JOLT_TIME
+var _jolt_len := JOLT_TIME
+var _jolt_heavy := 0.0
+## 0..1, set by the game every frame: how overfull the eater is.
+var heavy := 0.0
+var _nod_wait := -1.0
+var _nod_t := NOD_TIME
 var _jolt_dir := Vector2.ZERO
 var _last_ratio := 0.0
 var _seed := 0
@@ -113,6 +131,8 @@ func on_tear(world_pos: Vector3, eye: Vector3) -> void:
 		gore.burst(mouth, toward, 6, 18, BLOOD, 1.7, 0.75, 1.9)
 		gore.burst(mouth - toward * 0.05, (toward + Vector3.DOWN * 1.2).normalized(), 2, 10, BLOOD, 0.7, 0.5, 1.4)
 	_jolt_t = 0.0
+	_jolt_heavy = clampf(heavy, 0.0, 1.0)
+	_jolt_len = lerpf(JOLT_TIME, JOLT_TIME_HEAVY, _jolt_heavy)
 	_jolt_dir = Vector2(_rand() - 0.5, 1.0).normalized()
 	# the first frame that shows the hole already shows its rim recoiling
 	if terrain != null:
@@ -173,8 +193,14 @@ func tick(delta: float) -> void:
 			_wounds = keep
 		if _wounds_dirty:
 			_push_wounds()
-	if _jolt_t < JOLT_TIME:
+	if _jolt_t < _jolt_len:
 		_jolt_t += delta
+	if _nod_wait >= 0.0:
+		_nod_wait -= delta
+		if _nod_wait < 0.0:
+			_nod_t = 0.0
+	elif _nod_t < NOD_TIME:
+		_nod_t += delta
 	_step_strands(delta)
 
 func _push_wounds() -> void:
@@ -251,19 +277,31 @@ func _put(i: int, from: Vector3, to: Vector3, radius: float, color: Color) -> vo
 
 ## Camera offset (h, v) of the snap jolt for fp_danger_show; zero at rest.
 func jolt_offset() -> Vector2:
-	if _jolt_t >= JOLT_TIME:
-		return Vector2.ZERO
-	var u := _jolt_t / JOLT_TIME
+	var nod := Vector2.ZERO
+	if _nod_wait < 0.0 and _nod_t < NOD_TIME:
+		var n := _nod_t / NOD_TIME
+		nod = Vector2(0.0, -NOD_DROP * (1.0 - n) * (1.0 - n))
+	if _jolt_t >= _jolt_len:
+		return nod
+	var u := _jolt_t / _jolt_len
 	# kicked at once, one rebound, settled (a body yanked by its own hands)
-	var k := exp(-u * 3.5) * sin(u * PI * 2.5 + 0.9)
-	return _jolt_dir * 0.035 * k * (1.0 - u)
+	var k := exp(-u * lerpf(JOLT_DECAY, JOLT_DECAY_HEAVY, _jolt_heavy)) * sin(u * PI * 2.5 + 0.9)
+	return _jolt_dir * JOLT_AMP * lerpf(1.0, JOLT_AMP_HEAVY, _jolt_heavy) * k * (1.0 - u) + nod
+
+## The torn flesh goes down `delay` seconds from now: the head nods once.
+func on_swallow(delay: float) -> void:
+	_nod_wait = maxf(delay, 0.0)
+
+## Seconds the current (or last) jolt lasts (tests).
+func jolt_length() -> float:
+	return _jolt_len
 
 ## FOV scale of the jolt (a brief widening as the body is yanked back).
 func jolt_fov() -> float:
-	if _jolt_t >= JOLT_TIME:
+	if _jolt_t >= _jolt_len:
 		return 1.0
-	var u := _jolt_t / JOLT_TIME
-	return 1.0 + 0.05 * sin(minf(u * 2.5, 1.0) * PI) * (1.0 - u)
+	var u := _jolt_t / _jolt_len
+	return 1.0 + lerpf(JOLT_WIDEN, JOLT_WIDEN_HEAVY, _jolt_heavy) * sin(minf(u * 2.5, 1.0) * PI) * (1.0 - u)
 
 func live_strands() -> int:
 	return _strands.size()

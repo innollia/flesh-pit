@@ -4,7 +4,9 @@ extends Control
 ## Stomach % and gauge, bottom left (spec 01 위장 UI, a requested exception
 ## to the no-HUD rule): a length of gut filling with chewed flesh
 ## (fp_stomach_gut.gdshader), the fill in the menu font above it, and past
-## capacity the vomit key beside the mouth at its end (vomit_button.gd).
+## capacity the vomit key beside the mouth at its end (vomit_button.gd), only
+## where vomiting settles (toilet, rest point: decision 0009). Out in the flesh
+## an overfull stomach shows as the red shaking number alone.
 ## Layout in 720-high units, scaled to the window.
 
 const GUT := Rect2(18, -60, 244, 46)
@@ -47,6 +49,9 @@ func _process(delta: float) -> void:
 	_mat.set_shader_parameter("fill", _shown_fill)
 	_mat.set_shader_parameter("over", _shown_over)
 	_mat.set_shader_parameter("time", _time)
+	# the gut's end bulges once with each swallow, and with a refused bite
+	var view = main.get("stomach_view")
+	_mat.set_shader_parameter("gulp", maxf(view.kick(), view.heave_amount()) if view != null else 0.0)
 	queue_redraw()
 
 func _draw() -> void:
@@ -67,11 +72,14 @@ func _draw() -> void:
 		jitter = Vector2(sin(t * 12.9898), cos(t * 78.233)) * (0.6 + 1.6 * _shown_over)
 	var num_color := Color(1.0, 0.36, 0.26) if over else Color(1.0, 0.93, 0.84)
 	FPMenuKit.draw_ink(self, at + Vector2(42, 1) + jitter, num, 25, num_color)
-	if over:
+	if shows_vomit_key():
 		var key := FPKeybindMenu.key_of("fp_vomit")
 		var mouth_open: bool = main.vomit_button != null and main.vomit_button.shown
 		var x := GUT.end.x + (MOUTH_W + 4.0 if mouth_open else 10.0)
 		var cy := h + GUT.position.y + GUT.size.y * 0.5
-		var pulse := 0.75 + 0.25 * sin(_time * 6.0)
-		var w := FPMenuKit.draw_key(self, Vector2(x + 14, cy), "V" if key == "" else key, 1.0, 16)
-		FPMenuKit.draw_ink(self, Vector2(x + 14 + w * 0.5 + 8, cy + 7), "토하기", 19, Color(1.0, 0.5, 0.38, pulse))
+		FPMenuKit.draw_key(self, Vector2(x + 14, cy), "V" if key == "" else key, 1.0, 16)
+
+## The vomit key cap beside the gut: past capacity, and only where vomiting
+## settles (main.at_settle_spot). Out in the flesh it taught emptying there.
+func shows_vomit_key() -> bool:
+	return main != null and main.stomach.fill_ratio() >= 1.0 and bool(main.at_settle_spot) and not bool(main._settling)

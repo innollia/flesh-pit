@@ -9,6 +9,15 @@ const FPProfile := preload("res://main/scripts/fp_profile.gd")
 ## instead of disappearing. Attach under the Camera3D.
 
 const PILE_MAX := 14
+## A swallow lands this long after its tear (the swallow sound's delay).
+const SWALLOW_DELAY := 0.3
+## One cell's worth of flesh is a full kick; the kick settles in this long.
+const KICK_UNITS := 4.0
+const KICK_TIME := 0.35
+const KICK_QUEUE := 8
+## A full stomach refusing one more bite: the mass lurches up, the gullet fills.
+const HEAVE_TIME := 0.4
+const HEAVE_RISE := 0.05
 
 var fill_ratio: float = 0.0
 var overfill_ratio: float = 0.0
@@ -23,6 +32,9 @@ var _pile_material: ShaderMaterial
 ## gullet tube rising to the throat, M30 an extra throat pouch beside it.
 var forms: Array[String] = []
 var _gullet: MeshInstance3D
+var _kick: float = 0.0
+var _kick_queue: Array = [] ## [seconds left, units]
+var _heave: float = 0.0
 var _pouch: MeshInstance3D
 
 func _ready() -> void:
@@ -82,6 +94,31 @@ func set_state(p_fill_ratio: float, p_overfill_ratio: float) -> void:
     fill_ratio = maxf(0.0, p_fill_ratio)
     overfill_ratio = clampf(p_overfill_ratio, 0.0, 1.0)
 
+## One swallow of `units` flesh: the mass lurches up and swells once, `delay`
+## seconds from now (the game passes SWALLOW_DELAY after a tear), then settles.
+## Only shows; the stomach's numbers are the stomach's.
+func swallow_kick(units: float, delay: float = 0.0) -> void:
+    if units <= 0.0:
+        return
+    if delay <= 0.0:
+        _kick = minf(1.0, _kick + units / KICK_UNITS)
+        return
+    if _kick_queue.size() >= KICK_QUEUE:
+        _kick_queue.pop_front()
+    _kick_queue.append([delay, units])
+
+## The full stomach refuses a bite: one lurch toward the throat.
+func heave() -> void:
+    _heave = 1.0
+
+## 0..1 the swallow kick now (tests, the gauge's bulge).
+func kick() -> float:
+    return _kick
+
+## 0..1 the refusal lurch now (tests, the gauge).
+func heave_amount() -> float:
+    return _heave
+
 func snap() -> void:
     _shown_fill = fill_ratio
     _shown_over = overfill_ratio
@@ -97,14 +134,24 @@ func _process_inner(delta: float) -> void:
     var k := 1.0 - exp(-delta * 4.0)
     _shown_fill = lerpf(_shown_fill, fill_ratio, k)
     _shown_over = lerpf(_shown_over, overfill_ratio, k)
+    _kick = move_toward(_kick, 0.0, delta / KICK_TIME)
+    _heave = move_toward(_heave, 0.0, delta / HEAVE_TIME)
+    var waiting: Array = []
+    for q in _kick_queue:
+        q[0] -= delta
+        if q[0] <= 0.0:
+            _kick = minf(1.0, _kick + float(q[1]) / KICK_UNITS)
+        else:
+            waiting.append(q)
+    _kick_queue = waiting
     _apply(delta)
 
 func _apply(_delta: float) -> void:
     var f := clampf(_shown_fill, 0.0, 1.0)
     _mass.visible = _shown_fill > 0.02
     # screen bottom at z=-0.34 is about y=-0.26 (fov 75)
-    var rise := lerpf(-0.36, -0.25, f) + 0.07 * _shown_over
-    var swell := lerpf(0.55, 1.0, f) * (1.0 + 0.45 * _shown_over)
+    var rise := lerpf(-0.36, -0.25, f) + 0.07 * _shown_over + 0.02 * _kick + HEAVE_RISE * _heave
+    var swell := lerpf(0.55, 1.0, f) * (1.0 + 0.45 * _shown_over) * (1.0 + 0.16 * _kick)
     var pulse := 1.0 + sin(_time * (2.2 + 3.0 * _shown_over)) * (0.02 + 0.05 * _shown_over)
     var big := has_form("M01")
     if big:
@@ -115,7 +162,7 @@ func _apply(_delta: float) -> void:
     _mass.scale = Vector3(swell * pulse * (1.12 if big else 1.0), swell / pulse * (0.88 if big else 1.0), swell)
     if _gullet != null:
         # past capacity the flesh climbs toward the throat through the gullet
-        var g := clampf(_shown_over * 1.4, 0.0, 1.0)
+        var g := maxf(clampf(_shown_over * 1.4, 0.0, 1.0), _heave)
         _gullet.visible = _mass.visible and g > 0.05
         var thick := 2.1 if has_form("M02") else 1.0
         _gullet.position = Vector3(0.0, rise + 0.06 * swell, -0.345)

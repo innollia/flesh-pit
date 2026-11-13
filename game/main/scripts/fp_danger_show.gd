@@ -7,12 +7,25 @@ extends RefCounted
 ##   fades as it regenerates. Chained as next_pass on the blood overlay so
 ##   both show at once.
 ## - Crush: no screen-edge effect (spec 07 §1). The body shows it: the hands
-##   are pressed together, the view is squeezed (FOV narrows) and trembles
-##   as crush_progress() rises. The canary cry carries the early warning.
+##   are pressed together (FDKHandsRig.set_crush), the view is squeezed (FOV
+##   narrows) and throbs with a pulse that quickens as crush_progress() rises
+##   -- a beat, never the fine shudder of squeezing through, so the two read
+##   apart. The canary cry carries the early warning.
 ## - Squeezing through (2026-10-19 play: getting stuck had no build-up): as
 ##   the body ducks and twists to pass the flesh (player.squeeze()) the view
 ##   already tightens and shudders a little, more the tighter it gets, so the
 ##   danger rises before the body is actually boxed in.
+## - A full stomach refusing a bite (heave()): the head dips and the view
+##   tightens for a moment, on the same restorable offsets.
+
+## Crush pulse: seconds per beat at crush 0 and at crush 1.
+const BEAT_SLOW := 0.85
+const BEAT_FAST := 0.42
+const BEAT_FOV := 0.035
+const BEAT_DIP := 0.004
+const HEAVE_TIME := 0.35
+const HEAVE_DIP := 0.02
+const HEAVE_FOV := 0.03
 
 const BRUISE_SHADER := """
 shader_type spatial;
@@ -57,6 +70,8 @@ var _applied_offset := Vector2.ZERO
 var _written_offset := Vector2(INF, INF)
 var _written_fov := -1.0
 var _camera: Camera3D
+var _beat_phase := 0.0
+var _heave_t := HEAVE_TIME
 
 func setup(p_main: Node) -> void:
 	main = p_main
@@ -99,6 +114,15 @@ func tick(delta: float) -> void:
 	if main == null:
 		return
 	_t += delta
+	var c := clampf(float(main.call("crush_progress")), 0.0, 1.0)
+	if c > 0.0:
+		_beat_phase = fposmod(_beat_phase + delta / lerpf(BEAT_SLOW, BEAT_FAST, c), 1.0)
+	else:
+		_beat_phase = 0.0
+	if _heave_t < HEAVE_TIME:
+		_heave_t += delta
+	for rig in FPHandMotions.rigs_of(main):
+		rig.set_crush(c)
 	bruise_mat.set_shader_parameter("amount", bruise_amount())
 	apply_camera()
 
@@ -111,6 +135,22 @@ func tightness() -> float:
 	if main == null or not is_instance_valid(main.player) or not main.player.has_method("squeeze"):
 		return 0.0
 	return clampf((float(main.player.squeeze()) - 0.33) / 0.67, 0.0, 1.0)
+
+## 0..1 within one crush beat: a short clench, then a long let-go.
+func crush_beat() -> float:
+	var p := _beat_phase
+	return minf(p / 0.08, 1.0) * exp(-maxf(p - 0.08, 0.0) * 5.0)
+
+## The full stomach refuses a bite: one dip of the head (main calls it).
+func heave() -> void:
+	_heave_t = 0.0
+
+## 0..1, 1 at the refusal, 0 once it has passed.
+func heave_amount() -> float:
+	if _heave_t >= HEAVE_TIME:
+		return 0.0
+	var u := 1.0 - _heave_t / HEAVE_TIME
+	return u * u
 
 func restore_camera() -> void:
 	if not is_instance_valid(_camera): return
@@ -146,9 +186,12 @@ func apply_camera(base_fov: float = -1.0) -> void:
 	var feel = main.get("tear_feel")
 	var jolt_fov: float = feel.jolt_fov() if feel != null else 1.0
 	var jolt: Vector2 = feel.jolt_offset() if feel != null else Vector2.ZERO
-	cam.fov = _base_fov * (1.0 - 0.22 * c - 0.07 * sq) * jolt_fov
-	var shake := c + 0.35 * sq
-	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * shake, sin(_t * 23.0 + 1.3) * 0.005 * shake) + jolt
+	var beat := crush_beat() * c
+	var hv := heave_amount()
+	cam.fov = _base_fov * (1.0 - 0.22 * c - 0.07 * sq - BEAT_FOV * beat) * jolt_fov * (1.0 - HEAVE_FOV * hv)
+	# the fine shudder belongs to squeezing through alone; a crush throbs
+	var shake := 0.35 * sq
+	_applied_offset = Vector2(sin(_t * 31.0) * 0.006 * shake, sin(_t * 23.0 + 1.3) * 0.005 * shake - BEAT_DIP * beat - HEAVE_DIP * hv) + jolt
 	cam.h_offset += _applied_offset.x
 	cam.v_offset += _applied_offset.y
 	_written_offset = Vector2(cam.h_offset, cam.v_offset)

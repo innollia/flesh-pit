@@ -36,8 +36,9 @@ var _a: float = 0.0
 
 const INK := Color(0.96, 0.93, 0.88)
 ## Actions shown as their key cap even to a mouse player: no mouse button
-## does them (the vomit key; crouch, shown over the canary hole).
-const KEY_ACTIONS := ["fp_vomit", "fdk_crouch"]
+## does them (the vomit key; crouch, shown over the canary hole and for
+## digging down; the climb key for digging up).
+const KEY_ACTIONS := ["fp_vomit", "fdk_crouch", "fdk_jump"]
 const DARK := Color(0.08, 0.07, 0.07)
 
 func _ready() -> void:
@@ -135,7 +136,7 @@ func _draw_pad(p: Vector2) -> void:
 	var spots := [Vector2(0, -off), Vector2(off, 0), Vector2(0, off), Vector2(-off, 0)]
 	for i in spots.size():
 		var q: Vector2 = p + spots[i]
-		if i == (0 if action == "fp_vomit" else 3):
+		if i == (0 if action == "fp_vomit" else (2 if action == "fdk_jump" else 3)):
 			draw_circle(q, 3.4, Color(INK, 0.95 * _a))
 		else:
 			draw_arc(q, 2.8, 0.0, TAU, 16, Color(INK, 0.6 * _a), 1.2, true)
@@ -152,4 +153,5 @@ func _key_label() -> String:
 	match action:
 		"fp_vomit": return "V"
 		"fdk_crouch": return "Ctrl"
+		"fdk_jump": return "Space"
 	return "F"
