@@ -48,6 +48,8 @@ FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩�
 
 두 손 도구(큰 톱)는 FDKHandsRig.hold_both로 두 손에 쥔다. 두 손이 함께 화면 아래로 내려갔다가 도구를 쥐고 올라온다. 게임은 도구를 오른손 Wrist 자식으로 달고 both_grip_shown()이 참일 때만 보인다. 두 손은 서로 거울 자세이고 흔들림·aside·hold_shift·누르기를 똑같이 받으므로, 게임이 hold_both_pos.x를 두 손잡이 간격에 맞추면 왼손도 왼쪽 손잡이를 계속 쥔다. 톱질은 hold_shift로 두 손을 함께 민다(2026-11-03).
 
+손 리그의 메시는 바뀔 수 있지만 다음은 소비자(피 덧칠, 변이, 쥔 도구, 팔 털, B 자세 셰이더)가 기대는 값이라 고정이다. 노드 이름과 계층(HandLeft/Right, Forearm, Wrist, Palm, Finger1/2/3, Thumb1/2/3, 각 마디의 Seg, TornChunk), 관절 12개의 자리와 마디 길이, 팔뚝 메시의 z 범위 0.008~0.34, skin_color·palm_color. 주인공 피부 재질은 FDKSkinMaterial.SKIN_TEX 한 곳에서 텍스처를 정하고, wet이 0이면 하이라이트 항이 0이다. `run_protagonist_look_tests.gd`가 이 값들을 본다(2026-11-14).
+
 ## 지형 수정
 
 FDKTerrainField.dig_at(world_pos: Vector3,amount: float)는 실제 셀과 이웃 공유 모서리 밀도를 제거하고 게시할 지형을 표시한다. 반환값은 없으며 부작용 결과는 밀도·메시·충돌에서 확인한다. serialize()/deserialize(Dictionary)는 청크 상태를 주고받는다. 소비자는 복원 뒤 실제 화면이 필요한 시점에 게시를 준비해야 하며 데이터 적용만으로 첫 화면 준비를 단정하지 않는다.

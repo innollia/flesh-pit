@@ -646,17 +646,25 @@ func _to_rig(n: Node3D) -> Transform3D:
 
 # --- mesh building ---------------------------------------------------------
 
-## Cross-section of the fused finger block: four rounded fingers side by
-## side, with grooves between them on the back AND the palm side.
-## Grooves are deep (|y| ~0.3) so the four fingers read as four rounded
-## ridges under the flat PS1 shading, not as one plank.
+## Cross-section of the fused finger block: four fingers side by side, each
+## a flat-topped ridge, with grooves between them on the back AND the palm
+## side. The grooves are deep and get a darker vertex colour (_tint_points),
+## so the block reads as four fingers under the flat PS1 shading and not as
+## one plank or a row of saw teeth.
 const FINGER_PROFILE := [
-    Vector2(1.0, -0.1), Vector2(0.97, 0.6), Vector2(0.75, 1.0), Vector2(0.5, 0.3),
-    Vector2(0.25, 1.0), Vector2(0.0, 0.32), Vector2(-0.25, 1.0), Vector2(-0.5, 0.3),
-    Vector2(-0.75, 0.97), Vector2(-0.97, 0.55), Vector2(-1.0, -0.15), Vector2(-0.95, -0.75),
-    Vector2(-0.75, -1.0), Vector2(-0.5, -0.38), Vector2(-0.25, -1.0), Vector2(0.0, -0.38),
-    Vector2(0.25, -1.0), Vector2(0.5, -0.38), Vector2(0.75, -1.0), Vector2(0.95, -0.75),
+    Vector2(1.0, -0.1), Vector2(0.97, 0.6), Vector2(0.9, 1.0), Vector2(0.6, 1.0), Vector2(0.5, 0.2),
+    Vector2(0.4, 1.0), Vector2(0.1, 1.0), Vector2(0.0, 0.22), Vector2(-0.1, 1.0), Vector2(-0.4, 1.0),
+    Vector2(-0.5, 0.2), Vector2(-0.6, 0.97), Vector2(-0.9, 0.97), Vector2(-0.97, 0.55), Vector2(-1.0, -0.15),
+    Vector2(-0.95, -0.75), Vector2(-0.86, -1.0), Vector2(-0.64, -1.0), Vector2(-0.5, -0.3), Vector2(-0.36, -1.0),
+    Vector2(-0.14, -1.0), Vector2(0.0, -0.3), Vector2(0.14, -1.0), Vector2(0.36, -1.0), Vector2(0.5, -0.3),
+    Vector2(0.64, -1.0), Vector2(0.86, -1.0), Vector2(0.95, -0.75),
 ]
+## How far each fingertip ends behind the middle finger (m): index, middle,
+## ring, little. The joints are shared by the fused block, so only the tip
+## segment rings move; joint places and lengths stay as they were.
+const TIP_SETBACK := [0.006, 0.0, 0.004, 0.016]
+## Row centres across the block, in FINGER_PROFILE x times thumb_side.
+const FINGER_ROWS := [0.75, 0.25, -0.25, -0.75]
 
 func _build_hand(side: float) -> Dictionary:
     var thumb_side := -side
@@ -681,11 +689,11 @@ func _build_hand(side: float) -> Dictionary:
 
     var t_len := [0.04, 0.03, 0.025]
     var t1 := _joint(wrist, "Thumb1", Vector3(thumb_side * 0.036, -0.008, -0.016))
-    _add_mesh(t1, "Seg", _thumb_mesh(t_len[0], Vector2(0.02, 0.0175), Vector2(0.0175, 0.0155), false))
+    _add_mesh(t1, "Seg", _thumb_mesh(t_len[0], Vector2(0.019, 0.016), Vector2(0.0145, 0.013), false))
     var t2 := _joint(t1, "Thumb2", Vector3(0, 0, -t_len[0]))
-    _add_mesh(t2, "Seg", _thumb_mesh(t_len[1], Vector2(0.0175, 0.0155), Vector2(0.0155, 0.0135), false))
+    _add_mesh(t2, "Seg", _thumb_mesh(t_len[1], Vector2(0.0145, 0.013), Vector2(0.013, 0.012), false))
     var t3 := _joint(t2, "Thumb3", Vector3(0, 0, -t_len[1]))
-    _add_mesh(t3, "Seg", _thumb_mesh(t_len[2], Vector2(0.0155, 0.0135), Vector2(0.013, 0.011), true))
+    _add_mesh(t3, "Seg", _thumb_mesh(t_len[2], Vector2(0.013, 0.012), Vector2(0.0125, 0.0115), true))
 
     var thumb_base := Basis(Vector3.UP, deg_to_rad(-38.0) * thumb_side) * Basis(Vector3.FORWARD, deg_to_rad(-55.0) * thumb_side) * Basis(Vector3.RIGHT, deg_to_rad(-12.0))
 
@@ -747,13 +755,18 @@ func _forearm_mesh() -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var prof := FDKLowPoly.round_profile(8, 0.15)
+    # elbow end, the thick of the forearm, the taper, the narrow wrist and a
+    # slight flare into the hand; z stays 0.008..0.34 (the Tab pose shoulder
+    # lean and the arm hair are placed on that range)
     var rings := [
-        FDKLowPoly.ring(prof, 0.34, Vector2(0.037, 0.031), Vector2(0, -0.004)),
-        FDKLowPoly.ring(prof, 0.18, Vector2(0.034, 0.028), Vector2(0, -0.003)),
-        FDKLowPoly.ring(prof, 0.06, Vector2(0.029, 0.022), Vector2(0, -0.001)),
-        FDKLowPoly.ring(prof, 0.008, Vector2(0.026, 0.018)),
+        FDKLowPoly.ring(prof, 0.34, Vector2(0.036, 0.031), Vector2(0, -0.004)),
+        FDKLowPoly.ring(prof, 0.25, Vector2(0.040, 0.034), Vector2(0, -0.0035)),
+        FDKLowPoly.ring(prof, 0.15, Vector2(0.036, 0.029), Vector2(0, -0.003)),
+        FDKLowPoly.ring(prof, 0.07, Vector2(0.029, 0.022), Vector2(0, -0.0015)),
+        FDKLowPoly.ring(prof, 0.03, Vector2(0.0255, 0.0185), Vector2(0, -0.0005)),
+        FDKLowPoly.ring(prof, 0.008, Vector2(0.027, 0.019)),
     ]
-    FDKLowPoly.loft(st, rings, [skin_color.darkened(0.12), skin_color.darkened(0.05), skin_color], true, true)
+    FDKLowPoly.loft(st, rings, [skin_color.darkened(0.12), skin_color.darkened(0.09), skin_color.darkened(0.06), skin_color.darkened(0.03), skin_color], true, true)
     return st.commit()
 
 func _palm_mesh(thumb_side: float) -> Mesh:
@@ -768,8 +781,12 @@ func _palm_mesh(thumb_side: float) -> Mesh:
         FDKLowPoly.ring(prof, -0.093, Vector2(0.048, 0.026), Vector2(0, 0.001)),
     ]
     FDKLowPoly.loft(st, rings, [skin_color, skin_color, skin_color.lightened(0.04), skin_color], true, true)
-    FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.02, -0.011, -0.03), Vector3(0.017, 0.011, 0.026), 0.18, 3, palm_color, palm_color.darkened(0.08))
+    # ball of the thumb: big enough to swallow the root of the first thumb
+    # segment, so the thumb grows out of the hand and not out of the wrist
+    FDKLowPoly.add_blob(st, Vector3(thumb_side * 0.027, -0.010, -0.026), Vector3(0.021, 0.014, 0.030), 0.18, 3, palm_color, palm_color.darkened(0.08))
     FDKLowPoly.add_blob(st, Vector3(-thumb_side * 0.024, -0.01, -0.035), Vector3(0.013, 0.008, 0.028), 0.15, 5, palm_color, palm_color.darkened(0.06))
+    # wrist bone on the little-finger side
+    FDKLowPoly.add_blob(st, Vector3(-thumb_side * 0.022, 0.012, 0.008), Vector3(0.008, 0.006, 0.009), 0.1, 7, skin_color.lightened(0.03), skin_color.lightened(0.03))
     return st.commit()
 
 func _finger_mesh(length: float, half_start: Vector2, half_end: Vector2, thumb_side: float, tip: bool) -> Mesh:
@@ -780,27 +797,62 @@ func _finger_mesh(length: float, half_start: Vector2, half_end: Vector2, thumb_s
     var r0 := FDKLowPoly.ring(prof, 0.007, half_start * Vector2(1.02, 1.07), Vector2(0, half_start.y * 0.03))
     var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 0.97))
     var r2 := FDKLowPoly.ring(prof, -length, half_end * Vector2(1.0, 1.08))
+    var rings: Array = [r0, r1, r2]
     if tip:
-        _shape_tip(r0, prof, thumb_side, -0.007, 0.0)
-        _shape_tip(r1, prof, thumb_side, length * 0.5, 0.35)
-        _shape_tip(r2, prof, thumb_side, length, 1.0)
         var r3 := FDKLowPoly.ring(prof, -length - 0.007, half_end * Vector2(0.9, 0.55), Vector2(0, -0.001))
-        _shape_tip(r3, prof, thumb_side, length + 0.007, 1.0)
+        # each finger ends at its own length: a stair of four fingertips
+        _shape_tip(r1, prof, thumb_side, 0.35)
+        _shape_tip(r2, prof, thumb_side, 1.0)
+        _shape_tip(r3, prof, thumb_side, 1.0)
         # notch the tip between fingers so the silhouette ends in four
         # rounded fingertips instead of one straight edge
         _notch_tip(r2, prof, 0.003)
         _notch_tip(r3, prof, 0.009)
-        FDKLowPoly.loft(st, [r0, r1, r2, r3], [skin_color, skin_color.lightened(0.03), nail_color], false, true)
+        rings.append(r3)
+        FDKLowPoly.loft(st, rings, [skin_color, skin_color.lightened(0.03), skin_color.lightened(0.03)], false, true)
+        for row in range(4):
+            _add_nail(st, rings, prof, FINGER_ROWS[row] * thumb_side, 0.005)
     else:
-        FDKLowPoly.loft(st, [r0, r1, r2], [skin_color, skin_color.lightened(0.02)], false, false)
-    return st.commit()
+        FDKLowPoly.loft(st, rings, [skin_color, skin_color.lightened(0.02)], false, false)
+    # grooves between the fingers sit in shade; the knuckles are a little red
+    var marks := {}
+    var groove := skin_color.darkened(0.16)
+    var knuckle := skin_color.lerp(Color(0.86, 0.56, 0.5), 0.14)
+    for ri in range(rings.size()):
+        var r: PackedVector3Array = rings[ri]
+        for i in range(r.size()):
+            var q: Vector2 = prof[i]
+            if absf(q.y) < 0.5 and absf(q.x) < 0.9:
+                marks[r[i]] = groove
+            elif ri == 0 and not tip and q.y > 0.9:
+                marks[r[i]] = knuckle
+    return _tint_points(st.commit(), marks)
 
-func _shape_tip(r: PackedVector3Array, prof: PackedVector2Array, thumb_side: float, depth: float, amount: float) -> void:
+## Repaints the vertices that sit on the given points (the loft helper only
+## takes one colour per band).
+func _tint_points(mesh: ArrayMesh, marks: Dictionary) -> ArrayMesh:
+    var arrays := mesh.surface_get_arrays(0)
+    var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+    var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+    for i in range(verts.size()):
+        if marks.has(verts[i]):
+            cols[i] = marks[verts[i]]
+    arrays[Mesh.ARRAY_COLOR] = cols
+    var out := ArrayMesh.new()
+    out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+    return out
+
+## Pulls a tip ring back by each finger TIP_SETBACK times `amount`. A groove
+## point between two fingers goes with the shorter of the two.
+func _shape_tip(r: PackedVector3Array, prof: PackedVector2Array, thumb_side: float, amount: float) -> void:
     for i in range(r.size()):
         var u := prof[i].x * thumb_side
-        var f := 1.0 - 0.28 * smoothstep(-0.2, -1.0, u) - 0.07 * smoothstep(0.4, 1.0, u)
+        var back := 0.0
+        for row in range(4):
+            if absf(u - FINGER_ROWS[row]) <= 0.2501:
+                back = maxf(back, TIP_SETBACK[row])
         var p := r[i]
-        p.z = -depth * lerpf(1.0, f, amount)
+        p.z += back * amount
         r[i] = p
 
 func _notch_tip(r: PackedVector3Array, prof: PackedVector2Array, back: float) -> void:
@@ -811,6 +863,49 @@ func _notch_tip(r: PackedVector3Array, prof: PackedVector2Array, back: float) ->
             p.z += back
             r[i] = p
 
+## Index of the back-of-finger (flat top) profile point nearest to row `u`.
+func _top_index(prof: PackedVector2Array, u: float) -> int:
+    var best := -1
+    for i in range(prof.size()):
+        if prof[i].y > 0.9 and (best < 0 or absf(prof[i].x - u) < absf(prof[best].x - u)):
+            best = i
+    return best
+
+## Height of the tip mesh surface at depth z along the flat top of row `u`.
+func _top_at(rings: Array, top: int, z: float) -> float:
+    for i in range(rings.size() - 1):
+        var a: Vector3 = (rings[i] as PackedVector3Array)[top]
+        var b: Vector3 = (rings[i + 1] as PackedVector3Array)[top]
+        if z <= a.z and z >= b.z:
+            return lerpf(a.y, b.y, (a.z - z) / maxf(a.z - b.z, 1e-6))
+    return ((rings[rings.size() - 1] as PackedVector3Array)[top]).y
+
+## A fingernail on the back of one fingertip: a small plate lifted 0.8 mm off
+## the skin, the last 2 mm paler (the free edge). Lives in the tip segment
+## mesh, so it bends, bleeds and scales with the finger. Kept two snap cells
+## wide: smaller detail crawls on the 130-step view-model grid.
+func _add_nail(st: SurfaceTool, rings: Array, prof: PackedVector2Array, u: float, half_width: float) -> void:
+    var r1: PackedVector3Array = rings[1]
+    var r2: PackedVector3Array = rings[2]
+    var top := _top_index(prof, u)
+    var z_mid := r2[top].z
+    var x := 0.0
+    var n := 0
+    for i in range(prof.size()):
+        if prof[i].y > 0.9 and absf(prof[i].x - u) <= 0.16:
+            x += r2[i].x
+            n += 1
+    x /= float(maxi(n, 1))
+    var z_back := z_mid + minf(0.007, (r1[top].z - z_mid) + 0.003)
+    var edge := Color(0.97, 0.9, 0.86)
+    var rows: Array = []
+    for z in [z_back, z_mid, z_mid - 0.002, z_mid - 0.004]:
+        var y: float = _top_at(rings, top, z) + 0.0008
+        rows.append([Vector3(x - half_width, y, z), Vector3(x + half_width, y, z)])
+    for i in range(3):
+        var c: Color = nail_color if i < 2 else edge
+        FDKLowPoly.add_quad(st, rows[i][0], rows[i][1], rows[i + 1][1], rows[i + 1][0], Vector3.UP, c)
+
 func _thumb_mesh(length: float, half_start: Vector2, half_end: Vector2, tip: bool) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -819,8 +914,24 @@ func _thumb_mesh(length: float, half_start: Vector2, half_end: Vector2, tip: boo
     var r1 := FDKLowPoly.ring(prof, -length * 0.5, (half_start + half_end) * 0.5 * Vector2(1.0, 1.05))
     var r2 := FDKLowPoly.ring(prof, -length, half_end)
     if tip:
-        var r3 := FDKLowPoly.ring(prof, -length - 0.007, half_end * Vector2(0.75, 0.55))
-        FDKLowPoly.loft(st, [r0, r1, r2, r3], [skin_color, skin_color, nail_color], true, true)
+        # a blunt rounded end, not a spike
+        var r3 := FDKLowPoly.ring(prof, -length - 0.006, half_end * Vector2(0.9, 0.8))
+        var r4 := FDKLowPoly.ring(prof, -length - 0.009, half_end * Vector2(0.55, 0.5))
+        FDKLowPoly.loft(st, [r0, r1, r2, r3, r4], [skin_color, skin_color, skin_color.lightened(0.03), skin_color.lightened(0.03)], true, true)
+        # thumbnail: a shallow roof over the top facets of the 7-sided tube
+        var top := half_end.y + 0.0008
+        var side := half_end.y * 0.72 + 0.0008
+        var hw := 0.0065
+        var edge := Color(0.97, 0.9, 0.86)
+        var zs := [-length + 0.007, -length - 0.003, -length - 0.005]
+        var ys := [1.0, 0.86, 0.8]
+        for i in range(2):
+            var c: Color = nail_color if i == 0 else edge
+            for sx in [-1.0, 1.0]:
+                FDKLowPoly.add_quad(st,
+                    Vector3(0, top * ys[i], zs[i]), Vector3(sx * hw, side * ys[i], zs[i]),
+                    Vector3(sx * hw, side * ys[i + 1], zs[i + 1]), Vector3(0, top * ys[i + 1], zs[i + 1]),
+                    Vector3(sx * 0.4, 1, 0), c)
     else:
         FDKLowPoly.loft(st, [r0, r1, r2], [skin_color, skin_color], true, false)
     return st.commit()

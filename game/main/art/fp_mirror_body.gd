@@ -57,8 +57,16 @@ var applied: Array[String] = []
 var _belt: Node3D
 var _rest_pose := {} ## mutation-adjusted transforms, before posture composition
 
+## The figure's build. true = an ordinary, slightly soft body (narrower
+## shoulders, fuller waist, thinner arms); false = the earlier
+## action-figure build (wide shoulders, pinched waist). This one constant
+## switches every number below that differs; height (1.76), hips (TRUNK[0]),
+## legs, pivot names, and the head with its face image are the same in both
+## (a narrower head lost an eye to the mirror's coarse pixels).
+const PLAIN_BUILD := true
+
 ## World-y trunk rings [y, half width, front depth, back depth], hips to collar.
-const TRUNK := [
+const TRUNK_FIGURE := [
 	[0.97, 0.165, 0.098, 0.115],
 	[1.02, 0.152, 0.098, 0.095],
 	[1.07, 0.142, 0.1, 0.088],
@@ -71,6 +79,31 @@ const TRUNK := [
 	[1.435, 0.12, 0.065, 0.065],
 	[1.45, 0.058, 0.055, 0.052],
 ]
+const TRUNK_PLAIN := [
+	[0.97, 0.165, 0.098, 0.115],
+	[1.02, 0.160, 0.098, 0.095],
+	[1.07, 0.154, 0.108, 0.088],
+	[1.12, 0.158, 0.110, 0.09],
+	[1.16, 0.162, 0.11, 0.092],
+	[1.22, 0.175, 0.12, 0.1],
+	[1.29, 0.178, 0.122, 0.102],
+	[1.35, 0.183, 0.11, 0.1],
+	[1.4, 0.180, 0.085, 0.085],
+	[1.435, 0.12, 0.065, 0.065],
+	[1.45, 0.058, 0.055, 0.052],
+]
+const TRUNK := TRUNK_PLAIN if PLAIN_BUILD else TRUNK_FIGURE
+## Shoulder caps [centre x, half width] low/mid/high, and the upper-arm root.
+const SHOULDER := [[0.172, 0.033], [0.180, 0.045], [0.160, 0.037]] if PLAIN_BUILD else [[0.19, 0.035], [0.2, 0.05], [0.175, 0.04]]
+const ARM_ROOT_X := 0.182 if PLAIN_BUILD else 0.2
+## Upper-arm ring radii [side, front/back] shoulder to elbow; thickest forearm ring.
+const UPPER_ARM := [[0.045, 0.045], [0.048, 0.050], [0.050, 0.053], [0.045, 0.045], [0.038, 0.040], [0.034, 0.036]] if PLAIN_BUILD else [[0.05, 0.05], [0.054, 0.056], [0.058, 0.062], [0.05, 0.05], [0.04, 0.042], [0.036, 0.038]]
+const FOREARM_THICK := [0.045, 0.042] if PLAIN_BUILD else [0.05, 0.046]
+## Front of the belly at the navel (the belly comes 8 mm forward when plain).
+## Reflection finger lengths, index to little (the same stair as the
+## first-person hand: fdk_hands_rig TIP_SETBACK).
+const FINGER_LEN := [0.060, 0.066, 0.062, 0.050]
+const BELLY_FRONT := 0.113 if PLAIN_BUILD else 0.105
 
 ## One cross-section ring at height y: `n` points around, pinched to a
 ## squarish human section (sides flatter than a circle); front (+Z) and back
@@ -152,7 +185,7 @@ func build() -> void:
 	var sh := _subpivot(chest, "shoulders", Vector3(0, 0.1, 0))
 	st = K.begin()
 	for sx in [-1, 1]:
-		FDKLowPoly.loft(st, [_ring(-0.07, sx * 0.19, 0.035, 0.045, 0.045, 6), _ring(-0.02, sx * 0.2, 0.05, 0.052, 0.05, 6), _ring(0.02, sx * 0.175, 0.04, 0.045, 0.045, 6)], [SKIN, SKIN], false, true)
+		FDKLowPoly.loft(st, [_ring(-0.07, sx * SHOULDER[0][0], SHOULDER[0][1], 0.045, 0.045, 6), _ring(-0.02, sx * SHOULDER[1][0], SHOULDER[1][1], 0.052, 0.05, 6), _ring(0.02, sx * SHOULDER[2][0], SHOULDER[2][1], 0.045, 0.045, 6)], [SKIN, SKIN], false, true)
 	_mesh(sh, "Shoulders", st)
 	# --- belly: waist pinch down to the top of the hips (world 0.97 .. 1.16)
 	var belly := _part("belly", Vector3(0, 1.06, 0.0))
@@ -162,16 +195,18 @@ func build() -> void:
 		if r[0] <= 1.22 + 0.001 and r[0] >= 0.97 - 0.001:
 			br.append(_ring(r[0] - 1.06, 0.0, r[1], r[2], r[3], 12))
 	FDKLowPoly.loft(st, br, [SKIN, SKIN, SKIN], false, false)
-	K.lathe(st, K.T(Vector3(0, -0.02, 0.104), Vector3(90, 0, 0)), [Vector2(0.0, 0.004), Vector2(0.008, 0.0), Vector2(0.0, -0.003)], 6, [Color(0.55, 0.34, 0.3)]) # navel
+	K.lathe(st, K.T(Vector3(0, -0.02, BELLY_FRONT - 0.001), Vector3(90, 0, 0)), [Vector2(0.0, 0.004), Vector2(0.008, 0.0), Vector2(0.0, -0.003)], 6, [Color(0.55, 0.34, 0.3)]) # navel
 	_mesh(belly, "Belly", st)
 	# --- arms: upper arms from the deltoid down to the elbow
 	var arms := _part("arms", Vector3(0, 1.36, 0))
 	for sx in [-1, 1]:
-		var ua := _subpivot(arms, "upper_" + ("r" if sx > 0 else "l"), Vector3(sx * 0.2, 0, 0))
+		var ua := _subpivot(arms, "upper_" + ("r" if sx > 0 else "l"), Vector3(sx * ARM_ROOT_X, 0, 0))
 		st = K.begin()
 		var ar: Array = []
-		for r in [[0.02, 0.0, 0.0, 0.05, 0.05], [-0.04, 0.012, 0.008, 0.054, 0.056], [-0.1, 0.03, 0.02, 0.058, 0.062], [-0.16, 0.047, 0.03, 0.05, 0.05], [-0.21, 0.06, 0.048, 0.04, 0.042], [-0.245, 0.07, 0.06, 0.036, 0.038]]:
-			ar.append(_ring(r[0], sx * r[1], r[3], r[4], r[4], 8, r[2]))
+		var arm_rows := [[0.02, 0.0, 0.0], [-0.04, 0.012, 0.008], [-0.1, 0.03, 0.02], [-0.16, 0.047, 0.03], [-0.21, 0.06, 0.048], [-0.245, 0.07, 0.06]]
+		for i in range(arm_rows.size()):
+			var r: Array = arm_rows[i]
+			ar.append(_ring(r[0], sx * r[1], UPPER_ARM[i][0], UPPER_ARM[i][1], UPPER_ARM[i][1], 8, r[2]))
 		FDKLowPoly.loft(st, ar, [SKIN, SKIN, SKIN, SKIN, SKIN_D], true, false)
 		_mesh(ua, "UpperArm", st)
 		# --- hands: child of upper arm (elbow joint), full articulated arm chain
@@ -181,7 +216,7 @@ func build() -> void:
 		var fa := _subpivot(hp, "forearm_" + s, Vector3.ZERO)
 		st = K.begin()
 		var fr: Array = []
-		for r in [[0.04, 0.0, -0.01, 0.038, 0.04], [-0.005, -0.002, 0.004, 0.036, 0.036], [-0.05, -0.005, 0.014, 0.05, 0.046], [-0.11, -0.008, 0.026, 0.042, 0.036], [-0.18, -0.011, 0.038, 0.03, 0.026], [-0.235, -0.014, 0.045, 0.024, 0.02]]:
+		for r in [[0.04, 0.0, -0.01, 0.038, 0.04], [-0.005, -0.002, 0.004, 0.036, 0.036], [-0.05, -0.005, 0.014, FOREARM_THICK[0], FOREARM_THICK[1]], [-0.11, -0.008, 0.026, 0.042, 0.036], [-0.18, -0.011, 0.038, 0.03, 0.026], [-0.235, -0.014, 0.045, 0.024, 0.02]]:
 			fr.append(_ring(r[0], sx * r[1], r[3], r[4], r[4], 8, r[2]))
 		FDKLowPoly.loft(st, fr, [SKIN_D, SKIN, SKIN, SKIN, SKIN], false, true)
 		_mesh(fa, "Forearm", st)
@@ -191,15 +226,20 @@ func build() -> void:
 		hand.scale = Vector3.ONE * 1.25
 		hand.set_meta("base_scale", hand.scale)
 		st = K.begin()
-		K.lathe(st, K.T(Vector3(0, 0.0, 0), Vector3.ZERO, Vector3(1.0, 1.0, 0.35)), [Vector2(0.024, 0.0), Vector2(0.04, 0.025), Vector2(0.042, 0.07), Vector2(0.034, 0.088), Vector2(0.0, 0.09)], 8, [SKIN_D, SKIN, SKIN])
-		K.tube(st, I, [Vector3(-sx * 0.033, 0.018, 0.0), Vector3(-sx * 0.052, 0.045, 0.014), Vector3(-sx * 0.055, 0.078, 0.022)], [0.013, 0.011, 0.009], 4, [SKIN, SKIN_D]) # thumb
+		# palm: three pinched rings (wrist, widest, finger roots) like every
+		# other part of this body; 0.09 tall, a third as thick as it is wide
+		FDKLowPoly.loft(st, [_ring(0.0, 0.0, 0.024, 0.0084, 0.0084, 6), _ring(0.042, 0.0, 0.042, 0.0147, 0.0147, 6), _ring(0.09, 0.0, 0.040, 0.014, 0.014, 6)], [SKIN_D, SKIN], true, true)
+		K.tube(st, I, [Vector3(-sx * 0.033, 0.018, 0.0), Vector3(-sx * 0.052, 0.045, 0.014), Vector3(-sx * 0.055, 0.078, 0.022)], [0.014, 0.0125, 0.011], 4, [SKIN, SKIN_D]) # thumb
 		_mesh(hand, "Palm", st)
 		var fing := _subpivot(hand, "fingers_" + s, Vector3(0, 0.082, 0.0))
 		st = K.begin()
 		for i in range(4):
 			var x := -0.027 + i * 0.018
-			var ln := 0.066 - absf(i - 1.3) * 0.01
-			K.tube(st, I, [Vector3(x, 0, 0), Vector3(x * 1.02, ln * 0.5, 0.016), Vector3(x * 1.03, ln * 0.8, 0.05)], [0.0095, 0.0088, 0.0075], 4, [SKIN, SKIN, Color(0.93, 0.78, 0.72)])
+			# index, middle, ring, little (the thumb is on the -sx side); the
+			# tips are plain skin: nails do not show at this size, and pale
+			# tips read as claws
+			var ln: float = FINGER_LEN[i if sx > 0 else 3 - i]
+			K.tube(st, I, [Vector3(x, 0, 0), Vector3(x * 1.02, ln * 0.5, 0.016), Vector3(x * 1.03, ln * 0.8, 0.05)], [0.0095, 0.0088, 0.0075], 4, [SKIN, SKIN, SKIN])
 		_mesh(fing, "Fingers", st)
 	# --- legs (not a mirror part): briefs over the hips, then articulated
 	# thigh and shin/foot preserving exact original profile and mesh lengths
@@ -481,7 +521,7 @@ func tumor_center() -> Vector3:
 	if not bumps.is_empty():
 		var mi: MeshInstance3D = bumps[0]
 		return mi.global_transform * mi.get_aabb().get_center()
-	return (_parts["belly"] as Node3D).global_transform * Vector3(0.11, -0.02, 0.105)
+	return (_parts["belly"] as Node3D).global_transform * Vector3(0.11, -0.02, BELLY_FRONT)
 
 ## The belly's tumor bump meshes (apply(ids, bumps)).
 func tumor_bumps() -> Array[MeshInstance3D]:
@@ -816,7 +856,7 @@ func _part_of(n: Node) -> String:
 func _bump(i: int, _ghost: bool) -> Node3D:
 	var st := K.begin()
 	var a := float(i) * 1.9
-	var at := Vector3(0.06 + cos(a) * 0.05, -0.02 + sin(a) * 0.04, 0.105)
+	var at := Vector3(0.06 + cos(a) * 0.05, -0.02 + sin(a) * 0.04, BELLY_FRONT)
 	K.blob(st, Transform3D.IDENTITY, at, Vector3(0.022, 0.02, 0.018), 0.2, 30 + i, Color(0.78, 0.48, 0.5), Color(0.62, 0.32, 0.36))
 	var mi := K.add_mesh(_parts["belly"], "TumorBump%d" % i, K.finish(st), _skin)
 	return mi

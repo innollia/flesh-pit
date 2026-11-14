@@ -1,5 +1,18 @@
 # 현재 상태
 
+## 2026-11-14 주인공 외모 다듬기
+
+사용자 요청 "디자인도 다듬어줘: 3D 모델링" 가운데 주인공 외모 몫이다. 값과 이유는 `docs/design/decisions-log.md` 2026-11-14의 주인공 외모 표, 지금 모습은 `docs/design/controls-display.md` "몸"에 있다.
+
+- 피부: 주인공 몸 전용 텍스처 `tex_skin_body_128.png`(평균 색은 옛 것과 같고 밝기 표준편차 8 → 21). `FDKSkinMaterial.SKIN_TEX`만 바꿨고 셰이더의 색 식은 그대로다. 젖은 하이라이트는 작고 날카롭게(지수 48, 세기 0.30, 세 단계), 마른 손은 전과 같다.
+- 1인칭 손(`fdk_hands_rig.gd`): 손가락 단면·골의 그늘·손끝 계단·손톱 판·엄지 굵기와 둥근 끝·엄지 두덩·팔뚝 6고리·손목뼈. 관절 12개의 자리, 마디 길이, 자세, 노드 이름은 그대로다.
+- 인형·거울 몸(`fp_mirror_body.gd`): 손(고리 손바닥, 손가락 계단, 살색 손끝)과 체형(`PLAIN_BUILD`). 머리와 얼굴은 손대지 않았다.
+- 내려다본 배(`fp_belt.gd`): 배꼽 색만 거울 몸과 맞췄다.
+- 검사: 새 `run_protagonist_look_tests.gd` 29항목 통과(텍스처 평균·결·이음매, 하이라이트가 wet에만 곱해지는지, 관절 12개 자리, 팔뚝 z 범위, 손끝 계단, 손톱, 엄지 끝, 인형 키·골반·피벗·체형). 통과: run_tests 131, preservation 209, watch/door 265, body marks 52, vent hands 58, saw grip 17, art 34. `run_mutation_tests`는 203 통과·4 실패로 이번 변경 전과 같다(Tab 자세).
+- 캡처: `docs/tracking/captures/R2_protagonist/`. `compare_*.jpg` 아홉 장이 전후 묶음이고 나머지는 낱장이다.
+- 사람이 볼 것: (1) 인형 체형 A/B(`compare_3_body_build_AB.jpg`), (2) 살결이 때나 병으로 보이지 않는지, 특히 화장실에서(`compare_2_hands_in_game.jpg`, `compare_6_mirror_belly_legs.jpg`), (3) 손가락·손톱·엄지(`compare_1_hand_turntable.jpg`), (4) 뜯은 직후 손의 젖은 빛(`compare_8_wet_hand.jpg`는 모델만 찍은 것이라 게임 안에서 봐야 한다). 실행판은 다시 만들지 않았다.
+- 하지 않은 것: 엄지와 검지 사이 물갈퀴 살, 머리 폭 줄이기(거울에서 눈이 사라져 되돌림), 다리 UV 배율 조정(벽지처럼 보이지 않았다), M09 손톱 변이와 새 손톱의 겹침 확인(변이 묶음의 몫).
+
 ## 2026-11-14 가구와 배치 다듬기
 
 사용자 요청 "디자인도 다듬어줘: 3D 모델링" 가운데 가구와 배치 몫이다. 값과 이유는 `docs/design/decisions-log.md` 2026-11-14의 가구·배치 표, 지금 배치는 `docs/design/controls-display.md` "화장실 배치"에 있다.

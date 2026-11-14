@@ -119,7 +119,7 @@ func _ready() -> void:
     _loft_lit(st, torso, bands)
     # small navel
     var nz: float = -_front_at(0.06) - 0.002
-    K.rbox(st, K.T(Vector3(0, 0.06, nz)), Vector3(0.005, 0.006, 0.002), 0.0015, Color(0.62, 0.42, 0.36))
+    K.rbox(st, K.T(Vector3(0, 0.06, nz)), Vector3(0.005, 0.006, 0.002), 0.0015, Color(0.55, 0.34, 0.3))
     var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), _skin_mat())
     # the body must not shade itself dark under the ceiling tube
     torso_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

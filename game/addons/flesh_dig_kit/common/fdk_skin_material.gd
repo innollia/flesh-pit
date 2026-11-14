@@ -63,14 +63,19 @@ void fragment() {
     float light = 0.8 + 0.25 * max(dot(wn, normalize(vec3(0.0, 1.0, -0.4))), 0.0);
     ALBEDO = col * tint.rgb * light;
     // Preserve wet highlights on the camera-attached hands.
-    float spec = pow(max(dot(normalize(NORMAL), normalize(VIEW+vec3(0.25,0.45,1.0))),0.0), 24.0);
-    ALBEDO += vec3(0.16) * wet * spec;
+    // Small and sharp, cut into PS1 steps; nothing at all on a dry hand.
+    float spec = pow(max(dot(normalize(NORMAL), normalize(VIEW+vec3(0.25,0.45,1.0))),0.0), 48.0);
+    spec = floor(spec * 3.0 + 0.5) / 3.0;
+    ALBEDO += vec3(0.30) * wet * spec;
     if (ghost) {
         ALBEDO = mix(ALBEDO, vec3(0.55,1.0,1.0), 0.55);
         ALPHA *= 0.70;
     }
 }
 """
+## The protagonist skin texture (tools/bake_ps1_textures.py
+## procedural_skin_body). tex_skin_128 stays with the tumours and the canary.
+const SKIN_TEX := "res://addons/flesh_dig_kit/textures/tex_skin_body_128.png"
 static var _shader: Shader
 static var _transparent_shader: Shader
 static func make(squash: float = 1.0, painted: bool = true, transparent: bool = false) -> ShaderMaterial:
@@ -88,7 +93,7 @@ static func make(squash: float = 1.0, painted: bool = true, transparent: bool = 
         _transparent_shader.code = SHADER
     var mat := ShaderMaterial.new()
     mat.shader = _transparent_shader if transparent or not painted else _shader
-    mat.set_shader_parameter("skin_tex", load("res://addons/flesh_dig_kit/textures/tex_skin_128.png"))
+    mat.set_shader_parameter("skin_tex", load(SKIN_TEX))
     mat.set_shader_parameter("viewmodel_squash", squash)
     mat.set_shader_parameter("painted", painted)
     mat.set_shader_parameter("use_vertex_color", true)

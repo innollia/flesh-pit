@@ -113,6 +113,72 @@ def procedural_skin(size: int, seed: int, base: tuple) -> np.ndarray:
     return clamp01(col / 255.0) * 255.0
 
 
+def periodic_noise(size: int, seed: int, falloff: float, low_cut: float = 0.0) -> np.ndarray:
+    """Tileable noise (zero mean, unit std): white noise shaped in the
+    frequency domain by 1/f**falloff, so opposite edges always meet."""
+    g = rng(seed)
+    spec = np.fft.fft2(g.standard_normal((size, size)))
+    fy = np.fft.fftfreq(size)[:, None] * size
+    fx = np.fft.fftfreq(size)[None, :] * size
+    f = np.sqrt(fx * fx + fy * fy)
+    gain = np.where(f > low_cut, 1.0 / np.maximum(f, 1.0) ** falloff, 0.0)
+    gain[0, 0] = 0.0
+    out = np.real(np.fft.ifft2(spec * gain))
+    return (out / (out.std() + 1e-9)).astype(np.float32)
+
+
+def procedural_skin_body(size: int, seed: int) -> np.ndarray:
+    """The protagonist's own skin (hands, belly, legs, mirror body). Same
+    mean colour as tex_skin (so the body colour on screen does not move) but
+    with a grain that survives the shader's half-strength mix: crease
+    lattice, pores, reddish blotches, two faint veins. Tileable. The old
+    tex_skin stays for the tumours and the canary."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    lum = np.zeros((size, size), dtype=np.float32)   # relative brightness change
+    red = np.zeros((size, size), dtype=np.float32)   # +red / -green shift
+    blue = np.zeros((size, size), dtype=np.float32)  # vein shift
+    # broad uneven tone and a finer mottling, like a photo of skin up close
+    lum += 0.012 * periodic_noise(size, seed, 1.6)
+    lum += 0.042 * periodic_noise(size, seed + 1, 0.9, 7.0)
+    # (a) diamond crease lattice: two diagonal line families, period 8 px,
+    # bent by slow noise so it never reads as a drawn grid
+    w1 = 2.6 * periodic_noise(size, seed + 2, 1.8)
+    w2 = 2.6 * periodic_noise(size, seed + 3, 1.8)
+    crease = (np.mod(xx + yy + w1, 8.0) < 1.0) | (np.mod(xx - yy + w2, 8.0) < 1.0)
+    fade = clamp01(0.75 + 0.35 * periodic_noise(size, seed + 4, 1.4))
+    lum -= 0.085 * crease * fade
+    # (b) pores: about 6 % of the texels, one texel each
+    pores = rng(seed + 5).random((size, size)) < 0.06
+    lum -= 0.10 * pores
+    # (c) low, reddish blotches (a few 30-50 px patches)
+    blot = clamp01((periodic_noise(size, seed + 6, 2.4) - 0.55) * 1.4)
+    red += 0.02 * blot
+    # (d) two faint bluish veins wandering across (periodic in x)
+    for k, (y0, amp, waves, phase) in enumerate([(38.0, 9.0, 1, 0.7), (97.0, 7.0, 2, 2.9)]):
+        line = y0 + amp * np.sin(xx * (2.0 * np.pi * waves / size) + phase) + 3.0 * np.sin(xx * (2.0 * np.pi * 3 / size) + phase * 2.0 + k)
+        d = np.abs(np.mod(yy - line + size / 2.0, size) - size / 2.0)
+        blue += clamp01(1.6 - d) * clamp01(0.6 + 0.4 * np.sin(xx * (2.0 * np.pi * 2 / size) + k))
+    blue = clamp01(blue)
+    base = np.array((219.0, 179.0, 152.0), dtype=np.float32)
+    best = None
+    # brightness spread is tuned to std 21 (20..26 passes the art check); the
+    # mean is then put back on the old texture's mean, channel by channel
+    gain = 1.0
+    for _ in range(12):
+        col = base[None, None, :] * (1.0 + gain * lum[..., None])
+        col[..., 0] *= 1.0 + red - 0.06 * blue
+        col[..., 1] *= 1.0 - 1.1 * red - 0.02 * blue
+        col[..., 2] *= 1.0 - 0.6 * red + 0.03 * blue
+        col += (base - col.reshape(-1, 3).mean(axis=0))[None, None, :]
+        best = ordered_dither(np.clip(col, 0, 255), 40).astype(np.float32)
+        best += np.round(base - best.reshape(-1, 3).mean(axis=0))[None, None, :]
+        best = np.clip(best, 0, 255)
+        std = float((best @ np.array((0.299, 0.587, 0.114), dtype=np.float32)).std())
+        if abs(std - 21.0) < 0.4:
+            break
+        gain *= 21.0 / std
+    return best.astype(np.uint8)
+
 
 def ceramic(size: int) -> np.ndarray:
     """Clean white glazed ceramic: flat white base with a very soft vertical
@@ -187,7 +253,17 @@ def build(size: int, suffix: str) -> None:
     save(f"tex_torn_chunk_{suffix}.png", ordered_dither(tank, dith_levels))
 
 
+def build_skin_body() -> None:
+    save("tex_skin_body_128.png", procedural_skin_body(128, 42))
+
+
 if __name__ == "__main__":
+    import sys
+    if "skin_body" in sys.argv:
+        # only the protagonist's skin; leaves every other baked texture alone
+        build_skin_body()
+        sys.exit(0)
+    build_skin_body()
     for size, suffix in [(128, "128"), (64, "64")]:
         build(size, suffix)
     print("done. sources under", SRC, "read-only; nothing there was modified.")
