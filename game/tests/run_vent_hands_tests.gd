@@ -13,6 +13,15 @@ var m: Node3D
 var passed := 0
 var failed := 0
 
+## Where the checks stand, kept at the same offsets from the vent as before
+## it moved to the room's centre line: a step away from under it (the spot
+## was (0.1, 0.9, 0.2) for a vent at (-0.55, -0.78)), and across the room.
+func near_stand() -> Vector3:
+	return Vector3(FPRestroom.VENT_CENTER.x + 0.65, 0.9, FPRestroom.VENT_CENTER.z + 0.98)
+
+func far_stand() -> Vector3:
+	return Vector3(FPRestroom.VENT_CENTER.x + 1.9, 0.9, FPRestroom.VENT_CENTER.z + 1.4)
+
 func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = "user://keybinds_test_vent_hands.json"
@@ -108,7 +117,7 @@ func run() -> void:
 	await frames(5)
 	m.finish_opening()
 	var art: Node3D = m.vent.art
-	m.player.global_position = Vector3(0.1, 0.9, 0.2)
+	m.player.global_position = near_stand()
 	await frames(3)
 	# --- 5. no eyes: closed, open, frantic after a flush, calm after paying
 	check(eyes_shown() == 0, "no eyes with the grate shut")
@@ -175,14 +184,14 @@ func run() -> void:
 		check(item.global_position.y < FPRestroom.VENT_CENTER.y - 0.3, "item %d is held below the ceiling" % i)
 	check(far < 0.75, "standing near the vent, every item is held within reach of the eye (%.2f m)" % far)
 	var before_far := far
-	m.player.global_position = Vector3(1.4, 0.9, 0.9)
+	m.player.global_position = far_stand()
 	await wait(3.0)
 	eye = m.player.camera.global_position
 	var near_vent := 0.0
 	for i in range(3):
 		near_vent = maxf(near_vent, (art.call("item_node", i) as Node3D).global_position.distance_to(eye))
 	check(near_vent < FPRestroom.VENT_CENTER.distance_to(eye) - 0.6, "from across the room the hands still reach well out toward the player (%.2f m, vent %.2f m)" % [near_vent, FPRestroom.VENT_CENTER.distance_to(eye)])
-	m.player.global_position = Vector3(0.1, 0.9, 0.2)
+	m.player.global_position = near_stand()
 	await wait(3.0)
 	# --- 3. bright skin
 	var skin: Color = art.get("SKIN")

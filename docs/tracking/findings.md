@@ -148,3 +148,8 @@ round7에서 `tools/clap_arcade.py`(자기 설명 대 "arcade/8-bit/bitcrushed/b
 - Tab 혹 반짝임(0.7~2.0 박동, 다른 부위와 같은 보라)이 고른 부위(1.4)보다 밝아 "가장 밝은 곳 = 지금 고른 부위"가 깨진다. 재현: 누를 수 있는 혹이 있는 채 Tab을 열고 초점을 팔로 옮긴다. 혹에 초점을 둬도 혹 모습은 그대로이고, 종양 변이를 다 받은 혹은 초점이 가도 표시가 없다. 고칠 방향: 혹도 초점 여부로 세기를 가르고, 초점이 혹이면 살 수 없어도 표시를 켠다. 승인된 Tab 표시에 닿으므로 사용자 확인 뒤에 한다.
 - 검사가 비어 있는 곳 둘. (1) `run_ending_bite_tests.gd`는 `tear_opens_outside` 직접 호출과 M22만 돌린다. 덤 칸(큰 톱·M07/M14)이 바깥을 여는 경우와 손 씹기 경로가 없어 `ENDING_BITE_SPAN`을 0으로 바꿔도 통과한다. (2) `run_body_signals_tests.gd` 4절은 `dig_key_hint()` 반환값만 보고 learned 값을 손으로 세운다. `step_world`가 조준 고리에 키캡을 실제로 올리는지, 다른 대상이 있을 때 안 뜨는지, 키 입력으로 꺼지는지는 보지 않는다.
 - `run_ending_bite_tests.gd.uid`는 아직 없다(편집기 가져오기 때 생긴다).
+
+## 쉼터 컨테이너 안벽이 바깥 칠 색으로 보인다 (2026-11-14 가구 다듬기 중 관찰)
+
+- `fp_rest_container.gd` `_ribbed_wall`은 안쪽 면을 회색(`inside`)으로 따로 그리는데 화면에서는 안벽도 현장 노랑이다. 모델을 다시 짓기 전에도 같았다. 재현: `game/tests/capture_room_furniture.gd`의 `can_inside_*` 컷(`docs/tracking/captures/R2_furniture/before_can_inside_chair.jpg`, `after_can_inside_chair.jpg`). 원인은 확인하지 않았다(같은 자리에 겹친 두 면). 회색이 의도라면 안쪽 면을 벽 두께만큼 안으로 들여야 한다.
+- 서 있는 눈에서도 세면대 옆 아래로 카나리아 구멍이 보이는 자리가 있다((-1.2, -0.75)에서 구멍 쪽을 볼 때, 같은 폴더의 `before_hole_standing.jpg`와 `after_hole_standing.jpg`가 같다). 세면대를 고치기 전부터 그랬다.

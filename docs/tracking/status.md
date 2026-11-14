@@ -1,5 +1,18 @@
 # 현재 상태
 
+## 2026-11-14 가구와 배치 다듬기
+
+사용자 요청 "디자인도 다듬어줘: 3D 모델링" 가운데 가구와 배치 몫이다. 값과 이유는 `docs/design/decisions-log.md` 2026-11-14의 가구·배치 표, 지금 배치는 `docs/design/controls-display.md` "화장실 배치"에 있다.
+
+- 환풍구를 문–변기 중심선의 천장 (0, -0.10)으로 옮겼다. 천장 구멍(`VENT_HOLE`)은 중심에서 만들고 덕트·거래 판정·조준은 `VENT_CENTER`를 따라간다. 방의 등은 z -0.80, 천장 원판은 중심선 두 곳이다.
+- 변기(8각 볼, 탱크 받침판, 경첩, 둘째 레버 삭제), 문(양면 틀·환기 살·레버 손잡이·문선), 욕조(테두리·경사 안쪽·배수구·수전), 세면대(볼과 반다리), 휴지걸이(봉·팔·휴지), 샤워(한 줄 호스·숙인 헤드)를 고쳤다. 아무것도 그리지 않던 `KoreanFixtures` 메시를 지웠다.
+- 쉼터 컨테이너를 실제 치수로 다시 짓고 `build_container`의 늘림을 없앴다. 의자·양동이가 제 크기가 됐고 양동이는 판정 자리에 있다. 흰 안전모를 문 옆에 걸었다. 쉼터의 배치와 규칙은 건드리지 않았다.
+- 저장: 옛 저장 변환은 만들지 않았다. 불러올 때 `_clear_vent_duct`가 새 환풍구 자리의 덕트를 비우므로 저장 형식은 그대로다.
+- 검사: 새 `run_room_furniture_tests.gd` 87항목 통과. 환풍구 검사 둘(`run_vent_look_tests`, `run_vent_hands_tests`)은 서는 자리를 옛 좌표 대신 환풍구 기준 같은 거리로 적었다(판정 기준은 그대로). 통과: vent look 110, vent hands 58, vent teeth 169, vent labels 89, vent save 32, ui polish 56, live interactions 99, terrain density cache 35, restroom t1 21, restroom fixtures 47, tank lean 28, watch/door 265, preservation 209, bed 84, biome 489, spray attachment 38, hand controls 60, body marks 52. 이번 변경 전부터의 실패는 그대로다(settle_vent 3, main 7, revision 1).
+- 캡처: `game/tests/capture_room_furniture.gd`(저장·키 격리)로 같은 각도의 전후를 `docs/tracking/captures/R2_furniture/`에 두었다.
+- 사람이 볼 것: 문으로 들어선 한 컷과 앉은 첫 화면, 등을 뒤로 옮긴 뒤 문 쪽 벽의 밝기, 다듬은 가구가 방의 다른 것보다 튀지 않는지, 흰 안전모. 실행판은 다시 만들지 않았다.
+- 하지 않은 것: `vent_rules.json`의 `DOOR_NEAR` 조정(환풍구 밑 알림과 문 알림이 z 0.5~0.9에서 겹칠 수 있다. 대사 겹침은 확인하지 않았다), `fp_vent.gd`의 옛 구석 주석 수정. 둘 다 다른 작업이 고치는 중인 파일이다.
+
 ## 2026-11-14 핵심 재미 감사 묶음의 마지막 확인
 
 대상 커밋 9bfa87a(압축 살 텍스처·화장실 조명), 92e60a8(몸 신호), 3acb5e3(살점 면 표시), 42d67bd(소리 연결과 새 음원), e42b739(엔딩 뜯기·Tab 혹), bc18ce8(검수 결함 넷). 항목별 내용은 아래 같은 날짜 항목들에 있다.

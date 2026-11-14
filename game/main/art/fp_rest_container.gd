@@ -4,15 +4,31 @@ extends Node3D
 ## (one identical model placed several times per shell). Corrugated steel
 ## box, faded site-yellow paint, a door with a wired window, a barred side
 ## window, a dim fluorescent tube inside, a floor drain + bucket (the only
-## thing to do here is vomit/settle). Flesh blobs have grown over its
-## corners and roof. Origin = floor centre; door on the +Z long side.
+## thing to do here is vomit/settle), a folding chair and a white hard hat on
+## a nail by the door. Flesh blobs have grown over its corners and roof.
+## Built at its real size (FPWorldFeatures.CONTAINER_HALF), never stretched:
+## stretching it to the logic box made the chair seat 0.71 m high and the
+## bucket an oval. Origin = floor centre; door on the +Z long side.
 ## Public: set_door_open(0..1), play_door(), set_light(on), set_flicker(bool),
 ## drain_point(), chair_point() -> Vector3 (local).
 
 const K := preload("res://main/art/fp_art_kit.gd")
-const L := 1.5
-const Wd := 1.2
-const H := 1.3
+## Half length (x), half width (z) and full height: the logic box
+## CONTAINER_HALF (1.1, 1.1, 2.2) with its long side along this model's X.
+const L := 2.2
+const Wd := 1.1
+const H := 2.2
+## Door opening on the +Z wall (x range) and the height of its lintel.
+const DOOR_X0 := 0.24
+const DOOR_X1 := 0.98
+const LINTEL := 1.90
+## Where the chair stands (floor) and how it is turned.
+const CHAIR_AT := Vector3(-1.17, 0.0, -0.72)
+const CHAIR_YAW := 20.0
+const SEAT_Y := 0.44
+## Bucket and drain: where main.gd judges "at the bucket" (the box's -Z end
+## in the world, 0.5 m in from the wall).
+const BUCKET_AT := Vector3(1.7, 0.0, 0.0)
 var _door: Node3D
 var _tube: MeshInstance3D
 var _lamp: OmniLight3D
@@ -40,25 +56,38 @@ func _ready() -> void:
     K.rbox(st, K.T(Vector3(0, -0.04, 0)), Vector3(L + 0.05, 0.04, Wd + 0.05), 0.015, Color(0.3, 0.28, 0.26))
     K.quad(st, Transform3D.IDENTITY, Vector3(-L, 0.002, -Wd), Vector3(L, 0.002, -Wd), Vector3(L, 0.002, Wd), Vector3(-L, 0.002, Wd), Vector3.UP, Color(0.36, 0.34, 0.3))
     # barred side window frame on the -X wall
-    K.rbox(st, K.T(Vector3(-L - 0.03, 0.85, 0)), Vector3(0.02, 0.2, 0.3), 0.01, Color(0.3, 0.3, 0.32))
+    K.rbox(st, K.T(Vector3(-L - 0.03, 1.44, 0)), Vector3(0.02, 0.34, 0.28), 0.01, Color(0.3, 0.3, 0.32))
     for i in range(5):
-        K.tube(st, Transform3D.IDENTITY, [Vector3(-L - 0.06, 0.66, -0.24 + i * 0.12), Vector3(-L - 0.06, 1.04, -0.24 + i * 0.12)], [0.012], 5, [Color(0.25, 0.25, 0.26)])
-    # interior: drain, bucket, a folding chair
-    K.lathe(st, K.T(Vector3(0.7, 0.003, -0.5)), [Vector2(0.12, 0.0), Vector2(0.1, 0.008), Vector2(0.0, 0.004)], 8, [Color(0.2, 0.2, 0.2)])
-    K.lathe(st, K.T(Vector3(0.95, 0.0, -0.75)), [Vector2(0.0, 0.0), Vector2(0.12, 0.0), Vector2(0.15, 0.3), Vector2(0.14, 0.3), Vector2(0.11, 0.02)], 10, [Color(0.25, 0.4, 0.62)])
-    K.rbox(st, K.T(Vector3(-0.8, 0.42, -0.6), Vector3(0, 20, 0)), Vector3(0.2, 0.02, 0.2), 0.01, Color(0.4, 0.4, 0.42))
-    K.rbox(st, K.T(Vector3(-0.8, 0.7, -0.78), Vector3(-10, 20, 0)), Vector3(0.2, 0.15, 0.015), 0.01, Color(0.4, 0.4, 0.42))
+        K.tube(st, Transform3D.IDENTITY, [Vector3(-L - 0.06, 1.12, -0.22 + i * 0.11), Vector3(-L - 0.06, 1.76, -0.22 + i * 0.11)], [0.012], 5, [Color(0.25, 0.25, 0.26)])
+    # interior: the drain with the bucket standing on it
+    K.lathe(st, K.T(BUCKET_AT + Vector3(0, 0.003, 0)), [Vector2(0.2, 0.0), Vector2(0.17, 0.008), Vector2(0.0, 0.004)], 8, [Color(0.2, 0.2, 0.2)])
+    K.lathe(st, K.T(BUCKET_AT), [Vector2(0.0, 0.0), Vector2(0.12, 0.0), Vector2(0.15, 0.3), Vector2(0.14, 0.3), Vector2(0.11, 0.02), Vector2(0.0, 0.02)], 8, [Color(0.25, 0.4, 0.62)])
+    # a folding chair at its real size: 0.40 m square seat 0.44 m up, a
+    # 0.40 x 0.30 back on two posts, four legs
+    var chair := K.T(CHAIR_AT, Vector3(0, CHAIR_YAW, 0))
+    var chair_col := Color(0.4, 0.4, 0.42)
+    var leg_col := Color(0.3, 0.3, 0.32)
+    K.rbox(st, chair * K.T(Vector3(0, SEAT_Y - 0.012, 0)), Vector3(0.2, 0.012, 0.2), 0.008, chair_col)
+    K.rbox(st, chair * K.T(Vector3(0, SEAT_Y + 0.28, -0.225), Vector3(-10, 0, 0)), Vector3(0.2, 0.15, 0.012), 0.008, chair_col)
     for sx in [-1, 1]:
         for sz in [-1, 1]:
-            K.tube(st, K.T(Vector3(-0.8, 0, -0.6), Vector3(0, 20, 0)), [Vector3(sx * 0.18, 0.0, sz * 0.18), Vector3(sx * 0.17, 0.41, sz * 0.17)], [0.012], 4, [Color(0.3, 0.3, 0.32)])
+            K.tube(st, chair, [Vector3(sx * 0.19, 0.0, sz * 0.2), Vector3(sx * 0.18, SEAT_Y - 0.02, sz * 0.17)], [0.012], 4, [leg_col])
+        K.tube(st, chair, [Vector3(sx * 0.18, SEAT_Y - 0.02, -0.18), Vector3(sx * 0.18, SEAT_Y + 0.42, -0.25)], [0.012], 4, [leg_col])
+    # a site hard hat hung on a nail by the door: white, since the walls
+    # behind it are the site yellow
+    var hat_col := Color(0.92, 0.9, 0.82)
+    var hat := K.T(Vector3(-0.15, 1.5, Wd - 0.085), Vector3(-60, 0, 0))
+    K.lathe(st, hat, [Vector2(0.16, 0.0), Vector2(0.13, 0.02), Vector2(0.125, 0.07), Vector2(0.09, 0.115), Vector2(0.0, 0.135)], 6, [hat_col.darkened(0.2), hat_col.darkened(0.08), hat_col, hat_col.lightened(0.3)])
+    K.rbox(st, hat * K.T(Vector3(0, 0.012, -0.17)), Vector3(0.08, 0.008, 0.05), 0.005, hat_col.darkened(0.12))
+    K.tube(st, Transform3D.IDENTITY, [Vector3(-0.15, 1.69, Wd), Vector3(-0.15, 1.675, Wd - 0.11)], [0.006], 4, [Color(0.25, 0.25, 0.26)])
     K.add_mesh(self, "Shell", K.finish(st, 3.0), steel)
     # flesh overgrowth on corners/roof edges
     st = K.begin()
     var fa := Color(0.55, 0.1, 0.12)
     var fb := Color(0.72, 0.28, 0.25)
-    var growth := [Vector3(L, H, Wd), Vector3(L, H, -Wd), Vector3(-L, H, -Wd), Vector3(-L, 0.2, Wd), Vector3(0.3, H + 0.05, -Wd), Vector3(-0.9, H + 0.05, 0.2), Vector3(L, 0.4, -0.6)]
+    var growth := [Vector3(L, H, Wd), Vector3(L, H, -Wd), Vector3(-L, H, -Wd), Vector3(-L, 0.34, Wd), Vector3(0.44, H + 0.05, -Wd), Vector3(-1.32, H + 0.05, 0.18), Vector3(L, 0.68, -0.55)]
     for i in range(growth.size()):
-        var r := 0.25 + K.h(i, 2) * 0.25
+        var r := 0.35 + K.h(i, 2) * 0.3
         var gp: Vector3 = growth[i]
         K.blob(st, Transform3D.IDENTITY, gp, Vector3(r, r * 0.7, r), 0.4, 90 + i, fa, fb)
         # lumpy satellite tumours fused into the main mass (no lone spheres)
@@ -70,29 +99,31 @@ func _ready() -> void:
         for j in range(3):
             var ang := K.h(i, j, 41) * TAU
             var side := Vector3(cos(ang), 0, sin(ang)) * r * 0.6
-            var drop := 0.35 + K.h(i, j, 42) * 0.55
+            var drop := 0.6 + K.h(i, j, 42) * 0.9
             var pts: Array = []
             for k in range(5):
                 var t := float(k) / 4.0
                 pts.append(gp + side * (1.0 + t * 0.6) + Vector3(sin(t * 4.0 + j) * 0.05, -drop * t, cos(t * 3.0 + i) * 0.05))
             K.tube(st, Transform3D.IDENTITY, pts, [0.035, 0.028, 0.02, 0.013, 0.006], 5, [fa, fb.darkened(0.2)])
     K.add_mesh(self, "Overgrowth", K.finish(st, 3.0), K.mat("tex_flesh_128.png", 0.7, true))
-    # door (on the +Z wall, hinge at x=0.1)
-    _door = K.pivot(self, "DoorHinge", Vector3(0.62, 0, Wd + 0.02))
+    # door (on the +Z wall, hinged at the opening's +X edge): 0.71 m wide,
+    # 1.88 m high, a wired window in its upper half
+    _door = K.pivot(self, "DoorHinge", Vector3(DOOR_X1 - 0.01, 0, Wd + 0.02))
+    var dw := (DOOR_X1 - DOOR_X0 - 0.03) * 0.5
     st = K.begin()
-    K.rbox(st, K.T(Vector3(-0.23, 0.55, 0)), Vector3(0.23, 0.55, 0.025), 0.012, Color(0.62, 0.64, 0.6), Color(0.45, 0.46, 0.44))
-    K.rbox(st, K.T(Vector3(-0.23, 0.85, 0.026)), Vector3(0.12, 0.13, 0.004), 0.004, Color(0.18, 0.22, 0.24))
-    for i in range(4):
-        K.tube(st, Transform3D.IDENTITY, [Vector3(-0.35, 0.72 + i * 0.087, 0.032), Vector3(-0.11, 0.72 + i * 0.087, 0.032)], [0.003], 3, [Color(0.6, 0.6, 0.6)])
-    K.lathe(st, K.T(Vector3(-0.4, 0.55, 0.04), Vector3(90, 0, 0)), [Vector2(0.0, -0.01), Vector2(0.018, -0.01), Vector2(0.015, 0.02), Vector2(0.0, 0.025)], 6, [Color(0.75, 0.75, 0.72)])
+    K.rbox(st, K.T(Vector3(-dw, 0.95, 0)), Vector3(dw, 0.94, 0.025), 0.012, Color(0.62, 0.64, 0.6), Color(0.45, 0.46, 0.44))
+    K.rbox(st, K.T(Vector3(-dw, 1.45, 0.026)), Vector3(0.2, 0.22, 0.004), 0.004, Color(0.18, 0.22, 0.24))
+    for i in range(5):
+        K.tube(st, Transform3D.IDENTITY, [Vector3(-dw - 0.19, 1.27 + i * 0.09, 0.032), Vector3(-dw + 0.19, 1.27 + i * 0.09, 0.032)], [0.003], 3, [Color(0.6, 0.6, 0.6)])
+    K.lathe(st, K.T(Vector3(-dw * 2.0 + 0.08, 0.95, 0.04), Vector3(90, 0, 0)), [Vector2(0.0, -0.01), Vector2(0.022, -0.01), Vector2(0.018, 0.025), Vector2(0.0, 0.03)], 6, [Color(0.75, 0.75, 0.72)])
     K.add_mesh(_door, "Door", K.finish(st, 4.0), steel)
     # fluorescent tube
     st = K.begin()
-    K.tube(st, Transform3D.IDENTITY, [Vector3(-0.5, H - 0.05, 0), Vector3(0.5, H - 0.05, 0)], [0.018], 6, [Color(0.85, 0.95, 0.9)])
+    K.tube(st, Transform3D.IDENTITY, [Vector3(-0.6, H - 0.05, 0), Vector3(0.6, H - 0.05, 0)], [0.018], 6, [Color(0.85, 0.95, 0.9)])
     _tube = K.add_mesh(self, "Tube", K.finish(st), K.glow(Color(1, 1, 1)))
     _lamp = OmniLight3D.new()
     _lamp.position = Vector3(0, H - 0.15, 0)
-    _lamp.omni_range = 3.0
+    _lamp.omni_range = 4.0
     _lamp.light_color = Color(0.85, 1.0, 0.9)
     _lamp.light_energy = 0.9
     # no shadows, so without this it shone through the restroom's thin wall
@@ -109,12 +140,12 @@ func _ribbed_wall(st: SurfaceTool, c: Vector3, dir: Vector3, half: float, col: C
         var s0 := -half + i * (half * 2.0 / ribs)
         var s1 := s0 + half * 2.0 / ribs
         var sm := (s0 + s1) * 0.5
-        if door_gap and sm < -0.16 and sm > -0.64:
+        if door_gap and sm < -DOOR_X0 and sm > -DOOR_X1:
             # door opening: only a lintel above
-            var a := c + dir * s0 + Vector3(0, 1.12, 0)
-            var b := c + dir * s1 + Vector3(0, 1.12, 0)
-            K.quad(st, Transform3D.IDENTITY, a, b, b + Vector3(0, H - 1.12, 0), a + Vector3(0, H - 1.12, 0), outward, col)
-            K.quad(st, Transform3D.IDENTITY, a, b, b + Vector3(0, H - 1.12, 0), a + Vector3(0, H - 1.12, 0), -outward, inner)
+            var a := c + dir * s0 + Vector3(0, LINTEL, 0)
+            var b := c + dir * s1 + Vector3(0, LINTEL, 0)
+            K.quad(st, Transform3D.IDENTITY, a, b, b + Vector3(0, H - LINTEL, 0), a + Vector3(0, H - LINTEL, 0), outward, col)
+            K.quad(st, Transform3D.IDENTITY, a, b, b + Vector3(0, H - LINTEL, 0), a + Vector3(0, H - LINTEL, 0), -outward, inner)
             continue
         var dep := 0.025 if i % 2 == 0 else 0.0
         var dep2 := 0.0 if i % 2 == 0 else 0.025
@@ -146,10 +177,10 @@ func set_flicker(on: bool) -> void:
 
 ## Top of the folding chair seat (local frame).
 func chair_point() -> Vector3:
-    return Vector3(-0.8, 0.44, -0.6)
+    return CHAIR_AT + Vector3(0, SEAT_Y, 0)
 
 func drain_point() -> Vector3:
-    return Vector3(0.7, 0.0, -0.5)
+    return BUCKET_AT
 
 func _process(delta: float) -> void:
     _time += delta
@@ -159,4 +190,4 @@ func _process(delta: float) -> void:
 
 func capture_setup() -> Dictionary:
     set_door_open(0.75)
-    return {"cam_pos": Vector3(2.2, 1.8, 3.6), "look_at": Vector3(0, 0.6, 0), "env": "dark", "fov": 55.0}
+    return {"cam_pos": Vector3(3.4, 2.6, 5.2), "look_at": Vector3(0, 1.0, 0), "env": "dark", "fov": 55.0}

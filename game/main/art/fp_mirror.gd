@@ -75,7 +75,17 @@ const BASIN_BOTTOM := 0.40
 const BASIN_FLOOR := 0.79
 ## Plan outlines (local x along the wall, z out of it), wall side last.
 const BASIN_OUTER := [Vector2(-0.30, -0.02), Vector2(-0.30, 0.32), Vector2(-0.20, 0.44), Vector2(0.20, 0.44), Vector2(0.30, 0.32), Vector2(0.30, -0.02)]
-const BASIN_UNDER := [Vector2(-0.11, -0.02), Vector2(-0.11, 0.14), Vector2(-0.07, 0.19), Vector2(0.07, 0.19), Vector2(0.11, 0.14), Vector2(0.11, -0.02)]
+## The bowl's body stands nearly straight for 0.18 m under the rim (to
+## BASIN_OUTER set 3 cm in), folds in under itself to the neck, and only
+## then the half-pedestal runs down and back into the wall. One taper from
+## rim to foot read as a funnel, not as a basin on a pedestal. The pedestal
+## ends in an edge on the wall (BASIN_UNDER), so it needs no underside cap:
+## the whole basin stays under the 60-triangle cap.
+const BASIN_MID_Y := 0.70
+const BASIN_NECK_Y := 0.66
+const BASIN_MID := [Vector2(-0.27, -0.02), Vector2(-0.27, 0.31), Vector2(-0.185, 0.41), Vector2(0.185, 0.41), Vector2(0.27, 0.31), Vector2(0.27, -0.02)]
+const BASIN_NECK := [Vector2(-0.13, -0.02), Vector2(-0.13, 0.20), Vector2(-0.08, 0.26), Vector2(0.08, 0.26), Vector2(0.13, 0.20), Vector2(0.13, -0.02)]
+const BASIN_UNDER := [Vector2(-0.09, -0.02), Vector2(-0.09, -0.02), Vector2(-0.05, -0.02), Vector2(0.05, -0.02), Vector2(0.09, -0.02), Vector2(0.09, -0.02)]
 const BASIN_OPEN := [Vector2(-0.24, 0.14), Vector2(-0.24, 0.30), Vector2(-0.17, 0.38), Vector2(0.17, 0.38), Vector2(0.24, 0.30), Vector2(0.24, 0.14)]
 const BASIN_DRAIN_FLOOR := [Vector2(-0.09, 0.19), Vector2(-0.09, 0.25), Vector2(-0.06, 0.29), Vector2(0.06, 0.29), Vector2(0.09, 0.25), Vector2(0.09, 0.19)]
 const BOWL_TEX := 32
@@ -103,17 +113,20 @@ func _build_basin() -> void:
 	var ceramic_lo := K.mat("tex_ceramic_64.png", 0.12, false)
 	var st := K.begin()
 	var top := _ring(BASIN_OUTER, BASIN_TOP)
-	var lip := _ring(BASIN_OUTER, BASIN_TOP - 0.035)
 	var under := _ring(BASIN_UNDER, BASIN_BOTTOM)
 	var centre := Vector3(0.0, 0.6, 0.12)
 	# flat baked shades per face, like the room's other vertex-coloured props
 	var side := [Color(0.86, 0.86, 0.84), Color(0.9, 0.9, 0.88), Color(0.95, 0.95, 0.93), Color(0.9, 0.9, 0.88), Color(0.86, 0.86, 0.84)]
 	var low := [Color(0.72, 0.72, 0.71), Color(0.76, 0.76, 0.75), Color(0.8, 0.8, 0.79), Color(0.76, 0.76, 0.75), Color(0.72, 0.72, 0.71)]
-	_band(st, top, lip, centre + Vector3(0, 0.3, 0), side, false)
-	_band(st, lip, under, centre, low, false)
-	# underside cap
-	for i in range(1, under.size() - 1):
-		K.tri(st, Transform3D.IDENTITY, under[0], under[i], under[i + 1], Vector3.DOWN, Color(0.62, 0.62, 0.61))
+	var mid := _ring(BASIN_MID, BASIN_MID_Y)
+	var neck := _ring(BASIN_NECK, BASIN_NECK_Y)
+	_band(st, top, mid, centre + Vector3(0, 0.2, 0), side, false)
+	# the bowl's underside, folding in to the neck
+	var fold := Color(0.62, 0.62, 0.61)
+	for i in range(mid.size() - 1):
+		K.quad(st, Transform3D.IDENTITY, mid[i], mid[i + 1], neck[i + 1], neck[i], Vector3.DOWN, fold)
+	# half pedestal: down and back to an edge on the wall
+	_band(st, neck, under, Vector3(0.0, 0.6, -0.3), low, false)
 	# flat rim deck between the outer edge and the bowl opening
 	var open := _ring(BASIN_OPEN, BASIN_TOP)
 	for i in range(top.size()):

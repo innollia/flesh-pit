@@ -1,6 +1,7 @@
 class_name FPRestroom
 extends Node3D
 const FPProfile := preload("res://main/scripts/fp_profile.gd")
+const K := preload("res://main/art/fp_art_kit.gd")
 
 ## The clean white restroom (docs/spec/03-restroom.md): low-poly tiled walls/floor,
 ## ceiling light panel, toilet with an openable tank lid, sink with mirror,
@@ -13,13 +14,24 @@ const TILE := 0.3
 const DOOR_HALF_W := 0.45
 const DOOR_H := 2.05
 const BATH_LENGTH := 1.7
-## Ceiling opening for the art vent (main.gd places it at x=z=0.75, its
-## grate opening is 0.52 m square): [x0, z0, x1, z1].
-const VENT_HOLE := [-0.81, -1.04, -0.29, -0.52]
-## Where the vent sits: on the ceiling, above and to the right of the seat
-## (seen from the seat). It stayed here when the toilet moved to the back
-## wall: the duct is carved into saved terrain. main.gd places FPVent here.
-const VENT_CENTER := Vector3(-0.55, 2.0 * 1.3, -0.78)
+## Where the vent sits: on the ceiling, on the line from the door to the
+## toilet, a little toward the door from the middle of the room. Walking in,
+## the grille hangs at the top of the view over the toilet; from the seat it
+## is straight ahead and up, and a hand reaching down with an offer comes
+## into a level gaze. main.gd places FPVent here and the duct in the terrain
+## follows this point.
+const VENT_X := 0.0
+const VENT_Z := -0.10
+## Half of the grate's 0.52 m square opening.
+const VENT_HALF := 0.26
+const VENT_CENTER := Vector3(VENT_X, 2.0 * 1.3, VENT_Z)
+## Ceiling opening for the art vent, made from its centre: [x0, z0, x1, z1].
+const VENT_HOLE := [VENT_X - VENT_HALF, VENT_Z - VENT_HALF, VENT_X + VENT_HALF, VENT_Z + VENT_HALF]
+## The room lamp and the two ceiling light disks stand on the same line as
+## the vent: disk, grille, disk. The lamp hangs under the back disk, clear of
+## the open grille (which drops 0.52 m) and of the hand reaching out of it.
+const LIGHT_Z := -0.80
+const LIGHT_DISKS := [Vector2(0.0, LIGHT_Z), Vector2(0.0, 0.85)]
 ## The toilet stands against the back (-Z) wall, centred on the door in the
 ## +Z wall and facing it (user 2026-11-14: walking in through the door the
 ## bowl is straight ahead, so where to vomit is plain). Its origin is the
@@ -91,9 +103,13 @@ func build() -> void:
     _build_toilet(ceramic_mat)
     _build_sink(ceramic_mat)
     _build_canary_hole()
-    var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, false, 0.0, 0.9, 1.0, false)
+    # the door and the tub carry baked face shades (rails against panels,
+    # the tub's slopes), so their materials read the vertex colour
+    var door_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_door_paint_128.png", 1.0, true, 0.0, 0.9, 1.0, false)
     _build_door(door_mat, fixture_mat)
     _build_korean(fixture_mat)
+    var tub_mat := FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 1.0, true, 0.45, 0.25, 1.0, false)
+    _build_bath(tub_mat, fixture_mat)
     _build_light()
     _build_collision()
     _set_room_layer(self)
@@ -334,35 +350,40 @@ func _build_toilet(mat: Material) -> void:
     var shade := Color(0.88, 0.89, 0.91)
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var prof := FDKLowPoly.round_profile(12)
-    # pedestal: stacked rings (y up); ring() builds in XY, so build manually
+    # Eight-sided egg rings (flat face in front and behind, longer toward
+    # the front): the same facet count as the room's other fixtures. The old
+    # 12-sided round pedestal with a 4 cm waist read as a goblet.
+    # pedestal: [y, centre z, half width, front, back]
     var ped := []
-    for r in [[0.0, 0.17, 0.2], [0.18, 0.13, 0.16], [0.32, 0.16, 0.2], [0.4, 0.21, 0.25]]:
-        ped.append(_yring(prof, Vector3(0, r[0], 0.3), r[1], r[2]))
+    for r in [[0.0, 0.27, 0.15, 0.24, 0.21], [0.05, 0.27, 0.15, 0.24, 0.21], [0.20, 0.28, 0.125, 0.21, 0.20], [0.36, 0.30, 0.19, 0.25, 0.22]]:
+        ped.append(_egg_ring(Vector3(0, r[0], r[1]), r[2], r[3], r[4]))
     FDKLowPoly.loft(st, ped, [shade, white, white], true, false)
     # bowl: rim ring and inner funnel
-    var rim_o := _yring(prof, Vector3(0, 0.42, 0.3), 0.21, 0.26)
-    var rim_i := _yring(prof, Vector3(0, 0.42, 0.3), 0.15, 0.2)
-    var in_mid := _yring(prof, Vector3(0, 0.3, 0.29), 0.11, 0.14)
-    var in_low := _yring(prof, Vector3(0, 0.22, 0.27), 0.06, 0.07)
+    var rim_o := _egg_ring(Vector3(0, 0.42, 0.3), 0.21, 0.27, 0.24)
+    var rim_i := _egg_ring(Vector3(0, 0.42, 0.3), 0.15, 0.21, 0.18)
+    var in_mid := _egg_ring(Vector3(0, 0.3, 0.29), 0.11, 0.14, 0.14)
+    var in_low := _egg_ring(Vector3(0, 0.22, 0.27), 0.06, 0.07, 0.07)
     FDKLowPoly.loft(st, [ped[3], rim_o], [white], false, false)
     _ring_band(st, rim_o, rim_i, Vector3.UP, white)
     _ring_band_inner(st, rim_i, in_mid, Vector3(0, 0.3, 0.29), shade)
     _ring_band_inner(st, in_mid, in_low, Vector3(0, 0.22, 0.27), shade.darkened(0.05))
     # water
     var water := Color(0.62, 0.8, 0.9)
-    var wring := _yring(prof, Vector3(0, 0.28, 0.285), 0.1, 0.125)
+    var wring := _egg_ring(Vector3(0, 0.28, 0.285), 0.1, 0.125, 0.125)
     for i in range(wring.size()):
         FDKLowPoly.add_tri(st, Vector3(0, 0.28, 0.285), wring[i], wring[(i + 1) % wring.size()], Vector3.UP, water.lightened(0.05 * (i % 2)))
     bowl_center = toilet.transform * Vector3(0, 0.3, 0.3)
     # seat (a flat ring slightly above the rim)
-    var seat_o := _yring(prof, Vector3(0, 0.45, 0.31), 0.22, 0.27)
-    var seat_i := _yring(prof, Vector3(0, 0.45, 0.31), 0.14, 0.19)
+    var seat_o := _egg_ring(Vector3(0, 0.45, 0.3), 0.22, 0.28, 0.25)
+    var seat_i := _egg_ring(Vector3(0, 0.45, 0.3), 0.14, 0.20, 0.17)
     _ring_band(st, seat_o, seat_i, Vector3.UP, Color(0.99, 0.99, 1.0))
-    FDKLowPoly.loft(st, [_yring(prof, Vector3(0, 0.42, 0.31), 0.22, 0.27), seat_o], [shade], false, false)
-    # tank: the main/art tooth tank model (added below), not a plain box
-    # flush lever
-    _box(st, Vector3(-0.2, 0.72, 0.17), Vector3(-0.12, 0.745, 0.2), Color(0.75, 0.77, 0.8), Color(0.6, 0.62, 0.66))
+    FDKLowPoly.loft(st, [_egg_ring(Vector3(0, 0.42, 0.3), 0.22, 0.28, 0.25), seat_o], [shade], false, false)
+    _ring_band_inner(st, seat_i, _egg_ring(Vector3(0, 0.42, 0.3), 0.14, 0.20, 0.17), Vector3(0, 0.42, 0.3), shade)
+    # the shelf the tank stands on, and the seat's two hinges against it
+    _box(st, Vector3(-0.21, 0.37, 0.0), Vector3(0.21, 0.42, 0.19), white, shade)
+    for hx in [-0.075, 0.075]:
+        _box(st, Vector3(hx - 0.02, 0.45, 0.19), Vector3(hx + 0.02, 0.47, 0.225), white, shade)
+    # tank and flush lever: the main/art tooth tank model (added below)
     _add(st, mat, "Body", toilet)
     # tank lid on a hinge at the back so it can open to show purchased items
     tank_lid = Node3D.new()
@@ -380,6 +401,18 @@ func _build_toilet(mat: Material) -> void:
     tank_items.name = "TankItems"
     tank_items.position = Vector3(0, 0.72, 0.085)
     toilet.add_child(tank_items)
+
+## Eight-sided ring in the XZ plane round `c`, turned so one flat face looks
+## forward (+Z) and one back. `rx` is the half width; the front and back
+## reaches are given apart, so the ring can be longer toward the front.
+func _egg_ring(c: Vector3, rx: float, front: float, back: float) -> PackedVector3Array:
+    var out := PackedVector3Array()
+    var k := 1.0 / cos(PI / 8.0)
+    for i in range(8):
+        var a := (float(i) + 0.5) * TAU / 8.0
+        var z := cos(a) * k
+        out.append(c + Vector3(sin(a) * k * rx, 0, z * (front if z > 0.0 else back)))
+    return out
 
 func _yring(prof: PackedVector2Array, c: Vector3, rx: float, rz: float) -> PackedVector3Array:
     var out := PackedVector3Array()
@@ -425,22 +458,25 @@ func _build_korean(mat: Material) -> void:
     _box(st, Vector3(x + 0.06, 0.98, sz - 0.02), Vector3(x + 0.12, 1.02, sz + 0.02), chrome, chrome_d)
     _box(st, Vector3(x + 0.02, 1.05, sz - 0.015), Vector3(x + 0.05, 1.95, sz + 0.015), chrome, chrome_d)
     var prof := FDKLowPoly.round_profile(8)
-    var hc := Vector3(x + 0.11, 1.9, sz)
+    # head on its arm, bowed 35 degrees down toward the floor
+    var hc := Vector3(x + 0.115, 1.885, sz)
+    var tilt := deg_to_rad(35.0)
+    var axis := Vector3(cos(tilt), -sin(tilt), 0)
+    var across := Vector3(sin(tilt), cos(tilt), 0)
     var head_a := PackedVector3Array()
     var head_b := PackedVector3Array()
     for p in prof:
-        head_a.append(hc + Vector3(-0.02, p.x * 0.06, p.y * 0.06))
-        head_b.append(hc + Vector3(0.02, p.x * 0.07, p.y * 0.07))
+        head_a.append(hc - axis * 0.02 + (across * p.x + Vector3(0, 0, p.y)) * 0.06)
+        head_b.append(hc + axis * 0.02 + (across * p.x + Vector3(0, 0, p.y)) * 0.07)
     FDKLowPoly.loft(st, [head_a, head_b], [chrome], true, true)
     _box(st, Vector3(x + 0.05, 1.88, sz - 0.012), Vector3(x + 0.1, 1.9, sz + 0.012), chrome, chrome_d)
-    # hose: a sagging chain of small boxes from the mixer
-    var prev := Vector3(x + 0.08, 0.95, sz)
-    for i in range(1, 9):
+    # hose: one sagging line from the mixer up to the head's arm (it used to
+    # be eight separate upright boxes, a dotted line)
+    var hose: Array = []
+    for i in range(9):
         var t := float(i) / 8.0
-        var q := Vector3(x + 0.08 + sin(t * PI) * 0.06, 0.95 - sin(t * PI) * 0.45 + t * 0.9, sz + t * 0.05)
-        var mid := (prev + q) * 0.5
-        _box(st, mid - Vector3(0.008, 0.06, 0.008), mid + Vector3(0.008, 0.06, 0.008), chrome_d, chrome_d.darkened(0.1))
-        prev = q
+        hose.append(Vector3(x + 0.08 + sin(t * PI) * 0.06, 0.95 - sin(t * PI) * 0.45 + t * 0.9, sz + t * 0.05))
+    K.tube(st, Transform3D.IDENTITY, hose, [0.008], 4, [chrome_d, chrome_d.darkened(0.1)], false)
     _add(st, mat, "Shower")
     st = SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -451,13 +487,7 @@ func _build_korean(mat: Material) -> void:
         var gx := dc.x - 0.08 + i * 0.04
         _box(st, Vector3(gx - 0.006, dc.y, dc.z - 0.08), Vector3(gx + 0.006, dc.y + 0.003, dc.z + 0.08), Color(0.35, 0.36, 0.38), Color(0.3, 0.3, 0.32))
     _add(st, mat, "FloorDrain")
-    st = SurfaceTool.new()
-    st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    # ceiling exhaust vent: the main/art vent model sits in VENT_HOLE (main.gd)
-    _add(st, mat, "KoreanFixtures")
-    (get_node("KoreanFixtures") as Node3D).scale.x = -1.0
-    # the shower and drain keep their place; they do not follow the toilet
-    (get_node("KoreanFixtures") as Node3D).position.z = 1.62
+    # (the ceiling vent is the main/art model in VENT_HOLE, placed by main.gd)
     # Paper holder: goes with the toilet, on the wall behind it at the side
     # away from the bath. Built with the wall at local x=0 and the room
     # toward -X, then turned with the toilet.
@@ -470,26 +500,113 @@ func _build_korean(mat: Material) -> void:
         roll_a.append(Vector3(-0.1 + p.x * 0.055, 0.66 + p.y * 0.055, -0.08))
         roll_b.append(Vector3(-0.1 + p.x * 0.055, 0.66 + p.y * 0.055, 0.05))
     FDKLowPoly.loft(st, [roll_a, roll_b], [Color(0.98, 0.98, 0.97)], true, true)
+    # the bar through the roll and the arm that carries it from the wall
+    # plate (the roll used to float under the plate), and one hanging sheet
+    _box(st, Vector3(-0.108, 0.652, -0.1), Vector3(-0.092, 0.668, 0.06), chrome, chrome_d)
+    _box(st, Vector3(-0.108, 0.652, -0.1), Vector3(0.0, 0.70, -0.085), chrome, chrome_d)
+    var paper := Color(0.98, 0.98, 0.97)
+    for face in [Vector3.LEFT, Vector3.RIGHT]:
+        FDKLowPoly.add_quad(st, Vector3(-0.155, 0.57, -0.07), Vector3(-0.155, 0.57, 0.04), Vector3(-0.155, 0.66, 0.04), Vector3(-0.155, 0.66, -0.07), face, paper)
     var holder := _add(st, mat, "PaperHolder")
     holder.rotation.y = TOILET_YAW + PI * 0.5
     holder.position = toilet.transform * Vector3(-PAPER_HOLDER_SIDE, 0, -0.06)
-    _build_bath()
 
-func _build_bath() -> void:
+## The tub: a rim that stands a little proud of the apron, sloped inner
+## walls down to a flat floor (the +X end is the long backrest slope), a
+## drain and an overflow, a recessed toe-kick, and a wall tap over the foot
+## end. Its outline and collision box are unchanged; no water, no stains.
+func _build_bath(mat: Material, chrome_mat: Material) -> void:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var white := Color(0.9, 0.91, 0.9)
-    var inside := Color(0.76, 0.79, 0.8)
+    var white := Color(1.0, 1.0, 1.0)
+    var edge := Color(0.94, 0.95, 0.95)
     var right := HALF.x - 0.025
     var left := right - BATH_LENGTH
     var back := -HALF.z + 0.025
     var front := -HALF.z + 0.86
-    _box(st, Vector3(left, 0, front - 0.10), Vector3(right, 0.56, front), white, white.darkened(0.06))
-    _box(st, Vector3(left, 0, back), Vector3(left + 0.09, 0.56, front), white, inside)
-    _box(st, Vector3(right - 0.09, 0, back), Vector3(right, 0.56, front), white, inside)
-    _box(st, Vector3(left, 0, back), Vector3(right, 0.56, back + 0.09), white, inside)
-    _box(st, Vector3(left + 0.09, 0.12, back + 0.09), Vector3(right - 0.09, 0.17, front - 0.10), inside, inside)
-    _add(st, FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/tex_ceramic_128.png", 2.0, false, 0.0, 0.7, 1.0, false), "Bathtub")
+    var rim_y := 0.53
+    var top := 0.56
+    # rim: four boxes on the outer outline
+    _box(st, Vector3(left, rim_y, front - 0.10), Vector3(right, top, front), white, edge)
+    _box(st, Vector3(left, rim_y, back), Vector3(right, top, back + 0.09), white, edge)
+    _box(st, Vector3(left, rim_y, back + 0.09), Vector3(left + 0.09, top, front - 0.10), white, edge)
+    _box(st, Vector3(right - 0.09, rim_y, back + 0.09), Vector3(right, top, front - 0.10), white, edge)
+    # apron under the rim, set 15 mm in on the two sides the room sees
+    var ax := left + 0.015
+    var az := front - 0.015
+    var kick := 0.05
+    FDKLowPoly.add_quad(st, Vector3(ax, kick, az), Vector3(right, kick, az), Vector3(right, rim_y, az), Vector3(ax, rim_y, az), Vector3.BACK, Color(0.95, 0.96, 0.96))
+    FDKLowPoly.add_quad(st, Vector3(ax, kick, back), Vector3(ax, kick, az), Vector3(ax, rim_y, az), Vector3(ax, rim_y, back), Vector3.LEFT, Color(0.90, 0.91, 0.92))
+    # toe-kick: the bottom 5 cm set a further 2 cm in, and dark
+    var kx := ax + 0.02
+    var kz := az - 0.02
+    var dark := Color(0.42, 0.43, 0.45)
+    FDKLowPoly.add_quad(st, Vector3(kx, 0, kz), Vector3(right, 0, kz), Vector3(right, kick, kz), Vector3(kx, kick, kz), Vector3.BACK, dark)
+    FDKLowPoly.add_quad(st, Vector3(kx, 0, back), Vector3(kx, 0, kz), Vector3(kx, kick, kz), Vector3(kx, kick, back), Vector3.LEFT, dark)
+    FDKLowPoly.add_quad(st, Vector3(ax, kick, kz), Vector3(right, kick, kz), Vector3(right, kick, az), Vector3(ax, kick, az), Vector3.DOWN, dark)
+    FDKLowPoly.add_quad(st, Vector3(ax, kick, back), Vector3(kx, kick, back), Vector3(kx, kick, kz), Vector3(ax, kick, kz), Vector3.DOWN, dark)
+    # inside: four slopes from the rim's inner edge down to the floor
+    var o0 := Vector3(left + 0.09, top, back + 0.09)
+    var o1 := Vector3(right - 0.09, top, back + 0.09)
+    var o2 := Vector3(right - 0.09, top, front - 0.10)
+    var o3 := Vector3(left + 0.09, top, front - 0.10)
+    var fy := 0.17
+    var f0 := Vector3(left + 0.15, fy, back + 0.14)
+    var f1 := Vector3(right - 0.34, fy, back + 0.14)
+    var f2 := Vector3(right - 0.34, fy, front - 0.15)
+    var f3 := Vector3(left + 0.15, fy, front - 0.15)
+    FDKLowPoly.add_quad(st, o0, o1, f1, f0, Vector3.BACK, Color(0.86, 0.88, 0.89))
+    FDKLowPoly.add_quad(st, o1, o2, f2, f1, Vector3.LEFT, Color(0.90, 0.92, 0.93))
+    FDKLowPoly.add_quad(st, o2, o3, f3, f2, Vector3.FORWARD, Color(0.80, 0.82, 0.83))
+    FDKLowPoly.add_quad(st, o3, o0, f0, f3, Vector3.RIGHT, Color(0.83, 0.85, 0.86))
+    FDKLowPoly.add_quad(st, f0, f1, f2, f3, Vector3.UP, Color(0.93, 0.95, 0.96))
+    _add(st, mat, "Bathtub")
+    # chrome: drain, overflow and the wall tap
+    st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var chrome := Color(0.8, 0.82, 0.86)
+    var chrome_d := Color(0.6, 0.62, 0.67)
+    var hole := Color(0.2, 0.2, 0.22)
+    var drain := Vector3(left + 0.30, fy + 0.004, (back + front) * 0.5)
+    _disk(st, drain, Vector3.RIGHT, Vector3.BACK, Vector3.UP, 0.035, chrome_d)
+    _disk(st, drain + Vector3(0, 0.002, 0), Vector3.RIGHT, Vector3.BACK, Vector3.UP, 0.016, hole)
+    # overflow on the foot-end slope, 0.42 m up
+    var slope := (f0 - o0)
+    slope.z = 0.0
+    var along := slope.normalized()
+    var out := Vector3(-along.y, along.x, 0.0)
+    if out.x < 0.0:
+        out = -out
+    var over := Vector3(left + 0.09 + 0.06 * (top - 0.42) / (top - fy), 0.42, (back + front) * 0.5) + out * 0.004
+    _disk(st, over, Vector3.BACK, along, out, 0.03, chrome)
+    _disk(st, over + out * 0.002, Vector3.BACK, along, out, 0.012, hole)
+    # wall tap over the drain: body, spout, two handles
+    var tx := left + 0.30
+    var wall := -HALF.z
+    _box(st, Vector3(tx - 0.05, 0.72, wall), Vector3(tx + 0.05, 0.78, wall + 0.06), chrome, chrome_d)
+    _box(st, Vector3(tx - 0.015, 0.715, wall + 0.06), Vector3(tx + 0.015, 0.745, wall + 0.17), chrome, chrome_d)
+    for side in [-1.0, 1.0]:
+        _box(st, Vector3(tx + side * 0.07 - 0.02, 0.73, wall + 0.01), Vector3(tx + side * 0.07 + 0.02, 0.77, wall + 0.05), chrome, chrome_d)
+    _add(st, chrome_mat, "BathFittings")
+
+## Flat six-sided disk at `c` in the plane of `u` and `v`, facing `n`.
+func _disk(st: SurfaceTool, c: Vector3, u: Vector3, v: Vector3, n: Vector3, r: float, col: Color) -> void:
+    for i in range(6):
+        var a0 := TAU * float(i) / 6.0
+        var a1 := TAU * float(i + 1) / 6.0
+        FDKLowPoly.add_tri(st, c, c + (u * cos(a0) + v * sin(a0)) * r, c + (u * cos(a1) + v * sin(a1)) * r, n, col)
+
+## Box whose two Z faces wear `face` and whose four thin sides wear `edge`
+## (door rails and casing: both broad faces are seen).
+func _slab(st: SurfaceTool, a: Vector3, b: Vector3, face: Color, edge: Color) -> void:
+    var p := [Vector3(a.x, a.y, a.z), Vector3(b.x, a.y, a.z), Vector3(b.x, b.y, a.z), Vector3(a.x, b.y, a.z),
+        Vector3(a.x, a.y, b.z), Vector3(b.x, a.y, b.z), Vector3(b.x, b.y, b.z), Vector3(a.x, b.y, b.z)]
+    FDKLowPoly.add_quad(st, p[4], p[5], p[6], p[7], Vector3.BACK, face)
+    FDKLowPoly.add_quad(st, p[0], p[1], p[2], p[3], Vector3.FORWARD, face)
+    FDKLowPoly.add_quad(st, p[3], p[2], p[6], p[7], Vector3.UP, edge)
+    FDKLowPoly.add_quad(st, p[0], p[4], p[7], p[3], Vector3.LEFT, edge)
+    FDKLowPoly.add_quad(st, p[1], p[5], p[6], p[2], Vector3.RIGHT, edge)
+    FDKLowPoly.add_quad(st, p[0], p[1], p[5], p[4], Vector3.DOWN, edge)
 
 # --- sink, door, light, collision ---------------------------------------------
 
@@ -676,19 +793,60 @@ func _build_door(mat: Material, handle_mat: Material) -> void:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var w := 2 * DOOR_HALF_W - 0.01
-    var white := Color(0.95, 0.95, 0.94)
-    _box(st, Vector3(0.005, 0.005, -0.02), Vector3(w, DOOR_H - 0.01, 0.02), white, Color(0.86, 0.86, 0.85))
-    # two recessed panels
-    for pr in [[0.25, 0.95], [1.1, 1.85]]:
-        # panels sit 4 mm proud of the slab (was 1 mm: z-fighting streaks)
-        FDKLowPoly.add_quad(st, Vector3(0.12, pr[0], -0.024), Vector3(w - 0.12, pr[0], -0.024), Vector3(w - 0.12, pr[1], -0.024), Vector3(0.12, pr[1], -0.024), Vector3.FORWARD, Color(0.93, 0.93, 0.92))
+    var top := DOOR_H - 0.01
+    # A framed door on both faces: stiles and three rails stand 4 mm proud
+    # of the slab, so the two fields between them read as sunk panels.
+    var rail := Color(1.0, 1.0, 0.99)
+    var panel := Color(0.97, 0.97, 0.96)
+    var edge := Color(0.80, 0.80, 0.79)
+    _slab(st, Vector3(0.005, 0.005, -0.02), Vector3(w, top, 0.02), panel, Color(0.9, 0.9, 0.89))
+    var gap := Color(0.55, 0.56, 0.57)
+    for face in [-1.0, 1.0]:
+        var z0: float = face * 0.02
+        var z1: float = face * 0.024
+        var za := minf(z0, z1)
+        var zb := maxf(z0, z1)
+        _slab(st, Vector3(0.005, 0.005, za), Vector3(0.12, top, zb), rail, edge)
+        _slab(st, Vector3(w - 0.12, 0.005, za), Vector3(w, top, zb), rail, edge)
+        for band in [[0.005, 0.25], [0.95, 1.10], [1.85, top]]:
+            _slab(st, Vector3(0.12, band[0], za), Vector3(w - 0.12, band[1], zb), rail, edge)
+        # painted-shut vent slats in the bottom rail (drawn, not cut through)
+        var zs: float = face * 0.0245
+        var zt: float = face * 0.0275
+        FDKLowPoly.add_quad(st, Vector3(0.22, 0.08, zs), Vector3(w - 0.22, 0.08, zs), Vector3(w - 0.22, 0.20, zs), Vector3(0.22, 0.20, zs), Vector3(0, 0, face), gap)
+        for i in range(4):
+            var sy := 0.086 + i * 0.03
+            _slab(st, Vector3(0.22, sy, minf(zs, zt)), Vector3(w - 0.22, sy + 0.018, maxf(zs, zt)), rail, edge)
     _add(st, mat, "Door", door_pivot)
-    # chrome handle as its own mesh so it gets the chrome material
+    # chrome lever handle on each face, as its own mesh for the chrome
+    # material: rose plate, neck, and a lever reaching toward the hinge
     var hs := SurfaceTool.new()
     hs.begin(Mesh.PRIMITIVE_TRIANGLES)
-    _box(hs, Vector3(w - 0.14, 0.98, -0.07), Vector3(w - 0.05, 1.01, -0.02), Color(1, 1, 1), Color(0.9, 0.9, 0.92))
-    _box(hs, Vector3(w - 0.14, 0.98, 0.02), Vector3(w - 0.05, 1.01, 0.07), Color(1, 1, 1), Color(0.9, 0.9, 0.92))
+    var hx := w - 0.075
+    var hy := 1.0
+    var cr := Color(1, 1, 1)
+    var cr_d := Color(0.9, 0.9, 0.92)
+    for face in [-1.0, 1.0]:
+        var parts := [
+            [Vector3(hx - 0.025, hy - 0.025, 0.024), Vector3(hx + 0.025, hy + 0.025, 0.032)],
+            [Vector3(hx - 0.008, hy - 0.008, 0.032), Vector3(hx + 0.008, hy + 0.008, 0.077)],
+            [Vector3(hx - 0.101, hy - 0.009, 0.068), Vector3(hx + 0.009, hy + 0.009, 0.086)],
+        ]
+        for part in parts:
+            var pa: Vector3 = part[0]
+            var pb: Vector3 = part[1]
+            _box(hs, Vector3(pa.x, pa.y, minf(pa.z * face, pb.z * face)), Vector3(pb.x, pb.y, maxf(pa.z * face, pb.z * face)), cr, cr_d)
     _add(hs, handle_mat, "Handle", door_pivot)
+    # casing on the room side of the wall round the doorway
+    var cs_st := SurfaceTool.new()
+    cs_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var casing := Color(0.98, 0.98, 0.96)
+    var cz0 := HALF.z - 0.012
+    var cw := 0.06
+    _slab(cs_st, Vector3(-DOOR_HALF_W - cw, 0, cz0), Vector3(-DOOR_HALF_W, DOOR_H + cw, HALF.z), casing, edge)
+    _slab(cs_st, Vector3(DOOR_HALF_W, 0, cz0), Vector3(DOOR_HALF_W + cw, DOOR_H + cw, HALF.z), casing, edge)
+    _slab(cs_st, Vector3(-DOOR_HALF_W, DOOR_H, cz0), Vector3(DOOR_HALF_W, DOOR_H + cw, HALF.z), casing, edge)
+    _add(cs_st, mat, "DoorCasing")
     var body := StaticBody3D.new()
     body.name = "DoorBody"
     var cs := CollisionShape3D.new()
@@ -704,21 +862,22 @@ func _build_light() -> void:
     var fixture := StandardMaterial3D.new()
     fixture.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     fixture.albedo_color = Color(0.90, 0.95, 1.0)
-    for spot in [Vector2(-0.15, 0.6), Vector2(0.4, -0.7)]:
+    for i in range(LIGHT_DISKS.size()):
+        var spot: Vector2 = LIGHT_DISKS[i]
         var disk := MeshInstance3D.new()
-        disk.name = "CeilingDownlight"
+        disk.name = "CeilingDownlight" if i == 0 else "CeilingDownlight%d" % (i + 1)
         var mesh := CylinderMesh.new()
         mesh.top_radius = 0.11
         mesh.bottom_radius = 0.11
         mesh.height = 0.025
-        mesh.radial_segments = 16
+        mesh.radial_segments = 8
         disk.mesh = mesh
         disk.material_override = fixture
         disk.position = Vector3(spot.x, y, spot.y)
         add_child(disk)
     var l := OmniLight3D.new()
     l.name = "RoomLight"
-    l.position = Vector3(0, 2 * HALF.y - 0.3, 0)
+    l.position = Vector3(0, 2 * HALF.y - 0.3, LIGHT_Z)
     l.omni_range = 4.0
     l.light_energy = 0.3
     l.light_cull_mask = ROOM_VISUAL_LAYER | (1 << 11) | (1 << 12) | (1 << 13)

@@ -240,7 +240,8 @@ static func in_container(p: Vector3, rests: Array[Vector3]) -> bool:
 	return false
 
 ## Rest point: the main/art container office model (door on its long side),
-## stretched to the logic box CONTAINER_HALF with its floor on the box floor.
+## built at the size of the logic box CONTAINER_HALF (never stretched: that
+## bent the chair and bucket inside), its floor on the box floor.
 ## `loot` = the spray can left on its chair ("" for none).
 static func build_container(parent: Node3D, at: Vector3, loot: String = "") -> Node3D:
 	var root := Node3D.new()
@@ -251,15 +252,14 @@ static func build_container(parent: Node3D, at: Vector3, loot: String = "") -> N
 	var art: Node3D = (load("res://main/art/fp_rest_container.tscn") as PackedScene).instantiate()
 	art.name = "ContainerArt"
 	var h := CONTAINER_HALF
-	# art frame: long side along X (half 1.5), width Z (half 1.2), height 1.3
+	# art frame: long side along X (half h.z), width Z (half h.x), height 2 h.y
 	art.rotation.y = PI * 0.5
-	art.scale = Vector3(h.z / 1.5, (h.y * 2.0) / 1.3, h.x / 1.2)
 	art.position = Vector3(0, -h.y, 0)
 	root.add_child(art)
 	art.call("set_light", true)
 	art.call("set_door_open", 0.8)
 	if loot != "":
-		# unscaled, standing on the chair seat (the art is stretched)
+		# standing on the chair seat
 		var can := FPConsumable.make(loot)
 		can.name = "LootCan"
 		can.set_meta("loot", loot)

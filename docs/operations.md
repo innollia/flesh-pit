@@ -56,7 +56,7 @@ $env:FP_CHECK_SUITES='run_tests.gd,run_tissue_tools_tests.gd,run_save_load.gd,ru
 node --test game/tests/run_godot_checks.cjs
 ```
 
-2026-11-14에 더한 `run_body_signals_tests.gd`, `run_ending_bite_tests.gd`, `run_terrain_visual_tests.gd`는 위 33개 목록과 기본 목록에 없다. 몸 신호·엔딩 뜯기·살점 면 표시(contracts.md가 가리키는 검사)를 바꾸면 `FP_CHECK_SUITES`에 이름을 직접 넣어 같은 실행기로 돌린다.
+2026-11-14에 더한 `run_body_signals_tests.gd`, `run_ending_bite_tests.gd`, `run_terrain_visual_tests.gd`, `run_room_furniture_tests.gd`(화장실 가구·환풍구 자리·쉼터 컨테이너 치수)는 위 33개 목록과 기본 목록에 없다. 몸 신호·엔딩 뜯기·살점 면 표시(contracts.md가 가리키는 검사)를 바꾸면 `FP_CHECK_SUITES`에 이름을 직접 넣어 같은 실행기로 돌린다.
 
 다음 프로그램은 정상 Main/플레이어 process와 physics를 유지한다. 플레이 행동은 실제 입력으로 확인하고, 공유 섭취 소비자·타이틀·저장 계약을 직접 호출하는 검사는 별도로 구분한다. GUI는 640×360, fixed60에서 따로 실행하고 서로 동시에 실행하지 않는다. 첫 번째 명령의 핵 75셀 섭취는 몇 분이 걸리므로 짧은 일반 검사 시간 제한을 그대로 적용하지 않는다.
 

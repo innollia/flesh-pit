@@ -22,7 +22,9 @@ const EIGHT := ["barrier", "spray_cheap", "knife", "spray_deep", "big_saw", "jun
 var m: Node3D
 var passed := 0
 var failed := 0
-var stand := Vector3(0.3, 0.9, 0.3)
+## The same spot relative to the vent as before the vent moved to the room's
+## centre line (it was (0.3, 0.9, 0.3) for a vent at (-0.55, -0.78)).
+var stand := Vector3(FPRestroom.VENT_CENTER.x + 0.85, 0.9, FPRestroom.VENT_CENTER.z + 1.08)
 
 func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
