@@ -270,16 +270,20 @@ func refresh() -> void:
 	for part in FPProgression.PARTS:
 		if not prog.mutations_for_part(part).is_empty():
 			_order.append(part)
+	# the belly's bump comes first: opening Tab lands on it when it can be pressed
 	if prog.belly_bumps() > 0:
-		_order.append("tumor")
+		_order.push_front("tumor")
 	_update_glow()
 
 ## Parts that can still mutate shimmer faintly; the focused part strongly.
+## A bump that can be pressed beats on its own, on the bump and not the belly.
+const TUMOR_GLOW := 2.0
 func _update_glow() -> void:
 	for part in FPProgression.PARTS:
-		var avail := part_available(part) or (part == "belly" and part_available("tumor"))
-		var sel := part == _part or (part == "belly" and _part == "tumor")
+		var avail := part_available(part)
+		var sel := part == _part
 		body.set_shimmer(part, avail or sel, 1.4 if sel else 0.45)
+	body.set_tumor_shimmer(part_available("tumor"), TUMOR_GLOW)
 
 func part_available(part: String) -> bool:
 	if prog == null:

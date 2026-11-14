@@ -510,11 +510,38 @@ func _run_tumors() -> void:
 	m.player.camera.look_at(t.global_position, Vector3.UP)
 	_assert(m.eat_tumor() and prog.belly_bumps() == 1 and not t.visible, "eating a tumor raises one bump on the belly")
 	m.open_mirror()
-	_assert(m.mirror._order.has("tumor") and m.mirror.body.shimmer_on("belly"), "the bump shows in the mirror")
+	var tmir: FPMirror = m.mirror
+	_assert(tmir._order[0] == "tumor" and tmir.current_part() == "tumor", "the bump is the first part and Tab opens on it (%s)" % tmir.current_part())
+	_assert(tmir.body.tumor_shimmer_on(), "the bump glows on its own")
+	var beat: float = tmir.body.tumor_shimmer_strength()
+	var belly_glow := float((tmir.body._shim_mat["belly"] as ShaderMaterial).get_shader_parameter("strength"))
+	_assert(beat >= 0.69 and beat <= 2.01 and belly_glow <= 0.46, "the bump's beat is its own, the belly keeps its faint glow (bump %.2f, belly %.2f)" % [beat, belly_glow])
+	# the bump's pick point lies on the bump the eye sees (findings: the point
+	# was a world offset that ignored the doll's size and turn)
+	var keep_vs: Vector2i = m.get_viewport().size
+	m.get_viewport().size = Vector2i(1280, 720)
+	tmir._place()
+	var bumps: Array[MeshInstance3D] = tmir.body.tumor_bumps()
+	_assert(bumps.size() == 1, "one bump mesh on the doll's belly (%d)" % bumps.size())
+	if not bumps.is_empty():
+		var box: AABB = bumps[0].get_aabb()
+		var lo := Vector2.INF
+		var hi := -Vector2.INF
+		for k in range(8):
+			var px: Vector2 = tmir.eye.unproject_position(bumps[0].global_transform * box.get_endpoint(k))
+			lo = lo.min(px)
+			hi = hi.max(px)
+		var pick: Vector2 = tmir.part_screen("tumor")
+		_assert(Rect2(lo, hi - lo).grow(0.5).has_point(pick), "the bump's pick point is inside the drawn bump (%s in %s..%s)" % [pick, lo, hi])
+		tmir.focus_part("face")
+		_assert(tmir.part_at(pick) == "tumor", "pointing at the bump picks the bump (%s)" % tmir.part_at(pick))
+		_assert(tmir.body.tumor_shimmer_on(), "the bump keeps glowing while another part is focused")
+	m.get_viewport().size = keep_vs
 	m.mirror.focus_part("tumor")
 	var got: String = m.mirror.buy_current()
 	_assert(got in FPProgression.TUMOR_MUTATIONS and prog.belly_bumps() == 0 and prog.has_mutation(got), "pressing the bump turns it into a tumor mutation (%s)" % got)
 	_assert(m.mirror.buy_current() == "", "no bump left, nothing more")
+	_assert(not m.mirror.body.tumor_shimmer_on() and not m.mirror._order.has("tumor"), "the pressed bump is gone and nothing glows in its place")
 	m.mirror.close()
 	# never the same one twice, and no more bumps after all 7
 	var p2 := FPProgression.new()

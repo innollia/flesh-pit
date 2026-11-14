@@ -1117,6 +1117,9 @@ func _process(delta: float) -> void:
 	if ended:
 		ending.tick(delta)
 		return
+	_step_ending_bite(delta)
+	if ended:
+		return
 	_process_opening(delta)
 	if is_opening():
 		return
@@ -1542,6 +1545,8 @@ func step_world(delta: float) -> void:
 	tissue_tools.step_charge(delta, hand_actions.charging())
 	tissue_tools.step_blend(delta)
 	FPProfile.end("tissue_tools")
+	# The safety net under the last bite (tear_opens_outside): a body that got
+	# past the outer shell some other way (a hole dissolved by spray) still ends.
 	if not ended and player.global_position.distance_to(RESTROOM_CENTER) >= OUTER_RADIUS - 0.3:
 		reach_ending()
 
@@ -3170,10 +3175,72 @@ func _light_nearest_markers() -> void:
 
 # --- ending ---------------------------------------------------------------------------
 
+## Seconds from the tear that opens the outside to the ending: the hole is
+## published and its strands, recoil and blood (show_tear) have played, so the
+## white flash reads as the light coming in through that hole.
+const ENDING_BITE_DELAY := 0.35
+## How far (in cells) from the torn cell the open space is followed to the
+## outside: the tear's own extra cells (big saw, M07/M14) are inside this.
+const ENDING_BITE_SPAN := 2
+## Counts down after a tear opened the outside; negative while idle. Not
+## saved: a reload finds the real hole again (the next tear, or walking out).
+var _ending_bite_t: float = -1.0
+
+## True when the tear at world_pos (a torn cell's centre) left a real hole to
+## the outside: an emptied corner of that cell joins, through emptied corners
+## no more than ENDING_BITE_SPAN cells away, a corner past the outer shell
+## (where the generator has no flesh at all). A torn cell that still has a
+## layer of flesh behind it is not an opening, however near the edge it is.
+## Reads live density only.
+func tear_opens_outside(world_pos: Vector3) -> bool:
+	var cs: float = terrain_config.cell_size
+	var span := float(ENDING_BITE_SPAN + 2) * cs * 1.8
+	if world_pos.distance_to(RESTROOM_CENTER) < OUTER_RADIUS - span:
+		return false
+	var iso: float = terrain_config.iso_level
+	if terrain.density_at(world_pos) >= iso:
+		return false # the cell itself still holds flesh: no hole here
+	var cell := Vector3i(floori(world_pos.x / cs), floori(world_pos.y / cs), floori(world_pos.z / cs))
+	var lo := cell - Vector3i.ONE * ENDING_BITE_SPAN
+	var hi := cell + Vector3i.ONE * (ENDING_BITE_SPAN + 1)
+	var seen := {}
+	var queue: Array[Vector3i] = []
+	for dz in range(2):
+		for dy in range(2):
+			for dx in range(2):
+				var g := cell + Vector3i(dx, dy, dz)
+				if terrain.corner_density_global(g) < iso:
+					seen[g] = true
+					queue.append(g)
+	var steps: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+	while not queue.is_empty():
+		var g: Vector3i = queue.pop_back()
+		if (Vector3(g) * cs).distance_to(RESTROOM_CENTER) >= OUTER_RADIUS:
+			return true
+		for s in steps:
+			var n: Vector3i = g + s
+			if seen.has(n) or n.x < lo.x or n.y < lo.y or n.z < lo.z or n.x > hi.x or n.y > hi.y or n.z > hi.z:
+				continue
+			seen[n] = true
+			if terrain.corner_density_global(n) < iso:
+				queue.append(n)
+	return false
+
+## The last bite: a tear that opened the outside starts the ending
+## ENDING_BITE_DELAY later. Nothing covers the hole in between.
+func _step_ending_bite(delta: float) -> void:
+	if _ending_bite_t < 0.0:
+		return
+	_ending_bite_t -= delta
+	if _ending_bite_t <= 0.0:
+		_ending_bite_t = -1.0
+		reach_ending()
+
 func reach_ending() -> void:
 	if ended:
 		return
 	ended = true
+	_ending_bite_t = -1.0
 	chewer.stop()
 	player.set_physics_process(false)
 	ending.start(1 + (1 if progression.codex_complete() else 0))
@@ -3231,6 +3298,10 @@ func tear_effects(world_pos: Vector3) -> void:
 			_spawn_nerve(hit.position, terrain._eye_surface_outward(hit))
 	if mutation_apply != null:
 		mutation_apply.on_torn(world_pos)
+	# after the tool's and mutations' extra cells: the bite that opens the
+	# outside ends the game (the chewer's, the saw's, the M22 hand's alike)
+	if not ended and _ending_bite_t < 0.0 and tear_opens_outside(world_pos):
+		_ending_bite_t = ENDING_BITE_DELAY
 
 # --- save/load ------------------------------------------------------------------------
 
@@ -3336,6 +3407,7 @@ func deserialize(data: Dictionary) -> void:
 	if data.has("rest_seed"):
 		tissue_tools.relayout_rest_points(int(data["rest_seed"]))
 	ended = bool(data.get("ended", false))
+	_ending_bite_t = -1.0
 	if bool(data.get("opening_done", v < 3)):
 		finish_opening()
 		opening_done = true

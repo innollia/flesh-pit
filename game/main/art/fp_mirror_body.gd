@@ -8,6 +8,7 @@ extends Node3D
 ## image is a reflection, so the player's right hand is at +X.
 ## Public: part_node(part), part_center(part), apply(ids, bumps),
 ## ghost(id) -> Node3D (translucent preview), set_shimmer(part, on),
+## set_tumor_shimmer(on) / tumor_center() for the belly bumps alone,
 ## set_red(part, t), static look(id) -> Dictionary.
 
 const K := preload("res://main/art/fp_art_kit.gd")
@@ -469,9 +470,75 @@ func part_center(part: String) -> Vector3:
 		"arms": return global_transform * Vector3(0.25, 1.24, 0.05)
 		"right_hand": return (_sub["hand_r"] as Node3D).global_position + Vector3(0, 0.04, 0)
 		"left_hand": return (_sub["hand_l"] as Node3D).global_position + Vector3(0, 0.04, 0)
-		"tumor": return (_parts["belly"] as Node3D).global_position + Vector3(0.07, -0.02, 0.1)
+		"tumor": return tumor_center()
 	var n: Node3D = _parts.get(part, null)
 	return n.global_position if n != null else global_position
+
+## Where the belly's tumor bump is, in the world: the first bump's own mesh
+## (scaled and turned with the body), or its place on a bare belly.
+func tumor_center() -> Vector3:
+	var bumps := tumor_bumps()
+	if not bumps.is_empty():
+		var mi: MeshInstance3D = bumps[0]
+		return mi.global_transform * mi.get_aabb().get_center()
+	return (_parts["belly"] as Node3D).global_transform * Vector3(0.11, -0.02, 0.105)
+
+## The belly's tumor bump meshes (apply(ids, bumps)).
+func tumor_bumps() -> Array[MeshInstance3D]:
+	var out: Array[MeshInstance3D] = []
+	for e in _extras:
+		if is_instance_valid(e) and e is MeshInstance3D and String(e.name).begins_with("TumorBump") and not e.is_queued_for_deletion():
+			out.append(e)
+	return out
+
+## The bumps' own glow, apart from the belly's: a slow beat (TUMOR_PULSE
+## seconds) on the bump meshes only. Off unless a game turns it on.
+const TUMOR_PULSE := 1.0
+var _tumor_shim_on := false
+var _tumor_shim_strength := 2.0
+
+func set_tumor_shimmer(on: bool, strength: float = 2.0) -> void:
+	_tumor_shim_on = on
+	_tumor_shim_strength = strength
+	for b in tumor_bumps():
+		var s := b.get_node_or_null("TumorShimmer") as MeshInstance3D
+		if s != null:
+			s.visible = on
+	_beat_tumor_shimmer()
+
+func tumor_shimmer_on() -> bool:
+	for b in tumor_bumps():
+		var s := b.get_node_or_null("TumorShimmer") as MeshInstance3D
+		if s != null and s.visible:
+			return true
+	return false
+
+## Strength of the bump glow right now (the beat between 35% and 100%).
+func tumor_shimmer_strength() -> float:
+	return _tumor_shim_strength * (0.675 + 0.325 * sin(_time * TAU / TUMOR_PULSE))
+
+func _beat_tumor_shimmer() -> void:
+	if _tumor_shim_mat != null:
+		_tumor_shim_mat.set_shader_parameter("strength", tumor_shimmer_strength())
+
+var _tumor_shim_mat: ShaderMaterial
+
+func _add_tumor_shimmer(bump: MeshInstance3D) -> void:
+	if _tumor_shim_mat == null:
+		_tumor_shim_mat = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = SHIMMER_SHADER
+		_tumor_shim_mat.shader = sh
+		_tumor_shim_mat.set_shader_parameter("col", Color(0.75, 0.45, 1.0))
+	var s := MeshInstance3D.new()
+	s.name = "TumorShimmer"
+	s.mesh = bump.mesh
+	s.material_override = _tumor_shim_mat
+	# grown about the bump's own middle, so the rim stands clear of the belly
+	var c := bump.get_aabb().get_center()
+	s.transform = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * 1.25), c - c * 1.25)
+	s.visible = _tumor_shim_on
+	bump.add_child(s)
 
 func set_shimmer(part: String, on: bool, strength: float = 0.7) -> void:
 	for s in _shim.get(part, []):
@@ -494,6 +561,8 @@ func is_red(part: String) -> bool:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _tumor_shim_on:
+		_beat_tumor_shimmer()
 	for part in _red.keys():
 		var t: float = _red[part]
 		if t <= 0.0:
@@ -642,7 +711,10 @@ func apply(ids: Array, bumps: int = 0) -> void:
 		applied.append(String(id))
 		_apply_one(String(id), self, false)
 	for i in range(bumps):
-		_extras.append(_bump(i, false))
+		var bump := _bump(i, false)
+		_extras.append(bump)
+		if bump is MeshInstance3D:
+			_add_tumor_shimmer(bump)
 	for p in _parts.keys():
 		_base[p] = (_parts[p] as Node3D).scale
 	var face_mat: ShaderMaterial = _parts["face"].get_node("Head").material_override
