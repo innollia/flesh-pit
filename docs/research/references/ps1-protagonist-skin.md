@@ -10,7 +10,7 @@ Source role: **주인공 몸(1인칭 손·팔, 내려다본 배·다리, 거울 
 
 조사는 세 갈래였다. 무엇을 어떻게 확인했는지가 갈래마다 다르므로 본문에서 구분해 적는다.
 
-- **화면 확인**: 인게임 컷이나 텍스처 시트를 확대해 본 것. 크게 본 것은 Vagrant Story 시트, Metal Gear Solid, Tomb Raider, Resident Evil, Mouthwashing, Buckshot Roulette, Golden Light, Threshold 8건이다. 나머지는 이미지 검색 썸네일 크기다.
+- **화면 확인**: 인게임 컷이나 텍스처 시트를 확대해 본 것. 크게 본 것은 Vagrant Story 시트, Metal Gear Solid, Tomb Raider, Resident Evil, Mouthwashing, Buckshot Roulette, Threshold 7건이다. Golden Light는 다시 열어 보니 맨손이 나오지 않는 그림이었다(2절 표). 나머지는 이미지 검색 썸네일 크기다.
 - **글 확인**: 개발자 인터뷰, 기술 글, 제작 안내.
 - **검색 요약**: 본문을 열지 못해(Polycount, Reddit, tripo3d, models-resource는 접근 거부나 봇 확인 화면) 검색 결과의 요약만 본 것.
 - **우리 진단**: 저장소의 코드와 PNG, `docs/tracking/captures/R2_protagonist/`·`R2_mutations/` 캡처. 삼각형 수는 메시 생성 코드를 읽어 손으로 센 값이고, 화면 텍셀 크기는 내부 240줄·시야 75도·UV 배율로 계산해 960x540 캡처의 손바닥 폭으로 한 번 맞춰 본 값이다. Godot을 실행해 잰 값은 아니다.
@@ -71,7 +71,7 @@ Source role: **주인공 몸(1인칭 손·팔, 내려다본 배·다리, 거울 
 | 게임 | 피부 | 손 | 만드는 법 | 확인 | 출처 |
 |---|---|---|---|---|---|
 | Mouthwashing | 평평한 살색에 선으로 그린 음영. 얼굴은 만화식 선화 | 손가락 넷이 붙은 납작한 판 하나, 손가락 사이를 어두운 선으로 그림. 벌어지지 않고 가지런함 | 표정은 거의 고정된 텍스처, 손을 입으로 가져가는 동작으로 반응 | 화면(확대 1장), 글 | https://gaming-cdn.com/images/products/17938/screenshot/mouthwashing-pc-game-steam-wallpaper-3.jpg , https://www.superjumpmagazine.com/minimalism-in-mouthwashing/ |
-| Golden Light | 창백한 살색 한 톤에 옅은 얼룩. 살과 고기가 주제인데도 손은 매끈하고, 거친 사진풍 무늬는 총에만 있음 | 1인칭 오른쪽 아래에 크게. 엄지만 따로, 나머지는 한 덩어리 | 출처 못 찾음 | 화면(확대 1장) | https://gaming-cdn.com/images/products/15411/screenshot/golden-light-pc-game-steam-wallpaper-1.jpg |
+| Golden Light | 확인 못 함. 적어 둔 그림을 다시 열어 보니 기관단총과 나무 개머리판만 있고 맨손이 없다 | 확인 못 함. 앞서 적었던 "엄지만 따로, 나머지는 한 덩어리"는 이 그림으로 뒷받침되지 않는다 | 출처 못 찾음 | 확인 못 함(그림에 손 없음) | https://gaming-cdn.com/images/products/15411/screenshot/golden-light-pc-game-steam-wallpaper-1.jpg |
 | Buckshot Roulette | 갈색 계열 몇 색만 남음. 거침은 텍스처가 아니라 강한 색 줄이기와 디더 후처리 | 딜러 손은 손가락을 하나씩 만든 굵은 덩어리. 산탄총을 감싸 쥠 | Blender, Paint.NET, Texture Ripper, 직접 찍은 사진 | 화면(확대 1장), 글 | https://static.wikia.nocookie.net/villains/images/4/4e/The_Dealer_%28Buckshot_Roulette%29.png , https://80.lv/articles/buckshot-roulette-developer-on-making-the-game-solo-feedback-success |
 | Threshold | 황토색 한 톤에 큰 그림자 덩어리. 텍셀이 매우 커서 귀와 눈가가 네모 블록 몇 개 | 판정 못 함 | 출처 못 찾음 | 화면(확대 1장) | https://www.bing.com/images/search?q=threshold+game+2024+julien+eveille+screenshot+hands+whistle |
 | Paratopic | 사진을 낮은 해상도로 줄여 붙인 듯한 얼굴(개발자 발언은 못 찾음) | 판정 못 함 | 얼굴 흔들림은 뼈 하나가 UV 위치를 움직임 | 화면(썸네일), 글 | https://www.gamedeveloper.com/design/disturbing-players-with-unsettling-camerawork-in-i-paratopic-i- |
@@ -123,7 +123,7 @@ Colson과 3D AI Studio 글을 합치면 순서는 이렇다.
 
 화면으로 본 손은 두 갈래였다.
 
-- 손가락이 붙은 판이나 상자에 선을 그리는 방식: Metal Gear Solid, Tomb Raider, Mouthwashing, Golden Light
+- 손가락이 붙은 판이나 상자에 선을 그리는 방식: Metal Gear Solid, Tomb Raider, Mouthwashing
 - 굵은 손가락을 따로 만드는 방식: Buckshot Roulette 딜러
 
 **본 그림 어디에서도 손가락이 부채처럼 벌어지거나 서로 파고들지 않았다.** 쥔 손은 주먹 상자 하나에 엄지만 따로 두는 것이 가장 흔했다.
@@ -241,7 +241,7 @@ c0f1873은 텍스처 파일만 잔결 노이즈로 바꾸고 UV 배율, 섞는 �
 | 살 세계는 플레이어가 가진 빛으로 보임 | 어긋남. 몸은 무광원 |
 | 텍스처 없는 정점 색 평면 금지 | "전"이 이것이었다 |
 
-톤 문서는 살을 "사진 같은 표면"으로, 손을 "PS1 텍스처"로 따로 적는다. 이 문서는 손과 몸에 "PS1 텍스처"를 적용하는 것으로 읽었다. 조사한 게임들도 그렇게 나눈다(Golden Light: 손은 매끈, 거친 사진풍 무늬는 총과 벽). 이 해석이 맞는지는 톤 문서를 가진 쪽이 정한다.
+톤 문서는 살을 "사진 같은 표면"으로, 손을 "PS1 텍스처"로 따로 적는다. 이 문서는 손과 몸에 "PS1 텍스처"를 적용하는 것으로 읽었다. 조사한 게임들도 그렇게 나눈다(Mouthwashing: 손과 얼굴은 평평한 살색에 선). Golden Light를 근거로 들었던 것은 뺐다(그 그림에 맨손이 없다). 이 해석이 맞는지는 톤 문서를 가진 쪽이 정한다.
 
 ---
 
@@ -419,7 +419,7 @@ c0f1873은 텍스처 파일만 잔결 노이즈로 바꾸고 UV 배율, 섞는 �
 
 이 문서의 대상은 주인공이지만, 같은 조사에서 NPC 손에 닿는 관찰이 있었다.
 
-- 본 그림 어디에서도 손가락이 부채처럼 벌어지지 않았다. 손가락은 붙어 있거나(Mouthwashing, Metal Gear Solid, Golden Light) 굵게 따로 있되 물건을 감싸 쥔다(Buckshot Roulette 딜러).
+- 본 그림 어디에서도 손가락이 부채처럼 벌어지지 않았다. 손가락은 붙어 있거나(Mouthwashing, Metal Gear Solid) 굵게 따로 있되 물건을 감싸 쥔다(Buckshot Roulette 딜러).
 - Vagrant Story는 손을 원화보다 일부러 크게 만들었다. 손이 커도 손가락을 벌리지 않는다.
 - 손가락을 다 만든 손은 PS1 예산을 넘는다는 것이 제작자들의 공통된 말이다.
 
