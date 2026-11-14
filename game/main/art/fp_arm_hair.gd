@@ -24,6 +24,15 @@ const STRANDS := 3
 ## Hair colour; the kind colour only tints it a little.
 const HAIR := Color(0.1, 0.065, 0.045)
 const TINT := 0.3
+## How far a strand's outer part takes its kind colour (the root keeps HAIR,
+## so a hair still reads as dark hair; mut6). Set to TINT to go back to one
+## even tint along the whole strand.
+const TINT_TIP := 0.55
+## The strands of one hair point share a follicle: each starts within this
+## distance of the point's root, fans out by FAN radians and is shorter.
+const TUFT_R := 0.0025
+const FAN := 0.25
+const TUFT_LEN := [1.0, 0.8, 0.6]
 const COLORS := {
     "common": Color(0.05, 0.035, 0.03),
     "core": Color(0.93, 0.33, 0.55),     # compressive tissue: deep pink (spec 02)
@@ -196,7 +205,7 @@ func _rebuild() -> void:
                 break
             var blink: bool = n >= share - blink_slots
             for k in range(STRANDS):
-              _strand(bst if blink else st, _slots[slot * STRANDS + k], kind, shaggy, blink)
+              _strand(bst if blink else st, _slots[slot * STRANDS], k, kind, shaggy, blink)
             slot += 1
             if blink:
                 bany = true
@@ -229,18 +238,28 @@ func _process(delta: float) -> void:
 func strand_count() -> int:
     return mini(hair_total(), MAX_SLOTS) * STRANDS
 
-func _strand(st: SurfaceTool, s: Array, kind: String, shaggy: bool, blink: bool = false) -> void:
-            var base: Vector3 = s[0]
+## Strand k (0..STRANDS-1) of the hair point rooted at slot `s`.
+func _strand(st: SurfaceTool, s: Array, k: int, kind: String, shaggy: bool, blink: bool = false) -> void:
             var nrm: Vector3 = s[1]
             var thick := sqrt(density())
             # a crowded arm grows denser more than longer: a mane hid the arm
-            var length := (0.02 + float(s[2]) * 0.014) * (1.35 if shaggy else 1.0) * minf(thick, 1.25)
+            var length := (0.02 + float(s[2]) * 0.014) * (1.35 if shaggy else 1.0) * minf(thick, 1.25) * float(TUFT_LEN[k % TUFT_LEN.size()])
             # hairs leave the skin at a shallow angle and bend down to lie back
-            # toward the elbow (+Z), each a little off straight, along a smooth
-            # curve (three points drew a right-angled hook, like a staple)
-            var j := (float(s[2]) - 0.5) * 0.7
+            # toward the elbow (+Z), each a good way off straight, along a smooth
+            # curve (three points drew a right-angled hook, like a staple);
+            # all parallel they read as pen scratches
+            var j := (float(s[2]) - 0.5) * 1.2 + (0.0 if k == 0 else (FAN if k % 2 == 1 else -FAN))
             var lean := Vector3(sin(j), 0, cos(j))
+            # on the outer side of the arm the hair also hangs down round it
+            var ang := atan2(nrm.x, nrm.y)
+            if ang > 0.6:
+                lean = (lean + Vector3(nrm.y, -nrm.x, 0.0) * ang * 0.4).normalized()
             var side := nrm.cross(lean).normalized()
+            # one follicle: the strands start a hair's breadth apart
+            var base: Vector3 = s[0]
+            if k > 0:
+                var around := float(k) * 2.4 + float(s[2]) * TAU
+                base += (side * cos(around) + lean * sin(around)) * TUFT_R
             var pts: Array = [base - nrm * 0.001]
             var radii: Array = []
             var w := (0.0011 if shaggy else 0.001) * minf(thick, 1.6)
@@ -250,10 +269,13 @@ func _strand(st: SurfaceTool, s: Array, kind: String, shaggy: bool, blink: bool 
                 pts.append(base + nrm * length * lift + lean * length * t + side * length * 0.12 * j * t * t)
             for i in range(pts.size()):
                 radii.append(lerpf(w, 0.0003, float(i) / float(pts.size() - 1)))
-            var col := HAIR.lerp(COLORS[kind], TINT)
+            # dark at the root, the kind's colour toward the tip
+            var root := HAIR.lerp(COLORS[kind], TINT)
+            var tip := HAIR.lerp(COLORS[kind], TINT_TIP)
+            var cols: Array = [root, root.lerp(tip, 0.6), tip, tip, tip]
             if blink:
-                col = COLORS[kind].lightened(0.35)
-            K.tube(st, Transform3D.IDENTITY, pts, radii, 3, [col], false)
+                cols = [COLORS[kind].lightened(0.35)]
+            K.tube(st, Transform3D.IDENTITY, pts, radii, 3, cols, false)
 
 func drop_hairs(n: int) -> void:
     for k in ["surface", "mantle", "core", "common"]:

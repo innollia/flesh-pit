@@ -335,6 +335,9 @@ func _process_inner(_delta: float) -> void:
 	_sync_plug(_delta)
 	_sync_hairs(prog)
 	_sync_mutations(prog)
+	# tumor bumps wait on the belly the player looks down at, not only in
+	# the mirror
+	belt.call("set_bumps", prog.belly_bumps())
 	var body_blood := maxf(m.hand_blood, m.hand_motions.blood_visual() if m.hand_motions != null else 0.0)
 	belt.call("set_blood", body_blood)
 	if legs != null:
@@ -408,6 +411,8 @@ func _sync_mutations(prog: FPProgression) -> void:
 	var key := ",".join(all)
 	if key != _mut_key:
 		_mut_key = key
+		# M01 / T4 / M16 / M19 reshape the first-person belly
+		belt.call("set_belly_form", all)
 		var owned: Array = []
 		for k in MUT_KINDS:
 			if k in all:

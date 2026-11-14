@@ -62,6 +62,8 @@ node --test game/tests/run_godot_checks.cjs
 
 `run_protagonist_look_tests.gd`(주인공 피부 텍스처·1인칭 손 리그·인형 몸)도 기본 목록에 없다. 게임 장면과 저장을 열지 않으므로 `godot_console --headless --path game --script res://tests/run_protagonist_look_tests.gd`로 바로 돌린다. 같은 모델의 턴테이블 캡처는 창을 띄워 `godot_console --path game --resolution 960x540 --fixed-fps 60 --script res://tests/capture_protagonist.gd -- <폴더> <이름표>`로 찍는다.
 
+`run_mutation_looks_tests.gd`(내려다본 배의 혹과 변이, 거울 몸의 덧조각, 감각털, 팔 털 묶음)도 기본 목록에 없고 같은 식으로 바로 돌린다. 변이 전후 그림은 창을 띄워 `godot_console --path game --resolution 960x540 --fixed-fps 60 --script res://tests/capture_mutation_looks.gd -- <폴더> <이름표> <model|game> [묶음,묶음]`으로 찍는다. `model`은 모델만 올리고, `game`은 격리된 저장·키 파일로 게임을 띄워 묶음마다 정해진 컷을 찍는다(묶음 이름은 스크립트의 `SETS`). `game/tools/mutation_capture.gd`는 저장을 격리하지 않으니 쓰지 않는다.
+
 다음 프로그램은 정상 Main/플레이어 process와 physics를 유지한다. 플레이 행동은 실제 입력으로 확인하고, 공유 섭취 소비자·타이틀·저장 계약을 직접 호출하는 검사는 별도로 구분한다. GUI는 640×360, fixed60에서 따로 실행하고 서로 동시에 실행하지 않는다. 첫 번째 명령의 핵 75셀 섭취는 몇 분이 걸리므로 짧은 일반 검사 시간 제한을 그대로 적용하지 않는다.
 
 ```powershell

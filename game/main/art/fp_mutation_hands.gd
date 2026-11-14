@@ -3,7 +3,7 @@ extends Node3D
 ## Tumor-mutation variants on the kit's first-person hands (FDKHandsRig):
 ##   extra_arm      - a third arm pushing in from below between the two
 ##   palm_mouth     - a lipped mouth with teeth opening in the RIGHT palm
-##   swollen_torso  - a bloated, veined belly/chest bulging up into view
+##   swollen_torso  - nothing here: T4 swells the real belly (fp_belt.gd)
 ## Origin = the eye (the rig sits here exactly as under the camera).
 ## Hair-bought mutations that reshape the hands (05-mutations.md) are put on
 ## ANY FDKHandsRig with apply_shape(rig, ids): wider palm (M07), webbing
@@ -22,7 +22,6 @@ var _rig: FDKHandsRig
 var _extra: Node3D
 var _mouth: Node3D
 var _jaw: Node3D
-var _torso: MeshInstance3D
 var _time := 0.0
 var _mouth_open := 0.4
 
@@ -60,19 +59,6 @@ func _ready() -> void:
             K.lathe(st, K.T(Vector3(x, -0.002, sy * 0.006), Vector3(0, 0, 180)), [Vector2(0.0, -0.001), Vector2(0.0028, -0.001), Vector2(0.0022, 0.005), Vector2(0.0, 0.006)], 4, [Color(0.95, 0.9, 0.75)])
     K.add_mesh(_jaw, "TeethMesh", K.finish(st, 20.0), K.mat("tex_ceramic_64.png", 0.4, true))
     _mouth.visible = false
-    # swollen torso: bloated mass low in the view, with dark veins
-    st = K.begin()
-    K.blob(st, Transform3D.IDENTITY, Vector3(0, -0.46, -0.2), Vector3(0.3, 0.2, 0.22), 0.18, 77, Color(0.84, 0.66, 0.58), Color(0.72, 0.5, 0.48))
-    for v in range(5):
-        var pts: Array = []
-        for k in range(6):
-            var t := float(k) / 5.0
-            var a := -1.2 + v * 0.6 + sin(t * 4.0 + v) * 0.15
-            pts.append(Vector3(sin(a) * 0.3 * (0.9 + t * 0.1), -0.46 + 0.19 * cos(t * 1.4), -0.2 - cos(a) * 0.22 * 0.6 + t * 0.02))
-        K.tube(st, Transform3D.IDENTITY, pts, [0.004, 0.006, 0.005, 0.006, 0.004, 0.002], 3, [Color(0.35, 0.18, 0.35)])
-    _torso = K.add_mesh(self, "SwollenTorso", K.finish(st, 5.0), skin_mat)
-    _torso.position = Vector3(0, 0.11, -0.13)
-    _torso.visible = false
 
 func rig() -> FDKHandsRig:
     return _rig
@@ -85,7 +71,9 @@ func set_mutation(kind: String, on: bool) -> void:
         "palm_mouth":
             _mouth.visible = on
         "swollen_torso":
-            _torso.visible = on
+            # the swollen belly is the first-person belly itself now
+            # (fp_belt.gd set_belly_form); nothing rides the camera
+            pass
 
 func set_mouth_open(t: float) -> void:
     _mouth_open = clampf(t, 0.0, 1.0)
@@ -112,12 +100,11 @@ func _process(delta: float) -> void:
 func capture_setup() -> Dictionary:
     set_mutation("extra_arm", true)
     set_mutation("palm_mouth", true)
-    set_mutation("swollen_torso", true)
     # turn the right palm up so the mouth faces the eye
     var w := _rig.get_hand_root("right").get_node("Wrist") as Node3D
     w.rotation_degrees.z = 150.0
     _rig.set_process(false)
-    return {"cam_pos": Vector3(0, 0, 0.0001), "look_at": Vector3(0, -0.12, -0.5), "env": "dark", "fov": 70.0, "fill_energy": 0.3}
+    return {"cam_pos": Vector3(0, 0.05, 0.12), "look_at": Vector3(0, -0.12, -0.5), "env": "dark", "fov": 70.0, "fill_energy": 0.3}
 # --- hair mutations on the hands ------------------------------------------------
 
 var _shaped: Array = [] ## rigs carrying shape mutations
@@ -221,18 +208,25 @@ static func apply_shape(rig: Node3D, ids: Array) -> void:
         for k in range(5):
             K.rbox(st, K.T(Vector3(0, 0.03, 0.06 + k * 0.05)), Vector3(0.03, 0.006, 0.016), 0.003, Color(0.8, 0.6, 0.52), Color(0.6, 0.42, 0.36))
         _deco(_seg(rig, "left", ""), "Plates", st)
-    if "M23" in ids: # stiff bristles along both forearms
+    if "M23" in ids: # sense bristles: two rows of long whiskers standing off both forearms
+        # nothing like the arm hair that lies along the skin: these stand
+        # straight up, three times as long, dark at the root and bleached at
+        # the tip like a cat's whisker, so their shiver (the squeeze
+        # warning) is not lost among ordinary hair
         for side in both:
             st = K.begin()
-            for k in range(14):
-                var z := 0.03 + k * 0.022
-                var x := sin(k * 2.3) * 0.022
-                K.tube(st, I, [Vector3(x, 0.03, z), Vector3(x * 1.3, 0.055, z + 0.01)], [0.0016, 0.0006], 3, [Color(0.12, 0.09, 0.07)], false)
+            for k in range(10):
+                var x := 0.018 if k % 2 == 0 else -0.018
+                var foot := Vector3(x, 0.026, 0.04 + k * 0.028)
+                var tip := foot + Vector3(x * 0.6, 0.060, 0.004).normalized() * lerpf(0.055, 0.070, K.h(k, 23))
+                K.tube(st, I, [foot, foot.lerp(tip, 0.45), tip], [0.0022, 0.0014, 0.0005], 3, [Color(0.12, 0.09, 0.07), Color(0.82, 0.76, 0.60)], false)
             _deco(_seg(rig, side, ""), "Bristles", st)
-    if "M26" in ids: # tiny fingers budding on the right hand's edge
+    if "M26" in ids: # tiny two-jointed fingers budding on the right hand's edge
         st = K.begin()
+        var bud_tip := Color(0.93, 0.78, 0.72)
         for k in range(3):
-            K.tube(st, I, [Vector3(0.046, 0.0, -0.03 - k * 0.02), Vector3(0.058, 0.004, -0.034 - k * 0.02)], [0.005, 0.0035], 4, [skin])
+            var z := -0.03 - k * 0.02
+            K.tube(st, I, [Vector3(0.044, 0.0, z), Vector3(0.056, 0.004, z - 0.003), Vector3(0.064, 0.001, z - 0.009)], [0.0045, 0.004, 0.003], 4, [skin, bud_tip])
         _deco(_seg(rig, "right", "Wrist"), "Buds", st)
     if "M14" in ids: # muscle knots on the forearms
         for side in both:

@@ -9,7 +9,10 @@ extends Node3D
 ## Origin = centre of the waist at belt height; the player faces -Z.
 ## Public: set_spray_count(cheap, expensive) (total capped at 3),
 ## set_canary(present), canary_look(yaw_deg), set_canary_scared(bool),
-## set_hung(ids) (tool id per hook, "" = empty ring), hook_point(i).
+## set_hung(ids) (tool id per hook, "" = empty ring), hook_point(i),
+## set_bumps(n) (tumor bumps on the belly, the same lump the mirror shows),
+## set_belly_form(ids) (M01 sagging belly, T4 swollen veined belly, M16/M19
+## slow churning), static belly_rings(ids) / front_cap(y).
 ## Tool hooks: 3 steel rings hanging off the belt band round the belly (knife,
 ## blender, big saw), where the player looks down to swap tools.
 
@@ -28,6 +31,45 @@ const RZF := 0.19  ## waist half depth at the front (belly side)
 ## belt), and every front depth stays positive: the old top rings went
 ## negative, folding the ring over itself into inverted faces (white holes).
 const TORSO_RINGS := [[0.0, 0.21, 0.19, 0.13], [0.025, 0.208, 0.176, 0.13], [0.05, 0.2, 0.152, 0.128], [0.072, 0.186, 0.122, 0.124], [0.092, 0.165, 0.09, 0.118], [0.11, 0.138, 0.06, 0.108], [0.125, 0.105, 0.036, 0.092], [0.137, 0.07, 0.018, 0.07], [0.146, 0.04, 0.006, 0.045]]
+## How far forward the belly may come at height y before it would hide the
+## belt band from the eye (EYE_OVER_BELT above the belt), less 5 mm. No
+## belly form passes it, so band, hooks, cans and canary always show.
+const EYE_OVER_BELT := 0.65
+static func front_cap(y: float) -> float:
+    return RZF * (EYE_OVER_BELT - y) / EYE_OVER_BELT - 0.005
+
+## M01 (stretched stomach): the belly hangs low and full over the belt. Front
+## depths of rings 1..5; the half widths stay.
+const M01_FRONT := [0.186, 0.176, 0.160, 0.130, 0.090]
+## T4 (swollen torso): the M01 belly, 10% wider, 20% taller, out to the cap.
+const T4_FRONT := [0.2, 0.2, 0.2, 0.156, 0.128, 0.088, 0.046, 0.016]
+
+## The torso rings for a set of owned mutations (ring 0, the waist the belt
+## is fitted round, never changes).
+static func belly_rings(ids: Array) -> Array:
+    var rings: Array = []
+    for r in TORSO_RINGS:
+        rings.append((r as Array).duplicate())
+    var swollen := "T4" in ids
+    if swollen or "M01" in ids:
+        for i in range(M01_FRONT.size()):
+            rings[i + 1][2] = M01_FRONT[i]
+    if swollen:
+        for i in range(1, rings.size()):
+            rings[i][0] = float(rings[i][0]) * 1.2
+            rings[i][1] = float(rings[i][1]) * 1.1
+            rings[i][2] = maxf(float(rings[i][2]), float(T4_FRONT[i - 1]))
+    for i in range(1, rings.size()):
+        rings[i][2] = minf(float(rings[i][2]), front_cap(float(rings[i][0])))
+    return rings
+
+var _rings: Array = TORSO_RINGS
+var _form_key := ""
+var _veined := false
+var _churn := false
+var _bumps := 0
+var _hair_counts := {}
+var _torso: MeshInstance3D
 ## Waist the belt band, buckle, hooks, cans and canary are fitted round.
 ## Defaults = the first-person body; the mirror body sets its own slimmer
 ## waist before add_child (_ready builds from these).
@@ -100,29 +142,8 @@ func _ready() -> void:
     # torso: work shirt from the waist up. The belly swells forward a little
     # but never past the belt, the chest draws back under the eye, and the top
     # closes behind the camera, so looking down shows belly -> belt -> legs.
-    st = K.begin()
-    # bare belly, the same skin as the hands (fdk_hands_rig skin_color)
-    var shirt := Color(0.88, 0.72, 0.62)
-    var shirt_d := Color(0.8, 0.64, 0.55)
-    var torso: Array = []
-    for r in TORSO_RINGS:
-        torso.append(_waist_ring(r[0], r[1], r[2], r[3]))
-    # rings top-first (the kit loft convention); the shoulders close below
-    torso.reverse()
-    # soft shading: the chest dome faces the body fill head-on and burnt out
-    # to a flat plate, so its colour eases down toward the top; the belly
-    # front keeps the hand skin (no single flat colour anywhere)
-    var bands: Array = []
-    for i in range(torso.size() - 1):
-        var t := float(i) / float(torso.size() - 2) # 0 = top of the dome
-        bands.append(shirt_d.darkened(0.1).lerp(shirt, smoothstep(0.0, 0.75, t)).lerp(shirt_d, maxf(0.0, t - 0.85) * 4.0))
-    _loft_lit(st, torso, bands)
-    # small navel
-    var nz: float = -_front_at(0.06) - 0.002
-    K.rbox(st, K.T(Vector3(0, 0.06, nz)), Vector3(0.005, 0.006, 0.002), 0.0015, Color(0.55, 0.34, 0.3))
-    var torso_mi := K.add_mesh(self, "Torso", K.finish(st, 5.0), _skin_mat())
-    # the body must not shade itself dark under the ceiling tube
-    torso_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    _build_torso()
+    var torso_mi := _torso
     # body hair (grown with the arm hair) and blood over the bare belly and
     # the briefs; the belly front is -Z here
     _marks = FPBodyMarks.make_material()
@@ -185,6 +206,126 @@ func _on_node_added(n: Node) -> void:
     if n is GeometryInstance3D and is_ancestor_of(n):
         (n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
+## (Re)builds the bare belly from _rings. The node is made once and keeps
+## its name, layers and overlay; only its mesh changes with the belly form.
+func _build_torso() -> void:
+    var st := K.begin()
+    # bare belly, the same skin as the hands (fdk_hands_rig skin_color)
+    var shirt := Color(0.88, 0.72, 0.62)
+    var shirt_d := Color(0.8, 0.64, 0.55)
+    var torso: Array = []
+    for r in _rings:
+        torso.append(_waist_ring(r[0], r[1], r[2], r[3]))
+    # rings top-first (the kit loft convention); the shoulders close below
+    torso.reverse()
+    # soft shading: the chest dome faces the body fill head-on and burnt out
+    # to a flat plate, so its colour eases down toward the top; the belly
+    # front keeps the hand skin (no single flat colour anywhere)
+    var bands: Array = []
+    for i in range(torso.size() - 1):
+        var t := float(i) / float(torso.size() - 2) # 0 = top of the dome
+        bands.append(shirt_d.darkened(0.1).lerp(shirt, smoothstep(0.0, 0.75, t)).lerp(shirt_d, maxf(0.0, t - 0.85) * 4.0))
+    _loft_lit(st, torso, bands)
+    # small navel, the reflection's colour
+    var nz: float = -_front_at(0.06) - 0.002
+    K.rbox(st, K.T(Vector3(0, 0.06, nz)), Vector3(0.005, 0.006, 0.002), 0.0015, Color(0.55, 0.34, 0.3))
+    if _veined:
+        # T4: veins showing through the stretched skin, belt to chest. Thin
+        # and close to the skin's own colour: bold purple bars read as paint
+        var vein := Color(0.6, 0.42, 0.56)
+        for v in range(5):
+            var pts: Array = []
+            for k in range(11):
+                var h := 1.0 + float(k) * 0.4 # ring index, 1..5
+                var lo: Array = _rings[int(floorf(h))]
+                var hi: Array = _rings[mini(int(floorf(h)) + 1, _rings.size() - 1)]
+                var f: float = h - floorf(h)
+                var a := -1.0 + v * 0.5 + sin(h * 1.1 + v * 1.7) * 0.07
+                pts.append(Vector3(sin(a) * lerpf(float(lo[1]), float(hi[1]), f) * 1.008, lerpf(float(lo[0]), float(hi[0]), f), -cos(a) * lerpf(float(lo[2]), float(hi[2]), f) * 1.008))
+            K.tube(st, Transform3D.IDENTITY, pts, [0.0025, 0.004, 0.004, 0.0035, 0.004, 0.0035, 0.003, 0.003, 0.0025, 0.002, 0.0015], 3, [vein, vein.lerp(shirt, 0.25)], false)
+    var mesh := K.finish(st, 5.0)
+    if _torso == null:
+        _torso = K.add_mesh(self, "Torso", mesh, _skin_mat())
+        # the body must not shade itself dark under the ceiling tube
+        _torso.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    else:
+        _torso.mesh = mesh
+
+## The belly takes the shape of the owned mutations: M01 hangs low, T4
+## swells out to the cap and shows its veins, M16/M19 churn slowly. The belt
+## and everything on it stay where they are.
+func set_belly_form(ids: Array) -> void:
+    var want: Array = []
+    for id in ["M01", "M16", "M19", "T4"]:
+        if id in ids:
+            want.append(id)
+    var key := ",".join(PackedStringArray(want))
+    if key == _form_key or _torso == null:
+        return
+    _form_key = key
+    _churn = "M16" in want or "M19" in want
+    if not _churn:
+        _torso.scale = Vector3.ONE
+    var veined := "T4" in want
+    var rings := belly_rings(want)
+    if rings == _rings and veined == _veined:
+        return
+    _rings = rings
+    _veined = veined
+    _build_torso()
+    _build_bumps()
+    if not _hair_counts.is_empty():
+        _hair_key = ""
+        set_body_hair(_hair_counts)
+
+func belly_form() -> String:
+    return _form_key
+
+## Tumor bumps waiting on the belly (FPProgression.belly_bumps()): the same
+## lump as the mirror body's (FPMirrorBody.build_bump), on the player's right
+## of the navel like there, so the bump is in the ordinary look down, not
+## only in the mirror. Blood paints over it; hair does not grow on it.
+func set_bumps(n: int) -> void:
+    n = clampi(n, 0, 7)
+    if n == _bumps:
+        return
+    _bumps = n
+    _build_bumps()
+
+func bump_count() -> int:
+    var n := 0
+    if _torso != null:
+        for c in _torso.get_children():
+            if String(c.name).begins_with("TumorBump") and not c.is_queued_for_deletion():
+                n += 1
+    return n
+
+## Bump i: [point on the belly skin, the way the skin faces there].
+func bump_point(i: int) -> Array:
+    var a := float(i) * 1.9
+    var x := 0.07 + cos(a) * 0.05
+    var y := 0.06 + sin(a) * 0.025
+    var e := 0.004
+    var n := Vector3(-(_depth_at(x + e, y) - _depth_at(x - e, y)) / (2.0 * e), -(_depth_at(x, y + e) - _depth_at(x, y - e)) / (2.0 * e), -1.0).normalized()
+    return [Vector3(x, y, -_depth_at(x, y)), n]
+
+func _build_bumps() -> void:
+    if _torso == null:
+        return
+    for c in _torso.get_children():
+        if String(c.name).begins_with("TumorBump"):
+            _torso.remove_child(c)
+            c.queue_free()
+    var body: GDScript = load("res://main/art/fp_mirror_body.gd")
+    for i in range(_bumps):
+        var p := bump_point(i)
+        var st := K.begin()
+        body.call("build_bump", st, p[0], p[1], 30 + i)
+        var mi := K.add_mesh(_torso, "TumorBump%d" % i, K.finish(st), _skin_mat())
+        mi.layers = _torso.layers
+        mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        FPBodyMarks.paint(mi, _marks, 0.4, 0.0, -1.0, 0.0)
+
 ## Blood over the belly and briefs (the hand blood amount, 0..1).
 func set_blood(amount: float) -> void:
     if _marks != null:
@@ -193,6 +334,7 @@ func set_blood(amount: float) -> void:
 ## Belly hair from the arm hair counts {common, core, mantle, surface}:
 ## painted density plus strands down the navel trail.
 func set_body_hair(counts: Dictionary) -> void:
+    _hair_counts = counts.duplicate()
     var kl := FPBodyHair.kinds(counts)
     if _marks != null:
         _marks.set_shader_parameter("hair", FPBodyMarks.hair_density(kl.size()))
@@ -289,14 +431,25 @@ func _band(st: SurfaceTool, col: Color, col_edge: Color) -> void:
                 nrm = -nrm
             FDKLowPoly.add_quad(st, r0[j], r0[k], r1[k], r1[j], nrm, c)
 
-## Front depth of the shirt at height y (for the buttons).
-func _front_at(y: float) -> float:
-    for i in range(TORSO_RINGS.size() - 1):
-        var a: Array = TORSO_RINGS[i]
-        var b: Array = TORSO_RINGS[i + 1]
+## [half width, front depth] of the belly at height y.
+func _ring_at(y: float) -> Array:
+    for i in range(_rings.size() - 1):
+        var a: Array = _rings[i]
+        var b: Array = _rings[i + 1]
         if y <= float(b[0]):
-            return lerpf(float(a[2]), float(b[2]), (y - float(a[0])) / (float(b[0]) - float(a[0])))
-    return float(TORSO_RINGS[-1][2])
+            var t := clampf((y - float(a[0])) / (float(b[0]) - float(a[0])), 0.0, 1.0)
+            return [lerpf(float(a[1]), float(b[1]), t), lerpf(float(a[2]), float(b[2]), t)]
+    return [float(_rings[-1][1]), float(_rings[-1][2])]
+
+## Front depth of the belly at height y on the centre line.
+func _front_at(y: float) -> float:
+    return float(_ring_at(y)[1])
+
+## Front depth of the belly at height y, x off the centre line.
+func _depth_at(x: float, y: float) -> float:
+    var r := _ring_at(y)
+    var k := clampf(x / float(r[0]), -0.98, 0.98)
+    return float(r[1]) * sqrt(1.0 - k * k)
 
 func _waist_ring(y: float, rx: float, zf: float, zb: float, segs: int = 16) -> PackedVector3Array:
     var ring := PackedVector3Array()
@@ -538,6 +691,9 @@ var _swing: Array = [0.0, 0.0, 0.0]
 
 func _process(delta: float) -> void:
     _time += delta
+    if _churn and _torso != null:
+        # M16 / M19: the gut turns over, as on the mirror body
+        _torso.scale = Vector3(1.0 + sin(_time * 3.0) * 0.03, 1.0, 1.0 + sin(_time * 3.0 + 1.5) * 0.03)
     if focused >= 0 and _glow != null:
         _glow.albedo_color.a = 0.5 + 0.2 * sin(_time * 6.0)
     for i in range(mini(_swing.size(), _hooks.size())):

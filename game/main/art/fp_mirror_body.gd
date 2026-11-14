@@ -226,20 +226,11 @@ func build() -> void:
 		hand.scale = Vector3.ONE * 1.25
 		hand.set_meta("base_scale", hand.scale)
 		st = K.begin()
-		# palm: three pinched rings (wrist, widest, finger roots) like every
-		# other part of this body; 0.09 tall, a third as thick as it is wide
-		FDKLowPoly.loft(st, [_ring(0.0, 0.0, 0.024, 0.0084, 0.0084, 6), _ring(0.042, 0.0, 0.042, 0.0147, 0.0147, 6), _ring(0.09, 0.0, 0.040, 0.014, 0.014, 6)], [SKIN_D, SKIN], true, true)
-		K.tube(st, I, [Vector3(-sx * 0.033, 0.018, 0.0), Vector3(-sx * 0.052, 0.045, 0.014), Vector3(-sx * 0.055, 0.078, 0.022)], [0.014, 0.0125, 0.011], 4, [SKIN, SKIN_D]) # thumb
+		_palm_shape(st, I, sx)
 		_mesh(hand, "Palm", st)
-		var fing := _subpivot(hand, "fingers_" + s, Vector3(0, 0.082, 0.0))
+		var fing := _subpivot(hand, "fingers_" + s, FINGER_ROOT)
 		st = K.begin()
-		for i in range(4):
-			var x := -0.027 + i * 0.018
-			# index, middle, ring, little (the thumb is on the -sx side); the
-			# tips are plain skin: nails do not show at this size, and pale
-			# tips read as claws
-			var ln: float = FINGER_LEN[i if sx > 0 else 3 - i]
-			K.tube(st, I, [Vector3(x, 0, 0), Vector3(x * 1.02, ln * 0.5, 0.016), Vector3(x * 1.03, ln * 0.8, 0.05)], [0.0095, 0.0088, 0.0075], 4, [SKIN, SKIN, SKIN])
+		_fingers_shape(st, I, sx)
 		_mesh(fing, "Fingers", st)
 	# --- legs (not a mirror part): briefs over the hips, then articulated
 	# thigh and shin/foot preserving exact original profile and mesh lengths
@@ -344,6 +335,30 @@ func build() -> void:
 			_shim[part].append(s2)
 	_paint_marks()
 	_capture_rest_pose()
+
+## Where the finger block starts on the hand.
+const FINGER_ROOT := Vector3(0, 0.082, 0.0)
+
+## A hand's palm and thumb at `t` (sx 1 = right hand). The body's own hands
+## and the third arm's hand (T2) are this one shape.
+func _palm_shape(st: SurfaceTool, t: Transform3D, sx: int) -> void:
+	# palm: three pinched rings (wrist, widest, finger roots) like every
+	# other part of this body; 0.09 tall, a third as thick as it is wide
+	var rings: Array = []
+	for r in [_ring(0.0, 0.0, 0.024, 0.0084, 0.0084, 6), _ring(0.042, 0.0, 0.042, 0.0147, 0.0147, 6), _ring(0.09, 0.0, 0.040, 0.014, 0.014, 6)]:
+		rings.append(t * (r as PackedVector3Array))
+	FDKLowPoly.loft(st, rings, [SKIN_D, SKIN], true, true)
+	K.tube(st, t, [Vector3(-sx * 0.033, 0.018, 0.0), Vector3(-sx * 0.052, 0.045, 0.014), Vector3(-sx * 0.055, 0.078, 0.022)], [0.014, 0.0125, 0.011], 4, [SKIN, SKIN_D]) # thumb
+
+## The four fingers, from the finger root at `t`.
+func _fingers_shape(st: SurfaceTool, t: Transform3D, sx: int) -> void:
+	for i in range(4):
+		var x := -0.027 + i * 0.018
+		# index, middle, ring, little (the thumb is on the -sx side); the
+		# tips are plain skin: nails do not show at this size, and pale
+		# tips read as claws
+		var ln: float = FINGER_LEN[i if sx > 0 else 3 - i]
+		K.tube(st, t, [Vector3(x, 0, 0), Vector3(x * 1.02, ln * 0.5, 0.016), Vector3(x * 1.03, ln * 0.8, 0.05)], [0.0095, 0.0088, 0.0075], 4, [SKIN, SKIN, SKIN])
 
 # --- whole-body hair and blood ----------------------------------------------
 
@@ -717,12 +732,16 @@ static func look(id: String) -> Dictionary:
 		"M14": return {"sub": "chest", "scale": Vector3(1.25, 1.08, 1.2)}
 		"M15": return {"sub": "jaw", "scale": Vector3(1.1, 1.3, 1.15), "pos": Vector3(0, -0.3, 0.06)}
 		"M18": return {"sub": "hand_r", "scale": Vector3(2.0, 0.7, 1.8), "rot": Vector3(0, 0, -70)}
-		"M20": return {"sub": "upper_r", "rot": Vector3(-55, 0, 45)}
+		"M20": return {"sub": "upper_r", "rot": Vector3(-55, 0, 45), "also": [{"sub": "right_hand", "rot": Vector3(M20_ELBOW, 0, 0)}]}
 		"M24": return {"sub": "eyes", "scale": Vector3(2.4, 2.8, 1.6)}
 		"M28": return {"sub": "forearm_l", "scale": Vector3(0.6, 1.25, 0.6), "rot": Vector3(70, 0, -45)}
 		"T4": return {"sub": "belly", "scale": Vector3(1.9, 1.6, 2.1)}
 		"T5": return {"sub": "eyes", "scale": Vector3(3.2, 1.3, 0.6), "pos": Vector3(0, 0.0, -0.06)}
 	return {}
+
+## M20: how far the right elbow folds the wrong way (deg, behind the arm).
+const M20_ELBOW := 40.0
+
 func _reset_shapes() -> void:
 	for n in _sub.values():
 		(n as Node3D).scale = n.get_meta("base_scale")
@@ -767,7 +786,9 @@ func apply(ids: Array, bumps: int = 0) -> void:
 	var mutated_eyes := "M24" in applied or "T5" in applied
 	face_mat.set_shader_parameter("hide_eyes", mutated_eyes)
 	for mesh in _sub["eyes"].get_children():
-		mesh.visible = mutated_eyes
+		# only the eye images: pieces hung on the eyes (M03) always show
+		if String(mesh.name).begins_with("EyeImage"):
+			mesh.visible = mutated_eyes
 	_capture_rest_pose()
 
 func _apply_one(id: String, _root: Node3D, ghost: bool) -> Node3D:
@@ -779,10 +800,16 @@ func _apply_one(id: String, _root: Node3D, ghost: bool) -> Node3D:
 			n.scale *= lk.get("scale", Vector3.ONE)
 			n.position += lk.get("pos", Vector3.ZERO)
 			n.rotation_degrees += lk.get("rot", Vector3.ZERO)
-	var e := _extra(id, ghost)
-	if e != null:
+		for more in lk.get("also", []):
+			var n2 := _target(String(more["sub"]))
+			if n2 != null:
+				n2.scale *= more.get("scale", Vector3.ONE)
+				n2.position += more.get("pos", Vector3.ZERO)
+				n2.rotation_degrees += more.get("rot", Vector3.ZERO)
+	for e in _extra(id, ghost):
 		_extras.append(e)
-		made = e
+		if made == null:
+			made = e
 	return made
 
 ## Translucent preview of one mutation over the body (hover in the mirror).
@@ -815,7 +842,7 @@ func ghost(id: String) -> Node3D:
 		if p != "":
 			show[p] = true
 	for e in g._extras:
-		if String(e.name) == "Mut_" + id:
+		if String(e.name).begins_with("Mut_" + id):
 			var p2 := g._part_of(e)
 			if p2 != "":
 				show[p2] = true
@@ -853,27 +880,110 @@ func _part_of(n: Node) -> String:
 		p = p.get_parent()
 	return ""
 
+## Front of the belly (belly-local z) and the way the skin faces at belly
+## point (x, y): the trunk ring the belly is lofted from, not a flat plane.
+func _belly_skin(x: float, y: float) -> Array:
+	var wy := y + 1.06
+	var hw := float(TRUNK[0][1])
+	var zf := float(TRUNK[0][2])
+	for i in range(TRUNK.size() - 1):
+		var a: Array = TRUNK[i]
+		var b: Array = TRUNK[i + 1]
+		if wy <= float(b[0]):
+			var t := clampf((wy - float(a[0])) / (float(b[0]) - float(a[0])), 0.0, 1.0)
+			hw = lerpf(float(a[1]), float(b[1]), t)
+			zf = lerpf(float(a[2]), float(b[2]), t)
+			break
+	var c := pow(clampf(absf(x) / hw, 0.0, 0.98), 1.0 / 0.75)
+	var sn := sqrt(1.0 - c * c)
+	return [sn * zf, Vector3(signf(x) * c / hw, 0.0, sn / zf).normalized()]
+
 func _bump(i: int, _ghost: bool) -> Node3D:
 	var st := K.begin()
 	var a := float(i) * 1.9
-	var at := Vector3(0.06 + cos(a) * 0.05, -0.02 + sin(a) * 0.04, BELLY_FRONT)
-	K.blob(st, Transform3D.IDENTITY, at, Vector3(0.022, 0.02, 0.018), 0.2, 30 + i, Color(0.78, 0.48, 0.5), Color(0.62, 0.32, 0.36))
+	var x := 0.06 + cos(a) * 0.05
+	var y := -0.02 + sin(a) * 0.04
+	var skin := _belly_skin(x, y)
+	build_bump(st, Vector3(x, y, float(skin[0])), skin[1], 30 + i)
 	var mi := K.add_mesh(_parts["belly"], "TumorBump%d" % i, K.finish(st), _skin)
 	return mi
 
+## One tumor bump: a low dome of stretched skin swelling out of the surface
+## at `at` (a point ON the skin) along `outward`. Shared by this body and the
+## first-person belly (fp_belt.gd set_bumps), so both show the same lump.
+## The rim sits under the skin and keeps the body's colour, the crown is
+## thin pink with a dark navel-like pit; two fine veins climb the side
+## (they only read up close, in first person).
+const BUMP_R := Vector3(0.024, 0.020, 0.020) ## half width, half height on the skin, rise
+const BUMP_SINK := 0.006
+static func build_bump(st: SurfaceTool, at: Vector3, outward: Vector3, seed: int) -> void:
+	var up := outward.normalized()
+	var ref := Vector3.UP if absf(up.y) < 0.9 else Vector3.RIGHT
+	var bx := up.cross(ref).normalized()
+	var bz := bx.cross(up).normalized()
+	var spin := K.h(seed, 3) * TAU
+	var frame := Transform3D(Basis(bx, up, bz), at - up * BUMP_SINK) * Transform3D(Basis(Vector3.UP, spin).scaled(Vector3(1.0, 1.0, BUMP_R.y / BUMP_R.x)), Vector3.ZERO)
+	var h := BUMP_R.z + BUMP_SINK
+	var rim := Color(0.84, 0.64, 0.57)
+	var crown := Color(0.86, 0.50, 0.52)
+	var prof := [Vector2(BUMP_R.x, 0.0), Vector2(BUMP_R.x * 0.96, h * 0.34), Vector2(BUMP_R.x * 0.78, h * 0.66), Vector2(BUMP_R.x * 0.46, h * 0.9), Vector2(0.004, h), Vector2(0.0, h - 0.0015)]
+	K.lathe(st, frame, prof, 7, [rim, rim.lerp(crown, 0.45), crown, crown.lerp(Color(0.92, 0.6, 0.6), 0.5), Color(0.66, 0.34, 0.38)], 0.22 + K.h(seed, 4) * 0.2)
+	var vein := Color(0.45, 0.3, 0.55)
+	for v in range(2):
+		var va := K.h(seed, 5 + v) * TAU
+		var d := Vector3(cos(va), 0.0, sin(va))
+		K.tube(st, frame, [d * BUMP_R.x * 1.0 + Vector3.UP * h * 0.3, d * BUMP_R.x * 0.86 + Vector3.UP * h * 0.62, d.rotated(Vector3.UP, 0.5) * BUMP_R.x * 0.55 + Vector3.UP * h * 0.9], [0.0015, 0.0012, 0.0008], 3, [vein], false)
+
+## What the extra pieces are made of. Skin is the body's own material; bone,
+## teeth and nail are dry and pale (cartilage grain for bone, glazed ceramic
+## for tooth and nail, as on the first-person hands); the inside of a mouth
+## and torn roots are wet flesh. (All of them used to be skin: ribs the
+## colour of the arm.) Plain StandardMaterial3D on purpose: the Tab doll
+## swaps exactly those for its self-lit copies (FPMirror._light_doll), so
+## the pieces do not go black on the doll.
+const TEX := "res://addons/flesh_dig_kit/textures/"
+const HARD_TEX := "tex_ceramic_64.png"
+const BONE_TEX := "tissue_cartilage_128.png"
+const WET_TEX := "tissue_compressive_128.png"
+const TORN_TEX := "tex_torn_chunk_64.png"
+static var _piece_mats := {}
+static func piece_material(tex: String, wet: bool) -> StandardMaterial3D:
+	var key := tex + ("|wet" if wet else "|dry")
+	if _piece_mats.has(key):
+		return _piece_mats[key]
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = load(TEX + tex)
+	m.uv1_scale = Vector3(3, 3, 3)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT
+	m.roughness = 0.45 if wet else 0.6
+	m.metallic_specular = 0.4 if wet else 0.3
+	_piece_mats[key] = m
+	return m
+
 ## Extra pieces a mutation adds (webbing, nails, trunk...). Built under the
-## part they belong to.
-func _extra(id: String, _ghost: bool) -> Node3D:
+## part they belong to, as up to three meshes by material: "Mut_<id>" (skin),
+## "Mut_<id>_Hard" (bone, tooth, nail) and "Mut_<id>_Wet" (mouth, torn root).
+func _extra(id: String, _ghost: bool) -> Array[Node3D]:
 	var I := Transform3D.IDENTITY
-	var st := K.begin()
+	var st := K.begin() # skin
+	var hd := K.begin() # hard
+	var wt := K.begin() # wet
+	var wet_tex := WET_TEX
+	var hard_tex := HARD_TEX
 	var parent: Node3D = null
+	var tooth := Color(0.95, 0.9, 0.75)
+	var tooth_d := Color(0.9, 0.85, 0.7)
 	match id:
-		"M03": # iron-filing irises: spiky grey star over each eye
+		"M03": # iron-filing irises: a grey disc over each eye, filings bristling off its rim
 			parent = _sub["eyes"]
+			var iron := Color(0.3, 0.3, 0.34)
 			for sx in [-1, 1]:
-				for k in range(8):
-					var a := k * TAU / 8.0
-					K.tube(st, I, [Vector3(sx * 0.04 + cos(a) * 0.004, sin(a) * 0.004, 0.008), Vector3(sx * 0.04 + cos(a) * 0.014, sin(a) * 0.014, 0.01)], [0.002, 0.0008], 3, [Color(0.3, 0.3, 0.34)], false)
+				K.lathe(hd, K.T(Vector3(sx * 0.034, 0.0, 0.004), Vector3(90, 0, 0)), [Vector2(0.013, 0.0), Vector2(0.009, 0.004), Vector2(0.0, 0.005)], 6, [iron, iron.darkened(0.25)])
+				for k in range(6):
+					var a := k * TAU / 6.0 + 0.3
+					K.tube(hd, I, [Vector3(sx * 0.034 + cos(a) * 0.010, sin(a) * 0.010, 0.006), Vector3(sx * 0.034 + cos(a) * 0.028, sin(a) * 0.028, 0.009)], [0.003, 0.0009], 3, [iron], false)
 		"M08": # webbing between fingers, reaching the tips
 			parent = _sub["fingers_r"]
 			for i in range(3):
@@ -884,7 +994,7 @@ func _extra(id: String, _ghost: bool) -> Node3D:
 			for i in range(4):
 				var x := -0.027 + i * 0.018
 				var ln := 0.066 - absf(i - 1.3) * 0.01
-				K.tube(st, I, [Vector3(x, ln * 0.7, 0.05), Vector3(x, ln * 0.85, 0.07), Vector3(x, ln * 0.8, 0.09)], [0.011, 0.009, 0.004], 4, [Color(0.85, 0.72, 0.28), Color(0.6, 0.5, 0.18)])
+				K.tube(hd, I, [Vector3(x, ln * 0.7, 0.05), Vector3(x, ln * 0.85, 0.07), Vector3(x, ln * 0.8, 0.09)], [0.011, 0.009, 0.004], 4, [Color(0.85, 0.72, 0.28), Color(0.6, 0.5, 0.18)])
 		"M13": # deep suction wrinkles on the palm
 			parent = _sub["hand_r"]
 			for k in range(6):
@@ -900,8 +1010,15 @@ func _extra(id: String, _ghost: bool) -> Node3D:
 			parent = _parts["face"]
 			for sx in [-1, 1]:
 				K.tube(st, I, [Vector3(sx * 0.078, -0.03, 0.03), Vector3(sx * 0.07, -0.14, 0.09), Vector3(sx * 0.068, -0.28, 0.11), Vector3(sx * 0.082, -0.4, 0.1), Vector3(sx * 0.07, -0.45, 0.08)], [0.02, 0.016, 0.015, 0.02, 0.018], 5, [SKIN, SKIN_D, SKIN_D, SKIN, SKIN])
-			K.quad(st, I, Vector3(-0.068, -0.05, 0.05), Vector3(0.068, -0.05, 0.05), Vector3(0.075, -0.42, 0.11), Vector3(-0.075, -0.42, 0.11), Vector3.BACK, Color(0.22, 0.03, 0.05))
-			K.tube(st, I, [Vector3(0, -0.07, 0.06), Vector3(0.01, -0.2, 0.13), Vector3(0.0, -0.33, 0.155)], [0.022, 0.02, 0.016], 5, [Color(0.75, 0.3, 0.36)]) # slack tongue
+			# the throat is a hollow, not a flat red card: three strips, the
+			# middle one 15 mm deeper and darker
+			var gum := Color(0.5, 0.12, 0.14)
+			var deep := Color(0.26, 0.04, 0.07)
+			var top := [Vector3(-0.068, -0.05, 0.05), Vector3(-0.024, -0.05, 0.035), Vector3(0.024, -0.05, 0.035), Vector3(0.068, -0.05, 0.05)]
+			var bot := [Vector3(-0.075, -0.42, 0.11), Vector3(-0.026, -0.42, 0.095), Vector3(0.026, -0.42, 0.095), Vector3(0.075, -0.42, 0.11)]
+			for c in range(3):
+				K.quad(wt, I, top[c], top[c + 1], bot[c + 1], bot[c], Vector3(1 - c, 0, 2).normalized(), deep if c == 1 else gum)
+			K.tube(wt, I, [Vector3(0, -0.07, 0.05), Vector3(0.01, -0.2, 0.125), Vector3(0.0, -0.33, 0.15)], [0.022, 0.02, 0.016], 5, [Color(0.95, 0.5, 0.52), Color(0.85, 0.4, 0.44)]) # slack tongue
 		"M16", "M19": # heavy rippling folds across the belly
 			parent = _parts["belly"]
 			for k in range(4):
@@ -915,23 +1032,29 @@ func _extra(id: String, _ghost: bool) -> Node3D:
 		"M22": # the alien hand: purple bruised knuckles
 			parent = _sub["hand_l"]
 			K.blob(st, I, Vector3(0, 0.08, 0.016), Vector3(0.045, 0.014, 0.012), 0.4, 46, Color(0.5, 0.3, 0.5), Color(0.4, 0.22, 0.4))
-		"M23": # long stiff bristles on both arms
+		"M23": # sense bristles: long whiskers standing clear of both arms,
+			# dark at the root and bleached at the tip (not body hair)
 			parent = _parts["arms"]
 			for sx in [-1, 1]:
-				for k in range(14):
-					var tt := float(k) / 13.0
-					var base := Vector3(sx * (0.24 + 0.05 * tt), -0.26 * tt, 0.03 + 0.05 * tt)
-					K.tube(st, I, [base, base + Vector3(sx * 0.06, 0.02, 0.03)], [0.003, 0.0008], 3, [Color(0.1, 0.08, 0.06)], false)
+				for k in range(8):
+					var tt := float(k) / 7.0
+					var base := Vector3(sx * (ARM_ROOT_X + 0.035 + 0.05 * tt), -0.03 - 0.25 * tt, 0.03 + 0.05 * tt)
+					var tip: Vector3 = base + Vector3(sx * 0.08, 0.02, 0.03).normalized() * 0.09
+					K.tube(st, I, [base, base.lerp(tip, 0.45), tip], [0.0035, 0.0024, 0.001], 3, [Color(0.12, 0.09, 0.07), Color(0.82, 0.76, 0.60)], false)
 		"M25": # swollen veins across the forehead and temples
 			parent = _parts["face"]
-			var vc := Color(0.35, 0.3, 0.6)
-			K.tube(st, I, [Vector3(-0.06, 0.09, 0.07), Vector3(-0.02, 0.06, 0.096), Vector3(0.01, 0.1, 0.09), Vector3(0.04, 0.07, 0.092)], [0.005, 0.006, 0.005, 0.004], 4, [vc])
-			K.tube(st, I, [Vector3(0.02, 0.12, 0.06), Vector3(0.05, 0.09, 0.08), Vector3(0.085, 0.05, 0.06)], [0.005, 0.005, 0.004], 4, [vc])
-			K.tube(st, I, [Vector3(-0.085, 0.05, 0.05), Vector3(-0.07, 0.1, 0.06)], [0.005, 0.004], 4, [vc])
-		"M26": # little budding fingers all over the hand edge
+			# two veins that climb from the temples and wander over the
+			# brow, one forking (a zigzag of straight bars read as a scribble)
+			var vc := Color(0.30, 0.22, 0.50)
+			var vd := Color(0.38, 0.28, 0.52)
+			K.tube(st, I, [Vector3(-0.088, 0.035, 0.05), Vector3(-0.074, 0.07, 0.068), Vector3(-0.05, 0.092, 0.083), Vector3(-0.022, 0.084, 0.095), Vector3(0.002, 0.098, 0.093)], [0.008, 0.008, 0.007, 0.0065, 0.005], 4, [vc, vc, vd, vd])
+			K.tube(st, I, [Vector3(-0.05, 0.092, 0.083), Vector3(-0.04, 0.115, 0.072), Vector3(-0.022, 0.128, 0.055)], [0.0065, 0.006, 0.0045], 4, [vd])
+			K.tube(st, I, [Vector3(0.088, 0.04, 0.05), Vector3(0.07, 0.078, 0.07), Vector3(0.046, 0.1, 0.082), Vector3(0.034, 0.124, 0.062)], [0.008, 0.0075, 0.0065, 0.005], 4, [vc, vc, vd])
+		"M26": # three little two-jointed fingers budding from the hand's edge
 			parent = _sub["hand_r"]
-			for k in range(5):
-				K.tube(st, I, [Vector3(0.04, 0.01 + k * 0.015, 0.0), Vector3(0.062, 0.016 + k * 0.015, 0.004)], [0.006, 0.004], 4, [SKIN])
+			for k in range(3):
+				var y := 0.014 + k * 0.024
+				K.tube(st, I, [Vector3(0.036, y, 0.0), Vector3(0.056, y + 0.006, 0.004), Vector3(0.068, y + 0.004, 0.012)], [0.0075, 0.0065, 0.005], 4, [SKIN, Color(0.93, 0.78, 0.72)])
 		"M27": # elephant trunk nose hanging down past the chin
 			parent = _sub["nose"]
 			var pts: Array = []
@@ -948,37 +1071,65 @@ func _extra(id: String, _ghost: bool) -> Node3D:
 			K.blob(st, I, Vector3(0, -0.02, 0.08), Vector3(0.1, 0.1, 0.08), 0.12, 48, Color(0.92, 0.7, 0.62), Color(0.8, 0.55, 0.5))
 		"T1": # clicking tongue in an open mouth
 			parent = _sub["jaw"]
-			K.blob(st, I, Vector3(0, -0.01, 0.085), Vector3(0.03, 0.02, 0.01), 0.0, 49, Color(0.25, 0.04, 0.06), Color(0.2, 0.03, 0.05))
-			K.blob(st, I, Vector3(0, -0.012, 0.1), Vector3(0.016, 0.006, 0.02), 0.0, 50, Color(0.8, 0.35, 0.4), Color(0.7, 0.3, 0.35))
-		"T2": # third arm from the chest, with a hand
+			K.blob(wt, I, Vector3(0, -0.01, 0.085), Vector3(0.03, 0.02, 0.01), 0.0, 49, Color(0.3, 0.05, 0.08), Color(0.24, 0.04, 0.06))
+			K.blob(wt, I, Vector3(0, -0.012, 0.1), Vector3(0.016, 0.006, 0.02), 0.0, 50, Color(0.98, 0.5, 0.54), Color(0.88, 0.42, 0.46))
+		"T2": # third arm out of the chest: it bends at an elbow and holds
+			# its hand palm-up in front of the belly, so from the front it
+			# is a bent arm, not a circle on the chest
 			parent = _parts["chest"]
-			K.tube(st, I, [Vector3(0.0, -0.03, 0.1), Vector3(0.03, -0.1, 0.24), Vector3(0.0, -0.04, 0.4)], [0.05, 0.042, 0.034], 6, [SKIN_D, SKIN])
-			K.rbox(st, K.T(Vector3(0.0, 0.0, 0.44), Vector3(-60, 0, 0)), Vector3(0.045, 0.055, 0.016), 0.01, SKIN, SKIN_D)
+			var root := Vector3(0.02, -0.03, 0.105)
+			var elbow := Vector3(0.115, -0.17, 0.19)
+			var wrist := Vector3(0.03, -0.25, 0.24)
+			K.blob(st, I, root, Vector3(0.055, 0.03, 0.025), 0.15, 61, SKIN_D, SKIN_D.darkened(0.08)) # the fold it grows from
+			K.tube(st, I, [root + Vector3(0, 0, 0.005), root.lerp(elbow, 0.55), elbow, elbow.lerp(wrist, 0.55), wrist], [0.045, 0.041, 0.036, 0.031, 0.026], 6, [SKIN_D, SKIN_D, SKIN, SKIN])
+			# the body's own hand shape, lying flat: fingers across the
+			# belly, palm to the ceiling
+			var along := Vector3(-0.95, 0.0, 0.3).normalized()
+			var palm_up := Vector3.UP
+			var ht := Transform3D(Basis(along.cross(palm_up).normalized(), along, palm_up).scaled(Vector3.ONE * 1.25), wrist - along * 0.01)
+			_palm_shape(st, ht, 1)
+			_fingers_shape(st, ht * Transform3D(Basis.IDENTITY, FINGER_ROOT), 1)
 		"T3": # a toothy mouth across the right palm
 			parent = _sub["hand_r"]
-			K.blob(st, I, Vector3(0, 0.045, 0.016), Vector3(0.034, 0.018, 0.006), 0.1, 51, Color(0.6, 0.2, 0.22), Color(0.5, 0.15, 0.18))
-			K.blob(st, I, Vector3(0, 0.045, 0.02), Vector3(0.026, 0.008, 0.004), 0.0, 52, Color(0.2, 0.02, 0.04), Color(0.15, 0.02, 0.03))
+			K.blob(wt, I, Vector3(0, 0.045, 0.016), Vector3(0.034, 0.018, 0.006), 0.1, 51, Color(0.8, 0.3, 0.32), Color(0.68, 0.22, 0.26))
+			K.blob(wt, I, Vector3(0, 0.045, 0.02), Vector3(0.026, 0.008, 0.004), 0.0, 52, Color(0.26, 0.03, 0.06), Color(0.2, 0.03, 0.04))
 			for k in range(6):
-				K.blob(st, I, Vector3(-0.02 + k * 0.008, 0.054, 0.022), Vector3(0.003, 0.004, 0.003), 0.0, 53, Color(0.95, 0.9, 0.75), Color(0.9, 0.85, 0.7))
+				K.blob(hd, I, Vector3(-0.02 + k * 0.008, 0.054, 0.022), Vector3(0.003, 0.004, 0.003), 0.0, 53, tooth, tooth_d)
 		"T6": # jaw split top to bottom, open like a flower, lined with teeth
 			parent = _sub["jaw"]
-			K.quad(st, I, Vector3(-0.012, 0.03, 0.095), Vector3(0.012, 0.03, 0.095), Vector3(0.018, -0.075, 0.08), Vector3(-0.018, -0.075, 0.08), Vector3.BACK, Color(0.22, 0.02, 0.05))
+			K.quad(wt, I, Vector3(-0.012, 0.03, 0.095), Vector3(0.012, 0.03, 0.095), Vector3(0.018, -0.075, 0.08), Vector3(-0.018, -0.075, 0.08), Vector3.BACK, Color(0.3, 0.04, 0.07))
 			for sy in range(6):
 				for sx in [-1, 1]:
-					K.blob(st, I, Vector3(sx * 0.016, 0.02 - sy * 0.017, 0.1), Vector3(0.005, 0.006, 0.005), 0.0, 54, Color(0.95, 0.9, 0.75), Color(0.9, 0.85, 0.7))
-		"T7": # thick, long ribs fanning out of the chest like a fan
+					K.blob(hd, I, Vector3(sx * 0.016, 0.02 - sy * 0.017, 0.1), Vector3(0.005, 0.006, 0.005), 0.0, 54, tooth, tooth_d)
+		"T7": # ribs burst out of the chest and splay: four curved, flat
+			# bones a side that swing out, forward, then curl back down and
+			# in, each out of a torn wet root (they were straight skin-
+			# coloured planks that read as wings)
 			parent = _parts["chest"]
+			wet_tex = TORN_TEX
+			hard_tex = BONE_TEX
 			var bone := Color(0.93, 0.88, 0.78)
 			var bone_d := Color(0.78, 0.7, 0.6)
 			for sx in [-1, 1]:
-				for k in range(5):
-					var y := 0.07 - k * 0.055
-					var sp := 1.0 - k * 0.08
-					K.tube(st, I, [Vector3(sx * 0.1, y, 0.09), Vector3(sx * 0.24 * sp, y + 0.03, 0.17), Vector3(sx * 0.4 * sp, y + 0.07, 0.19), Vector3(sx * 0.52 * sp, y + 0.12, 0.13)], [0.026, 0.024, 0.019, 0.012], 5, [bone, bone, bone_d])
+				for k in range(T7_RIBS):
+					var y0 := 0.06 - k * 0.05
+					var sp := 1.0 - k * 0.1
+					K.tube(hd, I, [Vector3(sx * 0.13, y0, 0.10), Vector3(sx * 0.21 * sp, y0 + 0.02, 0.19), Vector3(sx * 0.29 * sp, y0 + 0.03, 0.24), Vector3(sx * 0.34 * sp, y0 + 0.01, 0.22), Vector3(sx * T7_HALF_SPAN * sp, y0 - 0.04, 0.16), Vector3(sx * 0.35 * sp, y0 - 0.08, 0.10)], [0.016, 0.015, 0.013, 0.011, 0.008, 0.004], 5, [bone, bone, bone, bone.lerp(bone_d, 0.5), bone_d], true, 0.6)
+					K.blob(wt, I, Vector3(sx * 0.128, y0, 0.085), Vector3(0.028, 0.018, 0.016), 0.3, 70 + k, Color(1.0, 0.62, 0.6), Color(0.8, 0.42, 0.42))
 		_:
-			return null
-	var mi := K.add_mesh(parent, "Mut_" + id, K.finish(st, 6.0), _skin)
-	return mi
+			return []
+	var out: Array[Node3D] = []
+	var made := [["Mut_" + id, st, _skin], ["Mut_" + id + "_Hard", hd, piece_material(hard_tex, false)], ["Mut_" + id + "_Wet", wt, piece_material(wet_tex, true)]]
+	for m in made:
+		var raw: ArrayMesh = (m[1] as SurfaceTool).commit()
+		if raw == null or raw.get_surface_count() == 0:
+			continue
+		out.append(K.add_mesh(parent, m[0], FDKLowPoly.planar_uv_mesh(raw, 6.0), m[2]))
+	return out
+
+## T7: ribs a side and how far the widest one reaches from the spine (m).
+const T7_RIBS := 4
+const T7_HALF_SPAN := 0.36
 
 func _face_texture(head: MeshInstance3D) -> void:
 	var arrays := head.mesh.surface_get_arrays(0)

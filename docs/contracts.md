@@ -50,6 +50,8 @@ FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩�
 
 손 리그의 메시는 바뀔 수 있지만 다음은 소비자(피 덧칠, 변이, 쥔 도구, 팔 털, B 자세 셰이더)가 기대는 값이라 고정이다. 노드 이름과 계층(HandLeft/Right, Forearm, Wrist, Palm, Finger1/2/3, Thumb1/2/3, 각 마디의 Seg, TornChunk), 관절 12개의 자리와 마디 길이, 팔뚝 메시의 z 범위 0.008~0.34, skin_color·palm_color. 주인공 피부 재질은 FDKSkinMaterial.SKIN_TEX 한 곳에서 텍스처를 정하고, wet이 0이면 하이라이트 항이 0이다. `run_protagonist_look_tests.gd`가 이 값들을 본다(2026-11-14).
 
+1인칭 허리(`fp_belt.gd`)는 진행 상태를 직접 읽지 않고 `fp_art_hookup.gd`가 넣어 준다. `set_bumps(n)`은 `FPProgression.belly_bumps()`, `set_belly_form(ids)`는 `all_mutations()`를 받는다(M01·M16·M19·T4만 본다). 혹 메시는 `Torso` 아래 `TumorBump<i>`이고 거울 몸의 혹과 `FPMirrorBody.build_bump` 한 함수를 쓴다. 배 고리는 `belly_rings(ids)`가 정하며 허리 고리(0번)는 바뀌지 않고 나머지는 `front_cap(y)`를 넘지 않는다. 거울 몸의 덧조각은 재질별로 `Mut_<id>`(피부), `Mut_<id>_Hard`, `Mut_<id>_Wet` 메시이고 Hard·Wet은 Tab 인형이 밝힐 수 있게 `StandardMaterial3D`다. 감각털 메시 이름 `MutDeco_Bristles`는 떨림 코드가 찾는 이름이라 고정이다. `run_mutation_looks_tests.gd`가 이 값들을 본다(2026-11-14).
+
 ## 지형 수정
 
 FDKTerrainField.dig_at(world_pos: Vector3,amount: float)는 실제 셀과 이웃 공유 모서리 밀도를 제거하고 게시할 지형을 표시한다. 반환값은 없으며 부작용 결과는 밀도·메시·충돌에서 확인한다. serialize()/deserialize(Dictionary)는 청크 상태를 주고받는다. 소비자는 복원 뒤 실제 화면이 필요한 시점에 게시를 준비해야 하며 데이터 적용만으로 첫 화면 준비를 단정하지 않는다.
