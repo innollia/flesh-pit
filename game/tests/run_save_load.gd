@@ -76,19 +76,37 @@ func _run_test() -> void:
 ## Rest-point spray cans already taken stay gone after a load (decision 0006).
 func _test_rest_cans() -> void:
 	var m := _main_node
-	m.looted_rest_cans = [3, 7]
+	m.looted_rest_cans = [3, 6]
 	var d: Dictionary = m.serialize()
-	_assert(d.get("looted_rest_cans", []) == [3, 7], "save: taken rest-point cans")
+	_assert(d.get("looted_rest_cans", []) == [3, 6], "save: taken rest-point cans")
 	m.looted_rest_cans = []
 	for c in m.rest_cans:
 		c.visible = true
 	m.deserialize(d)
-	_assert(m.looted_rest_cans == [3, 7] and not m.rest_cans[3].visible and not m.rest_cans[7].visible and m.rest_cans[4].visible,
+	_assert(m.looted_rest_cans == [3, 6] and not m.rest_cans[3].visible and not m.rest_cans[6].visible and m.rest_cans[4].visible,
 		"load: the taken cans are not on their chairs, the others are")
 	var old: Dictionary = d.duplicate()
 	old.erase("looted_rest_cans")
 	m.deserialize(old)
 	_assert(m.looted_rest_cans.is_empty() and m.rest_cans.all(func(c): return c.visible), "load: an old save has every can in place")
+	# teeth left in a rest bucket and the pouch (decision 0016)
+	m.rest_teeth[2] = 5
+	m.rest_teeth[6] = 11
+	m.progression.has_pouch = true
+	var kept: Dictionary = m.serialize()
+	_assert(kept.get("rest_teeth", []) == [0, 0, 5, 0, 0, 0, 11] and bool(kept["progression"]["has_pouch"]), "save: each bucket's teeth and the pouch")
+	m.rest_teeth[2] = 0
+	m.rest_teeth[6] = 0
+	m.progression.has_pouch = false
+	m.deserialize(kept)
+	_assert(m.rest_teeth[2] == 5 and m.rest_teeth[6] == 11 and m.progression.has_pouch, "load: the buckets' teeth and the pouch are back")
+	m._update_rest_teeth()
+	_assert(m.rest_piles[2].count == 5 and m.rest_piles[2].shown() == 5 and m.rest_piles[6].shown() == 11, "load: the bucket shows one tooth per tooth")
+	var short: Dictionary = kept.duplicate()
+	short["rest_teeth"] = [4, 4]
+	m.deserialize(short)
+	_assert(m.rest_teeth == ([0, 0, 0, 0, 0, 0, 0] as Array[int]), "load: a bucket list of another length starts every bucket empty")
+	m.progression.has_pouch = false
 
 ## Crayon drawings (kind + order) survive save/load and hang on the wall again.
 func _test_drawings() -> void:

@@ -20,7 +20,6 @@ func _init() -> void:
     DirAccess.make_dir_recursive_absolute(destination)
     main = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
     main.user_keybinds_path = "user://keybinds_test_terrain_controller.json"
-    main.rest_seed = 1337
     main.save_path = destination.path_join("isolated.save")
     main.died.connect(func(_cause: String): deaths_observed += 1)
     root.add_child(main)

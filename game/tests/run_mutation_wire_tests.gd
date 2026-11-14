@@ -31,7 +31,6 @@ func _init() -> void:
 	_m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	_m.user_keybinds_path = "user://keybinds_test_mutation_wire.json"
 	_m.save_path = "user://test-mutation-wire.bin"
-	_m.rest_seed = 1337
 	get_root().add_child(_m)
 
 func _process(_d: float) -> bool:
@@ -81,7 +80,6 @@ func _new_world() -> Node3D:
 	var w: Node3D = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	w.user_keybinds_path = "user://keybinds_test_mutation_wire.json"
 	w.save_path = "user://test-mutation-wire.bin"
-	w.rest_seed = 1337
 	get_root().add_child(w)
 	return w
 

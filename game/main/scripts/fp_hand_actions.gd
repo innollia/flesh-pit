@@ -18,6 +18,8 @@ var _press_frame := [-1, -1]
 ## is then a real second press, as tests drive it).
 var _released := [true, true]
 const ACTIONS := ["fdk_eat", "fp_pick"]
+## FDKHandsRig counts its hands the other way round: 0 right, 1 left.
+const RIG_LEFT := 1
 const SOURCES := [FPInteractions.SOURCE_LEFT, FPInteractions.SOURCE_RIGHT]
 
 func _init(main: Node3D) -> void:
@@ -25,6 +27,11 @@ func _init(main: Node3D) -> void:
 
 func tick(delta: float) -> void:
 	var chewing := false
+	# teeth on the right palm out of the restroom (Main.palm_blocked): that
+	# hand does not dig, and the left alone leads every bite
+	var palm: bool = m.palm_blocked()
+	for rig in FPHandMotions.rigs_of(m):
+		rig.set("lead_lock", RIG_LEFT if palm else -1)
 	for hand in range(2):
 		var action: String = ACTIONS[hand]
 		# a quick click can press and release between two frames: it still
@@ -38,7 +45,8 @@ func tick(delta: float) -> void:
 		if blocked[hand] or m.belt_swap.busy():
 			continue
 		# the item in this hand is the one a use or dig applies to
-		var id: String = m.progression.activate_hand(hand)
+		# (the palm full of teeth is no tool: it leaves the active one alone)
+		var id: String = "" if palm and hand == FDKToolKit.Hand.RIGHT else m.progression.activate_hand(hand)
 		if fresh:
 			_press_frame[hand] = Engine.get_process_frames()
 			_released[hand] = false
@@ -49,6 +57,8 @@ func tick(delta: float) -> void:
 				continue
 		if m.tank_lid.held:
 			continue
+		if palm and hand == FDKToolKit.Hand.RIGHT:
+			continue # also a button held down while walking out of the door
 		if id in FPInteractions.DIG_ITEMS and not chewing:
 			if m.hands_rig.state in [FDKHandsRig.HandState.IDLE, FDKHandsRig.HandState.RELEASE]:
 				m.hands_rig._lead = 1 - hand

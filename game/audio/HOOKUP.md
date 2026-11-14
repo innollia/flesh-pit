@@ -32,7 +32,7 @@
 ## 연결 완료 (2026-09-30)
 
 - `main.gd` `_ready()` 끝에서 `AudioHookup` 노드로 붙였다(위 한 줄).
-- 신호가 없던 7개에 신호를 만들어 연결했다: `mutation_apply.tumor_eaten`->tumor_eat, `main.spray_used(pos)`->spray, `main.blender_drunk`(마시기 시작)->blender_drink, `main.scissors_snipped`/`main.saw_stroked`(칼·톱으로 뜯을 때)->scissors/saw, `main.settle_ticked(teeth)`(레버·쉼터 정산)->settle_tick, `main.ui_clicked`(main 아래 모든 버튼과 토하기 버튼)->ui_click.
+- 신호가 없던 7개에 신호를 만들어 연결했다: `mutation_apply.tumor_eaten`->tumor_eat, `main.spray_used(pos)`->spray, `main.blender_drunk`(마시기 시작)->blender_drink, `main.scissors_snipped`/`main.saw_stroked`(칼·톱으로 뜯을 때)->scissors/saw, `main.settle_ticked(teeth)`(레버 정산, 그리고 쉼터 양동이에 토했을 때. 양동이 전용 소리 `bucket_teeth`는 SOUND_LIST.md 할 일)->settle_tick, `main.ui_clicked`(main 아래 모든 버튼과 토하기 버튼)->ui_click.
 - `FP_AUDIO_LOG=1` 환경변수를 켜고 실행하면 `[audio] play_event <이름>`이 로그에 찍힌다. `played_events`에 순서대로 남는다.
 
 ## 세션별 신호 메모 (옛 game/audio/HOOKUP.md)

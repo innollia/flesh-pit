@@ -42,7 +42,6 @@ func _init() -> void:
     check(int(old_data.version)==5,"fixture is actual old version 5")
     m = load("res://main/scenes/main.tscn").instantiate()
     m.user_keybinds_path = "user://keybinds_test_terrain_old_save.json"
-    m.rest_seed = 1337
     m.save_path = copy_path
     root.add_child(m)
     run.call_deferred()
@@ -84,7 +83,7 @@ func mouse(held: bool) -> void:
 func run() -> void:
     await process_frame
     m.save_path = copy_path
-    check(m.SAVE_VERSION==6,"single-slot format is version 6")
+    check(m.SAVE_VERSION==7,"single-slot format is version 7")
     check(m.has_save_file() and m.save_file_version()==5 and not m.has_current_save(),"historical v5 slot is old: the title offers no continue")
     var fresh: Dictionary = m.serialize()
     check(not m.load_from_disk(),"historical v5 slot is refused by load_from_disk")

@@ -19,7 +19,6 @@ func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = "user://keybinds_test_mirror_hold.json"
 	m.save_path = "user://capture-mirror-hold-tests.bin"
-	m.rest_seed = 1337
 	root.add_child(m)
 	run.call_deferred()
 
@@ -264,11 +263,11 @@ func run() -> void:
 
 	# --- at a rest point and at the bowl V settles at once
 	m.lever_settled = true
-	m.player.global_position = m.rest_points[0] + Vector3(0, -FPWorldFeatures.CONTAINER_HALF.y + 0.9, -FPWorldFeatures.CONTAINER_HALF.z + 0.9)
+	m.player.global_position = m.rest_stand_point(0)
 	check(m._near_rest_point() == 0, "fixture: at the first rest point's bucket")
 	set_fill(60.0)
 	m.request_vomit()
-	check(m.stomach.fill == 0.0 and not m.discard_holding(), "at a rest point the press settles at once, no hold")
+	check(m.stomach.fill == 0.0 and not m.discard_holding() and m.rest_teeth[0] == FPProgression.teeth_for(60.0), "at a rest point the press empties the stomach into the bucket at once, no hold")
 	for i in range(60):
 		m.hand_motions.tick(0.05)
 	m.player.global_position = m.restroom.toilet.to_global(Vector3(0, 0.9, 0.9))

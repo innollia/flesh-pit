@@ -337,15 +337,17 @@ func _run_death(m, prog: FPProgression) -> void:
     _assert(m.feed_canary() and m.canary_feed_left > 0.0, "feeding makes the canary warn earlier")
     m._step_canary(0.3)
     _assert(m.canary.block_density < 0.5, "a fed canary counts looser flesh as blocking")
-    # --- rest points: settle there, nothing else
-    var rp: Vector3 = m.rest_points[m.rest_points.size() - 1]
-    _assert(m.rest_points.size() == 12 and m.terrain.density_at(rp) < 0.5, "12 identical rest points (2/4/6), hollow inside the flesh")
-    m.player.global_position = rp + Vector3(0, -FPWorldFeatures.CONTAINER_HALF.y + 0.9, -FPWorldFeatures.CONTAINER_HALF.z + 0.5)
+    # --- rest points: vomit into the bucket there, nothing else (decision 0016)
+    var last_rest: int = m.rest_points.size() - 1
+    var rp: Vector3 = m.rest_points[last_rest]
+    _assert(m.rest_points.size() == 7 and m.terrain.density_at(rp) < 0.5, "7 fixed rest points (0/3/4), hollow inside the flesh")
+    m.player.global_position = m.rest_stand_point(last_rest)
     m.stomach.add_flesh(50.0)
     prog.on_flesh_eaten(0, 2)
     var t0: int = prog.teeth
     m.request_vomit()
-    _assert(not m.is_settling() and prog.teeth > t0 and prog.pending_hair_total() == 0, "vomiting at a rest point settles on the spot")
+    _assert(not m.is_settling() and prog.teeth == t0 and m.rest_teeth[last_rest] == FPProgression.teeth_for(50.0) and m.stomach.fill == 0.0 and prog.pending_hair_total() == 0, "vomiting at a rest point leaves its teeth in the bucket on the spot")
+    m.rest_teeth[last_rest] = 0
     # --- tumors: 12, eat for tumor points or carry one per bag to the toilet
     _assert(m.tumor_nodes.size() == 14, "14 tumors in the world (4 core, 5 mantle, 5 surface)")
     var tn: Node3D = m.tumor_nodes[0]

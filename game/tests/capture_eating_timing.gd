@@ -79,7 +79,6 @@ func sample() -> void:
 func run() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = "user://keybinds_test_eating_timing.json"
-	m.rest_seed = 1337
 	m.save_path = destination.path_join("isolated.bin")
 	root.add_child(m)
 	await process_frame

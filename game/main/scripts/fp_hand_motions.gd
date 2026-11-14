@@ -358,6 +358,10 @@ func check_cancel() -> void:
 # --- per frame --------------------------------------------------------------------
 
 func tick(delta: float) -> void:
+    if _clutch_t >= 0.0:
+        _clutch_t += delta
+        if _clutch_t >= CLUTCH_TIME:
+            _clutch_t = -1.0
     _apply_cup_root(delta)
     _step_vent_eye(delta)
     if not busy():
@@ -709,14 +713,41 @@ func _shape_pose(rig: Node3D, side: float, p: Dictionary) -> Dictionary:
 ## (HOLD_TEETH_ROLL), the wrist straight (2026-11-03 play: right click at
 ## the tank bent the hand to a strange angle and it stayed bent). While the
 ## hands work flesh (grab, tear, slip, release) the cup gives way and the
-## hand does that work; it comes back once they rest.
+## hand does that work; it comes back once they rest. That is the restroom's
+## rule: out of it, with no pouch, the hand stays cupped while the left hand
+## tears alone (Main.palm_blocked), and with the pouch it holds no teeth.
 func _cup_teeth(rig: Node3D, p: Dictionary) -> Dictionary:
-    if m.progression == null or m.progression.teeth_in_hand <= 0 or _hands_working(rig):
+    if not _teeth_on_palm() or (_hands_working(rig) and not m.palm_blocked()):
         return p
     var q := p.duplicate()
     _hold_teeth_fingers(q)
     q["pos"] = HOLD_TEETH_POS
+    # the clutch: the fingers close over the teeth and open again
+    var c := clutch()
+    if c > 0.0:
+        for j in ["f1", "f2", "f3"]:
+            q[j] = float(q[j]) + CLUTCH_CURL * c
     return q
+
+## Carried teeth lie on the right palm: always in the restroom, and out of it
+## unless the pouch has them (Main.teeth_in_pouch).
+func _teeth_on_palm() -> bool:
+    return m.progression != null and m.progression.teeth_in_hand > 0 and not m.teeth_in_pouch()
+
+## Out of the restroom the hand holding teeth does not dig (decision 0016):
+## pressed toward flesh it only closes its fingers over them once, CLUTCH_TIME
+## long, CLUTCH_CURL degrees more on the three finger joints. It runs on its
+## own clock beside whatever motion the left hand is in.
+const CLUTCH_TIME := 0.3
+const CLUTCH_CURL := 20.0
+var _clutch_t := -1.0
+
+func play_clutch() -> void:
+    _clutch_t = 0.0
+
+## 0..1..0 over the clutch (0 when none runs).
+func clutch() -> float:
+    return sin(PI * clampf(_clutch_t / CLUTCH_TIME, 0.0, 1.0)) if _clutch_t >= 0.0 else 0.0
 
 ## The hands are busy with flesh (the rig's own grab/tear/slip/release).
 static func _hands_working(rig: Node3D) -> bool:
@@ -826,7 +857,7 @@ static func rigs_of(main: Node) -> Array:
     return out
 
 func _apply_cup_root(delta: float) -> void:
-    var holding: bool = m.progression != null and m.progression.teeth_in_hand > 0 and not _hands_working(m.hands_rig)
+    var holding: bool = _teeth_on_palm() and (not _hands_working(m.hands_rig) or m.palm_blocked())
     var want := 1.0 if holding or tank_leaning() else 0.0
     if kind in ROLL_FREE_KINDS or kind == "scoop":
         want = 0.0

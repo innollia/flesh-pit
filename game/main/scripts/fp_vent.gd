@@ -186,7 +186,7 @@ var player_state: Dictionary = {}
 const ART_KIND := {
     "spray_cheap": "spray_cheap", "spray_deep": "spray_expensive", "barrier": "barrier",
     "knife": "knife", "blender": "blender_box", "big_saw": "saw_box",
-    "canary_feed": "canary_feed", "tumor_bag": "tumor_bag",
+    "canary_feed": "canary_feed", "tumor_bag": "tumor_bag", "pouch": "pouch",
 }
 
 func _ready() -> void:

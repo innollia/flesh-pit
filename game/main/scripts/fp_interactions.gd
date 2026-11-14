@@ -58,6 +58,10 @@ static func get_candidates(main: Node3D) -> Array:
 	var can: Node3D = main.nearest_rest_can(1.4)
 	if can != null:
 		candidates.append(["rest_can", can.global_position, 12.0, 1.4])
+	# a rest bucket: teeth to pick out of it, or teeth in the hand to put in
+	var bucket: int = main.nearest_rest_bucket(1.6)
+	if bucket >= 0 and (int(main.rest_teeth[bucket]) > 0 or main.progression.teeth_in_hand > 0):
+		candidates.append(["rest_teeth", main.rest_buckets[bucket], FPTankLid.AIM_DEGREES + 2.0, 1.6])
 	var tumor: Node3D = main._nearest_tumor(1.25)
 	if tumor != null:
 		candidates.append(["tumor", tumor.global_position, 10.0, 1.25])
@@ -99,6 +103,9 @@ static func is_lever_aimed(main: Node3D, camera: Camera3D = null) -> bool:
 #   4. the item in that hand: spray, blender, feed, barrier
 #   5. otherwise a bare, knife or saw hand digs while held; F settles when
 #      standing by the toilet with something to give.
+# Out of the restroom a right hand with teeth on its palm and no pouch
+# (Main.palm_blocked) does 1 and 3 only: where it would swap at the belt, use
+# an item or dig, it closes over the teeth instead ("hold_teeth").
 # A hand whose press did 1-4 stays blocked until released (the blender
 # excepted: it charges while held): holding it never turns into digging or a
 # second use.
@@ -134,8 +141,17 @@ static func left_hand_only(target: String) -> bool:
 	return target == "canary"
 
 ## What a fresh press of `source` would do now, without doing it:
-## "lid_down", "belt", "target:<name>", "item:<id>", "dig", "settle" or "none".
+## "lid_down", "belt", "target:<name>", "item:<id>", "dig", "hold_teeth",
+## "settle" or "none".
 static func plan(main: Node3D, source: String) -> String:
+	var verb := _plan(main, source)
+	if source == SOURCE_RIGHT and (verb == "belt" or verb == "dig" or verb.begins_with("item:")) and main.palm_blocked():
+		return HOLD_TEETH
+	return verb
+
+const HOLD_TEETH := "hold_teeth"
+
+static func _plan(main: Node3D, source: String) -> String:
 	var hand := source_hand(source)
 	if main.tank_lid != null and main.tank_lid.held:
 		return "none" if source == SOURCE_LEFT else "lid_down"
@@ -185,13 +201,15 @@ static func press(main: Node3D, source: String) -> String:
 			main.place_barrier()
 		"settle":
 			main.start_settlement()
+		HOLD_TEETH:
+			main.hand_motions.play_clutch()
 	return verb
 
 ## Whether the verb keeps its hand from digging until the button is released.
 static func blocks_hand(verb: String) -> bool:
 	if verb == "item:blender":
 		return false # it charges while the button is held
-	return verb in ["lid_down", "belt", TARGET_TAKEN] or verb.begins_with("target:") or verb.begins_with("item:")
+	return verb in ["lid_down", "belt", TARGET_TAKEN, HOLD_TEETH] or verb.begins_with("target:") or verb.begins_with("item:")
 
 static func begin_settlement(main: Node3D) -> void:
 	main.set_meta(ENTRY_INPUT_META, INPUT_MODES.settlement_inputs())

@@ -149,6 +149,10 @@ var _chew: float = 0.0
 ## clock so a release or new grab during the tear cannot leave it in the fist.
 var _chunk_time: float = 0.0
 var _lead: int = 0
+## -1: the hands take turns leading a bite (the lead swaps after every tear).
+## 0 or 1: only that hand of _hands leads (0 right, 1 left), for a game whose
+## other hand is taken by something this rig knows nothing about.
+var lead_lock: int = -1
 var _bob: Vector3 = Vector3.ZERO
 var _wet: float = 0.0
 var _material: ShaderMaterial
@@ -354,11 +358,13 @@ func step(delta: float) -> void:
     _time += delta
     _state_time += delta
     _chunk_time += delta
+    if lead_lock >= 0 and _lead != lead_lock and state != HandState.TEAR:
+        _lead = lead_lock
     match state:
         HandState.TEAR:
             if _state_time >= TEAR_TIME:
                 _hands[_lead]["chunk"].visible = false
-                _lead = 1 - _lead
+                _lead = lead_lock if lead_lock >= 0 else 1 - _lead
                 state = HandState.GRAB
                 _state_time = 0.0
         HandState.RELEASE:

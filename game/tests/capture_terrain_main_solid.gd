@@ -13,7 +13,6 @@ func _init() -> void:
     DirAccess.make_dir_recursive_absolute(destination)
     m = load("res://main/scenes/main.tscn").instantiate()
     m.user_keybinds_path = "user://keybinds_test_terrain_main_solid.json"
-    m.rest_seed = 1337
     m.save_path = destination.path_join("isolated-save.bin")
     root.add_child(m)
     run.call_deferred()
@@ -118,7 +117,6 @@ func run() -> void:
         await process_frame
         m = load("res://main/scenes/main.tscn").instantiate()
         m.user_keybinds_path = "user://keybinds_test_terrain_main_solid.json"
-        m.rest_seed = 1337
         m.save_path = destination.path_join("direction_%d.bin" % torn.size())
         root.add_child(m)
         await process_frame

@@ -48,6 +48,17 @@ const SAW_TILT_DEG := -8.0
 const SAW_STROKE_SLIDE := 0.08
 const BeltScene := preload("res://main/art/fp_belt.tscn")
 const BagScene := preload("res://main/art/fp_tumor_bag.tscn")
+const PouchScene := preload("res://main/art/fp_tooth_pouch.tscn")
+## The tooth pouch hangs by its cord under the front left of the waistband,
+## between the left and the middle hook (rad round the waist from the front
+## centre; the hooks are at -1.0 and -0.2, the compass at +0.45). Only on the
+## first-person belt: the mirror body and the Tab doll do not show it.
+## POUCH_OUT m out from the waist and POUCH_DROP m under the belt's middle
+## (its knot on the band's lower edge), so it touches neither hook's tool,
+## the feed and barrier packs on the band, nor the canary.
+const POUCH_WAIST_ANGLE := -0.64
+const POUCH_OUT := 0.052
+const POUCH_DROP := 0.05
 const TumorScene := preload("res://main/art/fp_tumor.tscn")
 const TumorArt := preload("res://main/art/fp_tumor.gd")
 const LegsScene := preload("res://main/art/fp_legs.tscn")
@@ -71,6 +82,7 @@ var hand_compass: Node3D
 var arm_hair_right: Node3D
 var belt: Node3D
 var bag: Node3D
+var pouch: Node3D
 var hand_tumor: Node3D
 ## The player's own legs under the belt (fp_legs.gd), posed with the body.
 var legs: Node3D
@@ -179,6 +191,14 @@ func setup(main: Node3D) -> void:
 	bag.position = Vector3(-0.2, -0.02, 0.06)
 	bag.scale = Vector3.ONE * 0.8
 	belt.add_child(bag)
+	pouch = PouchScene.instantiate()
+	pouch.name = "ToothPouch"
+	belt.add_child(pouch)
+	var pa := -PI * 0.5 + POUCH_WAIST_ANGLE
+	pouch.position = Vector3(cos(pa) * (float(belt.get("wx")) + POUCH_OUT), -POUCH_DROP, sin(pa) * (float(belt.get("wzf")) + POUCH_OUT))
+	pouch.rotation.y = -POUCH_WAIST_ANGLE # its stitched face outward
+	pouch.visible = false
+	_tag_body(pouch)
 
 func _attach_to_rig(rig: Node3D) -> void:
 	var rw := rig.get_node("HandRight/Wrist") as Node3D
@@ -317,7 +337,12 @@ func _process_inner(_delta: float) -> void:
 				FPItemArt.squash(prop, 0.18)
 			prop.visible = true
 	hand_tumor.visible = prog.tumor_in_hand()
-	var held_n := mini(prog.teeth_in_hand, HELD_TEETH_SHOWN)
+	# out of the restroom the pouch has the carried teeth, not the palm
+	var pouched: bool = m.teeth_in_pouch()
+	pouch.visible = prog.has_pouch
+	pouch.call("set_fill", prog.teeth_in_hand if pouched else 0)
+	pouch.call("set_walk", Vector2(m.player.velocity.x, m.player.velocity.z).length() / 3.0)
+	var held_n := 0 if pouched else mini(prog.teeth_in_hand, HELD_TEETH_SHOWN)
 	held_teeth.multimesh.visible_instance_count = held_n
 	held_teeth.visible = held_n > 0
 	var held: Array = prog.tumors.get("_carried") if prog.tumors.get("_carried") != null else []

@@ -374,6 +374,31 @@ REGEX_LOOKUPS = {
 JSON_SECTIONS = ("시간", "기준")
 
 
+REST_ROW_RE = re.compile(
+    r'\{"shell":\s*(\d+),\s*"name":\s*"(\w+)",\s*"offset":\s*Vector3\(([^)]*)\),\s*"yaw":[^{}]*?"half":\s*Vector3\(([^)]*)\),'
+    r'\s*"loot":\s*"(\w*)"\}')
+
+
+def parse_rest_layout(lines: list[str]) -> tuple[list[dict], int]:
+    """fp_world_features.gd의 REST_LAYOUT 표(쉼터마다 껍질, 중심 오프셋, 반치수, 통). 반환 (행, 줄)."""
+    start = next((i for i, l in enumerate(lines) if re.match(r"\s*const\s+REST_LAYOUT\b", l)), None)
+    if start is None:
+        raise ParseError("REST_LAYOUT을 찾지 못했다")
+    rows = []
+    for l in lines[start + 1:]:
+        if l.strip().startswith("]"):
+            break
+        m = REST_ROW_RE.search(l)
+        if not m:
+            continue
+        rows.append({"shell": int(m.group(1)), "name": m.group(2),
+                     "offset": [float(x) for x in m.group(3).split(",")],
+                     "half": [float(x) for x in m.group(4).split(",")], "loot": m.group(5)})
+    if not rows:
+        raise ParseError("REST_LAYOUT의 행을 읽지 못했다")
+    return rows, start + 1
+
+
 def split_source(src: str) -> tuple[str, int | None]:
     if ":" in src:
         path, _, line = src.rpartition(":")
@@ -401,6 +426,11 @@ def lookup_live(repo: Repo, key: str, src: str):
         if ls is None:
             raise ParseError(f"{path}를 열지 못했다")
         return parse_mutations(ls)
+    if key == "world_features.REST_LAYOUT":
+        ls = repo.lines(path)
+        if ls is None:
+            raise ParseError(f"{path}를 열지 못했다")
+        return parse_rest_layout(ls)
     if path.endswith(".json"):
         text = repo.text(path)
         if text is None:
@@ -486,6 +516,7 @@ P_HOOK = "game/audio/fp_audio_hookup.gd"
 P_MANIFEST = "game/audio/manifest.json"
 P_MIRROR_BODY = "game/main/art/fp_mirror_body.gd"
 P_VENT = "game/main/scripts/fp_vent.gd"
+P_REST_BUCKET = "game/main/scripts/fp_rest_bucket.gd"
 P_ECON = "docs/archive/spec-v1/04-economy.md"
 P_FIRST10 = "docs/archive/spec-v1/10-first-ten-minutes.md"
 KIT = "game/addons/flesh_dig_kit/"
@@ -609,9 +640,13 @@ def evidence_flags(repo: Repo) -> dict[str, Flag]:
           and _has(repo, P_TOILET, "RATTLE_BASE + RATTLE_PER_TOOTH * teeth_gain"))
     F["F_SETTLE_SENSES"] = Flag("F_SETTLE_SENSES", ok, [P_HOOK, P_TOILET])
 
-    body = _after(repo, P_MAIN, "func settle_at_rest_point", 4)
-    ok = body is not None and "flushed.emit(" in body and "rattle" not in body and "tank" not in body
-    F["F_REST_NO_CARRIER"] = Flag("F_REST_NO_CARRIER", ok, [P_MAIN])
+    # 쉼터 토하기(결정 0016): 이빨이 양동이에 남고(rest_teeth), 양동이 더미가 이빨 하나당 하나씩 보인다
+    body = _after(repo, P_MAIN, "func vomit_at_rest_point", 14)
+    ok = (body is not None and "rest_teeth[rest] += gain" in body and "rest_vomited.emit(" in body
+          and "flushed.emit(" not in body and "progression.settle(" not in body
+          and _has(repo, P_MAIN, "rest_piles[i].set_teeth(rest_teeth[i])")
+          and _has(repo, P_REST_BUCKET, "visible_instance_count = mini(count, SHOWN)"))
+    F["F_REST_BUCKET"] = Flag("F_REST_BUCKET", ok, [P_MAIN, P_REST_BUCKET])
 
     callers = []
     for rel in repo.gd_files("game/main"):
@@ -748,9 +783,10 @@ RHO_PAIRS = [("core_1cell", "core_1cell", "core_bare"), ("core_open", "core_open
              ("surf_bare", "surf_nerve", "surf_bare"), ("surf_knife", "surf_nerve", "surf_knife")]
 RHO_KO = {"core_1cell": "핵 1셀", "core_open": "핵 열린 곳", "core_max": "핵 최대(동적)", "mantle": "맨틀",
           "surf_bare": "지표면 맨손", "surf_knife": "지표면 칼"}
-ONEOFF_TOOLS = ["knife", "tumor_bag", "blender", "big_saw"]  # params.json assumptions.oneoff_tools가 없을 때의 기본값
+ONEOFF_TOOLS = ["knife", "tumor_bag", "pouch", "blender", "big_saw"]  # params.json assumptions.oneoff_tools가 없을 때의 기본값
 ITEM_KO ={"barrier": "방벽", "spray_cheap": "싼 스프레이", "knife": "칼", "spray_deep": "비싼 스프레이",
-           "blender": "믹서기", "big_saw": "큰 톱", "canary_feed": "카나리아 먹이", "tumor_bag": "가방"}
+           "blender": "믹서기", "big_saw": "큰 톱", "canary_feed": "카나리아 먹이", "tumor_bag": "가방",
+           "pouch": "이빨 주머니"}
 
 
 def round_half_away(x: float) -> int:
@@ -922,11 +958,38 @@ class Model:
         T = float(self.V["world_features.SHELL_THICKNESS"])
         n = int(self.V["world_features.SHELL_COUNT"])
         band = float(self.V["world_features.BOUNDARY_BAND"])
-        a = [self.door] + [float(x) for x in self.V["world_features.REST_DEPTH"]]
+        a = [self.door] + self.stem_doors()
         for b in range(1, n):
             a += [b * T - band, b * T]
         a.append(float(self.V["world_features.OUTER_RADIUS"]) - 0.3)
         return sorted(a)
+
+    def rest_layout(self) -> list[dict]:
+        return list(self.V["world_features.REST_LAYOUT"])
+
+    def stem_rests(self) -> list[dict]:
+        """문 축(+Z) 위에 놓인 쉼터: 상자가 x = 0을 품는다."""
+        return [r for r in self.rest_layout() if abs(float(r["offset"][0])) < float(r["half"][0])]
+
+    def stem_doors(self) -> list[float]:
+        """줄기 쉼터의 문 면 깊이(화장실 쪽 벽)."""
+        return sorted(float(r["offset"][2]) - float(r["half"][2]) for r in self.stem_rests())
+
+    def rest_branches(self) -> list[float]:
+        """옆 쉼터까지의 가지 길이. 껍질마다 줄기 쉼터에서 시작해 가장 가까운 이미 이어진 쉼터에서
+        잇는다(같은 껍질 안의 최소 신장 나무, 중심 사이 직선 거리)."""
+        out = []
+        for shell in sorted({int(r["shell"]) for r in self.rest_layout()}):
+            rs = [r for r in self.rest_layout() if int(r["shell"]) == shell]
+            stems = [r for r in rs if r in self.stem_rests()]
+            done = stems[:1] or rs[:1]
+            todo = [r for r in rs if r not in done]
+            while todo:
+                d, nxt = min(((math.dist(a["offset"], b["offset"]), b) for a in done for b in todo), key=lambda x: x[0])
+                out.append(d)
+                done.append(nxt)
+                todo.remove(nxt)
+        return out
 
     def max_gap(self) -> float:
         T = float(self.V["world_features.SHELL_THICKNESS"])
@@ -964,28 +1027,27 @@ class Model:
     def spray_demand(self) -> dict:
         """스프레이 통로망의 이빨 수요. 뿌린 셀은 다시 자라지 않으므로(06-tools.md 5) 스프레이는
         "같은 땅을 여러 번 파는" 길을 영구 통로로 바꾸는 투자다. 통로망 = 화장실 문에서 가장 바깥
-        껍질까지의 줄기(경계 띠는 원래 자라지 않아 뺀다) + 되돌아가는 쉼터마다 줄기에서 갈라지는 가지.
-        가지 길이는 반지름 r 구면 위 두 무작위 점의 평균 직선 거리 4r/3으로 본다.
+        껍질까지의 줄기(경계 띠는 원래 자라지 않아 빼고, 줄기 쉼터 컨테이너 속도 뺀다) + 옆 쉼터까지의 가지.
+        쉼터는 고정 배치(REST_LAYOUT, 결정 0016)라 가지는 실제 직선 거리다(rest_branches).
         한 번 뿌리면 반경 0.75 m 원통을 깊이만큼 녹이니 1 m 통로 = 1 ÷ 깊이 번이다.
-        쉼터마다 놓인 통(REST_SPRAY_LOOT, 한 번만 집는다)이 녹이는 길이는 이빨 수요에서 뺀다."""
+        쉼터마다 놓인 통(REST_LAYOUT의 loot, 한 번만 집는다)이 녹이는 길이는 이빨 수요에서 뺀다."""
         n = int(self.V["world_features.SHELL_COUNT"])
         band = float(self.V["world_features.BOUNDARY_BAND"])
-        trunk = float(self.V["world_features.OUTER_RADIUS"]) - self.door - band * (n - 1)
+        inside = sum(2.0 * float(r["half"][2]) for r in self.stem_rests())
+        trunk = float(self.V["world_features.OUTER_RADIUS"]) - self.door - band * (n - 1) - inside
         share = float(self.A.get("spray_rest_share", 1.0) if self.A.get("spray_rest_share") is not None else 1.0)
-        rests = [int(x) for x in self.V["world_features.REST_PER_SHELL"]]
-        depths = [float(x) for x in self.V["world_features.REST_DEPTH"]]
-        branch = share * sum(c * 4.0 / 3.0 * r for c, r in zip(rests, depths))
+        branches = self.rest_branches()
+        branch = share * sum(branches)
         per_can = float(self.V["spray_can.SPRAYS_PER_CAN"])
         tiers = {"spray_cheap": float(self.V["spray_can.CHEAP_DEPTH"]),
                  "spray_deep": float(self.V["spray_can.DEEP_DEPTH"])}
         per_m = {t: self.price(t) / (per_can * d) for t, d in tiers.items()}
         best = min(per_m, key=lambda t: per_m[t])
         route = trunk + branch
-        loot_kinds = list(self.V.get("world_features.REST_SPRAY_LOOT") or [])
-        loot = sum(c * per_can * tiers.get(str(k), 0.0) for c, k in zip(rests, loot_kinds))
+        loot = sum(per_can * tiers.get(str(r["loot"]), 0.0) for r in self.rest_layout())
         bought = max(0.0, route - loot)
-        return {"trunk_m": trunk, "branch_m": branch, "route_m": route, "loot_m": loot, "bought_m": bought,
-                "per_m": per_m, "best": best,
+        return {"trunk_m": trunk, "branch_m": branch, "branches": branches, "route_m": route, "loot_m": loot,
+                "bought_m": bought, "per_m": per_m, "best": best,
                 "teeth": bought * per_m[best], "trunk_teeth": max(0.0, trunk - loot) * per_m[best],
                 "sprays": {t: route / d for t, d in tiers.items()}}
 
@@ -1610,7 +1672,9 @@ def build_rows(cx: Context) -> list[Row]:
     dc = M.death()
     add("B10", g, "죽음 비용", f"전형 {f2(dc['typical'])} E · 위장만 {f2(dc['stomach'])} E · 최악 {f2(dc['worst'])} E",
         "회수 가능", "전형 ≤ 2 E", judge(dc["typical"], None, 2.0),
-        "최악은 과식 끝 위장, 방벽 3, 먹이 3, 비싼 스프레이 3통, 한 줌, 종양 2개를 모두 떨어뜨린 경우다.",
+        f"최악은 과식 끝 위장, 방벽 3, 먹이 3, 비싼 스프레이 3통, 지닌 이빨 {fn(float(A.get('death_teeth_in_hand', 4)))}개"
+        "(쉼터 양동이 두 번 분량, 결정 0016), 종양 2개를 모두 떨어뜨린 경우다. 쉼터를 한 번 거친 원정의 죽음은 "
+        f"양동이의 이빨만큼 전형보다 크다({f2(dc['typical'] + 1.0)} E, 전부 시체에서 되찾는다).",
         ["progression.PRICE_UNITS", "progression.MAX_BARRIERS", "progression.MAX_CANARY_FEED",
          "spray_can.MAX_CARRIED", "progression.TUMOR_TOOTH_PAYOUT"])
 
@@ -1709,8 +1773,8 @@ def build_rows(cx: Context) -> list[Row]:
     add("C03", g, "전진 거리", f"웅크림 {' / '.join(fu(x) for x in dc_)} m · 서기 {' / '.join(fu(x) for x in ds_)} m",
         f"÷ 최대 간격 {fn(gap)} m = {' / '.join(f2(x / gap) for x in dc_)}", "≥ 1",
         combine([(ulab(u), judge(x / gap, 1.0)) for u, x in zip(us, dc_)])[1],
-        "직선 근사다. 쉼터 방향은 모델링하지 않았다. 거점은 문, 쉼터, 경계 막, 바깥 껍질이다.",
-        ["world_features.REST_DEPTH", "world_features.SHELL_THICKNESS", "world_features.BOUNDARY_BAND", "restroom.HALF"])
+        "직선 근사다. 거점은 문, 줄기 쉼터의 문(막 바로 뒤, 결정 0016), 경계 막, 바깥 껍질이다. 핵에는 쉼터가 없다.",
+        ["world_features.REST_LAYOUT", "world_features.SHELL_THICKNESS", "world_features.BOUNDARY_BAND", "restroom.HALF"])
 
     tm, tsur = M.transit()
     add("C04", g, "통과 비용", f"맨틀 {fu(tm)} u · 지표면 {fu(tsur)} u", f"{f2(tm / M.C)} C / {f2(tsur / M.C)} C", "≤ 0.5 C",
@@ -1733,7 +1797,7 @@ def build_rows(cx: Context) -> list[Row]:
 
     zero_u = 0.5 / M.teeth_rate
     add("C07", g, "이빨 반올림", "기대 손실 약 0 · 최악 0.5개/정산", f"{fn(zero_u)} u 미만이면 0개", "기대 손실 ≈ 0", IN,
-        f"round는 0.5를 0에서 먼 쪽으로 올린다({cx.at(P_PROG, 'var gain_teeth := int(round(flesh_amount * TEETH_PER_FLESH))')}).",
+        f"round는 0.5를 0에서 먼 쪽으로 올린다({cx.at(P_PROG, 'return int(round(flesh_amount * TEETH_PER_FLESH))')}).",
         ["progression.TEETH_PER_FLESH"])
 
     rb, rp = float(V["toilet_settlement.RATTLE_BASE"]), float(V["toilet_settlement.RATTLE_PER_TOOTH"])
@@ -1752,12 +1816,15 @@ def build_rows(cx: Context) -> list[Row]:
         ["toilet_settlement.RATTLE_BASE", "toilet_settlement.RATTLE_PER_TOOTH", "toilet_settlement.RATTLE_MAX"],
         ["F_SETTLE_SENSES", "tank_rattle_started"])
 
-    if cx.flag_ok("F_REST_NO_CARRIER"):
-        v, memo = LOW, f"이빨은 탱크에 쌓이지만 쉼터에서는 보이지 않는다({cx.at(P_MAIN, 'func settle_at_rest_point')}). 운반체 규칙 2에 어긋난다."
+    if cx.flag_ok("F_REST_BUCKET"):
+        v = IN
+        memo = (f"쉼터에서 토하면 이빨이 그 양동이에 남고({cx.at(P_MAIN, 'func vomit_at_rest_point')}) 양동이 더미가 이빨 하나당 하나씩 "
+                f"보인다(24개까지, {cx.at(P_REST_BUCKET, 'const SHOWN')}). 탱크는 그대로이고 화장실로 들고 와야 내 것이 된다(결정 0016). "
+                "소리는 양동이 전용이 생길 때까지 settle_tick을 같이 쓴다.")
     else:
-        v, memo = UNDET, cx.flags["F_REST_NO_CARRIER"].recheck_memo()
-    add("C09", g, "쉼터 정산 표현", f"X {f2(xs)} E → {grade(xs)}", "감각 2(settle_tick, 토하기 동작) · 양 운반체 없음",
-        "I2: 감각 ≥ 2 + 양 운반체", v, memo, [], ["F_REST_NO_CARRIER"])
+        v, memo = UNDET, cx.flags["F_REST_BUCKET"].recheck_memo()
+    add("C09", g, "쉼터 토하기 표현", f"X {f2(xs)} E → {grade(xs)}", "감각 2(settle_tick, 토하기 동작) · 양 운반체 양동이 이빨 더미",
+        "I2: 감각 ≥ 2 + 양 운반체", v, memo, [], ["F_REST_BUCKET"])
 
     rest_band = "강제 의식 ≤ 45 s, 자발적 쉼은 제한 없음"
     if ms and ms.get("rest_median") is not None:
@@ -1899,9 +1966,10 @@ def build_rows(cx: Context) -> list[Row]:
     sd_trunk = t_supply / (run["tools_oneoff"] + sp["trunk_teeth"])
     afford = (t_supply - run["tools_oneoff"]) / sp["teeth"] if sp["teeth"] > 0 else math.inf
     if cons_src == "스프레이 통로망":
-        cons_memo = (f"소모품은 스프레이 통로망이다: 줄기 {f2(sp['trunk_m'])} m + 쉼터 가지 {f2(sp['branch_m'])} m "
-                     f"= {f2(sp['route_m'])} m. 쉼터마다 놓인 통이 {f2(sp['loot_m'])} m를 녹이고"
-                     f"({cx.src('world_features.REST_SPRAY_LOOT')}) 나머지 {f2(sp['bought_m'])} m를 산다. "
+        cons_memo = (f"소모품은 스프레이 통로망이다: 줄기 {f2(sp['trunk_m'])} m(줄기 쉼터 속은 뺀다) + 옆 쉼터 가지 "
+                     f"{' + '.join(f2(x) for x in sp['branches'])} = {f2(sp['branch_m'])} m, 모두 {f2(sp['route_m'])} m"
+                     f"(고정 배치의 실제 직선 거리, 결정 0016). 쉼터마다 놓인 통이 {f2(sp['loot_m'])} m를 녹이고"
+                     f"({cx.src('world_features.REST_LAYOUT')}) 나머지 {f2(sp['bought_m'])} m를 산다. "
                      f"1 m에 {f2(sp['per_m'][sp['best']])}개"
                      f"(싼 통 {f2(sp['per_m']['spray_cheap'])} · 비싼 통 {f2(sp['per_m']['spray_deep'])}, "
                      f"{cx.src('spray_can.SPRAYS_PER_CAN')}). 뿌린 셀은 다시 자라지 않는다({cx.at(P_FIELD, 'sealed, never')}). "
@@ -1916,7 +1984,7 @@ def build_rows(cx: Context) -> list[Row]:
         + cons_memo + " 이빨 SD는 가격으로 맞추지 않고 이빨의 쓰임으로 푼다(N12).",
         ["progression.TEETH_PER_FLESH", "progression.PRICE_UNITS", "progression.TUMOR_TOOTH_PAYOUT",
          "spray_can.SPRAYS_PER_CAN", "spray_can.CHEAP_DEPTH", "spray_can.DEEP_DEPTH", "world_features.REST_PER_SHELL",
-         "world_features.REST_SPRAY_LOOT"])
+         "world_features.REST_LAYOUT"])
 
     tp = float(V["progression.TUMOR_TOOTH_PAYOUT"])
     delta = tp / M.exp_teeth
@@ -2501,8 +2569,15 @@ FIXED_PARAMS = {
     "depth_danger.DANGER_STEP": 0.35, "chunk.CROWD_GAIN": 1.5, "stomach_config.flesh_per_cell": 4.0,
     "spray_can.BOOST_MULT": 2.0, "spray_can.MAX_CARRIED": 3,
     "spray_can.SPRAYS_PER_CAN": 6, "spray_can.CHEAP_DEPTH": 0.5, "spray_can.DEEP_DEPTH": 1.5,
-    "world_features.REST_PER_SHELL": [2, 4, 6],
-    "world_features.REST_SPRAY_LOOT": ["spray_cheap", "spray_deep", "spray_deep"],
+    "world_features.REST_PER_SHELL": [0, 3, 4],
+    "world_features.REST_LAYOUT": [
+        {"shell": 1, "name": "mantle_stem", "offset": [0.61, 0.0, 11.0], "half": [2.2, 1.1, 1.1], "loot": "spray_cheap"},
+        {"shell": 1, "name": "mantle_left", "offset": [-13.04, 0.0, 3.49], "half": [1.1, 1.1, 2.2], "loot": "spray_deep"},
+        {"shell": 1, "name": "mantle_right", "offset": [13.04, 0.0, 3.49], "half": [1.1, 1.1, 2.2], "loot": "spray_deep"},
+        {"shell": 2, "name": "surface_stem", "offset": [0.61, 0.0, 20.0], "half": [2.2, 1.1, 1.1], "loot": "spray_cheap"},
+        {"shell": 2, "name": "surface_left_front", "offset": [-17.24, 0.0, 14.46], "half": [1.1, 1.1, 2.2], "loot": "spray_deep"},
+        {"shell": 2, "name": "surface_right", "offset": [21.73, 0.0, -5.82], "half": [1.1, 1.1, 2.2], "loot": "spray_deep"},
+        {"shell": 2, "name": "surface_left_back", "offset": [-18.43, 0.0, -12.91], "half": [1.1, 1.1, 2.2], "loot": "spray_deep"}],
     "barrier.break_threshold": 12.0, "barrier.stress_decay": 0.15, "player_config.crouch_speed": 1.5,
     "hazard_check.hazard_dps": 40.0, "hazard_check.hazard_radius": 1.1, "hazard_check.health": 100.0,
     "main.BODY_PROTECT_RADIUS": 0.9, "main.HAZARD_TIME": 1.2, "main.HEALTH_REGEN": 12.0,
@@ -2572,17 +2647,19 @@ def selftest() -> int:
     chk("이빨 SD (원정 + 종양 ÷ 일회성 도구, 칼 8개)", (run["teeth_supply"] + 12 * 24) / run["tools_oneoff"], 5.4074)
     spd = M.spray_demand()
     chk("스프레이 통로망 줄기/가지/1 m 이빨", [spd["trunk_m"], spd["branch_m"], spd["per_m"]["spray_cheap"],
-                                       spd["per_m"]["spray_deep"]], [23.7, 264.0, 2.6667, 2.6667])
-    chk("쉼터 통이 녹이는 길이 (2×6×0.5 + 4×6×1.5 + 6×6×1.5)", spd["loot_m"], 96.0)
-    chk("스프레이 이빨 수요 ((287.7 − 96) × 2.6667)", spd["teeth"], 511.2)
-    chk("이빨 SD (원정 + 종양 ÷ 도구 + 스프레이)", (run["teeth_supply"] + 12 * 24) / (run["tools_oneoff"] + spd["teeth"]), 1.1884)
+                                       spd["per_m"]["spray_deep"]], [19.3, 109.5455, 2.6667, 2.6667])
+    chk("옆 쉼터 가지 (껍질 안 최소 신장 나무)", spd["branches"], [14.5226, 15.5797, 18.69, 27.3959, 33.3573])
+    chk("쉼터 통이 녹이는 길이 (2×6×0.5 + 5×6×1.5)", spd["loot_m"], 51.0)
+    chk("스프레이 이빨 수요 ((128.85 − 51) × 2.6667)", spd["teeth"], 207.588)
+    chk("이빨 SD (원정 + 종양 ÷ 도구 + 스프레이)", (run["teeth_supply"] + 12 * 24) / (run["tools_oneoff"] + spd["teeth"]), 2.2147)
     chk("종양 껍질별", M.tumors_by_shell(), [4, 4, 4])
     chk("새 재고 사건", M.draws(run["E_run"])["new_stock"], 2)
     chk("신호 구독 정규식", [len(signal_connect_re("canary_cry").findall(s)) for s in
                          ('x.canary_cry.connect(f)', 'main.connect("canary_cry", f)', '_hook("canary_cry", f)',
                           'canary_crying.connect(f)')], [1, 1, 1, 0])
     chk("통과", M.transit(), [52.8, 117.6])
-    chk("max_gap", M.max_gap(), 4.5)
+    chk("줄기 쉼터 문 면", M.stem_doors(), [9.9, 18.9])
+    chk("max_gap", M.max_gap(), 7.8)
     chk("방벽 수명", [M.barrier_life(k) for k in range(3)], [92.31, 52.63, 36.81])
     chk("핵 무파손 결손", M.core_no_break_deficit(), 0.536)
     chk("신경 생존", M.nerve_survival(), 4.58)

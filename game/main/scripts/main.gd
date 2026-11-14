@@ -3,6 +3,7 @@ const FPProfile := preload("res://main/scripts/fp_profile.gd")
 const FPGore := preload("res://main/scripts/fp_gore.gd")
 const FPTearFeel := preload("res://main/scripts/fp_tear_feel.gd")
 const FPWakeLids := preload("res://main/scripts/fp_wake_lids.gd")
+const FPRestBucket := preload("res://main/scripts/fp_rest_bucket.gd")
 
 ## 화장실과 세 겹의 살점, 전체 진행을 연결한다.
 ## 실제 굴착·먹기 -> 위장과 즉시 털 성장 -> 변기로 토하기 -> 물내림과 이빨 정산 ->
@@ -34,6 +35,10 @@ signal grab_refused(tissue: int, world_pos: Vector3)
 ## the body retches but nothing comes up (decision 0009), unless the stomach
 ## is at its end (decision 0013: then it does come up).
 signal dry_heaved
+## V at a rest point's empty bucket: the stomach went into it and `teeth`
+## teeth lie in bucket `rest` (decision 0016). Not a settlement: `flushed`
+## is the lever's alone and the tank did not change.
+signal rest_vomited(rest: int, teeth: int)
 ## The stomach is full and a bite at real, grippable flesh was refused: at
 ## most once every FULL_REFUSE_EVERY seconds while the eat input is held
 ## (FDKChewer.refused_full fires every frame). world_pos is the contact on the
@@ -45,10 +50,12 @@ signal carry_refused(world_pos: Vector3)
 ## _step_teeth_nudges); the audio plays a clink of teeth at the tank.
 signal tank_teeth_knocked
 
-## 6 (decision 0012): the flesh unit halved and hair prices doubled. Slots
-## written before it are not converted and not read: load_from_disk refuses
-## them and the title offers only a new game.
-const SAVE_VERSION := 6
+## 6 (decision 0012): the flesh unit halved and hair prices doubled.
+## 7 (decision 0016): the rest containers stand at fixed places (seven, none
+## in the core) and their buckets hold teeth. Slots written before it are not
+## converted and not read: load_from_disk refuses them and the title offers
+## only a new game.
+const SAVE_VERSION := 7
 
 const RESTROOM_CENTER := Vector3(0, 1, 0)
 ## The signed density ramp places the flesh surface against the room walls.
@@ -155,8 +162,6 @@ const DROP_LIT_MARKERS := 8
 var _drop_light_t := 0.0
 ## Session D glue: tissue-aware chewing, saw, blender, spray (fp_tissue_tools.gd).
 var tissue_tools: FPTissueTools
-## Per-game random rotation of the rest points (saved).
-var rest_seed: int = 0
 var vent: FPVent
 ## W04 toilet bowl + lever settlement (no numbers, no shop).
 var toilet: FPToiletSettlement
@@ -181,7 +186,15 @@ var hand_motions: FPHandMotions
 var _body_clearance := FPBodyClearance.new()
 var _body_relief_needed := false
 var mutation_apply: FPMutationApply
+## The rest containers (FPWorldFeatures.REST_LAYOUT, the same every game):
+## box centres, their half extents, the bucket of each (its mouth, world
+## space) and the teeth vomited into it and not yet carried away (decision
+## 0016: they stay in the bucket; the tank does not change).
 var rest_points: Array[Vector3] = []
+var rest_halves: Array[Vector3] = []
+var rest_buckets: Array[Vector3] = []
+var rest_teeth: Array[int] = []
+var rest_piles: Array[FPRestBucket] = []
 var _world_density_cache: Dictionary = {}
 const WORLD_DENSITY_CACHE_LIMIT := 8192
 var tumor_nodes: Array[Node3D] = []
@@ -307,11 +320,10 @@ func _ready() -> void:
 	_noise = FastNoiseLite.new()
 	_noise.seed = 1337
 	_noise.frequency = 0.35
-	if rest_seed == 0:
-		rest_seed = randi_range(1, 999999)
-	rest_points = FPWorldFeatures.rest_points(RESTROOM_CENTER, rest_seed)
+	rest_points = FPWorldFeatures.rest_points(RESTROOM_CENTER)
+	rest_halves = FPWorldFeatures.rest_halves()
 	biomes = FPBiomes.new(RESTROOM_CENTER)
-	biomes.apply_rest_points(rest_points)
+	biomes.apply_rest_points(rest_points, rest_halves)
 	tissue_tools = FPTissueTools.new(self)
 
 	terrain = FDKTerrainField.new()
@@ -436,11 +448,20 @@ func _ready() -> void:
 	add_child(toilet)
 
 	for i in range(rest_points.size()):
-		var loot: String = FPWorldFeatures.REST_SPRAY_LOOT[FPWorldFeatures.rest_shell(i)]
-		var rest := FPWorldFeatures.build_container(self, rest_points[i], loot)
+		var rest := FPWorldFeatures.build_container(self, rest_points[i], FPWorldFeatures.rest_yaw(i), rest_halves[i], FPWorldFeatures.rest_loot(i))
 		var can := rest.get_node("LootCan") as Node3D
 		can.set_meta("rest", i)
 		rest_cans.append(can)
+		# the bucket stands on the floor drain; its teeth are a pile in it
+		var drain: Vector3 = (rest.get_node("ContainerArt") as Node3D).call("drain_point")
+		var pile := FPRestBucket.new()
+		pile.name = "BucketTeeth"
+		pile.tooth_mesh = restroom.tank_art.call("_tooth_mesh") if restroom.tank_art != null else null
+		rest.add_child(pile)
+		pile.position = FPWorldFeatures.rest_local(i, drain)
+		rest_piles.append(pile)
+		rest_buckets.append(pile.global_position + Vector3(0, FPRestBucket.MOUTH_Y, 0))
+		rest_teeth.append(0)
 	var spots := FPWorldFeatures.tumor_spots(RESTROOM_CENTER)
 	for i in range(spots.size()):
 		var t := FPWorldFeatures.build_tumor(self, spots[i])
@@ -610,7 +631,7 @@ func _world_density(p: Vector3) -> float:
 		density = 0.0
 	else:
 		density = FPWorldFeatures.world_density(p, FPRestroom.HALF, FPRestroom.DOOR_HALF_W, FPRestroom.DOOR_H,
-			ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points)
+			ROOM_MARGIN, DOOR_GAP, RESTROOM_CENTER, OUTER_RADIUS, rest_points, rest_halves)
 		if biomes != null:
 			density = biomes.shape_density(p, density)
 	if _world_density_cache.size() >= WORLD_DENSITY_CACHE_LIMIT:
@@ -1086,8 +1107,11 @@ func _process(delta: float) -> void:
 	stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
 	# the vomit key and mouth show only where vomiting settles (decision 0009):
 	# shown everywhere they taught emptying the stomach out in the flesh
-	var settle_spot := _near_toilet() or _near_rest_point() >= 0
+	# a rest bucket with teeth still in it takes no more (decision 0016)
+	var settle_spot := settle_spot_here()
 	at_settle_spot = settle_spot
+	_step_palm_teeth()
+	_update_rest_teeth()
 	vomit_button.shown = not _settling and settle_spot and stomach.overfill_ratio() >= VOMIT_BUTTON_OVERFILL
 	# before the first settlement any mouthful is worth bringing back: the key
 	# shows at the bowl however full (2026-10-31 play: back half full, no cue)
@@ -1199,7 +1223,7 @@ func _physics_process_inner(delta: float) -> void:
 		return
 	if not is_instance_valid(player) or not is_instance_valid(terrain):
 		return
-	if restroom.contains(player.global_position) or FPWorldFeatures.in_container(player.global_position, rest_points):
+	if restroom.contains(player.global_position) or in_rest(player.global_position):
 		_body_relief_needed = false
 		return
 	# Never reuse the process-loop verdict: growth and publication may have
@@ -1784,7 +1808,7 @@ func step_world(delta: float) -> void:
 			# only the buttons whose hand that item goes to (the blender and
 			# the compass to the left) or whose held item goes back there
 			interact_ring.set("hand_left", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.LEFT))
-			interact_ring.set("hand_right", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.RIGHT))
+			interact_ring.set("hand_right", belt_swap.takes(belt_swap.aimed_hook(), FDKToolKit.Hand.RIGHT) and not palm_blocked())
 		else:
 			interact_ring.set("hand_left", target != "toilet" and not FPInteractions.right_hand_only(self, target))
 			interact_ring.set("hand_right", target != "toilet" and not FPInteractions.left_hand_only(target))
@@ -2081,6 +2105,13 @@ func _activate_target(target: String, right: bool, hold_action: String) -> void:
 			restroom.set_door_open(not restroom.is_door_open())
 		"tumor": pick_up_tumor()
 		"rest_can": take_rest_can()
+		"rest_teeth":
+			# the tank's hand rules: the right hand puts one back when it holds
+			# teeth and takes one when it does not; F and the left take
+			if right:
+				_start_tooth_op("rest_back" if progression.teeth_in_hand > 0 else "rest_take", "fp_pick")
+			else:
+				_start_tooth_op("rest_take", hold_action)
 
 ## The door's handle in world space (where a hand opening it takes hold).
 func door_handle_point() -> Vector3:
@@ -2145,12 +2176,79 @@ func _near_toilet() -> bool:
 func has_settle_contents() -> bool:
 	return stomach.fill > 0.0 or progression.tumors.carried_count() > 0 or toilet.has_contents()
 
+## The rest point whose bucket the body stands by (-1 = none): within 1.4 m
+## of where a body stands at the drawn bucket.
 func _near_rest_point() -> int:
-	for i in range(rest_points.size()):
-		var bucket := rest_points[i] + Vector3(0, -FPWorldFeatures.CONTAINER_HALF.y + 0.9, -FPWorldFeatures.CONTAINER_HALF.z + 0.5)
-		if player.global_position.distance_to(bucket) < 1.4:
+	for i in range(rest_buckets.size()):
+		if player.global_position.distance_to(rest_stand_point(i)) < 1.4:
 			return i
 	return -1
+
+## Body-centre height at rest `i`'s bucket (the bucket's mouth is 0.3 m up).
+func rest_stand_point(i: int) -> Vector3:
+	return rest_buckets[i] + Vector3(0, 0.9 - FPRestBucket.MOUTH_Y, 0)
+
+## Inside a rest container: nothing grows in, nothing crushes.
+func in_rest(p: Vector3) -> bool:
+	return FPWorldFeatures.in_container(p, rest_points, rest_halves)
+
+## Teeth carried on the body (progression.teeth_in_hand) lie on the right
+## palm, and out of the restroom that hand does nothing else: it does not
+## dig, hold a tool or a can, or carry (decision 0016). The pouch moves them
+## to the waist and frees it.
+func palm_blocked() -> bool:
+	return progression.teeth_in_hand > 0 and not progression.has_pouch and not restroom.contains(player.global_position)
+
+## The carried teeth are in the waist pouch (out of the restroom; inside it
+## they are on the palm, where the tank and the vent look for them).
+func teeth_in_pouch() -> bool:
+	return progression.teeth_in_hand > 0 and progression.has_pouch and not restroom.contains(player.global_position)
+
+## Every frame: tells the progression rules whether the palm is taken, and
+## clears the right hand the moment it is (stepping out of the door with
+## teeth, taking teeth back off a body). A knife goes to an empty left hand;
+## anything else goes back to the belt.
+func _step_palm_teeth() -> void:
+	var blocked := palm_blocked()
+	if blocked == progression.palm_teeth_blocks and not (blocked and progression.hands.right != ""):
+		return
+	progression.palm_teeth_blocks = blocked
+	if not blocked:
+		return
+	_clear_right_hand()
+	if carry_mode and carried_flesh <= 0.0:
+		toggle_carry() # empty carrying hands close; a pile already held stays
+	progression.refresh_hands(carry_mode)
+
+func _clear_right_hand() -> void:
+	var held: String = progression.hands.right
+	if held == "":
+		return
+	if progression.hands.holds("big_saw"):
+		progression.hands.clear()
+	elif held == "knife" and progression.hands.left == "":
+		progression.hands.set_item("", FDKToolKit.Hand.RIGHT)
+		progression.hands.set_item(held, FDKToolKit.Hand.LEFT)
+	else:
+		progression.hands.set_item("", FDKToolKit.Hand.RIGHT)
+	progression.tools.equipped = progression.hands.left
+
+## The nearest rest bucket within `dist` of the eye (-1 = none).
+func nearest_rest_bucket(dist: float) -> int:
+	var best := -1
+	var bd := dist
+	for i in range(rest_buckets.size()):
+		var d := rest_buckets[i].distance_to(player.camera.global_position)
+		if d < bd:
+			bd = d
+			best = i
+	return best
+
+## Bucket piles follow rest_teeth (one tooth per tooth, never a number).
+func _update_rest_teeth() -> void:
+	for i in range(rest_piles.size()):
+		if rest_piles[i].count != rest_teeth[i]:
+			rest_piles[i].set_teeth(rest_teeth[i])
 
 # --- stomach, toilet, rest points ----------------------------------------------
 
@@ -2190,15 +2288,29 @@ func discard_hold_step(delta: float, held: bool) -> void:
 func discard_holding() -> bool:
 	return _discard_hold_t >= 0.0
 
-## At the toilet or a rest point vomiting settles; elsewhere nothing.
+## Where V takes the stomach now: the bowl, or a rest bucket with no teeth
+## in it (the vomit key and the stomach HUD's mouth show only here).
+func settle_spot_here() -> bool:
+	var rest := _near_rest_point()
+	return _near_toilet() or (rest >= 0 and rest_teeth[rest] <= 0)
+
+## At the toilet vomiting settles; at a rest point's empty bucket it leaves
+## its teeth in the bucket; elsewhere nothing.
 func request_vomit() -> void:
 	if _settling:
 		return
+	var rest := _near_rest_point()
 	if _near_toilet():
 		start_settlement()
-	elif _near_rest_point() >= 0:
+	elif rest >= 0 and rest_teeth[rest] > 0:
+		# the bucket takes one stomach: the teeth in it have to be picked up
+		# first. Nothing comes up, the pile in the bucket shivers once.
+		hand_motions.play_gag()
+		rest_piles[rest].shake()
+		dry_heaved.emit()
+	elif rest >= 0:
 		hand_motions.play_vomit(false, stomach.fill_ratio())
-		settle_at_rest_point()
+		vomit_at_rest_point(rest)
 	elif not lever_settled and not stomach.is_full():
 		hand_motions.play_gag()
 		dry_heaved.emit()
@@ -2599,12 +2711,55 @@ func reset_keybinds() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(user_keybinds_path))
 	_register_keybinds()
 
-func settle_at_rest_point() -> Dictionary:
-	var got := progression.settle(stomach.vomit() + mutation_apply.take_cud_credit())
+## The stomach (and the cud's share) into rest `rest`'s bucket (-1 = the one
+## the body stands by): the teeth stay there until a hand picks them out, the
+## tank does not change and nothing is settled (decision 0016). A bucket that
+## still holds teeth takes nothing (request_vomit retches instead). The run
+## is saved: teeth in a bucket are not to be lost. Returns the teeth it left.
+func vomit_at_rest_point(rest: int = -1) -> int:
+	if rest < 0:
+		rest = _near_rest_point()
+	if rest < 0 or rest_teeth[rest] > 0:
+		return 0
+	var gain := FPProgression.teeth_for(stomach.vomit() + mutation_apply.take_cud_credit())
+	progression.discard_stomach()
+	rest_teeth[rest] += gain
 	if opening_view != null:
 		opening_view.hints.vomit_learned = true
-	flushed.emit(got["teeth"], got["hairs"])
-	return got
+	rest_vomited.emit(rest, gain)
+	# teeth into the bucket sound like teeth into the tank until the bucket
+	# has a sound of its own (game/audio/SOUND_LIST.md bucket_teeth)
+	settle_ticked.emit(gain)
+	save_to_disk()
+	return gain
+
+## One tooth out of the bucket the eye is on, into the hand (or the pouch).
+## Hands that cannot take it reach and come back empty: both under a flesh
+## pile or on the big saw, or with no pouch a tumour in the hand.
+func take_rest_tooth() -> int:
+	var rest := nearest_rest_bucket(1.6)
+	if rest < 0 or rest_teeth[rest] <= 0:
+		return 0
+	var first: bool = progression.teeth_in_hand == 0
+	if carried_flesh > 0.0 or progression.hands.holds("big_saw") or (not progression.has_pouch and progression.tumor_in_hand()):
+		hand_motions.play_scoop(rest_buckets[rest])
+		belt_refused.emit()
+		return 0
+	rest_teeth[rest] -= 1
+	progression.teeth_in_hand += 1
+	if first:
+		hand_motions.play_scoop(rest_buckets[rest])
+		_step_palm_teeth()
+	return 1
+
+## One tooth from the hand (or the pouch) back into the bucket.
+func put_rest_tooth() -> int:
+	var rest := nearest_rest_bucket(1.6)
+	if rest < 0 or progression.teeth_in_hand <= 0:
+		return 0
+	progression.teeth_in_hand -= 1
+	rest_teeth[rest] += 1
+	return 1
 
 ## Tank teeth shown as a pile of real teeth in the tank model, one per
 ## tooth, never a number.
@@ -2717,13 +2872,16 @@ func _start_tooth_op(op: String, action: String) -> void:
 	_tooth_op = op
 	_tooth_action = action
 	_tooth_rep_t = TOOTH_REPEAT_DELAY
-	_do_tooth_op(op)
+	if _do_tooth_op(op) == 0 and op.begins_with("rest_"):
+		_tooth_op = "" # a refused reach into the bucket is not repeated
 
 func _do_tooth_op(op: String) -> int:
 	match op:
 		"take": return scoop_teeth()
 		"back": return put_tooth_back()
 		"place": return 1 if place_tooth_at_vent() else 0
+		"rest_take": return take_rest_tooth()
+		"rest_back": return put_rest_tooth()
 	return 0
 
 ## While the input that started a tooth op stays held on the same target,
@@ -2733,6 +2891,8 @@ func _repeat_tooth_op(delta: float) -> void:
 		return
 	var target := interact_target()
 	var on_target := target == "tank_teeth" if _tooth_op != "place" else (target == "vent" and vent.is_open)
+	if _tooth_op.begins_with("rest_"):
+		on_target = target == "rest_teeth"
 	if not Input.is_action_pressed(_tooth_action) or not on_target or tank_lid.held:
 		_tooth_op = ""
 		return
@@ -3384,7 +3544,7 @@ func crush_progress() -> float:
 	return clampf(_crush_t / progression.crush_time(), 0.0, 1.0)
 
 func _step_hazards(delta: float) -> void:
-	if restroom.contains(player.global_position) or FPWorldFeatures.in_container(player.global_position, rest_points):
+	if restroom.contains(player.global_position) or in_rest(player.global_position):
 		_crush_t = 0.0
 		hazard.health = minf(100.0, hazard.health + HEALTH_REGEN * delta)
 		return
@@ -3687,7 +3847,7 @@ func serialize() -> Dictionary:
 		"canary_feed_left": canary_feed_left,
 		"hand_blood": hand_blood,
 		"deaths": deaths,
-		"rest_seed": rest_seed,
+		"rest_teeth": rest_teeth.duplicate(),
 		"opening_done": opening_done or not is_opening(),
 		"ended": ended,
 		"tank_lid": tank_lid.serialize() if tank_lid != null else {},
@@ -3765,8 +3925,12 @@ func deserialize(data: Dictionary) -> void:
 	if tank_lid != null:
 		tank_lid.deserialize(data.get("tank_lid", {}))
 	deaths = int(data.get("deaths", 0))
-	if data.has("rest_seed"):
-		tissue_tools.relayout_rest_points(int(data["rest_seed"]))
+	# teeth left in the rest buckets; a list of another length is not this
+	# layout's and every bucket starts empty
+	var saved_teeth: Array = data.get("rest_teeth", []) as Array
+	for i in range(rest_teeth.size()):
+		rest_teeth[i] = maxi(0, int(saved_teeth[i])) if saved_teeth.size() == rest_teeth.size() else 0
+	progression.palm_teeth_blocks = false
 	ended = bool(data.get("ended", false))
 	_ending_bite_t = -1.0
 	if bool(data.get("opening_done", v < 3)):

@@ -12,7 +12,6 @@ const SHA := "71946d862fd19b6e17c9ddd12880c8838b7664da00c07c3e057e052bd6385f02"
 func _new_main() -> Node3D:
     var made: Node3D = load("res://main/scenes/main.tscn").instantiate()
     made.user_keybinds_path = "user://keybinds_test_terrain_main_restore.json"
-    made.rest_seed = 1337
     made.save_path = destination.path_join("copy.bin")
     return made
 func _init() -> void:

@@ -351,31 +351,21 @@ func _main_tests(m) -> void:
 		t += 1.0 / 60.0
 	_assert(torn[0] == 1 and absf(t - 0.75) < 0.05, "W10 with a knife the membrane tears in 0.75 s (got %.2f)" % t)
 	m.chewer.stop()
-	# W22 rest points
+	# W22 rest points (decision 0016: seven fixed boxes, none in the core)
 	var rp: Array[Vector3] = m.rest_points
-	_assert(rp.size() == 12, "W22 2 + 4 + 6 rest points")
-	var per := [[], [], []]
-	for p in rp:
-		per[FPWorldFeatures.shell_of_depth(p.distance_to(c))].append(p)
-	_assert(per[0].size() == 2 and per[1].size() == 4 and per[2].size() == 6, "W22 core 2, mantle 4, surface 6")
-	var depth_ok := true
-	var angle_ok := true
-	var clear_ok := true
-	for s in range(3):
-		for p in per[s]:
-			if absf(p.distance_to(c) - FPWorldFeatures.REST_DEPTH[s]) > 0.01:
-				depth_ok = false
-			if not FPWorldFeatures._rest_clear_of_room(c, p):
-				clear_ok = false
-		for i in range(per[s].size()):
-			for j in range(i + 1, per[s].size()):
-				if rad_to_deg((per[s][i] - c).angle_to(per[s][j] - c)) < 89.9:
-					angle_ok = false
-	_assert(depth_ok, "W22 each rest point sits at the middle depth of its shell (4.5 / 13.5 / 22.5 m)")
-	_assert(angle_ok, "W22 rest points in one shell are at least 90 degrees apart")
-	_assert(clear_ok, "W22 no container cuts into the restroom membrane")
-	_assert(FPWorldFeatures.rest_points(c, 7) == FPWorldFeatures.rest_points(c, 7) and FPWorldFeatures.rest_points(c, 7) != FPWorldFeatures.rest_points(c, 8), "W22 the layout turns per game (seeded)")
-	var inside: Vector3 = rp[3] + Vector3(0, -FPWorldFeatures.CONTAINER_HALF.y + 0.9, -FPWorldFeatures.CONTAINER_HALF.z + 0.5)
+	var rh: Array[Vector3] = m.rest_halves
+	_assert(rp.size() == 7 and rh.size() == 7, "W22 0 + 3 + 4 rest points")
+	var per := [0, 0, 0]
+	var shell_ok := true
+	for i in range(rp.size()):
+		var sh := FPWorldFeatures.shell_of_depth(rp[i].distance_to(c))
+		per[sh] += 1
+		if sh != FPWorldFeatures.rest_shell(i):
+			shell_ok = false
+	_assert(per == [0, 3, 4] and per == FPWorldFeatures.REST_PER_SHELL and shell_ok, "W22 core 0, mantle 3, surface 4, as REST_PER_SHELL says")
+	_assert(FPWorldFeatures.rest_points(c) == FPWorldFeatures.rest_points(c) and rp == FPWorldFeatures.rest_points(c), "W22 the layout is the same every game")
+	var inside: Vector3 = m.rest_stand_point(3)
+	_assert(FPWorldFeatures.in_container(inside, rp, rh), "W22 the bucket spot is inside its container")
 	m.player.global_position = inside
 	m._crush_t = 3.0
 	m._step_hazards(0.1)
@@ -387,26 +377,27 @@ func _main_tests(m) -> void:
 	var teeth0 := prog.teeth
 	_assert(m._near_rest_point() == 3, "W22 standing at the rest point's bucket")
 	m.request_vomit()
-	_assert(prog.teeth > teeth0 and m.stomach.fill == 0.0, "W22 vomiting at a rest point settles into teeth")
+	_assert(prog.teeth == teeth0 and m.rest_teeth[3] == FPProgression.teeth_for(40.0) and m.stomach.fill == 0.0, "W22 vomiting at a rest point leaves the teeth in its bucket, not the tank")
 	_assert(not m.vent.is_open, "W22 a rest point has no vent")
 	var saved: Dictionary = m.serialize()
-	_assert(int(saved.get("rest_seed", 0)) == m.rest_seed, "W22 the rest-point rotation is saved")
+	_assert(not saved.has("rest_seed") and (saved["rest_teeth"] as Array)[3] == m.rest_teeth[3], "W22 the bucket's teeth are saved (no layout seed any more)")
+	m.rest_teeth[3] = 0
 	# W22 a spray can on each rest point's chair, taken once (decision 0006)
-	var kinds_ok: bool = m.rest_cans.size() == 12
+	var kinds_ok: bool = m.rest_cans.size() == 7
 	for i in range(m.rest_cans.size()):
-		var want := "spray_cheap" if i < 2 else "spray_deep"
+		var want := "spray_cheap" if i == 0 or i == 3 else "spray_deep"
 		var can_node: Node3D = m.rest_cans[i]
 		if String(can_node.get_meta("loot")) != want or not can_node.visible or can_node.get_node_or_null("Item") == null:
 			kinds_ok = false
-		if FPWorldFeatures.in_container(can_node.global_position, [rp[i]] as Array[Vector3]) == false:
+		if FPWorldFeatures.in_container(can_node.global_position, [rp[i]] as Array[Vector3], [rh[i]] as Array[Vector3]) == false:
 			kinds_ok = false
-	_assert(kinds_ok, "W22 every rest point has one can inside it: cheap in the core, deep beyond")
+	_assert(kinds_ok, "W22 every rest point has one can inside it: cheap in the two stem rests, deep in the side ones")
 	prog.sprays = FDKSprayCan.Inventory.new()
-	m.player.global_position = m.rest_cans[3].global_position + Vector3(0.5, 0.0, 0.0)
-	_assert(m.nearest_rest_can(1.4) == m.rest_cans[3], "W22 standing by the can, it is in reach")
+	m.player.global_position = m.rest_cans[2].global_position + Vector3(0.0, 0.0, 0.5)
+	_assert(m.nearest_rest_can(1.4) == m.rest_cans[2], "W22 standing by the can, it is in reach")
 	_assert(FPInteractions.get_candidates(m).any(func(cd): return cd[0] == "rest_can"), "W22 the can is an interaction")
-	_assert(m.take_rest_can() and not m.rest_cans[3].visible and prog.sprays.count_of_tier(FDKSprayCan.Tier.DEEP) == 1, "W22 taking it puts a deep can on the belt")
-	_assert(m.looted_rest_cans == [3] and (m.serialize()["looted_rest_cans"] as Array) == [3], "W22 the taken can is saved")
+	_assert(m.take_rest_can() and not m.rest_cans[2].visible and prog.sprays.count_of_tier(FDKSprayCan.Tier.DEEP) == 1, "W22 taking it puts a deep can on the belt")
+	_assert(m.looted_rest_cans == [2] and (m.serialize()["looted_rest_cans"] as Array) == [2], "W22 the taken can is saved")
 	_assert(m.nearest_rest_can(1.4) == null, "W22 it does not come back")
 	prog.sprays.add(FDKSprayCan.new(FDKSprayCan.Tier.CHEAP))
 	prog.sprays.add(FDKSprayCan.new(FDKSprayCan.Tier.CHEAP))

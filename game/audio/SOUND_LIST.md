@@ -151,5 +151,6 @@
 
 - [다른 컴퓨터] CLAP 아케이드/전자 몫 다시 재기. 이 PC(admin)에는 `C:/fpear` venv가 없어 `tools/clap_arcade.py`·`tools/clap_beds.py`를 못 돌린다. 대상: 2026-11-14에 다시 만든 `regen_creak`, 새 소리 `contract_warn`·`squeeze_breath`·`crush_breath`·`full_refuse`·`tear_muscle`·`tear_cartilage`·`tear_cloth`·`tear_hair`·`pull_stretch`, 그리고 살 속 박자 층을 만들었다면 `mus_flesh_mantle_drive`·`mus_flesh_surface_drive`. 기준: 사용자가 퇴짜 놓은 "전자적·아케이드" 결이 아니고 `mus_pause_alt`·`lab_emotion`의 손으로 연주한 결에 가깝다. 곡과 음원 제작은 이 PC에서 한다(nkido는 WSL에 있다).
 - [이 PC] 삐걱임이 잦아진 뒤의 배경 마스킹 다시 재기(`tools/measure_beds.py`의 재생 삐걱·조임 경고 열).
+- [음원 없음] 쉼터와 지닌 이빨의 소리 넷(결정 0016). 규칙은 음원 없이 돈다. `bucket_teeth`: 토한 이빨이 플라스틱 양동이에 떨어짐(지금은 `settle_tick`을 같이 쓴다. `settle_tick`은 원래 "이빨이 탱크에 들어감"이라 한 소리가 두 뜻을 진다. 생기면 `main.rest_vomited(rest, teeth)`에 붙이고 `vomit_at_rest_point`의 `settle_ticked`를 뗀다). `pouch_jingle`: 주머니에 이빨을 지니고 걷는 소리, 발소리와 같은 조건, 많을수록 촘촘(지금 무음. `Main.teeth_in_pouch()`). `teeth_clutch`: 이빨 쥔 손으로 뜯으려 할 때(지금 무음. `FPHandMotions.play_clutch`). `rest_hum`: 쉼터 형광등 웅웅, 3D 8 m(지금 무음. 옆 쉼터를 사람이 못 찾으면 이것부터).
 - [미구현] 살 속 굴착 몰입 박자 층. 사용자가 괜찮다고 한 방향이고 시킨 일은 아니다. 명세는 docs/design/sound-music.md "굴착 몰입 박자 층".
 - [사람] 화장실 일곱 층 청취: 큰 원정 뒤에도 조용하고 안전하게 들리는지, linger·wrong·cold가 "무서워지는 것"으로 들리는지, 귀환 때마다 gut 0.42가 시끄럽지 않은지.

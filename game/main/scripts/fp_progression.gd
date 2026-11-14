@@ -38,11 +38,14 @@ const PRICE_UNITS := {
 	"big_saw": 10.0,
 	"canary_feed": 0.5,
 	"tumor_bag": 2.0,
+	# the tooth pouch (decision 0016): 16 teeth, what one expedition through a
+	# rest bucket brings home (a bucket's 8 in the hand + the stomach's 8)
+	"pouch": 2.0,
 }
 ## Stock unlocks with the deepest shell reached (0 core, 1 mantle, 2 surface).
 const UNLOCK_SHELL := {
 	"barrier": 0, "spray_cheap": 0, "knife": 0, "canary_feed": 0,
-	"spray_deep": 1, "blender": 1, "tumor_bag": 1,
+	"spray_deep": 1, "blender": 1, "tumor_bag": 1, "pouch": 1,
 	"big_saw": 2,
 }
 const VENT_MAX_OFFER := 3
@@ -108,6 +111,14 @@ var teeth_in_hand: int = 0 ## scooped handful(s), not yet placed at the vent
 var barriers: int = 0 ## carried, unplaced
 var canary_feed: int = 0
 var has_bag: bool = false
+## The tooth pouch at the waist (decision 0016): out of the restroom the
+## carried teeth ride in it and the right hand is free. It keeps nothing safe
+## (a death drops every carried tooth) and holds no more than a hand does.
+var has_pouch: bool = false
+## Main sets this every frame (Main.palm_blocked): carried teeth lie on the
+## right palm out of the restroom with no pouch, so that hand holds and
+## carries nothing else. Not saved.
+var palm_teeth_blocks: bool = false
 ## The work belt (tool hooks) comes with the first vent trade.
 var has_belt: bool = false
 var tumor_mutations: Array[String] = []
@@ -418,7 +429,7 @@ func can_lift_without_blender() -> bool:
 ## Hands: T3 mouth in the right palm cannot hold a pile; M28/T2 let two-hand
 ## tools work while carrying.
 func right_hand_can_carry() -> bool:
-	return not _m("T3")
+	return not _m("T3") and not palm_teeth_blocks
 
 func two_hand_tools_while_carrying() -> bool:
 	return _m("M28") or _m("T2")
@@ -469,11 +480,15 @@ func pending_hair_total() -> int:
 		n += int(pending_hairs[k])
 	return n
 
+## Teeth a vomited stomach is worth (the toilet's tank and a rest bucket alike).
+static func teeth_for(flesh_amount: float) -> int:
+	return int(round(flesh_amount * TEETH_PER_FLESH))
+
 ## Settling vomited flesh: teeth into the tank. Under R17, hairs grew
 ## immediately when eaten, so settle hair gain is always 0.
 ## Returns {teeth, hairs, by_pool}.
 func settle(flesh_amount: float) -> Dictionary:
-	var gain_teeth := int(round(flesh_amount * TEETH_PER_FLESH))
+	var gain_teeth := teeth_for(flesh_amount)
 	teeth += gain_teeth
 	var by_pool := {COMMON: 0}
 	for b in BIOMES:
@@ -498,9 +513,10 @@ func owns(id: String) -> bool:
 
 ## Hands are busy with a flesh pile or a tumor carried without the bag.
 ## A hand is taken by the flesh pile (M28 boneless arm / T2 third arm keep
-## the pile out of the way) or by a tumor without a bag.
+## the pile out of the way), by a tumor without a bag, or by teeth on the
+## palm out of the restroom without the pouch (palm_teeth_blocks).
 func one_hand_busy(carrying_flesh: bool) -> bool:
-	return (carrying_flesh and not two_hand_tools_while_carrying()) or tumor_in_hand()
+	return (carrying_flesh and not two_hand_tools_while_carrying()) or tumor_in_hand() or palm_teeth_blocks
 
 func tumor_in_hand() -> bool:
 	return tumors.carried_count() > (1 if has_bag else 0)
@@ -604,6 +620,7 @@ func _maxed(id: String) -> bool:
 		"spray_cheap", "spray_deep": return not sprays.can_add()
 		"canary_feed": return canary_feed >= MAX_CANARY_FEED
 		"tumor_bag": return has_bag
+		"pouch": return has_pouch
 	return false
 
 ## Teeth are picked from the open tank and put back one at a time (holding
@@ -675,6 +692,7 @@ func grant_item(id: String) -> bool:
 		"tumor_bag":
 			has_bag = true # one basketball bag holds one tumor; a hand holds one more
 			tumors.bag_capacity = 2
+		"pouch": has_pouch = true
 		"junk": junk_taken += 1
 		_: return false
 	return true
@@ -682,7 +700,7 @@ func grant_item(id: String) -> bool:
 # --- tumors -------------------------------------------------------------------
 
 func pick_up_tumor(kind: String, carrying_flesh: bool) -> bool:
-	if carrying_flesh and tumors.carried_count() >= (1 if has_bag else 0):
+	if (carrying_flesh or palm_teeth_blocks) and tumors.carried_count() >= (1 if has_bag else 0):
 		return false # no free hand
 	if not tumors.pick_up(kind):
 		return false
@@ -739,7 +757,8 @@ func buy_tumor_mutation() -> String:
 
 ## What drops at the death spot: stomach contents and carried consumables.
 ## Under R17, already grown hairs and purchased mutations stay on the body.
-## Owned tools and teeth in the tank stay.
+## Owned tools and teeth in the tank stay. Every carried tooth drops, in the
+## hand or in the pouch (the pouch itself stays on the body, decision 0016).
 func take_death_payload(stomach_fill: float) -> Dictionary:
 	var payload := {
 		"stomach_fill": stomach_fill,
@@ -823,6 +842,7 @@ func serialize() -> Dictionary:
 		"barriers": barriers,
 		"canary_feed": canary_feed,
 		"has_bag": has_bag,
+		"has_pouch": has_pouch,
 		"has_belt": has_belt,
 		"deepest_shell": deepest_shell,
 		"max_depth": max_depth,
@@ -847,6 +867,7 @@ func deserialize(d: Dictionary) -> void:
 	barriers = int(d.get("barriers", 0))
 	canary_feed = int(d.get("canary_feed", 0))
 	has_bag = bool(d.get("has_bag", false))
+	has_pouch = bool(d.get("has_pouch", false))
 	deepest_shell = int(d.get("deepest_shell", 0))
 	max_depth = float(d.get("max_depth", 0.0))
 	_clear_pending()

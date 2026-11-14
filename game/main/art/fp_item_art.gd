@@ -6,11 +6,12 @@ extends RefCounted
 ## belt (FPConsumable cans and packs, the belt's knife). Items lie across the
 ## palm (long side along X), origin in their middle.
 ## Kinds (FPVent.ART_KIND): spray_cheap, spray_expensive, barrier, knife,
-## blender_box, saw_box, canary_feed, tumor_bag, junk; spray_deep is taken
+## blender_box, saw_box, canary_feed, tumor_bag, pouch, junk; spray_deep is taken
 ## as spray_expensive (rest-room loot uses the item id).
 
 const K := preload("res://main/art/fp_art_kit.gd")
 const KnifeScene := preload("res://main/art/fp_knife.tscn")
+const PouchScene := preload("res://main/art/fp_tooth_pouch.tscn")
 
 static func make(kind: String, seed: int = 0) -> Node3D:
 	var root := Node3D.new()
@@ -35,6 +36,12 @@ static func make(kind: String, seed: int = 0) -> Node3D:
 			knife.position = Vector3(-0.07, 0, 0)
 			knife.scale = Vector3.ONE * 0.85
 			root.add_child(knife)
+		"pouch":
+			# the belt's tooth pouch lying on the palm, its cord trailing
+			var pouch: Node3D = PouchScene.instantiate()
+			pouch.rotation_degrees = Vector3(-80, 0, 0)
+			pouch.position = Vector3(0, 0.0, -0.05)
+			root.add_child(pouch)
 		_:
 			K.add_mesh(root, "Mesh", _box_mesh(kind, seed), K.mat("tex_fixture_64.png", 0.2, false))
 	return root

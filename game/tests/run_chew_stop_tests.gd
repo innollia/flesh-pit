@@ -74,7 +74,6 @@ func new_game() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = KEYS_PATH
 	m.save_path = folder.path_join("chew_stop.bin")
-	m.rest_seed = 1337
 	root.add_child(m)
 	await frames(3)
 	m.save_path = folder.path_join("chew_stop.bin")

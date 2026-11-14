@@ -213,16 +213,15 @@ func _main_tests() -> void:
 			left += 1
 	_assert(left == 0, "moving away frees the art (%d left)" % left)
 	_assert(shown >= m.structure_nodes.size() - 2, "most structures shown (%d of %d)" % [shown, m.structure_nodes.size()])
-	# over many games, alternate spots keep almost every structure in
+	# the fixed rest layout (decision 0016) leaves every structure in
 	var b: FPBiomes = m.biomes
 	var left_out := 0
-	for seed in range(1, 41):
-		b.apply_rest_points(FPWorldFeatures.rest_points(m.RESTROOM_CENTER, seed))
-		for s in b.structures:
-			if not s["enabled"]:
-				left_out += 1
-	_assert(left_out <= 40, "alternate spots: %d of %d structures left out over 40 games" % [left_out, 40 * b.structures.size()])
-	b.apply_rest_points(m.rest_points)
+	b.apply_rest_points(FPWorldFeatures.rest_points(m.RESTROOM_CENTER), FPWorldFeatures.rest_halves())
+	for s in b.structures:
+		if not s["enabled"]:
+			left_out += 1
+	_assert(b.structures.size() == 16 and left_out == 0, "the seven fixed rests leave all 16 structures in (%d of %d left out)" % [left_out, b.structures.size()])
+	b.apply_rest_points(m.rest_points, m.rest_halves)
 	# the generator gives biome tissue in a biome
 	var found := false
 	for d in FPWorldFeatures.fibonacci_dirs(400):

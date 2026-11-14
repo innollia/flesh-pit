@@ -264,41 +264,6 @@ func blend_progress() -> float:
 		Blend.SPIN: return clampf(blend_t / SPIN_TIME, 0.0, 1.0)
 		Blend.DRINK: return clampf(blend_t / DRINK_TIME, 0.0, 1.0)
 	return 0.0
-# --- rest points -----------------------------------------------------------------
-
-## Loading a game with another rest-point rotation: move the containers and
-## the hollows to that game's layout (chunks already in the save keep theirs).
-func relayout_rest_points(seed: int) -> void:
-	if seed == int(m.rest_seed) or seed <= 0:
-		return
-	m.rest_seed = seed
-	var pts: Array[Vector3] = FPWorldFeatures.rest_points(m.RESTROOM_CENTER, seed)
-	var nodes: Array = []
-	for c in m.get_children():
-		if c.has_meta("rest_point"):
-			nodes.append(c)
-	m.rest_points = pts
-	m._world_density_cache.clear()
-	for i in range(mini(nodes.size(), pts.size())):
-		(nodes[i] as Node3D).position = pts[i]
-	var h := FPWorldFeatures.CONTAINER_HALF
-	for p in pts:
-		m.terrain.carve_sphere(p, 0.01) # makes sure the chunk exists
-		m.terrain.fill_box_uniform(AABB(p - h, h * 2.0), 0.0, FDKTissueRules.COMPRESSIVE)
-	# structures that would overlap this game's containers are left out; the
-	# shown ones get their pocket (also in saves from before the biomes)
-	if m.biomes != null:
-		m.biomes.apply_rest_points(pts)
-		for n in m.structure_nodes:
-			var s: Dictionary = m.biomes.structures[int(n.get_meta("structure"))]
-			n.position = s["pos"]
-			n.visible = bool(s["enabled"])
-			if n.visible:
-				var box := FPBiomes.pocket_aabb(s["pos"], s["half"])
-				m.terrain.carve_sphere(box.get_center(), 0.01)
-				m.terrain.fill_box_uniform(box, 0.0, FDKTissueRules.COMPRESSIVE)
-		# art moves with its anchor; left-out ones drop theirs
-		m.biomes.stream_art(m.structure_nodes, m.player.global_position)
 ## Lamps show the charge; the jar spins and is tipped up while drinking.
 var _drink_played := false
 func _sync_blender_art() -> void:

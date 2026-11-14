@@ -19,7 +19,6 @@ func _init() -> void:
 
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = "user://keybinds_test_terrain_main_passage.json"
-	m.rest_seed = 1337
 	m.save_path = isolated_save_path
 	root.add_child(m)
 	run.call_deferred()

@@ -6,6 +6,7 @@
   "spray_cheap": {"이름": "싼 스프레이", "하는일": "살 겉면을 녹여 냄", "하는일_키": "item.spray_cheap.desc"},
   "knife": {"이름": "칼", "하는일": "질긴 막과 살을 뜯음", "하는일_키": "item.knife.desc"},
   "tumor_bag": {"이름": "종양 가방", "하는일": "종양을 더 들고 다님", "하는일_키": "item.tumor_bag.desc"},
+  "pouch": {"이름": "이빨 주머니", "하는일": "", "하는일_키": "item.pouch.desc"},
   "spray_deep": {"이름": "비싼 스프레이", "하는일": "살 속 깊이 녹여 냄", "하는일_키": "item.spray_deep.desc"},
   "blender": {"이름": "믹서기", "하는일": "뜯은 살을 갈아 마심", "하는일_키": "item.blender.desc"},
   "big_saw": {"이름": "큰 톱", "하는일": "살과 막을 통째로 뜯음", "하는일_키": "item.big_saw.desc"},

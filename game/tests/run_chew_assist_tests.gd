@@ -34,7 +34,6 @@ func _init() -> void:
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = "user://keybinds_test_chew_assist.json"
 	m.save_path = "user://capture-chew-assist-tests.bin"
-	m.rest_seed = 1337
 	root.add_child(m)
 	run.call_deferred()
 

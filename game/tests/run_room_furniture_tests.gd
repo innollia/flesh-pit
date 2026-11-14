@@ -213,7 +213,9 @@ func _test_small_fixtures(r: FPRestroom) -> void:
 			check((mi as MeshInstance3D).layers == FPRestroom.ROOM_VISUAL_LAYER, "%s is on the room-only render layer" % mi.name)
 
 func _test_container() -> void:
-	var h: Vector3 = FPWorldFeatures.CONTAINER_HALF
+	# the mantle stem rest lies with its long side along world X (decision 0016)
+	var h: Vector3 = m.rest_halves[0]
+	check(h.is_equal_approx(Vector3(2.2, 1.1, 1.1)), "the stem rest's box lies along X")
 	var rest: Node3D = m.rest_cans[0].get_parent()
 	var art: Node3D = rest.get_node("ContainerArt")
 	check(art.scale.is_equal_approx(Vector3.ONE), "container model is not stretched")
@@ -226,9 +228,10 @@ func _test_container() -> void:
 	check(is_equal_approx(seat.y, 0.44), "chair seat 0.44 m up (it was stretched to 0.71)")
 	var can: Node3D = m.rest_cans[0]
 	check(can.position.is_equal_approx(art.transform * seat + Vector3(0, 0.08, 0)), "the spray can stands on the chair seat")
-	check(FPWorldFeatures.in_container(can.global_position, m.rest_points), "the can is inside the container")
+	check(FPWorldFeatures.in_container(can.global_position, m.rest_points, m.rest_halves), "the can is inside the container")
 	var bucket: Vector3 = art.transform * (art.call("drain_point") as Vector3)
-	var judged := Vector3(0, -h.y, -h.z + 0.5)
+	var judged: Vector3 = m.rest_buckets[0] - m.rest_points[0] - Vector3(0, 0.3, 0)
+	check(m.rest_stand_point(0).distance_to(m.rest_points[0] + bucket + Vector3(0, 0.9, 0)) < 0.01, "the vomit spot is body height over the bucket")
 	check(bucket.distance_to(judged) < 0.01, "bucket stands where Main judges 'at the bucket' (%s)" % str(bucket))
 	# real-size props: nothing in the shell is taller than the box or a metre-wide seat
 	var seat_w := 0.0

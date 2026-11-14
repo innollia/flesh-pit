@@ -5,7 +5,6 @@ var failed := 0
 func _init() -> void:
     m = load("res://main/scenes/main.tscn").instantiate()
     m.user_keybinds_path = "user://keybinds_test_terrain_density_cache.json"
-    m.rest_seed = 1337
     m.save_path = "res://../.dryforge/evidence/checks/density-cache-isolated.bin"
     root.add_child(m)
     run.call_deferred()
@@ -16,7 +15,7 @@ func check(ok: bool,label: String) -> void:
         print("FAIL: ",label)
 func expected(p: Vector3) -> float:
     if m.in_vent_duct(p): return 0.0
-    return FPWorldFeatures.world_density(p,FPRestroom.HALF,FPRestroom.DOOR_HALF_W,FPRestroom.DOOR_H,m.ROOM_MARGIN,m.DOOR_GAP,m.RESTROOM_CENTER,m.OUTER_RADIUS,m.rest_points)
+    return FPWorldFeatures.world_density(p,FPRestroom.HALF,FPRestroom.DOOR_HALF_W,FPRestroom.DOOR_H,m.ROOM_MARGIN,m.DOOR_GAP,m.RESTROOM_CENTER,m.OUTER_RADIUS,m.rest_points,m.rest_halves)
 func run() -> void:
     await process_frame
     m._world_density_cache.clear()
@@ -27,24 +26,28 @@ func run() -> void:
     for i in range(m.WORLD_DENSITY_CACHE_LIMIT+32):
         m._world_density(Vector3(1000+i,2000,3000))
     check(m._world_density_cache.size()<=m.WORLD_DENSITY_CACHE_LIMIT,"cache memory stays bounded across world traversal")
-    var seed := 98765
-    var changed_point := Vector3.INF
-    for attempt in range(20):
-        var points := FPWorldFeatures.rest_points(m.RESTROOM_CENTER,seed)
-        for p in m.rest_points:
-            if not FPWorldFeatures.in_container(p,points):
-                changed_point=p
-                break
-        if changed_point != Vector3.INF: break
-        seed += 1
-    check(changed_point != Vector3.INF,"fixture has a container that moves after loading another seed")
-    if changed_point != Vector3.INF:
-        check(is_equal_approx(m._world_density(changed_point),0.0),"old container hollow actually cached")
-        m.tissue_tools.relayout_rest_points(seed)
-        check(is_equal_approx(m._world_density(changed_point),expected(changed_point)),"layout change invalidates old hollow samples")
-        check(m._world_density(changed_point)>0.5,"old container hollow no longer returned after layout changes")
-        for p in m.rest_points:
-            check(is_equal_approx(m._world_density(p),0.0),"new container hollow uses new layout")
+    # The rest layout is fixed (decision 0016): no seed moves a container, so
+    # a cached hollow stays the authored one. Each box is empty inside and
+    # solid 0.6 m out of each of its faces.
+    check(m.rest_points.size() == 7 and m.rest_points == FPWorldFeatures.rest_points(m.RESTROOM_CENTER), "seven rest containers, where the fixed layout puts them")
+    for i in range(m.rest_points.size()):
+        var rc: Vector3 = m.rest_points[i]
+        var rh: Vector3 = m.rest_halves[i]
+        check(is_equal_approx(m._world_density(rc),0.0) and is_equal_approx(expected(rc),0.0),"rest %d is hollow at its middle" % i)
+        check(m._world_density(rc + rh * 0.98) < 0.5 and is_equal_approx(m._world_density(rc + (rh - Vector3.ONE * 0.6)),0.0),"rest %d has no flesh up to its corner (under iso at the steel, nothing 0.6 m in)" % i)
+        var solid_out := true
+        for axis in range(3):
+            for side in [-1.0, 1.0]:
+                var q := rc
+                q[axis] += side * (rh[axis] + 0.6)
+                # the generator gives whole flesh there; a biome may loosen it, never open it
+                if not is_equal_approx(expected(q),1.0) or m._world_density(q) < 0.5:
+                    solid_out = false
+        check(solid_out,"rest %d is whole flesh 0.6 m out of every face" % i)
+        # the surface the flesh makes lies on the box face, not half a cell in
+        var face := rc
+        face.x += rh.x + FPWorldFeatures.REST_MARGIN
+        check(absf(m._world_density(face) - 0.5) < 0.001,"rest %d: the flesh surface lies on the box face" % i)
     # The open vent: no flesh face inside the duct model. Every cell touching
     # it must have only empty corners (density_at = max of a cell's 8 corners).
     var t: FDKTerrainField = m.terrain

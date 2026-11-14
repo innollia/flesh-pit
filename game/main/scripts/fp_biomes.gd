@@ -322,13 +322,15 @@ static func pocket_aabb(pos: Vector3, half: Vector3) -> AABB:
 ## Deterministic placement: for each biome structure, the candidate direction
 ## inside the biome whose pocket fits the carve window and is farthest from
 ## what is already placed. Every structure then gets up to ALT_SPOTS - 1
-## alternate spots the same way; a game uses the first spot that clears its
+## alternate spots the same way; the game uses the first spot that clears the
 ## rest containers (apply_rest_points), so few are left out.
 const ALT_SPOTS := 5
+## Candidate directions a structure spot is searched over.
+const STRUCT_DIRS := 900
 
 func _place_structures() -> void:
 	structures.clear()
-	var dirs := FPWorldFeatures.fibonacci_dirs(900)
+	var dirs := FPWorldFeatures.fibonacci_dirs(STRUCT_DIRS)
 	var placed_boxes: Array[AABB] = []
 	for id in biome_ids:
 		var b := biome(id)
@@ -403,8 +405,8 @@ func _box_ok(box: AABB, w: Vector2, shell: int) -> bool:
 	var mid := box.get_center() - center
 	if shell == 0 and mid.normalized().z > 0.55:
 		return false
-	# the restroom box only lets core rest containers sit above or below it,
-	# so core structures keep to the sides
+	# core structures keep to the sides of the restroom (the core once had
+	# rest containers above and below it; the placement is kept as it was)
 	if shell == 0 and absf(mid.normalized().y) > 0.6:
 		return false
 	return true
@@ -417,18 +419,20 @@ static func _box_gap(a: AABB, b: AABB) -> float:
 	var q := (a.get_center() - b.get_center()).abs() - (a.size + b.size) * 0.5
 	return Vector3(maxf(q.x, 0.0), maxf(q.y, 0.0), maxf(q.z, 0.0)).length()
 
-## Puts each structure on its first spot clear of this game's rest
-## containers, or leaves it out when none is. Returns true when anything moved.
-func apply_rest_points(rests: Array[Vector3]) -> bool:
+## Puts each structure on its first spot clear of the rest containers (each
+## with its own box, FPWorldFeatures.REST_LAYOUT), or leaves it out when none
+## is. Returns true when anything moved.
+func apply_rest_points(rests: Array[Vector3], halves: Array[Vector3] = []) -> bool:
 	var changed := false
-	var ch := FPWorldFeatures.CONTAINER_HALF
+	if halves.is_empty():
+		halves = FPWorldFeatures._halves_for(rests.size())
 	for s in structures:
 		var chosen := Vector3.INF
 		for spot in s["spots"]:
 			var box := pocket_aabb(spot, s["half"])
 			var ok := true
-			for r in rests:
-				if _box_gap(box, AABB(r - ch, ch * 2.0)) < STRUCT_GAP:
+			for i in range(rests.size()):
+				if _box_gap(box, AABB(rests[i] - halves[i], halves[i] * 2.0)) < STRUCT_GAP:
 					ok = false
 					break
 			if ok:
@@ -440,8 +444,29 @@ func apply_rest_points(rests: Array[Vector3]) -> bool:
 		s["enabled"] = on
 		if on:
 			s["pos"] = chosen
+	# A structure whose every spot lies against a rest container (the stem
+	# rests stand on the door axis, where a biome can be crowded) takes the
+	# spot of its biome farthest from the rests and from the structures that
+	# kept theirs, so the fixed layout leaves none out. The others stay put.
+	for s in structures:
+		if bool(s["enabled"]):
+			continue
+		var taken: Array[AABB] = []
+		for i in range(rests.size()):
+			taken.append(AABB(rests[i] - halves[i], halves[i] * 2.0))
+		for o in structures:
+			if bool(o["enabled"]):
+				taken.append(pocket_aabb(o["pos"], o["half"]))
+		var spot := _best_spot(s["biome"], s["half"], FPWorldFeatures.fibonacci_dirs(STRUCT_DIRS), taken)
+		if spot == Vector3.INF:
+			continue
+		(s["spots"] as Array).append(spot)
+		s["pos"] = spot
+		s["enabled"] = true
+		changed = true
 	_index_pockets()
 	return changed
+
 
 func _index_pockets() -> void:
 	_pockets.clear()
