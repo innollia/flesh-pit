@@ -58,9 +58,10 @@ static func get_candidates(main: Node3D) -> Array:
 	var can: Node3D = main.nearest_rest_can(1.4)
 	if can != null:
 		candidates.append(["rest_can", can.global_position, 12.0, 1.4])
-	# a rest bucket: teeth to pick out of it, or teeth in the hand to put in
+	# a rest bucket: teeth to pick out of it, or teeth the hand picked out
+	# of it to put back (a bucket with neither is nothing to reach for)
 	var bucket: int = main.nearest_rest_bucket(1.6)
-	if bucket >= 0 and (int(main.rest_teeth[bucket]) > 0 or main.progression.teeth_in_hand > 0):
+	if bucket >= 0 and (int(main.rest_teeth[bucket]) > 0 or int(main.rest_bucket_room(bucket)) > 0):
 		candidates.append(["rest_teeth", main.rest_buckets[bucket], FPTankLid.AIM_DEGREES + 2.0, 1.6])
 	var tumor: Node3D = main._nearest_tumor(1.25)
 	if tumor != null:

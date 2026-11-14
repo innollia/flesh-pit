@@ -226,6 +226,51 @@ func _bucket() -> void:
 	m.stomach.add_flesh(6.0)
 	m.request_vomit()
 	check(m.rest_teeth[0] == 0 and m.stomach.fill == 0.0 and vomits.size() == 2 and vomits[1] == [0, 0] and m.settle_spot_here(), "6 u is no tooth: the bucket stays empty and V works again")
+	# a bucket holds one stomach and no more (decision 0016: not a vault).
+	# The review's way round it: pick the bucket empty, vomit into it again,
+	# put the picked teeth back on top.
+	settle_motions()
+	look(0.0, 0.5)
+	check(prog.teeth_in_hand == 8 and m.rest_bucket_room(0) == 0 and m.put_rest_tooth() == 0 and m.rest_teeth[0] == 0, "a new stomach (even a toothless one) leaves the teeth picked before it no place in the bucket")
+	check(not FPInteractions.get_candidates(m).any(func(cd): return cd[0] == "rest_teeth"), "an empty bucket with no room is nothing to reach for, teeth in the hand or not")
+	m.stomach.add_flesh(100.0)
+	m.request_vomit()
+	settle_motions()
+	look(0.0, 0.5)
+	check(m.rest_teeth[0] == 8 and prog.teeth_in_hand == 8, "fixture: 8 picked and carried, 8 more vomited into the emptied bucket")
+	var stacked := 0
+	for i in range(8):
+		stacked += m.put_rest_tooth()
+	check(stacked == 0 and m.rest_teeth[0] == 8 and prog.teeth_in_hand == 8, "the carried teeth do not go on top: the bucket stays at one stomach (%d put, %d in it)" % [stacked, m.rest_teeth[0]])
+	# the right button over it takes, since there is nothing it may put back
+	await process_frame
+	Input.action_press("fp_pick")
+	m._activate_target("rest_teeth", true, "fp_pick")
+	Input.action_release("fp_pick")
+	m._tooth_op = ""
+	check(m.rest_teeth[0] == 7 and prog.teeth_in_hand == 9 and m.rest_bucket_room(0) == 1, "the right hand over a bucket it may put nothing into takes a tooth (%d, %d)" % [m.rest_teeth[0], prog.teeth_in_hand])
+	check(m.take_rest_tooth() == 1 and m.put_rest_tooth() == 1 and m.put_rest_tooth() == 1 and m.put_rest_tooth() == 0 and m.rest_teeth[0] == 8 and prog.teeth_in_hand == 8, "only the teeth picked out of this stomach go back, and only as many")
+	# teeth that left the hand another way took their room with them
+	check(m.take_rest_tooth() == 1 and m.take_rest_tooth() == 1 and m.rest_bucket_room(0) == 2, "fixture: two picked, room for two")
+	var room_save: Dictionary = m.serialize()
+	check((room_save["rest_room"] as Array)[0] == 2, "the room is in the save")
+	prog.teeth_in_hand = 0 # all handed over (the tank, the vent, a death)
+	m._update_rest_teeth()
+	prog.teeth_in_hand = 10 # others, from the tank or another bucket
+	check(m.rest_bucket_room(0) == 0 and m.put_rest_tooth() == 0 and m.rest_teeth[0] == 6, "teeth from elsewhere have no place in it")
+	m.rest_teeth[1] = 4
+	m.player.global_position = m.rest_stand_point(1)
+	settle_motions()
+	look(0.0, 0.0)
+	check(m.nearest_rest_bucket(1.6) == 1 and m.put_rest_tooth() == 0 and m.rest_teeth[1] == 4, "nor in another rest's bucket")
+	m.rest_teeth[1] = 0
+	m.player.global_position = m.rest_stand_point(0)
+	settle_motions()
+	look(0.0, 0.5)
+	# back to eight carried and an empty bucket for what follows
+	m.rest_teeth[0] = 0
+	m.rest_room[0] = 0
+	prog.teeth_in_hand = 8
 	# what the buttons do with the palm full
 	settle_motions()
 	look(0.0, 0.5)

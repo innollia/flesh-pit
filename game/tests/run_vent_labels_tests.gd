@@ -81,7 +81,8 @@ func run() -> void:
 	ids.append("junk")
 	for id in ids:
 		check(FPOfferLabels.item_name(id) != id and FPOfferLabels.item_name(id) != "", "name for %s" % id)
-		check(FPOfferLabels.item_use(id) != "", "use line or its key for %s" % id)
+		check(FPOfferLabels.item_use(id) != "" or FPOfferLabels.item_use_key(id) != "", "use line or its key for %s" % id)
+		check(not FPOfferLabels.item_use(id).contains("item.") and FPOfferLabels.item_use(id) != FPOfferLabels.item_use_key(id), "%s: the placeholder key is never the line on its tag (%s)" % [id, FPOfferLabels.item_use(id)])
 	check(FPOfferLabels.head_text(["knife", "barrier"], "knife").ends_with("×1"), "one pick gives one")
 	m.player.global_position = Vector3(0.3, 0.9, 0.3)
 	await physics_frame
@@ -110,6 +111,20 @@ func run() -> void:
 		offer(group)
 		await wait(1.2)
 		layout_ok(", ".join(group))
+	# an item whose line is not written shows its name alone, never a key
+	FPOfferLabels._data = {"pouch": {"이름": "이빨 주머니", "하는일": "", "하는일_키": "item.pouch.desc"}, "knife": {"이름": "칼", "하는일": "질긴 막과 살을 뜯음", "하는일_키": "item.knife.desc"}}
+	offer(["pouch", "knife"])
+	await wait(1.2)
+	check(m.offer_labels.tags_shown() == 2, "the pouch and the knife are tagged (%d)" % m.offer_labels.tags_shown())
+	var bare: PackedStringArray = m.offer_labels.tag_texts(0)
+	check(bare.size() == 1 and bare[0] == "이빨 주머니 ×1", "an unwritten line leaves the name alone on the tag (%s)" % [bare])
+	check(m.offer_labels.tag_texts(1).size() == 2, "a written line is still the tag's second line")
+	FPOfferLabels._data = {}
+	offer(["pouch", "tumor_bag", "junk"])
+	await wait(1.2)
+	for i in range(3):
+		for line in m.offer_labels.tag_texts(i):
+			check(not line.contains("item."), "no key on tag %d (%s)" % [i, line])
 	# taking one: the rest go back, no tags
 	offer(["knife", "spray_cheap", "barrier"])
 	await wait(1.2)

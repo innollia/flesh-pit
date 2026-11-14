@@ -197,6 +197,10 @@ var rest_points: Array[Vector3] = []
 var rest_halves: Array[Vector3] = []
 var rest_buckets: Array[Vector3] = []
 var rest_teeth: Array[int] = []
+## Teeth picked out of each bucket since its last stomach and not put back:
+## the only room it has. A bucket never holds more than the one stomach
+## vomited into it (decision 0016: it is not a vault).
+var rest_room: Array[int] = []
 var rest_piles: Array[FPRestBucket] = []
 var _world_density_cache: Dictionary = {}
 const WORLD_DENSITY_CACHE_LIMIT := 8192
@@ -465,6 +469,7 @@ func _ready() -> void:
 		rest_piles.append(pile)
 		rest_buckets.append(pile.global_position + Vector3(0, FPRestBucket.MOUTH_Y, 0))
 		rest_teeth.append(0)
+		rest_room.append(0)
 	var spots := FPWorldFeatures.tumor_spots(RESTROOM_CENTER)
 	for i in range(spots.size()):
 		var t := FPWorldFeatures.build_tumor(self, spots[i])
@@ -2112,8 +2117,10 @@ func _activate_target(target: String, right: bool, hold_action: String) -> void:
 		"rest_teeth":
 			# the tank's hand rules: the right hand puts one back when it holds
 			# teeth and takes one when it does not; F and the left take
+			# (it puts back only into the room its own picks left: a bucket
+			# with none takes nothing and the right hand takes too)
 			if right:
-				_start_tooth_op("rest_back" if progression.teeth_in_hand > 0 else "rest_take", "fp_pick")
+				_start_tooth_op("rest_back" if rest_bucket_room(nearest_rest_bucket(1.6)) > 0 else "rest_take", "fp_pick")
 			else:
 				_start_tooth_op("rest_take", hold_action)
 
@@ -2250,6 +2257,7 @@ func nearest_rest_bucket(dist: float) -> int:
 
 ## Bucket piles follow rest_teeth (one tooth per tooth, never a number).
 func _update_rest_teeth() -> void:
+	_trim_rest_room()
 	for i in range(rest_piles.size()):
 		if rest_piles[i].count != rest_teeth[i]:
 			rest_piles[i].set_teeth(rest_teeth[i])
@@ -2728,6 +2736,9 @@ func vomit_at_rest_point(rest: int = -1) -> int:
 	var gain := FPProgression.teeth_for(stomach.vomit() + mutation_apply.take_cud_credit())
 	progression.discard_stomach()
 	rest_teeth[rest] += gain
+	# a new stomach is the bucket's whole measure: teeth picked out of it
+	# before this have no place in it any more
+	rest_room[rest] = 0
 	if opening_view != null:
 		opening_view.hints.vomit_learned = true
 	rest_vomited.emit(rest, gain)
@@ -2750,19 +2761,46 @@ func take_rest_tooth() -> int:
 		belt_refused.emit()
 		return 0
 	rest_teeth[rest] -= 1
+	rest_room[rest] += 1
 	progression.teeth_in_hand += 1
 	if first:
 		hand_motions.play_scoop(rest_buckets[rest])
 		_step_palm_teeth()
 	return 1
 
-## One tooth from the hand (or the pouch) back into the bucket.
+## How many teeth the hand may put into bucket `rest` now: as many as were
+## picked out of it since its last stomach and are still carried. Teeth from
+## the tank, another bucket or an older stomach of this one have no place in
+## it, so no bucket ever holds more than one stomach (decision 0016).
+func rest_bucket_room(rest: int) -> int:
+	if rest < 0 or rest >= rest_room.size():
+		return 0
+	_trim_rest_room()
+	return rest_room[rest]
+
+## The buckets' room is the teeth still carried: teeth that left the hand
+## another way (the tank, the vent, a death) take their room with them.
+func _trim_rest_room() -> void:
+	var total := 0
+	for n in rest_room:
+		total += n
+	while total > maxi(0, progression.teeth_in_hand):
+		var most := 0
+		for i in range(rest_room.size()):
+			if rest_room[i] > rest_room[most]:
+				most = i
+		rest_room[most] -= 1
+		total -= 1
+
+## One tooth from the hand (or the pouch) back into the bucket it was picked
+## out of. A bucket with no room takes nothing.
 func put_rest_tooth() -> int:
 	var rest := nearest_rest_bucket(1.6)
-	if rest < 0 or progression.teeth_in_hand <= 0:
+	if rest_bucket_room(rest) <= 0:
 		return 0
 	progression.teeth_in_hand -= 1
 	rest_teeth[rest] += 1
+	rest_room[rest] -= 1
 	return 1
 
 ## Tank teeth shown as a pile of real teeth in the tank model, one per
@@ -3865,6 +3903,7 @@ func serialize() -> Dictionary:
 		"hand_blood": hand_blood,
 		"deaths": deaths,
 		"rest_teeth": rest_teeth.duplicate(),
+		"rest_room": rest_room.duplicate(),
 		"opening_done": opening_done or not is_opening(),
 		"ended": ended,
 		"tank_lid": tank_lid.serialize() if tank_lid != null else {},
@@ -3947,8 +3986,12 @@ func deserialize(data: Dictionary) -> void:
 	# teeth left in the rest buckets; a list of another length is not this
 	# layout's and every bucket starts empty
 	var saved_teeth: Array = data.get("rest_teeth", []) as Array
+	# (the room each bucket has left is saved with them; a save without it
+	# has none, and a bucket takes back nothing)
+	var saved_room: Array = data.get("rest_room", []) as Array
 	for i in range(rest_teeth.size()):
 		rest_teeth[i] = maxi(0, int(saved_teeth[i])) if saved_teeth.size() == rest_teeth.size() else 0
+		rest_room[i] = maxi(0, int(saved_room[i])) if saved_room.size() == rest_room.size() and saved_teeth.size() == rest_teeth.size() else 0
 	progression.palm_teeth_blocks = false
 	ended = bool(data.get("ended", false))
 	_ending_bite_t = -1.0

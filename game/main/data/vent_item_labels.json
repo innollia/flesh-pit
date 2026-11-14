@@ -1,5 +1,5 @@
 {
- "_안내": "환풍구 거래 때 내민 물건 위에 뜨는 이름표. 이름은 docs/design/economy.md 환풍구 물건 표(잡동사니는 docs/asset-list.md PRP-10)에서 가져옴. 하는일이 비어 있으면 화면에 하는일_키를 그대로 보여 줌. 하는일 문구는 Antigravity(gemini 3.8 flash high)로 만듦.",
+ "_안내": "환풍구 거래 때 내민 물건 위에 뜨는 이름표. 이름은 docs/design/economy.md 환풍구 물건 표(잡동사니는 docs/asset-list.md PRP-10)에서 가져옴. 하는일이 비어 있으면 이름표는 이름 한 줄만 보임(하는일_키는 문구를 쓸 사람이 보는 자리표이고 화면에 나오지 않음). 하는일 문구는 Antigravity(gemini 3.8 flash high)로 만듦.",
  "물건": {
   "barrier": {"이름": "방벽", "하는일": "조여드는 살을 버팀", "하는일_키": "item.barrier.desc"},
   "canary_feed": {"이름": "카나리아 먹이", "하는일": "살 속 새가 더 버팀", "하는일_키": "item.canary_feed.desc"},

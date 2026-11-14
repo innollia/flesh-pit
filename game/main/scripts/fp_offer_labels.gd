@@ -45,13 +45,19 @@ static func item_name(id: String) -> String:
 	var e = _labels().get(id, {})
 	return str(e.get("이름", id)) if e is Dictionary else id
 
-## What the item does; its placeholder key while the line is not written.
+## What the item does, as written in the data file. An item whose line is
+## not written yet has none and its tag is the name alone: the placeholder
+## key is a note for whoever writes the line, never something on screen.
 static func item_use(id: String) -> String:
 	var e = _labels().get(id, {})
 	if not e is Dictionary:
 		return ""
-	var t := str(e.get("하는일", ""))
-	return t if t != "" else str(e.get("하는일_키", ""))
+	return str(e.get("하는일", ""))
+
+## The key the item's line is filed under (data only, never drawn).
+static func item_use_key(id: String) -> String:
+	var e = _labels().get(id, {})
+	return str(e.get("하는일_키", "")) if e is Dictionary else ""
 
 ## How many of `id` taking it from this offer gives (one grant per offered id).
 static func count_for(offers: Array, id: String) -> int:
@@ -76,12 +82,14 @@ func tag_rects() -> Array[Rect2]:
 			out.append(Rect2(t.position, t.size))
 	return out
 
+## The lines tag `i` shows (a line it hides is not one of them).
 func tag_texts(i: int) -> PackedStringArray:
 	var out := PackedStringArray()
 	if i < 0 or i >= _tags.size():
 		return out
 	for l in _tags[i].get_child(0).get_children():
-		out.append((l as Label).text)
+		if (l as Label).visible:
+			out.append((l as Label).text)
 	return out
 
 ## Whether the tags should be up now.

@@ -42,7 +42,9 @@ Main._look_hit()는 맞지 않으면 빈 Dictionary, 맞으면 collider와 세�
 
 쉼터 자리는 `FPWorldFeatures.REST_LAYOUT` 한 표에서 나온다(껍질, 화장실 중심에서의 상자 중심, yaw, 상자 반치수, 의자 위 통). `rest_points(center)`·`rest_halves()`·`rest_yaw(i)`·`rest_loot(i)`·`rest_shell(i)`·`rest_count()`가 읽는 길이고, `world_density(..., rests, halves)`와 `in_container(p, rests, halves)`는 `halves`를 주지 않으면 표에서 다시 만든다(뜨거운 길인 Main은 `rest_halves`를 넘긴다). Main은 `rest_points`·`rest_halves`·`rest_buckets`(양동이 입의 세계 위치)·`rest_teeth`(양동이마다의 이빨 수, 저장됨)를 같은 번호로 가진다.
 
-`Main.rest_vomited(rest: int, teeth: int)`는 쉼터 양동이에 토해 이빨이 그 양동이에 생겼을 때 한 번 난다. 탱크의 `flushed`는 나지 않고 `lever_settled`도 바뀌지 않는다. 양동이 전용 소리가 생길 때까지 `settle_ticked(teeth)`도 같이 난다. `take_rest_tooth()`와 `put_rest_tooth()`는 눈이 향한 1.6 m 안의 양동이에서 이빨 하나를 집거나 내려놓고 옮긴 수(0 또는 1)를 돌려준다. 조준 대상 이름은 `"rest_teeth"`다.
+`Main.rest_vomited(rest: int, teeth: int)`는 쉼터 양동이에 토해 이빨이 그 양동이에 생겼을 때 한 번 난다. 탱크의 `flushed`는 나지 않고 `lever_settled`도 바뀌지 않는다. 양동이 전용 소리가 생길 때까지 `settle_ticked(teeth)`도 같이 난다. `take_rest_tooth()`와 `put_rest_tooth()`는 눈이 향한 1.6 m 안의 양동이에서 이빨 하나를 집거나 내려놓고 옮긴 수(0 또는 1)를 돌려준다. `Main.rest_bucket_room(rest)`는 그 양동이에 지금 내려놓을 수 있는 수다: 마지막으로 토한 위장에서 집어 아직 지닌 이빨의 수이고(`rest_room`, 저장됨), 새 위장을 토하면 0이 되며, 지닌 이빨이 다른 길(탱크·환풍구·죽음)로 줄면 같이 준다. 자리가 0이면 `put_rest_tooth()`는 0을 돌려주고 아무것도 바꾸지 않는다. 조준 대상 이름은 `"rest_teeth"`이고, 양동이에 이빨이 있거나 자리가 있을 때만 후보가 된다. 오른손 버튼은 자리가 있으면 내려놓고 없으면 집는다.
+
+`FPOfferLabels.item_use(id)`는 데이터에 쓰인 하는 일 문구만 돌려준다. 문구가 빈 물건은 이름표가 이름 한 줄이고, 자리표 키(`item_use_key(id)`)는 화면에 나오지 않는다. `tag_texts(i)`는 이름표가 보이는 줄만 돌려준다.
 
 `Main.palm_blocked()`는 화장실 밖에서 주머니 없이 이빨을 지녀 오른손이 묶인 때에 참이고(`FPProgression.palm_teeth_blocks`에 매 프레임 적는다. 저장하지 않는다), `Main.teeth_in_pouch()`는 주머니가 있고 화장실 밖이라 이빨이 허리의 주머니에 있는 때에 참이다. 묶인 동안 `FPInteractions.plan()`은 오른손의 살·도구 행동을 `HOLD_TEETH`로 돌려주고, 손 리그 셋은 `FDKHandsRig.lead_lock`(이끄는 손을 번갈지 않고 고정하는 키트 쪽 값, 게임 상태를 모른다)으로 왼손이 한 입마다 이끈다.
 
