@@ -94,7 +94,7 @@ func run() -> void:
 	for step in range(13):
 		for height in [1.0, 1.5, 2.0, 2.5]:
 			for depth in range(3):
-				if tears.size() >= 75: break
+				if tears.size() >= 150: break
 				var target := Vector3(5.75 + depth * 0.5, height, m.player.global_position.z)
 				aim(target)
 				await frames(2)
@@ -109,19 +109,19 @@ func run() -> void:
 					print("COREPROGRESS cells=",tears.size()," fill=",m.stomach.fill," hairs=",m.progression.total_hairs()," body=",m.player.global_position)
 					var p: Vector3 = tears.back()
 					check(m.shell_at(p) == 0 and m.terrain.density_at(p) < 0.5, "actual core tear %d density removed" % tears.size())
-					if tears.size() % 25 == 0:
+					if tears.size() % 50 == 0:
 						check(is_equal_approx(m.stomach.fill, 100.0), "actual %d cells fills stomach 100" % tears.size())
 						check(m.progression.total_hairs() > baseline_hair and m.progression.teeth == baseline_teeth, "hair visible before any flush at %d cells" % tears.size())
 						if DisplayServer.get_name() != "headless": await shot("core-fill-%d" % tears.size())
-						if tears.size() < 75:
+						if tears.size() < 150:
 							key(KEY_V, true)
 							await frames(3)
 							key(KEY_V, false)
 							await frames(150)
 							check(is_zero_approx(m.stomach.fill) and not m.is_settling(), "natural cave V empties stomach without flush")
 							vomits += 1
-			if tears.size() >= 75: break
-		if tears.size() >= 75: break
+			if tears.size() >= 150: break
+		if tears.size() >= 150: break
 		# Actual normal movement along the opened corridor to new wall cells.
 		aim(m.player.camera.global_position + Vector3.RIGHT)
 		var z: float = m.player.global_position.z
@@ -132,7 +132,7 @@ func run() -> void:
 		key(KEY_D, false)
 		await frames(2)
 	print("CORE75 count=",tears.size()," pos=",m.player.global_position," hair=",m.progression.total_hairs()," vomits=",vomits," deaths=",m.deaths)
-	check(tears.size() == 75 and vomits == 2, "75 actual LMB cells over three normal fills")
+	check(tears.size() == 150 and vomits == 2, "150 actual LMB cells over three normal fills (a cell is 2 units)")
 	check(m.progression.hairs(FPProgression.biome_for_shell(0)) == 6, "actual core 300 grows six biome hairs")
 	check(m.progression.hairs(FPProgression.COMMON) == 2, "actual core 300 grows two common hairs")
 	check(m.progression.total_hairs() - baseline_hair == 8 and m.progression.teeth == baseline_teeth, "six plus two hairs before flush")

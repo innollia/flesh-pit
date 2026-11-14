@@ -70,8 +70,8 @@ func _run_params() -> void:
 		_assert(base.mutation_info.has(id), "spec mutation %s defined" % id)
 	_assert(not base.mutation_info.has("M11") and not base.mutation_info.has("thick_skin"), "deleted M11 and the old placeholder list are gone")
 	# costs by branch (04-economy.md 2)
-	_assert(base.cost_in("M01", "common") == 12 and base.cost_in("M07", "core") == 6 and base.cost_in("M14", "mantle") == 10 and base.cost_in("M21", "surface") == 15, "branch costs 12 / 6 / 10 / 15")
-	_assert(base.cost_in("M28", "core") == 9 and base.cost_in("M28", "mantle") == 15 and base.cost_in("M28", "surface") == -1, "combination costs 1.5x of either biome")
+	_assert(base.cost_in("M01", "common") == 24 and base.cost_in("M07", "core") == 12 and base.cost_in("M14", "mantle") == 20 and base.cost_in("M21", "surface") == 30, "branch costs 24 / 12 / 20 / 30 (decision 0012)")
+	_assert(base.cost_in("M28", "core") == 18 and base.cost_in("M28", "mantle") == 30 and base.cost_in("M28", "surface") == -1, "combination costs 1.5x of either biome")
 	# one parameter check per mutation (W30)
 	_assert(is_equal_approx(_with("M01").capacity(), 120.0), "M01 capacity +20")
 	_assert(is_equal_approx(_with("M02").overfill_chew_multiplier(), 2.4), "M02 overfill chew 3.0 -> 2.4")
@@ -450,7 +450,7 @@ func _run_mirror() -> void:
 	var before := prog.purchased_mutations().size()
 	_assert(mir.buy_current() == "" and mir.body.is_red("face") and prog.purchased_mutations().size() == before, "a part without enough hairs blinks red")
 	# keyboard only: move to the right hand, pick M10, buy it
-	prog.mutation_tree.add_points("core", 6)
+	prog.mutation_tree.add_points("core", prog.cost_in("M10", "core"))
 	var guard := 0
 	while mir.current_part() != "right_hand" and guard < 20:
 		_key(m, "ui_right")

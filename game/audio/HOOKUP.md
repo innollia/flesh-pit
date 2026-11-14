@@ -12,6 +12,7 @@
 그 한 줄이 하는 일(`audio/fp_audio_hookup.gd`):
 - 키트 `FDKAudioDirector` 생성, `res://audio/manifest.json` 로드
 - `chewer`(grab_started/cell_torn/released), `stomach`(fill_changed, vomited), `player`(footstep_bob) 구독
+- 매 프레임 `stomach.overfill_ratio()`를 읽어 발소리의 높이(`director.step_pitch_scale`, 과식 끝 0.85배)와 크기(`step_weight_db`, +3 dB)를 넣는다. 읽기만 하고 걸음 간격은 그대로다
 - 화장실 안/밖으로 배경·발 표면 전환, 깊이 껍질(RESTROOM_CENTER 거리 / SHELL_THICKNESS)로 깊은 배경·이정표
 - `restroom.is_door_open()`, `restroom._lid_target`, `main._coin_t`, `main.is_settling()` 변화를 읽어 문·뚜껑·동전·물 내림
 - `mutation_points / 400`을 3단계로 나눠 발걸음·씹기 변화
@@ -40,7 +41,7 @@
 - FPToiletSettlement.tank_rattle_started(duration, tumor): 물탱크 달그락 소리. 길이는 duration(종양이면 훨씬 김).
 - FPVent.line_spoken(line_id): 환풍구 존재 음성/자막. id와 한국어 문장은 game/main/data/vent_lines.json.
 
-- (세션 D) 수축 조직 조임 경고: FDKTerrainField.contraction_warning(world_pos: Vector3) 신호가 플레이어에게 가장 가까운 조이는 모서리의 조임 1.3초 전(FDKTissueRules.CONTRACT_WARN)에 청크마다 한 번 뜬다. world_pos는 그 모서리다. contract_warn이 연결돼 있다(fp_audio_hookup).
+- (세션 D) 수축 조직 조임 경고: FDKTerrainField.contraction_warning(world_pos: Vector3) 신호가 플레이어에게 가장 가까운 조이는 모서리의 조임 1.5초 전(FDKTissueRules.CONTRACT_WARN)에 청크마다 한 번 뜬다. world_pos는 그 모서리다. contract_warn이 연결돼 있다(fp_audio_hookup).
 ## 세션 C (거울·변이·종양)
 
 - `main.mirror` 신호 `mutated(id)`: 거울에서 변이를 산 순간. 털이 팔에서 빠지는 소리 + 몸이 바뀌는 소리. id가 `T1`~`T7`이면 종양 혹이 터지듯 자라는 소리.

@@ -68,7 +68,7 @@ static var ABSURD_MIN: int = int(_lim("ABSURD_MIN", 32))
 static var LOTS_MULT: float = _lim("LOTS_MULT", 1.5)
 static var LITTLE_STREAK: int = int(_lim("LITTLE_STREAK", 2))
 static var BLOOD_REMARK: float = _lim("BLOOD_REMARK", 0.5)
-static var HAIRS_REMARK: int = int(_lim("HAIRS_REMARK", 20))
+static var HAIRS_REMARK: int = int(_lim("HAIRS_REMARK", 40))
 static var LONG_ABSENT_MULT: float = _lim("LONG_ABSENT_MULT", 5.0)
 
 static var FRANTIC_TIME: float = _num("FRANTIC_TIME", 20.0)

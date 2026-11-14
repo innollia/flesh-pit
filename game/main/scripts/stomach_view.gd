@@ -12,7 +12,7 @@ const PILE_MAX := 14
 ## A swallow lands this long after its tear (the swallow sound's delay).
 const SWALLOW_DELAY := 0.3
 ## One cell's worth of flesh is a full kick; the kick settles in this long.
-const KICK_UNITS := 4.0
+const KICK_UNITS := 2.0
 const KICK_TIME := 0.35
 const KICK_QUEUE := 8
 ## A full stomach refusing one more bite: the mass lurches up, the gullet fills.

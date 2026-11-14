@@ -9,7 +9,7 @@ extends RefCounted
 
 ## Tissue ids (stored per cell). 2 was the old fat band, now the fat-cave biome;
 ## MELTED is never stored -- tissue_at reports it for sprayed cells.
-const COMPRESSIVE := 0 ## core shell: puffy flesh, regrows fastest
+const COMPRESSIVE := 0 ## core shell: puffy flesh, regrows faster where solid flesh crowds it
 const NERVE := 1 ## surface shell: yellow nerves packed in
 const LEGACY_FAT := 2
 const MEMBRANE := 3 ## around the restroom and on every shell boundary
@@ -27,7 +27,7 @@ const SHELL_TISSUE := [COMPRESSIVE, CONTRACTILE, NERVE]
 
 const HARDNESS := {COMPRESSIVE: 1.0, NERVE: 1.2, FAT: 0.8, MEMBRANE: 2.0, CONTRACTILE: 1.4,
 	CARTILAGE: 1.8, CLOTH: 1.1, HAIR: 1.3}
-const REGEN := {COMPRESSIVE: 1.5, NERVE: 0.8, FAT: 1.2, MEMBRANE: 0.0, CONTRACTILE: 1.0, MELTED: 0.0,
+const REGEN := {COMPRESSIVE: 1.0, NERVE: 0.8, FAT: 1.2, MEMBRANE: 0.0, CONTRACTILE: 1.0, MELTED: 0.0,
 	CARTILAGE: 0.5, CLOTH: 0.3, HAIR: 1.2}
 
 const BASE_CHEW_TIME := 0.6
@@ -42,7 +42,7 @@ const CONTRACT_HOLD := 1.0
 const CONTRACT_RELEASE := 2.0
 const CONTRACT_GAIN := 0.3
 const CONTRACT_WAVE := 3.0 ## m: one squeeze wave runs along the wall this long
-const CONTRACT_WARN := 1.3 ## the squeeze sound plays this long before it starts
+const CONTRACT_WARN := 1.5 ## the squeeze sound plays this long before it starts
 ## The wall shows the coming squeeze this long before it starts (the terrain
 ## shader's preview, contract_preview below). The sound's lead is CONTRACT_WARN.
 const CONTRACT_SHOW_LEAD := 1.6
@@ -54,8 +54,14 @@ const CONTRACT_WOBBLE := Vector3(0.9, 0.4, 0.35)
 ## Cells below this density count as empty for "touches an empty cell".
 const EMPTY_DENSITY := 0.5
 
-## Knife digs every tissue this much faster.
-const KNIFE_SPEED := 1.6
+## Knife: how much of each tissue's toughness the blade takes out
+## (tear time = base x hardness / weight). 1.0 = same as the bare hand.
+## Keyed by tissue only: mutations (M09, T6) never change a row.
+const KNIFE_SPEED := {COMPRESSIVE: 1.0, FAT: 1.0, NERVE: 1.2, CLOTH: 1.1, HAIR: 1.3,
+	CONTRACTILE: 1.4, CARTILAGE: 1.6, MEMBRANE: 1.6}
+
+static func knife_speed(tissue: int) -> float:
+	return float(KNIFE_SPEED.get(tissue, 1.0))
 
 static func hardness(tissue: int) -> float:
 	return float(HARDNESS.get(tissue, 1.0))
@@ -88,13 +94,14 @@ static func effective_hardness(tissue: int, tool: String, opts: Dictionary = {})
 			h *= 3.0
 	return h
 
-## Seconds one tear takes: base x hardness (x1.5 for a saw stroke) x overfill.
+## Seconds one tear takes: base x hardness (x1.5 for a saw stroke, divided by
+## the knife's weight for that tissue) x overfill.
 static func chew_time(tissue: int, tool: String, overfill_multiplier: float = 1.0, opts: Dictionary = {}) -> float:
 	var t := BASE_CHEW_TIME * effective_hardness(tissue, tool, opts) * overfill_multiplier
 	if tool == "big_saw":
 		t *= SAW_TIME_FACTOR
 	elif tool == "knife":
-		t /= KNIFE_SPEED # the knife digs 1.6x faster
+		t /= knife_speed(tissue)
 	return t
 
 ## Delta scale to feed FDKChewer.process_chew (which already applies the

@@ -173,7 +173,7 @@ func test_actual_eat_and_danger() -> void:
 	var biome: String = FPProgression.biome_for_shell(m.shell_at(center))
 	var multiplier: float = FPProgression.SHELL_MULTIPLIER[biome]
 	# 실제 첫 섭취가 임계값을 넘게 만드는 이미 얻은 소수 잔량 fixture.
-	m.progression.hair_carry[biome] = 50.0 - m.stomach_config.flesh_per_cell * multiplier
+	m.progression.hair_carry[biome] = FPProgression.FLESH_PER_BIOME_HAIR - m.stomach_config.flesh_per_cell * multiplier
 	var before: int = m.progression.hairs(biome)
 	mouse(true)
 	for i in range(150):
@@ -326,14 +326,16 @@ func run() -> void:
 	m.carried_units = {0: 300.0}
 	var before: int = m.progression.total_hairs()
 	m.mutation_apply.gulp()
-	check(m.progression.total_hairs() - before == 8, "운반 핵 300단위 섭취는 즉시 6+2가닥을 지급한다")
+	var gulp_hairs: int = int(floor(300.0 / FPProgression.FLESH_PER_BIOME_HAIR)) + int(floor(300.0 / FPProgression.FLESH_PER_COMMON_HAIR))
+	check(m.progression.total_hairs() - before == gulp_hairs and gulp_hairs == 16, "운반 핵 300단위 섭취는 즉시 12+4가닥을 지급한다")
 	m.mutation_apply.gulp()
-	check(m.progression.total_hairs() - before == 8, "빈 운반 내용 재섭취는 털을 중복 지급하지 않는다")
+	check(m.progression.total_hairs() - before == gulp_hairs, "빈 운반 내용 재섭취는 털을 중복 지급하지 않는다")
 	before = m.progression.total_hairs()
 	m.tissue_tools._blend_amount = 300.0
 	m.tissue_tools._blend_units = {0: 300.0}
 	m.tissue_tools.finish_drink()
-	check(m.progression.total_hairs() - before == 4, "믹서 300단위는 실제 마신 60퍼센트에 해당하는 3+1가닥만 지급한다")
+	var drink_hairs: int = int(floor(180.0 / FPProgression.FLESH_PER_BIOME_HAIR)) + int(floor(180.0 / FPProgression.FLESH_PER_COMMON_HAIR))
+	check(m.progression.total_hairs() - before == drink_hairs and drink_hairs == 9, "믹서 300단위는 실제 마신 60퍼센트(180)에 해당하는 7+2가닥만 지급한다")
 	check(m.nerves.is_empty(), "초기 문 개방에는 신경이 생성되지 않는다")
 	await test_f_and_fixture_inputs()
 	await test_actual_eat_and_danger()

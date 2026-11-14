@@ -90,6 +90,11 @@ var steps_played: int = 0
 ## (footsteps and tears play there, the mouth's own sounds stay on `bus`);
 ## room_bus empty plays everything on `bus`.
 var step_gain_db: float = 0.0
+## How heavy the walker's step is right now, set by a consumer: the pitch
+## every footstep is scaled by and the dB added to its level (1.0 and 0.0 =
+## the plain step).
+var step_pitch_scale: float = 1.0
+var step_weight_db: float = 0.0
 var room_bus: StringName = &""
 var last_step_pitch: float = 1.0
 var last_step_db: float = 0.0
@@ -222,12 +227,13 @@ func play(id: String, world_pos: Variant = null, volume_db: float = 0.0) -> void
 
 ## One footstep: the surface/stage id, each step a little off in pitch and
 ## level (step_pitch_jitter, step_gain_jitter_db) so a walk is not one sample
-## fired again and again, at step_gain_db, on room_bus when set.
+## fired again and again, at step_gain_db (+ step_weight_db, pitch x
+## step_pitch_scale), on room_bus when set.
 func play_step() -> void:
 	_ensure_core()
 	var r := bank.rng
-	last_step_pitch = 1.0 + r.randf_range(-step_pitch_jitter, step_pitch_jitter)
-	last_step_db = step_gain_db + r.randf_range(-step_gain_jitter_db, step_gain_jitter_db)
+	last_step_pitch = step_pitch_scale * (1.0 + r.randf_range(-step_pitch_jitter, step_pitch_jitter))
+	last_step_db = step_gain_db + step_weight_db + r.randf_range(-step_gain_jitter_db, step_gain_jitter_db)
 	_play(footstep_id(), null, last_step_db, last_step_pitch, room_bus if room_bus != &"" else bus)
 
 func _play(id: String, world_pos: Variant, volume_db: float, pitch: float, bus_name: StringName) -> void:

@@ -3,7 +3,7 @@ permanent network takes, for different caps / sprays a can / rest loot.
 Numbers from the code and tools/economy (09-reward-scale.md D08, D17, D18):
   shells: E per shell 18 / 25 / 21.33 (100 u expeditions), teeth 8 per E
   tumours 4 / 5 / 5, 24 teeth each when settled whole, spread evenly
-  one-off tools: knife 16 (core), bag 16 + blender 40 (mantle), saw 80 (surface)
+  one-off tools: knife 8 (core), bag 16 + blender 40 (mantle), saw 80 (surface)
   spray: cheap 8 teeth = n x 0.5 m, deep 24 teeth = n x 1.5 m (deep from
          mantle), n sprays a can (decisions 0005, 0006)
   rest loot: one can on the chair of each rest point, the shell's tier
@@ -17,9 +17,9 @@ spray up to the cap for the nearest unfinished segment of the current shell
 (trunk first, then branches). Teeth per trip = 8 x u/100.
 """
 
-E_SHELL = [18.0, 25.0, 21.33]
+E_SHELL = [18.0, 25.0, 21.25]
 TUMORS = [4, 5, 5]
-TOOLS = [[("knife", 16)], [("bag", 16), ("blender", 40)], [("saw", 80)]]
+TOOLS = [[("knife", 8)], [("bag", 16), ("blender", 40)], [("saw", 80)]]
 TRUNK = [7.5, 8.1, 8.1]
 BRANCH = [[6.0] * 2, [18.0] * 4, [30.0] * 6]
 

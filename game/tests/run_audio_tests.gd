@@ -498,7 +498,7 @@ func _test_creak_behind(d: FDKAudioDirector) -> void:
 	t.dig_at(old_spot, 1.0)
 	_hook.call("_remember_torn", old_spot)
 	var k := 0
-	while t.density_at(old_spot) < 0.3 and k < 2000:
+	while t.density_at(old_spot) < 0.24 and k < 2000:
 		t.regenerate_all(1.0, far, 0.0)
 		k += 1
 	t.dig_at(new_spot, 1.0)
@@ -550,7 +550,7 @@ func _test_one_meaning_assets() -> void:
 		var st := bank.stream("contract_warn", i)
 		longest = maxf(longest, st.get_length() if st != null else 99.0)
 	_ok(longest > 0.5 and longest <= FDKTissueRules.CONTRACT_WARN, "the squeeze warning ends before the squeeze starts (%.2f s in a %.1f s lead)" % [longest, FDKTissueRules.CONTRACT_WARN])
-	_ok(is_equal_approx(FDKTissueRules.CONTRACT_WARN, 1.3) and is_equal_approx(FPProgression.HAIR_WARN_TIME, 2.0), "the squeeze is told 1.3 s ahead, M23's hairs 2.0 s ahead")
+	_ok(is_equal_approx(FDKTissueRules.CONTRACT_WARN, 1.5) and is_equal_approx(FPProgression.HAIR_WARN_TIME, 2.0), "the squeeze is told 1.5 s ahead, M23's hairs 2.0 s ahead")
 	var src := FileAccess.get_file_as_string("res://main/scripts/fp_mirror.gd")
 	_ok(src.contains("\"M23\": \"수축 2초 전에") and not src.contains("1.5초 전"), "M23's line says the lead it has")
 
@@ -614,7 +614,7 @@ func _test_bite_pull() -> void:
 	chewer.last_units = 0.0
 	d._on_cell_torn(Vector3.ZERO)
 	_ok(is_equal_approx(d.last_tear_db, 0.0), "a tear outside the chewer (M22) sounds whole")
-	_ok(is_equal_approx(cfg.base_chew_time, 0.6) and is_equal_approx(cfg.flesh_per_cell, 4.0) and is_equal_approx(d.swallow_delay, 0.3), "chew time, flesh per cell and the swallow's 0.3 s are untouched")
+	_ok(is_equal_approx(cfg.base_chew_time, 0.6) and is_equal_approx(cfg.flesh_per_cell, 2.0) and is_equal_approx(d.swallow_delay, 0.3), "chew time, flesh per cell and the swallow's 0.3 s are untouched")
 	d.free()
 	chewer.free()
 

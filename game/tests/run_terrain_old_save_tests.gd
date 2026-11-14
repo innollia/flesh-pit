@@ -1,5 +1,11 @@
 extends SceneTree
 
+## Old slots are not converted (decision 0012): a real historical v5 file is
+## refused and left as it is, and the run stays a new game. The slot checks
+## that used to run on that file (exact terrain, permanent melt, resumed
+## input, regrowth of a saved hole) run on a slot of the current format that
+## holds the same hole and melt.
+
 var m: Node3D
 var passed := 0
 var failed := 0
@@ -78,12 +84,25 @@ func mouse(held: bool) -> void:
 func run() -> void:
     await process_frame
     m.save_path = copy_path
-    check(m.load_from_disk(),"actual historical load_from_disk")
-    compare_chunks(old_data.terrain,"historical load")
-    check(m.SAVE_VERSION==5,"single-slot format unchanged")
-    check(is_equal_approx(m.terrain_config.regen_rate,0.003),"old slot uses current slower regeneration")
-    check(m.terrain.density_at(HOLE)<0.5,"historical hole remains open")
-    check(m.terrain.is_sealed_at(MELT),"historical permanent melt remains sealed")
+    check(m.SAVE_VERSION==6,"single-slot format is version 6")
+    check(m.has_save_file() and m.save_file_version()==5 and not m.has_current_save(),"historical v5 slot is old: the title offers no continue")
+    var fresh: Dictionary = m.serialize()
+    check(not m.load_from_disk(),"historical v5 slot is refused by load_from_disk")
+    var after_refusal: Dictionary = m.serialize()
+    check(after_refusal.terrain==fresh.terrain and after_refusal.progression==fresh.progression and after_refusal.stomach==fresh.stomach,"a refused old slot leaves the new game as it was")
+    check(m.terrain.density_at(HOLE)>=0.5 and not m.terrain.is_sealed_at(MELT),"the old slot's hole and melt are not in the new game")
+    check(FileAccess.get_sha256(copy_path)==SHA,"refusing the old slot does not rewrite it")
+    check(is_equal_approx(m.terrain_config.regen_rate,0.003),"current slower regeneration")
+    # the same hole and permanent melt, made in this run, in a slot of the current format
+    m.terrain.dig_at(HOLE,1.0)
+    check(m.terrain.spray_sphere(MELT,0.3)>0,"fixture: a permanent melt beside the hole")
+    var slot: Dictionary = m.serialize()
+    check(m.save_to_disk() and m.save_file_version()==m.SAVE_VERSION and m.has_current_save(),"a slot of the current format is offered for continue")
+    m.terrain.dig_at(Vector3(0.25,1.25,7.25),1.0)
+    check(m.load_from_disk(),"actual current-format load_from_disk")
+    compare_chunks(slot.terrain,"current slot load")
+    check(m.terrain.density_at(HOLE)<0.5,"saved hole remains open")
+    check(m.terrain.is_sealed_at(MELT),"saved permanent melt remains sealed")
     var original_density: PackedFloat32Array = m.terrain.get_chunk(Vector3i.ZERO)._original_density.duplicate()
     m.terrain.dig_at(Vector3(0.25,1.25,5.25),1.0)
     m.stomach.add_flesh(8.0)
@@ -118,7 +137,7 @@ func run() -> void:
     await physics_frame
     await process_frame
     var first: Dictionary = m._look_hit()
-    check(not first.is_empty() and first.collider.has_meta("fdk_terrain_chunk"),"actual reachable surface after restoring saved hole")
+    check(not first.is_empty() and first.collider.has_meta("fdk_terrain_chunk"),"actual reachable surface after restoring the saved hole")
     var fill_before: float = m.stomach.fill
     var count_before: int = m.excavated_cells
     mouse(true)
@@ -128,16 +147,16 @@ func run() -> void:
     mouse(false)
     await process_frame
     await process_frame
-    check(torn.size()>=1,"actual LMB tears after historical load")
+    check(torn.size()>=1,"actual LMB tears after a real load")
     check(m.excavated_cells-count_before==torn.size(),"restored gameplay actual tear count")
     check(is_equal_approx(m.stomach.fill-fill_before,torn.size()*m.stomach_config.flesh_per_cell),"restored gameplay food matches actual tears")
     for p in torn: check(m.terrain.density_at(p)<0.5,"restored gameplay removes actual density")
     check(not m.chewer.is_chewing(),"restored gameplay real release cancels")
-    check(m.deaths==int(old_data.get("deaths",0)) and m.hazard.health>0,"no death reset during resumed input")
+    check(m.deaths==0 and m.hazard.health>0,"no death during resumed input")
     var hole_before: float = m.terrain.density_at(HOLE)
     var melt_before: float = m.terrain.density_at(MELT)
     await create_timer(0.5).timeout
-    check(m.terrain.density_at(HOLE)>hole_before,"normal resumed loop continuously regenerates old hole")
+    check(m.terrain.density_at(HOLE)>hole_before,"normal resumed loop continuously regenerates the saved hole")
     check(m.terrain.is_sealed_at(MELT) and is_equal_approx(m.terrain.density_at(MELT),melt_before),"normal resumed loop never heals melted flesh")
     check(m.save_path==copy_path,"one isolated active save path")
     finish()

@@ -742,6 +742,7 @@ CTX_KO = {"core_open": "핵 열린 곳", "core_1cell": "핵 1셀", "core_dead": 
           "core_max_spray": "핵 최대 스프레이(동적 상한)", "core_nerve": "핵 신경",
           "mantle_contr": "맨틀 수축", "surf_nerve": "지표면 신경"}
 SHELL_CONTEXT = ["core_1cell", "mantle_contr", "surf_nerve"]
+TISSUE_KO = {0: "압축", 1: "신경", 2: "옛 지방", 3: "막", 4: "수축", 6: "연골", 7: "천", 8: "털"}
 RHO_PAIRS = [("core_1cell", "core_1cell", "core_bare"), ("core_open", "core_open", "core_bare"),
              ("core_max", "core_max", "core_bare"), ("mantle", "mantle_contr", "mantle_knife"),
              ("surf_bare", "surf_nerve", "surf_bare"), ("surf_knife", "surf_nerve", "surf_knife")]
@@ -780,7 +781,12 @@ class Model:
         self.fpc = f("stomach_config.flesh_per_cell")
         self.H = _intmap(V["progression.TISSUE_HARDNESS"])
         self.R = _intmap(V["tissue_rules.REGEN"])
-        self.knife = f("tissue_rules.KNIFE_SPEED")
+        # 칼: 조직별 가중 표(결정 0012). 숫자 하나면 옛 식(모든 조직 ÷ 그 값)으로 읽는다.
+        ks = V["tissue_rules.KNIFE_SPEED"]
+        self.knife = _intmap(ks) if isinstance(ks, dict) else None
+        self.knife_flat = None if isinstance(ks, dict) else float(ks)
+        # 과식 걸음: 위장이 과식 끝일 때의 걸음 배율(없으면 1.0)
+        self.gwalk = float(V.get("progression.GORGE_WALK_MIN", 1.0))
         self.saw_factor = f("tissue_rules.SAW_TIME_FACTOR")
         self.saw_cells = int(V["tissue_rules.SAW_TEAR_CELLS"])
         sm = V["progression.SHELL_MULTIPLIER"]
@@ -816,9 +822,11 @@ class Model:
         return 1.0 + (self.Om - 1.0) * clamp((f - self.C) / self.Ov, 0.0, 1.0)
 
     def tool_mult(self, tool: str) -> float:
-        return {"bare": 1.0, "knife": 1.0 / self.knife, "saw": self.saw_factor}[tool]
+        return {"bare": 1.0, "knife": 1.0 / (self.knife_flat or 1.0), "saw": self.saw_factor}[tool]
 
     def t_r(self, tissue: int, tool: str, f: float = 0.0) -> float:
+        if tool == "knife" and self.knife is not None:
+            return self.tau * self.H[tissue] / self.knife.get(tissue, 1.0) * self.O(f)
         return self.tau * self.H[tissue] * self.tool_mult(tool) * self.O(f)
 
     def t_r_scn(self, scn: str, f: float = 0.0) -> float:
@@ -881,10 +889,14 @@ class Model:
         return u / self.u_per_m[1 if standing else 0]
 
     def t_back(self, u: float) -> float:
-        return self.d_E(u) / self.crouch
+        return self.d_E(u) / (self.crouch * self.G(u))
+
+    def G(self, u: float) -> float:
+        """과식 걸음 배율: 용량까지 1.0, 과식 끝에서 gwalk."""
+        return 1.0 + (self.gwalk - 1.0) * clamp((u - self.C) / self.Ov, 0.0, 1.0)
 
     def T_E_calc(self, scn: str, u: float) -> tuple[float, float]:
-        base = self.T_dig(scn, u) + 2.0 * self.d_E(u) / self.crouch
+        base = self.T_dig(scn, u) + self.d_E(u) / self.crouch + self.t_back(u)
         return base + self.ritual[0], base + self.ritual[1]
 
     def T_E_basis(self, scn: str, u: float) -> tuple[float, float]:
@@ -1351,8 +1363,13 @@ def build_rows(cx: Context) -> list[Row]:
     add("A02", g, "칼 t_r (핵 / 맨틀 수축 / 지표면 신경)", " / ".join(S(x) for x in kn),
         " / ".join(f"{f2(x / M.tau)} τ" for x in kn), "0.35~1.0 s",
         combine([(SHELL_KO[i], judge(x, 0.35, 1.0)) for i, x in enumerate(kn)])[1],
-        f"칼 ÷{fn(M.knife)}은 명세에 없다({cx.src('tissue_rules.KNIFE_SPEED')}). 06-tools.md:17은 막 1.2 s, 코드는 "
-        f"{S(M.t_r(3, 'knife'))}다. 칼 회수 약 {fu(pb['knife'])} E(D17).",
+        (f"칼은 조직마다 가중이 다르다({cx.src('tissue_rules.KNIFE_SPEED')}, 결정 0012): "
+         + ", ".join(f"{TISSUE_KO.get(t, t)} ÷{fn(w)}" for t, w in sorted(M.knife.items()))
+         + f". 기본 살(압축·옛 지방)은 맨손과 같고, 칼 든 손으로는 주 조직이 전부 τ 근처다. 막은 {S(M.t_r(3, 'knife'))}"
+         + (f", 칼 회수 약 {fu(pb['knife'])} E(D17)." if math.isfinite(pb['knife']) else ". 핵 압축 살에서는 시간 이득이 없어 회수는 열쇠 값(막·수축)으로 본다(D17)."))
+        if M.knife is not None else
+        (f"칼 ÷{fn(M.knife_flat)}은 명세에 없다({cx.src('tissue_rules.KNIFE_SPEED')}). 06-tools.md:17은 막 1.2 s, 코드는 "
+         f"{S(M.t_r(3, 'knife'))}다. 칼 회수 약 {fu(pb['knife'])} E(D17)."),
         ["tissue_rules.KNIFE_SPEED", "progression.TISSUE_HARDNESS", "progression.BASE_CHEW_TIME"])
 
     tr_sb = M.t_r(1, "bare")
@@ -1409,7 +1426,7 @@ def build_rows(cx: Context) -> list[Row]:
             ["progression.BASE_CHEW_TIME", "progression.TISSUE_HARDNESS"], ["F_T6_DOUBLE"])
 
     cps = [M.cells_per_strand(k) for k in range(3)]
-    add("A08", g, "바이옴 털 셀/가닥", " / ".join(f"{fn(x)} c" for x in cps), "P_W ÷ (4 × m_k)", "3~15 c",
+    add("A08", g, "바이옴 털 셀/가닥", " / ".join(f"{fn(x)} c" for x in cps), f"P_W ÷ ({fn(M.fpc)} × m_k)", "3~15 c",
         combine([(SHELL_KO[k], judge(cps[k], 3, 15)) for k in range(3)])[1],
         f"{cx.src('progression.FLESH_PER_BIOME_HAIR')}, {cx.src('stomach_config.flesh_per_cell')}.",
         ["progression.FLESH_PER_BIOME_HAIR", "stomach_config.flesh_per_cell", "progression.SHELL_MULTIPLIER"])
@@ -1474,12 +1491,14 @@ def build_rows(cx: Context) -> list[Row]:
     te = M.t_escape()
     nc = cx.cons.get("contraction_warning", 0)
     need = 0.5 + te
-    add("B02", g, "수축 예고", f"{S(warn)} · 소비자 {nc}", f"필요 ≥ {S(need)}", "L ≥ 0.5 s + t_escape",
-        UNDET if nc == 0 else judge(warn, need),
+    need_g = 0.5 + te / M.gwalk  # 과식 끝: 걸음이 gwalk배라 빠져나가는 데 더 걸린다
+    add("B02", g, "수축 예고", f"{S(warn)} · 소비자 {nc}", f"필요 ≥ {S(need)} (과식 끝 {S(need_g)})", "L ≥ 0.5 s + t_escape",
+        UNDET if nc == 0 else [("보통", judge(warn, need)), ("과식 끝", judge(warn, need_g))],
         (f"미연결이다({cx.at(P_FIELD, 'signal contraction_warning')} 신호에 connect 0개). 명세 02-world-tissue.md:56. "
          f"M23만 {S(float(V['progression.HAIR_WARN_TIME']))} 털 떨림을 준다({cx.src('progression.HAIR_WARN_TIME')}).")
-        if nc == 0 else f"수축 예고 신호 소비자 {nc}개.",
-        ["tissue_rules.CONTRACT_WARN", "hazard_check.hazard_radius", "player_config.crouch_speed"],
+        if nc == 0 else (f"수축 예고 신호 소비자 {nc}개. 과식 끝에서는 걸음 ×{f2(M.gwalk)}({cx.src('progression.GORGE_WALK_MIN')})로 "
+                         f"t_escape가 {S(te / M.gwalk)}다. 과식 걸음은 다른 감속과 곱하지 않는다(business-rules.md)."),
+        ["tissue_rules.CONTRACT_WARN", "hazard_check.hazard_radius", "player_config.crouch_speed", "progression.GORGE_WALK_MIN"],
         ["contraction_warning"])
 
     ns = M.nerve_survival()
@@ -1519,16 +1538,16 @@ def build_rows(cx: Context) -> list[Row]:
     inner_min = min(tc[c] for c in CONTEXTS
                     if CONTEXTS[c][1] == 0 and not CONTEXTS[c][3] and c not in DYNAMIC_CONTEXTS)
     if cx.flag_ok("F_CROWD_COMPRESSIVE_ONLY"):
-        v, memo = UNDET, (
-            f"설계 질문이다. 핵이 지표면보다 빨리 닫히는 것은 승인된 조직 표에서 온다(02-world-tissue.md:37 압축 R "
-            f"{fn(M.R[0])}, :39 신경 R {fn(M.R[1])}). 이웃 배율이 없어도 지표면 ÷ 핵 열린 곳 = {f2(ratio_open)}이고, "
-            f"압축 조직에만 붙는 이웃 배율({cx.at(P_CHUNK, 'm *= crowd_growth_factor(')})이 그 차이를 키운다. "
-            f"02:13의 '안쪽부터 위험이 커진다'와 맞는지는 사용자가 정한다. 핵 막다른 곳 {S(tc['core_dead'])}, "
+        v, memo = IN, (
+            f"결정됨(결정 0012): 핵의 1칸 굴이 가장 먼저 닫히는 것은 닫힘을 첫 원정에서 가르치려는 의도다(사용자). "
+            f"압축 R {fn(M.R[0])}(전에는 1.5)과 압축 조직에만 붙는 이웃 배율({cx.at(P_CHUNK, 'm *= crowd_growth_factor(')})로 "
+            f"핵 넓은 곳 {S(tc['core_open'])}, 1칸 굴 {S(tc['core_1cell'])}, 지표면 {S(tc['surf_nerve'])}다. "
+            f"넓은 곳끼리는 지표면이 먼저 닫힌다(지표면 ÷ 핵 열린 곳 = {f2(ratio_open)}). 핵 막다른 곳 {S(tc['core_dead'])}, "
             f"주변이 먼저 찬 뒤의 동적 상한 {S(tc['core_max'])}.")
     else:
         v, memo = UNDET, cx.flags["F_CROWD_COMPRESSIVE_ONLY"].recheck_memo()
     add("B05", g, "재생 깊이 기울기", f"지표면 {S(tc['surf_nerve'])} / 핵 1셀 {S(tc['core_1cell'])}", f2(ratio),
-        "설계 질문 (대역 없음)", v,
+        "결정됨 (대역 없음)", v,
         memo, ["chunk.CROWD_GAIN", "depth_danger.DANGER_STEP", "tissue_rules.REGEN"], ["F_CROWD_COMPRESSIVE_ONLY"])
 
     b06 = [("핵 열린 곳", "core_open", 0), ("핵 1셀", "core_1cell", 0), ("맨틀", "mantle_contr", 1),
@@ -1569,8 +1588,9 @@ def build_rows(cx: Context) -> list[Row]:
     _, cnt = combine(cases)
     rows.append(Row("B08", g, "귀환 여유 ρ", " · ".join(cur), f"쌍 순서: {', '.join(RHO_KO[n] for n, _, _ in RHO_PAIRS)}",
                     "1.5~4", (" / ".join(disp) + f" (u {', '.join(fn(u) for u in us)})") if cnt != IN or len(set(v for _, v in cases)) > 1 else IN,
-                    cnt, cnt, "ρ = t_close ÷ (T_dig + t_back). t_back = d_E ÷ 웅크림 속도.",
-                    ["terrain_config.regen_rate", "player_config.crouch_speed"]))
+                    cnt, cnt, "ρ = t_close ÷ (T_dig + t_back). t_back = d_E ÷ (웅크림 속도 × 과식 걸음 G(u)). "
+                    "과식 끝(u 160)의 1 아래는 '가득까지는 돌아오고 더 먹으면 길이 닫힌다'는 의도된 값이다(결정 0012).",
+                    ["terrain_config.regen_rate", "player_config.crouch_speed", "progression.GORGE_WALK_MIN"]))
 
     life = [M.barrier_life(k) for k in range(3)]
     ca, ce, sa, se = [], [], [], []
@@ -1679,7 +1699,7 @@ def build_rows(cx: Context) -> list[Row]:
         [(ulab(u), judge(x, 0.2, 0.5)) for u, x in zip(us, ka)],
         f"모든 장면에서 가정 {rng(min(all_a), max(all_a))}, {est_label} {rng(min(all_e), max(all_e))}. "
         f"T_E 180 s에서 κ ≥ 0.2이려면 T_fill ≥ {S(need_fill)}가 필요하고 지금은 {' / '.join(S(x) for x in tf)}다. "
-        "T_E와 κ를 동시에 대역에 넣을 수 없다. 씹는 시간·살 단위·위장 용량을 바꿔 맞추지 않는다(business-rules.md, N3).",
+        "살 단위는 결정 0012로 2 u가 됐다(전에는 4 u).",
         ["progression.BASE_CHEW_TIME", "progression.BASE_CAPACITY"],
         cases_e=[(ulab(u), judge_mid(x[0], x[1], 0.2, 0.5)) for u, x in zip(us, ke)], est_label=est_label)
 
@@ -1778,7 +1798,7 @@ def build_rows(cx: Context) -> list[Row]:
     add("C15", g, "맨손 구간 (핵)", f"문 {fn(M.door)} m → 첫 칼 조직 {f2(bh['end'])} m = {f2(bh['d'])} m",
         f"곧장 판 통로: 웅크림 {fu(bh['crouch_u'])} u = {f2(bh['crouch_u'] / M.C)} C · 서기 {fu(bh['stand_u'])} u",
         "웅크림 ≥ 0.5 C", judge(bh["crouch_u"] / M.C, 0.5),
-        f"L2 규칙(맨손 ≥ 0.5)의 핵 판정이다. 문에서 바깥으로 곧장 웅크림 통로만 파도 위장 절반을 채우고, 나머지는 옆으로 넓혀 채운다. "
+        f"L2 규칙(맨손 ≥ 0.5)의 핵 판정이다. 문에서 바깥으로 곧장 웅크림 통로만 파면 위장의 {f2(bh['crouch_u'] / M.C)} C를 채우고, 나머지는 옆으로 넓혀 채운다. "
         f"핵의 섞임 폭은 {fn(bh['blend'])} m라({cx.src('world_features.BLEND_ZONE')}) 막 띠 앞까지 맨손으로 판다(결정 0008). "
         "섞임 폭이 1.8 m이던 때는 4.8 m·0.38 C였고 2026-10-20 플레이테스트에서 위장 44%에 칼 조직을 만났다.",
         ["world_features.BLEND_ZONE", "world_features.SHELL_THICKNESS", "world_features.BOUNDARY_BAND", "stomach_config.flesh_per_cell"])
@@ -2582,6 +2602,22 @@ def selftest() -> int:
     chk("문 앞 r 추정", ds["r_est"], [0.668, 0.789])
     pb = M.payback()
     chk("회수 칼/톱", [pb["knife"], pb["saw"]], [42.7, 213.3])
+    # 결정 0012의 식: 칼 조직별 가중 표, 과식 걸음, 살 단위 2, 압축 재생 1.0
+    V2 = dict(FIXED_PARAMS)
+    V2.update({"tissue_rules.KNIFE_SPEED": {"0": 1.0, "1": 1.2, "2": 1.0, "3": 1.6, "4": 1.4},
+               "progression.GORGE_WALK_MIN": 0.75, "stomach_config.flesh_per_cell": 2.0,
+               "tissue_rules.REGEN": {"0": 1.0, "1": 0.8, "2": 1.0, "3": 0.0, "4": 1.0, "5": 0.0}})
+    M2 = Model(V2, FIXED_ASSUMPTIONS)
+    chk("칼 표 t_r 압축/신경/막/수축", [M2.t_r(t, "knife") for t in (0, 1, 3, 4)], [0.6, 0.6, 0.75, 0.6])
+    chk("칼 표 과식 끝 t_r 압축", M2.t_r(0, "knife", 160.0), 1.8)
+    chk("과식 걸음 G", [M2.G(u) for u in (50, 100, 130, 160)], [1.0, 1.0, 0.875, 0.75])
+    chk("t_back (4 u/m, 과식 걸음)", [M2.t_back(100), M2.t_back(160)], [16.667, 35.556])
+    chk("T_fill core_bare (살 2)", [M2.T_fill("core_bare", u) for u in (100, 160)], [30.0, 65.4])
+    chk("t_close 핵 열린 곳/1셀 (압축 1.0)", [M2.t_close("core_open"), M2.t_close("core_1cell")], [166.67, 111.11])
+    chk("ρ 핵 1셀 (살 2, 압축 1.0, 과식 걸음)", [M2.rho("core_1cell", "core_bare", u) for u in (100, 160)], [1.80, 0.89])
+    pb2 = M2.payback()
+    chk("칼 표: 핵 압축 살의 시간 이득 0", pb2["dk"], 0.0)
+    chk("칼 표: 회수 무한대", 1.0 if math.isinf(pb2["knife"]) else 0.0, 1.0)
     bh = M.bare_hand_reach()
     chk("핵 맨손 구간 (막 8.1 m − 문 1.5 m, 웅크림 8 u/m)", [bh["d"], bh["crouch_u"]], [6.6, 52.8])
     chk("M16 이빨", M.cud()["teeth"], [7, 6, 6])

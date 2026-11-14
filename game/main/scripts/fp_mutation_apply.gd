@@ -45,6 +45,12 @@ var fisheye: FPFisheyeView ## T5
 var cud_credit := 0.0
 ## Current squeeze speed factor (M19/M20 change it), applied to move speeds.
 var _squeeze_factor := 1.0
+## Gorged walk (FPProgression.gorge_speed_factor) as it lands on the
+## controller: 1.0 while the crush clock runs, and only the part the posture
+## slowdown has not already taken while squeezing past flesh.
+var _gorge_scale := 1.0
+var _base_bob := {}
+var _bob_scale := 1.0
 var echo_view: FPEchoView ## T1
 var _codex_n := -1
 
@@ -54,6 +60,7 @@ func setup(main: Node3D) -> void:
 	m.player.config = m.player.config.duplicate()
 	var c: Resource = m.player.config
 	_base_speed = {"walk_speed": c.walk_speed, "crouch_speed": c.crouch_speed, "climb_speed": c.climb_speed}
+	_base_bob = {"bob_amplitude": c.bob_amplitude, "bob_sway": c.bob_sway}
 	m.died.connect(_on_died)
 	codex = (load("res://main/art/fp_tumor_codex.gd") as GDScript).new()
 	codex.name = "TumorCodex"
@@ -69,14 +76,15 @@ func setup(main: Node3D) -> void:
 	apply_now()
 
 ## Move speeds: base x mutation factor (M14, T7). The squeeze factor (M19,
-## M20) scales walking through the controller, never climbing or the bob.
+## M20) and the gorged walk scale walking through the controller, never
+## climbing.
 func _apply_speeds() -> void:
 	var c: Resource = m.player.config
 	var f: float = m.progression.walk_speed_factor()
 	for k in _base_speed.keys():
 		c.set(k, float(_base_speed[k]) * f)
 	if "move_speed_scale" in m.player:
-		m.player.move_speed_scale = _squeeze_factor
+		m.player.move_speed_scale = _squeeze_factor * _gorge_scale
 	# squeezing past flesh: x0.35 at the tightest, M20 no slowdown, M19 faster
 	c.set("squeeze_speed_min", m.progression.posture_speed_min())
 
@@ -165,6 +173,30 @@ func _step_health(delta: float) -> void:
 	m.hazard.health = h
 	_last_health = h
 
+## A gorged stomach makes the walk heavy: slower legs, a deeper head bob.
+## Never on top of another slowdown: while the crush clock runs the speed is
+## the squeeze factor alone, and against the posture slowdown (ducked and
+## twisted past flesh) only the smaller of the two counts, so the tightest
+## squeeze and the crush escape are as fast as with an empty stomach.
+func _step_gorge(squeezed: bool) -> void:
+	var p: FPProgression = m.progression
+	var c: Resource = m.player.config
+	var over: float = m.stomach.overfill_ratio()
+	var gorge: float = p.gorge_speed_factor(over)
+	var scale := 1.0
+	if not squeezed:
+		var posture: float = lerpf(1.0, float(c.squeeze_speed_min), m.player.squeeze()) if m.player.has_method("squeeze") else 1.0
+		scale = clampf(gorge / maxf(posture, 0.001), gorge, 1.0)
+	if not is_equal_approx(scale, _gorge_scale):
+		_gorge_scale = scale
+		if "move_speed_scale" in m.player:
+			m.player.move_speed_scale = _squeeze_factor * _gorge_scale
+	var bob: float = lerpf(1.0, FPProgression.GORGE_BOB_MAX, clampf(over, 0.0, 1.0))
+	if not is_equal_approx(bob, _bob_scale):
+		_bob_scale = bob
+		for k in _base_bob.keys():
+			c.set(k, float(_base_bob[k]) * bob)
+
 ## Everything a mutation does on its own over time (tests call this).
 func step_timed(delta: float) -> void:
 	var p: FPProgression = m.progression
@@ -177,6 +209,7 @@ func step_timed(delta: float) -> void:
 	if not is_equal_approx(sq, _squeeze_factor):
 		_squeeze_factor = sq
 		_apply_speeds()
+	_step_gorge(squeezed)
 	# M16: the cud stomach shrinks the flesh inside every 60 s
 	if p.has_mutation("M16") and m.stomach.fill > 0.0:
 		_cud_t += delta

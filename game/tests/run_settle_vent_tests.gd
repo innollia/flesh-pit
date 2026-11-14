@@ -199,7 +199,7 @@ func _settlement() -> void:
     m.start_settlement()
     var got: Dictionary = m.flush()
     _assert(prog.teeth == 8 and got["teeth"] == 8, "W04 the lever puts teeth in the tank (%d)" % prog.teeth)
-    _assert(prog.hairs("core") == 2, "W04 the lever grows hairs (core %d)" % prog.hairs("core"))
+    _assert(prog.hairs("core") == int(floor(100.0 / FPProgression.FLESH_PER_BIOME_HAIR)), "W04 the lever grows hairs (core %d)" % prog.hairs("core"))
     _assert(m.toilet.is_rattling() and m.toilet.last_rattle > 0.0, "W04 the tank rattles after the lever")
     var plain: float = m.toilet.last_rattle
     _assert(FPToiletSettlement.rattle_duration(8, 1) > plain * 2.0, "W04 a whole tumor makes the rattle much longer")
@@ -225,25 +225,29 @@ func _hairs() -> void:
         p.on_flesh_eaten(shell, 100)
         p.settle(0.0)
         var b := FPProgression.biome_for_shell(shell)
-        var want: int = [2, 4, 6][shell]
+        # one hair per FLESH_PER_BIOME_HAIR weighted flesh (25: 4 / 8 / 12), one
+        # common hair per FLESH_PER_COMMON_HAIR (75: 1 / 2 / 4) -- decision 0012
+        var weighted: float = 100.0 * float(FPProgression.SHELL_MULTIPLIER[b])
+        var want: int = int(floor(weighted / FPProgression.FLESH_PER_BIOME_HAIR))
+        _assert(want == [4, 8, 12][shell], "hairs: a full stomach in shell %d is worth %d biome hairs" % [shell, want])
         _assert(p.hairs(b) == want, "hairs: one %s expedition grows %d biome hairs (%d)" % [b, want, p.hairs(b)])
-        _assert(p.hairs(FPProgression.COMMON) == [0, 1, 2][shell], "hairs: %s common hair %d" % [b, p.hairs(FPProgression.COMMON)])
+        _assert(p.hairs(FPProgression.COMMON) == int(floor(weighted / FPProgression.FLESH_PER_COMMON_HAIR)) and p.hairs(FPProgression.COMMON) == [1, 2, 4][shell], "hairs: %s common hair %d" % [b, p.hairs(FPProgression.COMMON)])
     var q := FPProgression.new()
     for i in range(3):
         q.on_flesh_eaten(0, 100)
         q.settle(0.0)
-    _assert(q.hairs(FPProgression.COMMON) == 2 and q.hairs("core") == 6, "hairs: fractions carry over (3 core expeditions -> 2 common)")
+    _assert(q.hairs(FPProgression.COMMON) == int(floor(300.0 / FPProgression.FLESH_PER_COMMON_HAIR)) and q.hairs(FPProgression.COMMON) == 4 and q.hairs("core") == 12, "hairs: fractions carry over (3 core expeditions -> 4 common, one more than 3 x 1)")
     var r := FPProgression.new()
     r.on_flesh_eaten(0, 100)
     r.discard_stomach()
     r.settle(0.0)
-    _assert(r.hairs("core") == 2, "hairs: hairs grown while eating stay after vomiting outside (R17)")
+    _assert(r.hairs("core") == int(floor(100.0 / FPProgression.FLESH_PER_BIOME_HAIR)), "hairs: hairs grown while eating stay after vomiting outside (R17)")
     var s := FPProgression.new()
-    s.on_flesh_eaten(0, 30)
+    s.on_flesh_eaten(0, FPProgression.FLESH_PER_BIOME_HAIR * 0.6)
     s.settle(0.0)
     var t := FPProgression.new()
     t.deserialize(s.serialize())
-    t.on_flesh_eaten(0, 20)
+    t.on_flesh_eaten(0, FPProgression.FLESH_PER_BIOME_HAIR * 0.4)
     t.settle(0.0)
     _assert(t.hairs("core") == 1, "hairs: the carried fraction survives a save")
 
@@ -574,7 +578,7 @@ func _reactions() -> void:
     v5.notice("spray")
     _assert(v5.last_line == "weird.spray" and v5.absent_left > 0.0, "W06 spraying the being: it hides")
     # remarks on the player after pay
-    for pair in [[{"died": true}, "player.died"], [{"away": 9999.0}, "player.long_absent"], [{"extra_arm": true}, "player.extra_arm"], [{"mutated": true}, "player.mutated"], [{"blood": 1.0}, "player.blood"], [{"hairs": 30}, "player.hairs"]]:
+    for pair in [[{"died": true}, "player.died"], [{"away": 9999.0}, "player.long_absent"], [{"extra_arm": true}, "player.extra_arm"], [{"mutated": true}, "player.mutated"], [{"blood": 1.0}, "player.blood"], [{"hairs": FPVent.HAIRS_REMARK}, "player.hairs"]]:
         var pv: FPVent = mk.call()
         pv.on_flush()
         pv.open(4)

@@ -22,9 +22,10 @@ const SHELL_MULTIPLIER := {BIOME_CORE: 1, BIOME_MANTLE: 2, BIOME_SURFACE: 3}
 const TEETH_PER_FLESH := 0.08
 const EXPEDITION_TEETH := 8
 ## 실제 섭취한 살에 껍질 배율을 적용해 털을 즉시 지급한다.
-## 한 가닥 미만의 잔량은 다음 섭취로 넘긴다.
-const FLESH_PER_BIOME_HAIR := 50.0
-const FLESH_PER_COMMON_HAIR := 150.0
+## 한 가닥 미만의 잔량은 다음 섭취로 넘긴다. 한 칸이 살 2단위라(결정 0012)
+## 핵 12.5칸, 맨틀 6.25칸, 지표면 약 4.17칸에 색 털 한 가닥이다.
+const FLESH_PER_BIOME_HAIR := 25.0
+const FLESH_PER_COMMON_HAIR := 75.0
 
 ## docs/spec/04-economy.md price guide, in expeditions' earnings. Items without a guide
 ## price (canary feed, tumor bag) are prototype picks, see the report.
@@ -66,9 +67,10 @@ const PARTS: Array[String] = ["face", "neck", "chest", "belly", "right_hand", "l
 
 ## 04-economy.md 2: hairs per mutation by branch (branch -> pool -> cost).
 const BRANCH_POOL := {"common": COMMON, "compressive": BIOME_CORE, "contractile": BIOME_MANTLE, "nerve": BIOME_SURFACE}
-## Core 6 = 3 expeditions of core flesh per compressive mutation (2026-10-14,
-## docs/spec/09-reward-scale.md: biome mutation 2~3 E, core shell 18 E).
-const POOL_COST := {COMMON: 12, BIOME_CORE: 6, BIOME_MANTLE: 10, BIOME_SURFACE: 15}
+## Core 12 = 3 expeditions of core flesh per compressive mutation (one core
+## hair per 25 flesh, so a full stomach grows 4; biome mutation 2.5~3 E,
+## core shell 18 E -- decision 0012 halved the flesh unit and doubled these).
+const POOL_COST := {COMMON: 24, BIOME_CORE: 12, BIOME_MANTLE: 20, BIOME_SURFACE: 30}
 ## Combination: either biome, at 1.5x that biome's value.
 const COMBO_FACTOR := 1.5
 
@@ -308,6 +310,18 @@ func walk_speed_factor() -> float:
 	if _m("T7"):
 		f *= 0.8
 	return f
+
+## Gorging weighs the legs down (decision 0012): walking falls to this share
+## of its speed as the stomach goes from full (capacity) to the overfill cap.
+const GORGE_WALK_MIN := 0.75
+## The head bob grows by this much over the same span (the step stays as long,
+## its beat slows with the speed).
+const GORGE_BOB_MAX := 1.5
+
+## Walk speed share for an overfill ratio (0 at capacity or below, 1 at the
+## cap). FPMutationApply never stacks it on the crush or squeeze slowdowns.
+func gorge_speed_factor(overfill_ratio: float) -> float:
+	return lerpf(1.0, GORGE_WALK_MIN, clampf(overfill_ratio, 0.0, 1.0))
 
 ## Speed factor from squeeze (0..1): normally half at >= 0.5; M20 removes
 ## the slowdown, M19 turns it into a x1.3 push.

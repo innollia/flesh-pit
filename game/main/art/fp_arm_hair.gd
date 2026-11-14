@@ -18,7 +18,7 @@ const SIDES := 12
 ## (at least one while it has any), and the hairs grow longer and thicker,
 ## so more hair always shows on the body (spec 04: the body is the status).
 const MAX_SLOTS := 240
-const SHAGGY_AT := 40
+const SHAGGY_AT := 80
 ## Strands drawn per hair point (mut6: fewer thick rods read as bugs).
 const STRANDS := 3
 ## Hair colour; the kind colour only tints it a little.

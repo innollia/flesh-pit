@@ -205,7 +205,7 @@ func test_actual_eat_and_danger() -> void:
 	var biome: String = FPProgression.biome_for_shell(m.shell_at(center))
 	var multiplier: float = FPProgression.SHELL_MULTIPLIER[biome]
 	# 실제 첫 섭취가 임계값을 넘게 만드는 이미 얻은 소수 잔량 fixture.
-	m.progression.hair_carry[biome] = 50.0 - m.stomach_config.flesh_per_cell * multiplier
+	m.progression.hair_carry[biome] = FPProgression.FLESH_PER_BIOME_HAIR - m.stomach_config.flesh_per_cell * multiplier
 	var before: int = m.progression.hairs(biome)
 	mouse(true)
 	for i in range(150):

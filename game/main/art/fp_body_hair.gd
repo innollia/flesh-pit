@@ -14,7 +14,7 @@ const ArmHair := preload("res://main/art/fp_arm_hair.gd")
 
 ## Arm hair points at which the body is fully hairy. The arm grows past it
 ## (fp_arm_hair MAX_SLOTS, thicker hairs) and the body stays at its fullest.
-const BODY_FULL := 120
+const BODY_FULL := 240
 ## Hair kinds in arm order (fp_arm_hair.gd).
 const KINDS := ["common", "core", "mantle", "surface"]
 

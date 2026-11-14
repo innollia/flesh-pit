@@ -44,7 +44,10 @@ signal carry_refused(world_pos: Vector3)
 ## _step_teeth_nudges); the audio plays a clink of teeth at the tank.
 signal tank_teeth_knocked
 
-const SAVE_VERSION := 5
+## 6 (decision 0012): the flesh unit halved and hair prices doubled. Slots
+## written before it are not converted and not read: load_from_disk refuses
+## them and the title offers only a new game.
+const SAVE_VERSION := 6
 
 const RESTROOM_CENTER := Vector3(0, 1, 0)
 ## The signed density ramp places the flesh surface against the room walls.
@@ -2044,7 +2047,7 @@ func _setup_front_menus() -> void:
 	title_screen.name = "TitleScreen"
 	add_child(title_screen)
 	title_screen.settings_menu = settings_menu
-	title_screen.setup(self, has_save_file())
+	title_screen.setup(self, has_current_save())
 	title_screen.continue_requested.connect(continue_game)
 	title_screen.new_game_requested.connect(new_game)
 	title_screen.settings_requested.connect(open_settings)
@@ -2063,7 +2066,7 @@ func show_title() -> void:
 	_reset_glare()
 	mirror_view.sync(false, has_canary)
 	mirror_view_right.sync(false, has_canary)
-	title_screen.has_save = has_save_file()
+	title_screen.has_save = has_current_save()
 	title_screen.open()
 	# the start screen opens out of shut eyes, as the Esc screen closes them
 	wake_lids.set_eyes(progression.all_mutations(), restroom_field_angle())
@@ -2192,6 +2195,22 @@ func _on_settings_closed() -> void:
 func has_save_file() -> bool:
 	return FileAccess.file_exists(save_path)
 
+## Version of the slot on disk; -1 when there is none or it cannot be read.
+func save_file_version() -> int:
+	if not has_save_file():
+		return -1
+	var f := FileAccess.open(save_path, FileAccess.READ)
+	if f == null:
+		return -1
+	var data = f.get_var()
+	f.close()
+	return int((data as Dictionary).get("version", 1)) if data is Dictionary else -1
+
+## A slot this build continues from. One written before SAVE_VERSION is not
+## (old saves start as a new game, decision 0012).
+func has_current_save() -> bool:
+	return save_file_version() >= SAVE_VERSION
+
 func save_to_disk() -> bool:
 	var temporary := save_path + ".tmp"
 	var f := FileAccess.open(temporary, FileAccess.WRITE)
@@ -2214,6 +2233,8 @@ func load_from_disk() -> bool:
 	f.close()
 	if not data is Dictionary:
 		return false
+	if int((data as Dictionary).get("version", 1)) < SAVE_VERSION:
+		return false # an old slot is not converted: the run starts new
 	deserialize(data)
 	# Restore the actual mesh and collision before input/rendering resumes.
 	# This runs once per load; ordinary digging keeps its frame budget.

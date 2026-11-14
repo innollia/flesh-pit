@@ -1,5 +1,21 @@
 # 현재 상태
 
+## 2026-11-14 경제 재계산 (결정 0012)
+
+지시서 셋(경제 재계산, 칼 가중, 과식 걸음)을 코드에 넣었다. 값과 이유는 `docs/tracking/decisions/0012-economy-recalculation.md`, 규칙은 `docs/business-rules.md`, 감사 표는 `docs/design/economy.md`다.
+
+- 살 단위 4 → 2(`flesh_per_cell`), 털 50 / 150 → 25 / 75, 변이 값 두 배(24 / 12 / 20 / 30), `SHAGGY_AT` 80, `BODY_FULL` 240, `HAIRS_REMARK` 40, `KICK_UNITS` 2.
+- 압축 살 재생 배율 1.5 → 1.0. 핵 1칸 굴 74 → 111초, 넓은 곳 111 → 167초.
+- 칼: 일괄 ÷1.6 대신 조직별 가중 표(`KNIFE_SPEED`). 칼 든 손으로 주 조직 0.6초, 막 0.75초.
+- 과식 걸음: 과식 끝에서 75%(`GORGE_WALK_MIN`), 다른 감속과 곱하지 않음, 머리 흔들림 1.5배, 발소리 0.85배 높이·+3 dB. 수축 예고 소리 1.3 → 1.5초.
+- 저장 version 5 → 6. 앞선 슬롯은 읽지 않고 새 게임으로 시작한다(파일은 그대로 둔다).
+- 계산기: `tools/economy/params.json`을 코드와 맞추고(값 9개, 새 항목 1개, 줄 번호 62개), 칼 표와 과식 걸음을 식에 넣고, `docs/design/economy.md` 감사 표를 다시 썼다. 자체 검사 157개 통과, "가상 값" 없음.
+- 검사(격리 사본, 정상 플레이 저장은 읽지 않음): 새 `run_economy_r2_tests.gd` 32, `run_gorge_walk_tests.gd` 34 통과. 기대값을 고친 묶음: progression_t4 131, tissue_tools 148, audio, terrain_visual 207, mutation(기준선 Tab 자세 4건만 실패), settle_vent(기준선 3건만), restoration_t9 72, main(기준선 7건만), 옛 저장 묶음 넷(terrain_old_save 671, restoration_old_v5 143, historical_progress 32, vent_save 32). 그대로 통과: run_tests, save_load, mutation_wire, body_marks, play_log, biome, regen_regression, crush_t8, barrier_pressure, body_signals, hand_controls, compass_start, chew_stop, surface_pending, surface_regression, ui_polish, dig_regression, solid_dig, vent_teeth, vent_look, vent_labels, nerve_t7, squeeze, ending_bite, live_interactions, controls_hierarchy, motion, belt_reach, menu, preservation. 기준선 그대로 실패: revision 1, belt 3, perf_budget 1, continuation 스크립트 오류. 기준선에 없던 실패 1건(`run_vent_hands_tests.gd`, 환풍구 손바닥)은 이 작업이 고친 파일과 무관해 `findings.md`에 적었다.
+- 굴 시험의 실제 값: 2줄 굴 34걸음, 한 입 2.7초 → 돌아설 때 12걸음 닫힘, 13걸음 다시 뜯어 137.9단위로 귀환(기준 110~150). 한 입 0.9초 → 닫힌 걸음 0.
+- 실행판: 다시 만들지 않았다. 코드와 검사까지다.
+- 사람이 볼 것: (1) 한 입 박자와 원정 길이(`FP_PLAY_LOG`로 기록해 계산기 `--log`로 읽기), (2) 닫힌 굴을 다시 뜯어 돌아오는 것이 버그가 아니라 "닫혔다"로 읽히는지, (3) 과식 걸음 75%·머리 흔들림·발소리가 무겁게 느껴지되 답답하지 않은지, (4) 뜯김·삼킴·털 소리가 같은 살 양에 두 배로 잦아진 것이 시끄럽지 않은지, (5) 팔 털이 자라는 속도가 전과 같아 보이는지, (6) 칼을 든 과식이 전보다 위험해진 것(압사 여유 1.78 → 1.11).
+- 하지 않은 것: 문 앞 첫 길의 조직 바꾸기(안건 9), 굴착 몰입 음악 층, 화장실 음악 층, M15·믹서기의 위장 상한, 못 사는 변이 줄 깜박임, 통로 가장자리 보조(안건 10, 다음 작업). 큰 톱은 그대로다. 화이트보드는 글자만 고쳤고 그림(png)은 다시 내지 않았다.
+
 ## 2026-11-14 주인공 외모 다듬기
 
 사용자 요청 "디자인도 다듬어줘: 3D 모델링" 가운데 주인공 외모 몫이다. 값과 이유는 `docs/design/decisions-log.md` 2026-11-14의 주인공 외모 표, 지금 모습은 `docs/design/controls-display.md` "몸"에 있다.

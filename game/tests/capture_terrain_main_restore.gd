@@ -3,37 +3,58 @@ var m: Node3D
 var passed := 0
 var failed := 0
 var destination: String
+## First frames after a real load show no outside through a saved hole.
+## The historical v5 file is refused (decision 0012: old slots are not
+## converted), so the slot is written here in the current format by a first
+## Main that digs the hole, and a second, fresh Main loads it.
+const HOLE := Vector3(0.25,1.25,4.25)
+const SHA := "71946d862fd19b6e17c9ddd12880c8838b7664da00c07c3e057e052bd6385f02"
+func _new_main() -> Node3D:
+    var made: Node3D = load("res://main/scenes/main.tscn").instantiate()
+    made.user_keybinds_path = "user://keybinds_test_terrain_main_restore.json"
+    made.rest_seed = 1337
+    made.save_path = destination.path_join("copy.bin")
+    return made
 func _init() -> void:
     destination = ProjectSettings.globalize_path("res://../.dryforge/evidence/old-save-gpu")
     DirAccess.make_dir_recursive_absolute(destination)
-    m = load("res://main/scenes/main.tscn").instantiate()
-    m.user_keybinds_path = "user://keybinds_test_terrain_main_restore.json"
-    m.rest_seed = 1337
-    m.save_path = destination.path_join("copy.bin")
     var compressed := FileAccess.get_file_as_bytes("res://tests/fixtures/terrain_old_v5.bin.gz")
     var raw := compressed.decompress(6722764,FileAccess.COMPRESSION_GZIP)
     if raw.size() != 6722764:
         print("0 passed, 1 failed")
         quit(1)
         return
-    var file := FileAccess.open(m.save_path,FileAccess.WRITE)
+    var file := FileAccess.open(destination.path_join("copy.bin"),FileAccess.WRITE)
     file.store_buffer(raw)
     file.close()
-    if FileAccess.get_sha256(m.save_path) != "71946d862fd19b6e17c9ddd12880c8838b7664da00c07c3e057e052bd6385f02":
+    if FileAccess.get_sha256(destination.path_join("copy.bin")) != SHA:
         print("0 passed, 1 failed")
         quit(1)
         return
+    m = _new_main()
     root.add_child(m)
     run.call_deferred()
 func run() -> void:
     await process_frame
     root.size = Vector2i(640,360)
     m.save_path = destination.path_join("copy.bin")
+    if not m.load_from_disk() and not m.has_current_save() and FileAccess.get_sha256(m.save_path) == SHA: passed += 1
+    else: failed += 1
+    m.terrain.dig_at(HOLE,1.0)
+    if m.save_to_disk() and m.has_current_save(): passed += 1
+    else: failed += 1
+    m.queue_free()
+    await process_frame
+    await process_frame
+    m = _new_main()
+    root.add_child(m)
+    await process_frame
+    m.save_path = destination.path_join("copy.bin")
     var loaded: bool = m.load_from_disk()
-    if loaded: passed += 1
+    if loaded and m.terrain.density_at(HOLE) < 0.5: passed += 1
     else: failed += 1
     m.finish_opening()
-    var hole := Vector3(0.25,1.25,4.25)
+    var hole := HOLE
     m.player.global_position = hole-Vector3.UP*m.player.eye_pivot_y(false)
     m.player.velocity = Vector3.ZERO
     m.player._yaw = 0

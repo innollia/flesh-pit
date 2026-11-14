@@ -136,8 +136,10 @@ func _spill() -> void:
 	check(q.barriers == 1 and q.canary_feed == 1, "the inventory is unchanged by the show")
 	v.queue_free()
 
-## A copy of a real historical v5 save (no vent_progress at all) loads, then
-## a held offer and last line go through a real disk save and load.
+## A copy of a real historical v5 save (no vent_progress at all) is refused
+## (decision 0012: old slots are not converted) and the run stays a new game
+## with nothing held; then a held offer and last line go through a real disk
+## save and load of the current format.
 func _old_file() -> void:
 	var path := folder.path_join("old_pending.bin")
 	var bytes := FileAccess.get_file_as_bytes("res://tests/fixtures/restoration_historical_pending_v5.bin.gz").decompress(8611924, FileAccess.COMPRESSION_GZIP)
@@ -145,7 +147,7 @@ func _old_file() -> void:
 	out.store_buffer(bytes)
 	out.close()
 	check(FileAccess.get_sha256(path) == "4b6fee00e487d006f95981d71c766ab3700be7c4e1e3698353fa94c61a9b8fb1", "the copy is the archived historical save")
-	await _load(path)
+	await _load(path, false)
 	check(m.vent.held_offers().is_empty() and m.vent.last_line == "", "old file: nothing held, nothing said")
 	check(not m.serialize().is_empty() and m.serialize().vent_progress.get("held", ["x"]).is_empty(), "old file: saves an empty held offer")
 	var prog: FPProgression = m.progression
@@ -163,7 +165,7 @@ func _old_file() -> void:
 	m.vent.open(0)
 	check(m.vent.offers == o, "the being holds out the same items after the load (%s)" % [m.vent.offers])
 
-func _load(path: String) -> void:
+func _load(path: String, current: bool = true) -> void:
 	if is_instance_valid(m):
 		m.queue_free()
 		await frames(2)
@@ -173,5 +175,8 @@ func _load(path: String) -> void:
 	root.add_child(m)
 	await process_frame
 	m.save_path = path
-	check(m.load_from_disk(), "load " + path.get_file())
+	if current:
+		check(m.load_from_disk(), "load " + path.get_file())
+	else:
+		check(m.save_file_version() == 5 and not m.has_current_save() and not m.load_from_disk(), "old slot refused: " + path.get_file())
 	await frames(2)

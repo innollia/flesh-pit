@@ -4,11 +4,11 @@
 
 save_to_disk()는 현재 단일 슬롯에 저장하며 성공 여부 bool을 반환한다. 기록·이름 변경 실패는 false다. load_from_disk()는 경로가 없거나 열 수 없거나 읽은 값이 Dictionary가 아니면 false이며, 성공하면 상태와 실제 지형 표시·충돌을 복원한다. 정상 플레이 경로 대신 별도 save_path를 지정해 소비자 검사를 실행한다.
 
-Main의 저장 version은5이고 진행의 내부 version은3이다. 지형 payload는 chunks이며 각 청크의 좌표·밀도·조직·sealed·boost를 복원한다. 단일 슬롯을 다른 저장 형식으로 대체하는 변경은 기존 파일 소비자의 호환성을 함께 검증해야 한다. 설정 version1 JSON과 키 배치 JSON은 이 슬롯 payload가 아니다.
+Main의 저장 version은6이고 진행의 내부 version은3이다. version이 6보다 낮은 슬롯은 변환하지 않는다: `Main.load_from_disk`가 거절하고(false) 파일을 건드리지 않으며, 시작 화면은 `Main.has_current_save()`가 참일 때만 이어하기를 내놓는다(`save_file_version()`은 슬롯의 version, 없거나 못 읽으면 -1). 결정 0012. 지형 payload는 chunks이며 각 청크의 좌표·밀도·조직·sealed·boost를 복원한다. 단일 슬롯을 다른 저장 형식으로 대체하는 변경은 기존 파일 소비자의 호환성을 함께 검증해야 한다. 설정 version1 JSON과 키 배치 JSON은 이 슬롯 payload가 아니다.
 
 진행 저장과 죽음 드롭은 `migrated_v5_hairs` 표식으로 구형 털 이전의 중복 적용을 막는다. 표식 없는 구형 `pending_hairs` 값은 이미 껍질 배율을 적용한 가중 살 단위이므로 배율을 다시 곱하지 않고, 바이옴 50단위·공통 150단위 기준과 기존 `hair_carry`로 한 번 이전한다. 새 저장은 표식을 기록하며, 구형 죽음 드롭도 첫 복구 때 이전한 뒤 표식과 빈 `pending_hairs`로 재복구 중복을 막는다. 이미 버려져 저장되지 않은 위장 살은 복원할 수 없고, 그 양을 추측해 털을 다시 만들지 않는다.
 
-실제 섭취 이벤트는 섭취된 살 단위만 털 계산에 전달한다. 들고 있는 살은 아직 섭취량이 아니며, 믹서기는 마시는 시점에 담긴 양의 60%만 섭취로 반영한다. `FDKStomachConfig.flesh_per_cell`의 기본값은 한 셀당 4 살 단위이고 소비자는 설정된 값을 받는다. 대형 톱 한 번은 최대 여섯 셀을 먹는다. 분수 잔여량은 풀별 `hair_carry`에 보존한다.
+실제 섭취 이벤트는 섭취된 살 단위만 털 계산에 전달한다. 들고 있는 살은 아직 섭취량이 아니며, 믹서기는 마시는 시점에 담긴 양의 60%만 섭취로 반영한다. `FDKStomachConfig.flesh_per_cell`의 기본값은 한 셀당 2 살 단위이고 소비자는 설정된 값을 받는다. 대형 톱 한 번은 최대 여섯 셀을 먹는다. 분수 잔여량은 풀별 `hair_carry`에 보존한다.
 
 변기 레버 정산의 `FPProgression.settle()` 결과 모양은 `{teeth, hairs, by_pool}`이며, 현재 `hairs`와 모든 `by_pool` 값은 0이다. Main의 공개 `flushed(teeth_gain, hair_gain)` 신호 모양은 유지되고 레버를 당기면 두 번째 값은 0이다. 털은 실제 먹는 순간 이미 지급되며, 변기 정산은 이빨만 지급한다.
 
@@ -42,7 +42,7 @@ FDKHandsRig.set_reach_point(world_pos)는 실제 접촉이 유지되는 동안 �
 
 FDKHandsRig에 더한 진입점 셋은 부르지 않으면 0이고, 0일 때 기존 IDLE·GRAB·TEAR·SLIP·RELEASE 자세 값은 그대로다. on_reach_short(world_pos)는 조준한 살이 팔보다 멀 때 게임이 매 프레임 부른다. 쉬는 손(IDLE)만 그 점을 향해 REACH_MAX까지 뻗고 손가락은 쉬는 자세 그대로 편 채 0.004 m로 떤다. 마지막 호출 0.12초 뒤 스스로 돌아온다. 쥐지 않으므로 GRAB·SLIP과 환풍구 넛지의 빈손 쥠과 구분된다. set_crush(0..1)은 쉬는 손을 가운데로 0.06 m, 눈 쪽으로 0.04 m 모으고 일하는 손에는 적용되지 않는다. set_strain(0..1)은 GRAB의 당김 떨림 진폭을 최대 2.5배, 주파수를 0.6배까지 바꾼다. 손 리그는 이 값들만 받고 위장·압사·지형을 읽지 않는다.
 
-FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩어리를 한 번 올렸다 내린다(4단위가 최대 한 번, 0.35초). Main.show_swallow(units)가 뜯김 0.3초 뒤(FPStomachView.SWALLOW_DELAY, 삼킴 소리와 같은 지연)로 부르며, 손에 드는 살에는 부르지 않는다. 표시일 뿐 위장 값을 바꾸지 않는다.
+FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩어리를 한 번 올렸다 내린다(2단위가 최대 한 번, 0.35초). Main.show_swallow(units)가 뜯김 0.3초 뒤(FPStomachView.SWALLOW_DELAY, 삼킴 소리와 같은 지연)로 부르며, 손에 드는 살에는 부르지 않는다. 표시일 뿐 위장 값을 바꾸지 않는다.
 
 한 손 도구(믹서기)는 FDKHandsRig.hold_left로 왼손에 쥔다. 손은 빈 채로 화면 아래로 내려갔다가 도구를 쥐고 올라오며, 내려놓을 때는 반대로 간다. 게임은 도구를 왼손 Wrist 자식으로 달고 left_grip_shown()이 참일 때만 보인다. 도구를 카메라 공간에 따로 두면 손보다 먼저 나타나고 걷기 흔들림을 따르지 않는다(2026-11-03).
 
@@ -68,7 +68,7 @@ FDKAudioDirector는 신호를 구독하고 소비자가 준 값을 읽기만 한
 - connect_chewer(chewer)는 grab_started·chew_progress·cell_torn·released를 구독하고 chewer를 보관한다. chew_progress(ratio)는 당김 층 pull_stretch의 음량(`pull_db`, ratio 제곱)과 높이(`pull_pitch`)를 움직이고, cell_torn과 released는 그 층을 바로 끈다. cell_torn의 뜯김은 `chewer.last_units ÷ chewer.config.flesh_per_cell`(0~1)만큼 크고 낮다(`thin_tear_db`, `thin_tear_pitch`). `_on_cell_torn(world_pos, whole := 1.0)`을 직접 부르는 소비자(M22)는 온전한 한 칸으로 난다. 삼킴은 `swallow_delay`(0.3초) 뒤다.
 - 뜯김 id는 `TISSUE_TEAR`가 조직 id(FDKTissueRules)로 고른다: 0 tear_flesh, 1 tear_nerve, 2 tear_fat, 3 tear_membrane, 4 tear_muscle, 6 tear_cartilage, 7 tear_cloth, 8 tear_hair. 표에 없거나 manifest에 없는 id는 tear_flesh다.
 - 재생 삐걱임은 `life_enabled`가 true인 동안만 난다(기본 false, 배경 이름과 무관). `creak_source`(Callable → Vector3 또는 null)가 실제로 자라는 자리를 주고, 소비자가 `life_urgency`(0~1)를 넣으면 간격이 `life_interval` → `life_interval_urgent`, 음량이 −6 → 0 dB로 간다. 이미 뽑아 둔 긴 대기는 지금 urgency의 가장 긴 간격으로 잘린다.
-- 발소리는 footstep_bob의 골짜기마다, `listener`가 직전 골짜기 뒤로 수평 `step_min_travel`(0.12 m) 넘게 움직였을 때만 난다. listener가 없으면 골짜기마다 난다.
+- 발소리는 footstep_bob의 골짜기마다, `listener`가 직전 골짜기 뒤로 수평 `step_min_travel`(0.12 m) 넘게 움직였을 때만 난다. listener가 없으면 골짜기마다 난다. `FDKAudioDirector.step_pitch_scale`(기본 1.0)과 `step_weight_db`(기본 0 dB)는 발소리 한 번의 높이에 곱하고 크기에 더하는 값이며 걸음 간격은 바꾸지 않는다. 게임의 소리 연결이 위장의 과식 비율을 읽어 과식 끝에서 0.85배·+3 dB까지 넣는다(읽기만 한다).
 
 게임 쪽 연결(fp_audio_hookup): `FDKTerrainField.contraction_warning(world_pos)` → contract_warn(그 자리. `world_pos`는 `step_contraction`에 준 점에서 가장 가까운 조이는 모서리이고, 그 모서리의 조임 `CONTRACT_WARN`초 전에 청크마다 한 번 난다), `Main.stomach_refused(world_pos)` → full_refuse(위치 없음), 끼임 이벤트 `squeeze` → squeeze_breath, `Main.crush_progress()` → 상시 층 crush_breath(SFX 버스, 음량 = 진행, 재생 속도 0.9~1.25). 전부 읽기와 구독이다.
 

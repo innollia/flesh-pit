@@ -122,6 +122,10 @@ const ROOMS := {
 ## Footsteps in the flesh, dB: back toward where they sat in the old beds
 ## (own-band margin about 0..+6 dB instead of +1..+9), still over the bed.
 const FLESH_STEP_DB := -3.0
+## A gorged stomach makes each footstep lower and heavier, from capacity (the
+## plain step) to the overfill cap. Read from the stomach, nothing is changed.
+const GORGE_STEP_PITCH := 0.85
+const GORGE_STEP_DB := 3.0
 var _room := ""
 
 func _ready() -> void:
@@ -438,6 +442,11 @@ func _process_inner(_delta: float) -> void:
 	var prog = main.get("progression")
 	if prog != null and prog.has_method("mutation_amount"):
 		director.set_mutation_stage(int(clampf(float(prog.mutation_amount()), 0.0, 0.999) * 3.0))
+	# a gorged stomach weighs on the step (the walk itself slows in the game)
+	var gut = main.get("stomach")
+	var over := clampf(float(gut.overfill_ratio()), 0.0, 1.0) if gut != null and gut.has_method("overfill_ratio") else 0.0
+	director.step_pitch_scale = lerpf(1.0, GORGE_STEP_PITCH, over)
+	director.step_weight_db = lerpf(0.0, GORGE_STEP_DB, over)
 	# the body's bed steps back while a song of the flesh is up (flesh_music.json bed_duck_db)
 	if _flesh_music != null:
 		director.bed_gain_db = float(_flesh_music.call("data").get("bed_duck_db", 0.0)) * flesh_music_level()

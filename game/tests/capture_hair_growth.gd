@@ -30,8 +30,8 @@ func shot(name: String) -> void:
 func look(units: float, name: String) -> void:
 	var eaten := 0.0
 	while eaten < units:
-		m.swallow_torn(1, 4.0)
-		eaten += 4.0
+		m.swallow_torn(1, 2.0)
+		eaten += 2.0
 		await frames(1)
 	m.open_mirror()
 	await frames(50)

@@ -74,7 +74,15 @@ func _unit_tests() -> void:
 	_assert(is_equal_approx(R.chew_time(R.CONTRACTILE, ""), 0.84), "W20 contractile tissue chews in 0.84 s (x1.4)")
 	_assert(is_equal_approx(R.chew_time(R.NERVE, ""), 0.72), "W20 nerve-dense tissue chews in 0.72 s (x1.2)")
 	_assert(is_equal_approx(R.chew_time(R.MEMBRANE, "knife"), 0.75), "W10 membrane with a knife chews in 0.75 s (1.2 / knife x1.6)")
-	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, "knife"), 0.375), "knife digs 1.6x faster (0.6 -> 0.375 s)")
+	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, "knife"), 0.6), "the knife leaves plain flesh at the bare 0.6 s beat")
+	# the knife takes out each tissue's toughness by its own weight (decision 0012)
+	for spec in [[R.COMPRESSIVE, 0.6], [R.FAT, 0.48], [R.NERVE, 0.6], [R.CLOTH, 0.6], [R.HAIR, 0.6], [R.CONTRACTILE, 0.6], [R.CARTILAGE, 0.675], [R.MEMBRANE, 0.75]]:
+		var kt: float = R.chew_time(int(spec[0]), "knife")
+		var bt: float = R.chew_time(int(spec[0]), "")
+		_assert(is_equal_approx(kt, float(spec[1])), "knife tears tissue %d in %.3f s (got %.3f)" % [spec[0], spec[1], kt])
+		_assert(kt <= bt + 0.0001 and kt >= minf(bt, R.BASE_CHEW_TIME) - 0.0001, "the knife is never slower than the bare hand on tissue %d and never under the 0.6 s beat (%.3f against %.3f)" % [spec[0], kt, bt])
+	_assert(is_equal_approx(R.chew_time(R.MEMBRANE, "knife", 1.0, {"thick_nails": true}), 0.75), "M09 does not slow the knife on membrane")
+	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, "knife", 1.0, {"compress_hardness_scale": 0.7}), 0.42), "M08 with a knife is the bare-hand 0.42 s")
 	_assert(not R.can_grab(R.CONTRACTILE, "") and R.can_grab(R.CONTRACTILE, "knife") and R.can_grab(R.CONTRACTILE, "big_saw"), "contractile muscle needs a blade")
 	_assert(is_equal_approx(R.chew_time(R.COMPRESSIVE, "", 3.0), 1.8), "W20 overfill multiplies the chew time")
 	# W10 membrane needs a blade
@@ -132,7 +140,7 @@ func _unit_tests() -> void:
 	_assert(jtorn[0] > 0.0 and absf(jtorn[0] - 0.6) < 0.1, "W29 hold-to-tear (main.gd cell cache) survives sub-cell raycast jitter (got %.2f)" % jtorn[0])
 	jch.free()
 	jf.free()
-	# W20 regrowth multiplier per tissue: compressive 1.5, contractile 1.0, nerve 0.8, membrane 0
+	# W20 regrowth multiplier per tissue: compressive 1.0 (REGEN), contractile 1.0, nerve 0.8, membrane 0
 	var base_regen: float = FDKTerrainConfig.new().regen_rate
 	var rates := {}
 	for tid in [R.COMPRESSIVE, R.CONTRACTILE, R.NERVE, R.MEMBRANE]:
@@ -144,11 +152,12 @@ func _unit_tests() -> void:
 		f.regenerate_all(5.0, Vector3(100, 100, 100), 0.0)
 		rates[tid] = (_corner_density(f, p) - d0) / 5.0
 		f.free()
-	_assert(is_equal_approx(rates[R.COMPRESSIVE], base_regen * 1.5), "W20 compressive regrows at the configured rate x 1.5 (got %.4f)" % rates[R.COMPRESSIVE])
+	_assert(is_equal_approx(R.regen_multiplier(R.COMPRESSIVE), 1.0), "W20 compressive flesh regrows at x1.0 before crowding (decision 0012)")
+	_assert(is_equal_approx(rates[R.COMPRESSIVE], base_regen * R.regen_multiplier(R.COMPRESSIVE)), "W20 compressive regrows at the configured rate x its multiplier (got %.4f)" % rates[R.COMPRESSIVE])
 	_assert(is_equal_approx(rates[R.CONTRACTILE], base_regen * 1.0), "W20 contractile regrows at the configured rate x 1.0 (got %.4f)" % rates[R.CONTRACTILE])
 	_assert(is_equal_approx(rates[R.NERVE], base_regen * 0.8), "W20 nerve-dense regrows at the configured rate x 0.8 (got %.4f)" % rates[R.NERVE])
 	_assert(rates[R.MEMBRANE] == 0.0, "W20 cut membrane never regrows")
-	var refill_seconds := 1.0 / (base_regen * 1.5)
+	var refill_seconds := 1.0 / (base_regen * R.regen_multiplier(R.COMPRESSIVE))
 	_assert(absf(1.0 / rates[R.COMPRESSIVE] - refill_seconds) < 1.0, "W20 a fully eaten compressive cell refills in ~%.1f s" % refill_seconds)
 	# W20 contractile periodic squeeze
 	var cf := _field(func(_p): return R.CONTRACTILE)
@@ -245,8 +254,8 @@ func _unit_tests() -> void:
 		_assert(n > 0 and sf.tissue_at(Vector3(d - 0.25, 0.75, 0.75)) == R.MELTED, "W24 tier %d melts %.1f m in" % [tier, d])
 		_assert(sf.tissue_at(Vector3(d + 0.25, 0.75, 0.75)) != R.MELTED, "W24 tier %d stops at %.1f m" % [tier, d])
 		_assert(sf.tissue_at(Vector3(0.25, 0.75, 1.75)) != R.MELTED, "W24 one spray covers only 0.75 m round the aim")
-		_assert(is_equal_approx(sf.regen_multiplier_at(Vector3(0.5, 0.5, 2.0)), 1.5 * 2.0), "W24 flesh beside the melt regrows x2 (got %.2f)" % sf.regen_multiplier_at(Vector3(0.5, 0.5, 2.0)))
-		_assert(is_equal_approx(sf.regen_multiplier_at(Vector3(0.5, 3.5, 3.5)), 1.5), "W24 flesh farther than 1 m is not sped up")
+		_assert(is_equal_approx(sf.regen_multiplier_at(Vector3(0.5, 0.5, 2.0)), FDKTissueRules.regen_multiplier(FDKTissueRules.COMPRESSIVE) * 2.0), "W24 flesh beside the melt regrows x2 (got %.2f)" % sf.regen_multiplier_at(Vector3(0.5, 0.5, 2.0)))
+		_assert(is_equal_approx(sf.regen_multiplier_at(Vector3(0.5, 3.5, 3.5)), FDKTissueRules.regen_multiplier(FDKTissueRules.COMPRESSIVE)), "W24 flesh farther than 1 m is not sped up")
 		sf.regenerate_all(120.0, Vector3(50, 50, 50), 0.0)
 		_assert(sf.density_at(Vector3(0.25, 0.75, 0.75)) < 0.5, "W24 melted cells never regrow")
 		_assert(can.uses_left == FDKSprayCan.SPRAYS_PER_CAN - 1, "W24 a can sprays SPRAYS_PER_CAN times (6, decision 0006)")
@@ -531,7 +540,7 @@ func _main_tests(m) -> void:
 	_assert(m.place_barrier() == null and tools.spray(false) == -1, "W26 no barrier or spray while sawing")
 	# eaten flesh never exceeds the density a tear removed: a cell that only
 	# partly grew back pays only what grew back (CLAUDE.md, reward scale B12)
-	_assert(is_equal_approx(m.stomach_config.units_for_removed(8.0), 4.0) and is_equal_approx(m.stomach_config.units_for_removed(4.0), 4.0) and is_equal_approx(m.stomach_config.units_for_removed(0.6), 0.6), "a whole cell pays 4, a partly regrown one its share")
+	_assert(is_equal_approx(m.stomach_config.units_for_removed(8.0), 2.0) and is_equal_approx(m.stomach_config.units_for_removed(4.0), 2.0) and is_equal_approx(m.stomach_config.units_for_removed(0.6), 0.3), "a whole cell pays 2, a partly regrown one its share")
 	var regrow := Vector3(3.25, 1.25, 8.75)
 	m.terrain.dig_at(regrow, 1.0)
 	m.terrain.fill_box_uniform(AABB(Vector3(2.99, 0.99, 8.49), Vector3(0.02, 0.02, 0.02)), 0.6, R.COMPRESSIVE)
