@@ -900,6 +900,11 @@ const MODELS := {
         "gather": 0.5, "thumb_root": "thumb_1", "thumb_in": 0.22, "thumb_flex": 0.15,
         "cup": [[10, 18, 12], [14, 24, 14], [19, 30, 16], [24, 34, 18]],
         "seat": Vector2(0.0, -0.07),
+        # one plate per nail has no moon or tip of its own: the tube nail's lighter rose overall
+        "nail_col": Color(0.895, 0.54, 0.58),
+        # its painted flush (fingertips, palm edge, ball of the thumb) toward the tube hand's
+        # SKIN_BLUSH and a breath past it, so the pink reads as it does on the tube fingertips
+        "pad_col": Color(1.0, 0.79, 0.765),
     },
     3: {
         "files": {1.0: "blender_made/vent_hand.glb", -1.0: "blender_made/vent_hand.glb"},
@@ -1055,8 +1060,10 @@ func _model_material(spec: Dictionary, is_nail: bool, facing: float) -> ShaderMa
     var m := ShaderMaterial.new()
     m.shader = sh
     m.set_shader_parameter("skin", Vector3(SKIN.r, SKIN.g, SKIN.b))
-    m.set_shader_parameter("pad", Vector3(SKIN_PAD.r, SKIN_PAD.g, SKIN_PAD.b))
-    m.set_shader_parameter("nail_col", Vector3(NAIL.r, NAIL.g, NAIL.b))
+    var pc: Color = spec.get("pad_col", SKIN_PAD)
+    m.set_shader_parameter("pad", Vector3(pc.r, pc.g, pc.b))
+    var nc: Color = spec.get("nail_col", NAIL)
+    m.set_shader_parameter("nail_col", Vector3(nc.r, nc.g, nc.b))
     m.set_shader_parameter("nail", 1.0 if is_nail else 0.0)
     m.set_shader_parameter("snap", MODEL_SNAP)
     m.set_shader_parameter("facing", facing)
