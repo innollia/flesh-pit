@@ -154,6 +154,12 @@ const SKIN_BLUSH := Color(1.0, 0.815, 0.775)
 const SKIN_CREASE := Color(0.95, 0.79, 0.76)
 ## The knuckles only a breath warmer than the skin round them.
 const SKIN_KNUCKLE := Color(1.0, 0.85, 0.805)
+## The palm side, which is what the eye sees once the hand has turned over:
+## a living flush over the whole palm and the fingers' undersides, a little
+## deeper in the fingertip pads and the ball of the thumb. Colour only: no
+## veins, creases or marks (a blush, never a bruise).
+const SKIN_PALM := Color(1.0, 0.868, 0.842)
+const SKIN_PAD := Color(1.0, 0.82, 0.80)
 ## Nails carry alpha below 1: the being's shader gives them a glossy sheen.
 const NAIL := Color(0.85, 0.44, 0.5, 0.7)
 const NAIL_MOON := Color(0.95, 0.66, 0.68, 0.72)
@@ -195,6 +201,76 @@ const THUMB_TWIST := -62.0
 const CURL_REST := 0.5
 const CURL_GRIP := 1.2
 const JOINT_SHARE := [0.42, 1.0, 0.62]
+## Build B: the same lengths on a hand 8-10 % broader (palm, wrist, fingers,
+## thumb, arm), kept beside the approved slim build A for the user to pick
+## from a side-by-side (docs/tracking/captures/R2_npc_hand). BUILD_B false
+## is build A; `build_b` lets a capture switch before the vent is made.
+const BUILD_B := false
+static var build_b := BUILD_B
+const PALM_HALF_B := 0.0305
+const WRIST_HALF_B := 0.0236
+const FINGERS_X_B := [0.0213, 0.0071, -0.0071, -0.0203]
+const FINGERS_R_B := [0.0070, 0.0072, 0.0068, 0.0058]
+const TAPER_B := 0.75
+const THUMB_R := [0.0078, 0.0071, 0.0057]
+const THUMB_R_B := [0.0085, 0.0077, 0.0062]
+const THUMB_ROOT_X_B := 0.0294
+const WIDE_B := 1.08
+
+static func _palm_half() -> float:
+    return PALM_HALF_B if build_b else PALM_HALF
+
+static func _wrist_half() -> float:
+    return WRIST_HALF_B if build_b else WRIST_HALF
+
+static func _finger_x(i: int) -> float:
+    return float(FINGERS_X_B[i]) if build_b else float(FINGERS[i][0])
+
+static func _finger_r(i: int) -> float:
+    return float(FINGERS_R_B[i]) if build_b else float(FINGERS[i][3])
+
+static func _taper() -> float:
+    return TAPER_B if build_b else TAPER
+
+static func _thumb_r() -> Array:
+    return THUMB_R_B if build_b else THUMB_R
+
+static func _thumb_root() -> Vector3:
+    return Vector3(THUMB_ROOT_X_B, THUMB_ROOT.y, THUMB_ROOT.z) if build_b else THUMB_ROOT
+
+## Sideways scale of the hand-drawn palm, thenar and arm outlines.
+static func _wide() -> float:
+    return WIDE_B if build_b else 1.0
+
+## The offer's motion (2026-11-14). The hand comes down showing its back and
+## nails, and turns over about its own fingers (thumb leading toward the
+## eye, the way a forearm supinates) through this share of the swing.
+const FLIP_FROM := 0.25
+const FLIP_TO := 0.9
+## Each hand out from the middle of the fan starts this much later (share of
+## the offer), so they do not move as one machine.
+const HAND_DELAY := 0.09
+const HAND_DELAY_MAX := 0.36
+## The item's weight: over the last of the swing the wrist dips this far
+## and comes back.
+const SETTLE_FROM := 0.85
+const SETTLE_DIP := 0.012
+## The fingers hang this much more curled until the palm has come up.
+const FOLLOW_CURL := 0.25
+## After the take the hand only closes this far and draws back at its ease;
+## a frantic being (mood 1) still snatches (grip 1, the old times).
+const TAKE_GRIP := 0.45
+const TAKE_GRIP_SECS := 0.28
+const TAKE_RISE_SECS := 0.55
+## Up close the hands open out like a fan from the one opening: the elbow
+## leans in toward the middle (this much, instead of 0.5 outward), so the
+## forearm runs outward, and the wrist tilts the fingers a little further out
+## (radians). The long fingers then lie across the view and are not seen end
+## on, and no hand reaches over its neighbour. The outermost hands of a full
+## row open out only LOOK_FAN_EDGE as much, so they stay in the frame.
+const LOOK_LEAN := 0.45
+const LOOK_DEVIATE := 0.3
+const LOOK_FAN_EDGE := 0.5
 
 var _arms: Node3D
 ## One rig per hand: {root, upper, fore, elbow, hand, palm, slot, fingers, thumb, chir, ...}.
@@ -203,6 +279,8 @@ var _count := 0
 ## Something is on offer (false once taken or cleared: the arms only go up).
 var _wanted := false
 var _extend := 0.0
+## The offer is on its way back up (the last change of _extend went down).
+var _retreat := false
 var _curl := 0.0
 var _hand_tw: Tween
 ## Smoothed middle of the hand cluster (vent frame), snapped on first show.
@@ -291,30 +369,33 @@ func _skin() -> Material:
 ## X edges dip toward +Z (a nail's curve across the finger, the domed back
 ## of the hand). Vertices are shared and indexed, so generate_normals shades
 ## it round, with no facets.
-static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, cols: Array, sides: int, dome0: float = 0.0, dome1: float = 0.0, arch: Array = [], bend: Array = []) -> int:
-    # each ring: [centre, rx, rz, arch, bend, colour]
+static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, cols: Array, sides: int, dome0: float = 0.0, dome1: float = 0.0, arch: Array = [], bend: Array = [], palm_cols: Array = []) -> int:
+    # each ring: [centre, rx, rz, arch, bend, colour, palm-side colour]
     var rs: Array = []
     var n := pts.size()
+    # `palm_cols` (per ring, the last repeating) tints the +Z half of each
+    # ring: the palm side blushes, the back keeps the ring's own colour
     var col_at := func(i: int) -> Color: return cols[mini(i, cols.size() - 1)]
+    var palm_at := func(i: int) -> Color: return palm_cols[mini(i, palm_cols.size() - 1)] if not palm_cols.is_empty() else col_at.call(i)
     var arch_at := func(i: int) -> float: return float(arch[i]) if i < arch.size() else 0.0
     var bend_at := func(i: int) -> float: return float(bend[i]) if i < bend.size() else 0.0
     if dome0 > 0.0:
         var d0: Vector3 = ((pts[0] as Vector3) - (pts[1] as Vector3)).normalized()
         for k in range(4):
             var t := (0.12 + 0.88 * float(k) / 4.0) * PI * 0.5
-            rs.append([(pts[0] as Vector3) + d0 * dome0 * cos(t), float(rx[0]) * sin(t), float(rz[0]) * sin(t), arch_at.call(0), bend_at.call(0) * sin(t), col_at.call(0)])
+            rs.append([(pts[0] as Vector3) + d0 * dome0 * cos(t), float(rx[0]) * sin(t), float(rz[0]) * sin(t), arch_at.call(0), bend_at.call(0) * sin(t), col_at.call(0), palm_at.call(0)])
     for i in range(n):
-        rs.append([pts[i], float(rx[i]), float(rz[i]), arch_at.call(i), bend_at.call(i), col_at.call(i)])
+        rs.append([pts[i], float(rx[i]), float(rz[i]), arch_at.call(i), bend_at.call(i), col_at.call(i), palm_at.call(i)])
     if dome1 > 0.0:
         var d1: Vector3 = ((pts[n - 1] as Vector3) - (pts[n - 2] as Vector3)).normalized()
         var cl: Color = col_at.call(n - 1)
         for k in range(1, 5):
             var t := (1.0 - 0.88 * float(k) / 4.0) * PI * 0.5
-            rs.append([(pts[n - 1] as Vector3) + d1 * dome1 * cos(t), float(rx[n - 1]) * sin(t), float(rz[n - 1]) * sin(t), arch_at.call(n - 1), bend_at.call(n - 1) * sin(t), cl])
+            rs.append([(pts[n - 1] as Vector3) + d1 * dome1 * cos(t), float(rx[n - 1]) * sin(t), float(rz[n - 1]) * sin(t), arch_at.call(n - 1), bend_at.call(n - 1) * sin(t), cl, palm_at.call(n - 1)])
     for r in rs:
-        st.set_color(r[5])
         for j in range(sides):
             var a := TAU * float(j) / float(sides)
+            st.set_color((r[5] as Color).lerp(r[6], smoothstep(0.0, 0.6, sin(a))))
             var x := cos(a) * float(r[1])
             var y := float(r[3]) * (-x if x < 0.0 else x * 0.33)
             var cx := cos(a)
@@ -337,7 +418,7 @@ static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, 
     # the poles: one vertex closing each dome
     if dome0 > 0.0:
         var d0: Vector3 = ((pts[0] as Vector3) - (pts[1] as Vector3)).normalized()
-        st.set_color(col_at.call(0))
+        st.set_color((col_at.call(0) as Color).lerp(palm_at.call(0), 0.5))
         st.add_vertex((pts[0] as Vector3) + d0 * dome0)
         for j in range(sides):
             st.add_index(base + count)
@@ -346,7 +427,7 @@ static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, 
         count += 1
     if dome1 > 0.0:
         var d1: Vector3 = ((pts[n - 1] as Vector3) - (pts[n - 2] as Vector3)).normalized()
-        st.set_color(col_at.call(n - 1))
+        st.set_color((col_at.call(n - 1) as Color).lerp(palm_at.call(n - 1), 0.5))
         st.add_vertex((pts[n - 1] as Vector3) + d1 * dome1)
         var last := base + (rs.size() - 1) * sides
         for j in range(sides):
@@ -400,17 +481,19 @@ func _build_meshes() -> void:
     # forearm, built one unit long from the wrist (0) up to the elbow (1);
     # the rig stretches it along Y to the real length. Slim at the wrist,
     # swelling softly toward the elbow, a flat oval that turns with the hand.
-    var wr := WRIST_HALF
+    var wr := _wrist_half()
+    var ph := _palm_half()
+    var wd := _wide()
     _tube(st, 0, [Vector3(0, -0.03, 0), Vector3(0, 0.06, 0), Vector3(0, 0.2, 0), Vector3(0, 0.5, 0), Vector3(0, 0.8, 0), Vector3(0, 1.0, 0)], [wr * 0.98, wr * 1.04, wr * 1.14, wr * 1.3, wr * 1.34, wr * 1.26], [wr * 0.64, wr * 0.68, wr * 0.8, wr * 1.0, wr * 1.06, wr * 1.06], [SKIN, SKIN, SKIN, SKIN, SKIN, SKIN_SHADE], 18)
     _meshes["fore"] = _smooth_finish(st)
     # upper arm, built one unit long from the elbow (0) up to the shoulder in
     # the duct (1); slim, round, a little fuller toward the shoulder
     st = _smooth_begin()
-    _tube(st, 0, [Vector3(0, -0.02, 0), Vector3(0, 0.25, 0), Vector3(0, 0.6, 0), Vector3(0, 1.0, 0), Vector3(0, 1.3, 0)], [0.027, 0.03, 0.032, 0.033, 0.033], [0.026, 0.029, 0.031, 0.032, 0.032], [SKIN_SHADE, SKIN, SKIN, SKIN_SHADE], 18)
+    _tube(st, 0, [Vector3(0, -0.02, 0), Vector3(0, 0.25, 0), Vector3(0, 0.6, 0), Vector3(0, 1.0, 0), Vector3(0, 1.3, 0)], [0.027 * wd, 0.03 * wd, 0.032 * wd, 0.033 * wd, 0.033 * wd], [0.026 * wd, 0.029 * wd, 0.031 * wd, 0.032 * wd, 0.032 * wd], [SKIN_SHADE, SKIN, SKIN, SKIN_SHADE, SKIN_SHADE], 18)
     _meshes["upper"] = _smooth_finish(st)
     # the elbow, a soft round joint where the two meet
     st = _smooth_begin()
-    _tube(st, 0, [Vector3(0, -0.01, 0), Vector3(0, 0.01, 0)], [0.0275, 0.0275], [0.027, 0.027], [SKIN_SHADE], 18, 0.017, 0.017)
+    _tube(st, 0, [Vector3(0, -0.01, 0), Vector3(0, 0.01, 0)], [0.0275 * wd, 0.0275 * wd], [0.027 * wd, 0.027 * wd], [SKIN_SHADE], 18, 0.017 * wd, 0.017 * wd)
     _meshes["elbow"] = _smooth_finish(st)
     # wrist and palm: the slim wrist widening in a soft curve to the
     # knuckles, its end in a gentle arc down toward the little finger and
@@ -419,7 +502,7 @@ func _build_meshes() -> void:
     # index root. No separate knuckle bumps: only a flush of colour there.
     st = _smooth_begin()
     var ys := [0.016, 0.006, -0.006, -0.019, -0.032, -0.045, -0.057, -0.066, -0.073, -0.079]
-    var rx := [wr * 0.9, wr * 0.92, wr * 0.97, PALM_HALF * 0.84, PALM_HALF * 0.9, PALM_HALF * 0.95, PALM_HALF * 0.985, PALM_HALF, PALM_HALF * 0.985, PALM_HALF * 0.94]
+    var rx := [wr * 0.9, wr * 0.92, wr * 0.97, ph * 0.84, ph * 0.9, ph * 0.95, ph * 0.985, ph, ph * 0.985, ph * 0.94]
     var rz := [wr * 0.6, wr * 0.6, 0.0118, 0.0121, 0.0124, 0.0124, 0.012, 0.0114, 0.0107, 0.0099]
     var bend := [0.0, 0.0004, 0.0016, 0.0026, 0.0032, 0.0034, 0.0032, 0.0028, 0.0022, 0.0016]
     var arch := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.02, 0.07, 0.16, 0.24]
@@ -427,14 +510,17 @@ func _build_meshes() -> void:
     for k in range(ys.size()):
         pts.append(Vector3(0, float(ys[k]), 0.0005))
     var cols: Array = []
+    var pcols: Array = []
     for k in range(ys.size()):
         cols.append(SKIN if k < ys.size() - 2 else SKIN_KNUCKLE)
-    var vi := _tube(st, 0, pts, rx, rz, cols, 24, 0.0, 0.0065, arch, bend)
-    # the thenar mound along the thumb's metacarpal
-    var tr := THUMB_ROOT
-    vi = _tube(st, vi, [Vector3(0.008, -0.002, 0.003), Vector3(0.0145, -0.013, 0.0052), Vector3(0.0205, -0.025, 0.0064), Vector3(0.025, -0.034, 0.0066), tr], [0.0085, 0.0108, 0.0108, 0.0094, 0.0082], [0.0068, 0.0084, 0.0086, 0.0082, 0.0076], [SKIN], 16, 0.004, 0.004)
+        # the wrist stays pale; the palm blushes, most at its heel and under the knuckles
+        pcols.append(SKIN if k < 2 else SKIN_PAD if k == 3 or k == ys.size() - 3 else SKIN_PALM)
+    var vi := _tube(st, 0, pts, rx, rz, cols, 24, 0.0, 0.0065, arch, bend, pcols)
+    # the thenar mound along the thumb's metacarpal, its ball the rosiest
+    var tr := _thumb_root()
+    vi = _tube(st, vi, [Vector3(0.008 * wd, -0.002, 0.003), Vector3(0.0145 * wd, -0.013, 0.0052), Vector3(0.0205 * wd, -0.025, 0.0064), Vector3(0.025 * wd, -0.034, 0.0066), tr], [0.0085, 0.0108, 0.0108, 0.0094, 0.0082], [0.0068, 0.0084, 0.0086, 0.0082, 0.0076], [SKIN], 16, 0.004, 0.004, [], [], [SKIN_PALM, SKIN_PAD, SKIN_PAD, SKIN_PALM, SKIN_PALM])
     # the web from the thumb's root to the index knuckle, thin and soft
-    vi = _tube(st, vi, [tr + Vector3(0.001, -0.004, -0.0006), Vector3(0.0262, -0.054, 0.004), Vector3(0.0232, -0.066, 0.0026)], [0.0066, 0.0056, 0.0042], [0.0044, 0.0038, 0.0032], [SKIN], 14, 0.003, 0.003)
+    vi = _tube(st, vi, [tr + Vector3(0.001, -0.004, -0.0006), Vector3(0.0262 * wd, -0.054, 0.004), Vector3(0.0232 * wd, -0.066, 0.0026)], [0.0066, 0.0056, 0.0042], [0.0044, 0.0038, 0.0032], [SKIN], 14, 0.003, 0.003, [], [], [SKIN_PALM])
     _meshes["palm"] = _smooth_finish(st)
     _meshes["palm_l"] = _mirrored(_meshes["palm"])
     # the palm's skin under the item seat: the highest palm-side point there
@@ -446,42 +532,49 @@ func _build_meshes() -> void:
     for i in range(FINGERS.size()):
         var f: Array = FINGERS[i]
         var length: float = f[2]
-        var r: float = f[3]
-        var rm := lerpf(r, r * TAPER, 0.48)
-        var rd := lerpf(r, r * TAPER, 0.78)
-        _meshes["f%d_0" % i] = _bone_mesh(length * PHALANX[0], r, rm * 1.02, false, SKIN_CREASE)
+        var r := _finger_r(i)
+        var tp := _taper()
+        var rm := lerpf(r, r * tp, 0.48)
+        var rd := lerpf(r, r * tp, 0.78)
+        # both ends of a joint share one radius (see _bone_mesh)
+        _meshes["f%d_0" % i] = _bone_mesh(length * PHALANX[0], r, rm, false, SKIN_CREASE)
         _meshes["f%d_1" % i] = _bone_mesh(length * PHALANX[1], rm, rd, false, SKIN)
-        _meshes["f%d_2" % i] = _bone_mesh(length * PHALANX[2], rd, r * TAPER, true, SKIN)
-    _meshes["thumb_p"] = _bone_mesh(THUMB_LEN * 0.53, 0.0078, 0.0071, false, SKIN)
-    _meshes["thumb_d"] = _bone_mesh(THUMB_LEN * 0.47, 0.0071, 0.0057, true, SKIN)
+        _meshes["f%d_2" % i] = _bone_mesh(length * PHALANX[2], rd, r * tp, true, SKIN)
+    var thr := _thumb_r()
+    _meshes["thumb_p"] = _bone_mesh(THUMB_LEN * 0.53, float(thr[0]), float(thr[1]), false, SKIN)
+    _meshes["thumb_d"] = _bone_mesh(THUMB_LEN * 0.47, float(thr[1]), float(thr[2]), true, SKIN)
 
 ## One finger segment hanging down -Y from its joint: a 16-sided tube a
-## little wider than deep, rounded at both ends so a bent joint stays one
-## soft bulge, tapering from r0 to r1, its far joint faintly flushed (the
-## knuckle) and its root ring `root_col` (the crease at the finger root).
+## little wider than deep, tapering from r0 to r1, its far joint faintly
+## flushed (the knuckle) and its root ring `root_col` (the crease at the
+## finger root); the palm side blushes. Each joint is a ball: the two
+## segments meeting there end in the same ring (r * 1.02 wide, r * 0.86
+## deep) and each closes with a dome as long as that depth, centred on the
+## pivot, so in the plane the joint bends in both ends are the same circle
+## and a bent finger shows neither a notch on its back nor a step under it.
 ## The tip segment swells into a soft pad on the palm side, ends in a
-## rounded tip and carries an almond nail on its back (-Z): curved across
-## the finger, a pale moon at the cuticle, 0.62 of the segment long, 0.8 of
-## the fingertip wide, its free edge running 3 mm past the tip to a soft
-## point.
+## rounded tip and carries a rounded almond nail on its back (-Z): curved
+## across the finger, a pale moon at the cuticle, the far 0.54 of the
+## segment long, 0.88 of the fingertip wide, its free edge 1.8 mm past the
+## tip.
 func _bone_mesh(length: float, r0: float, r1: float, tip: bool, root_col: Color) -> ArrayMesh:
     var st := _smooth_begin()
     var d0 := 0.86
     if tip:
         var py := [0.0, -length * 0.3, -length * 0.62, -length * 0.85, -length]
-        var px := [r0, lerpf(r0, r1, 0.4) * 1.01, r1 * 1.02, r1 * 0.94, r1 * 0.74]
+        var px := [r0 * 1.02, lerpf(r0, r1, 0.4) * 1.01, r1 * 1.02, r1 * 0.94, r1 * 0.74]
         var pz := [r0 * d0, lerpf(r0, r1, 0.4) * d0, r1 * 0.9, r1 * 0.84, r1 * 0.66]
         var pts: Array = []
         for k in range(py.size()):
             # the pad: the tip's centre shifts toward the palm side
             pts.append(Vector3(0, float(py[k]), r1 * 0.12 * float(k) / float(py.size() - 1)))
-        var vi := _tube(st, 0, pts, px, pz, [root_col, SKIN, SKIN, SKIN_BLUSH, SKIN_BLUSH], 16, r0 * 0.35, r1 * 0.62)
-        # the nail: almond, on the back of the tip, following its surface
-        var w := r1 * 0.8
-        var y_c := -length * 0.36
-        var y_end := -length - r1 * 0.62 - 0.003
-        var ts := [0.0, 0.1, 0.3, 0.55, 0.75, 0.9, 1.0]
-        var ws := [0.62, 0.9, 1.0, 0.98, 0.84, 0.58, 0.24]
+        var vi := _tube(st, 0, pts, px, pz, [root_col, SKIN, SKIN, SKIN_BLUSH, SKIN_BLUSH], 16, r0 * d0, r1 * 0.62, [], [], [SKIN_PALM, SKIN_PALM, SKIN_PALM, SKIN_PAD, SKIN_PAD])
+        # the nail: a rounded almond on the back of the tip, following its surface
+        var w := r1 * 0.88
+        var y_c := -length * 0.46
+        var y_end := -length - r1 * 0.62 - 0.0018
+        var ts := [0.0, 0.05, 0.1, 0.3, 0.55, 0.75, 0.9, 1.0]
+        var ws := [0.66, 0.8, 0.92, 1.0, 0.99, 0.9, 0.7, 0.42]
         var npts: Array = []
         var nrx: Array = []
         var nrz: Array = []
@@ -499,11 +592,11 @@ func _bone_mesh(length: float, r0: float, r1: float, tip: bool, root_col: Color)
             nrx.append(w * float(ws[k]))
             nrz.append(0.00055)
             nbend.append(w * 0.32 * float(ws[k]))
-            ncol.append(NAIL_MOON if k == 0 else NAIL_TIP if k >= ts.size() - 2 else NAIL)
+            ncol.append(NAIL_MOON if k <= 1 else NAIL_TIP if k >= ts.size() - 2 else NAIL)
         _tube(st, vi, npts, nrx, nrz, ncol, 14, 0.0012, 0.0008, [], nbend)
     else:
         var pts := [Vector3(0, 0.0, 0), Vector3(0, -length * 0.3, 0), Vector3(0, -length * 0.7, 0), Vector3(0, -length, 0)]
-        _tube(st, 0, pts, [r0 * 1.02, lerpf(r0, r1, 0.3) * 0.96, lerpf(r0, r1, 0.7) * 0.96, r1 * 1.03], [r0 * d0, lerpf(r0, r1, 0.3) * d0 * 0.94, lerpf(r0, r1, 0.7) * d0 * 0.94, r1 * d0], [root_col, SKIN, SKIN, SKIN_KNUCKLE], 16, r0 * 0.35, r1 * 0.7)
+        _tube(st, 0, pts, [r0 * 1.02, lerpf(r0, r1, 0.3) * 0.96, lerpf(r0, r1, 0.7) * 0.96, r1 * 1.02], [r0 * d0, lerpf(r0, r1, 0.3) * d0 * 0.94, lerpf(r0, r1, 0.7) * d0 * 0.94, r1 * d0], [root_col, SKIN, SKIN, SKIN_KNUCKLE], 16, r0 * d0, r1 * d0, [], [], [SKIN_PALM])
     return _smooth_finish(st)
 
 func _new_rig(index: int) -> Dictionary:
@@ -520,7 +613,7 @@ func _new_rig(index: int) -> Dictionary:
         var f: Array = FINGERS[i]
         var length: float = f[2]
         var root_y := -PALM_LEN * float(f[1])
-        var prox := K.pivot(hand, "Finger%d" % i, Vector3(float(f[0]), root_y + MCP_IN, 0.0))
+        var prox := K.pivot(hand, "Finger%d" % i, Vector3(_finger_x(i), root_y + MCP_IN, 0.0))
         K.add_mesh(prox, "Bone", _meshes["f%d_0" % i], skin)
         var mid := K.pivot(prox, "Mid", Vector3(0, -length * PHALANX[0], 0))
         K.add_mesh(mid, "Bone", _meshes["f%d_1" % i], skin)
@@ -528,7 +621,7 @@ func _new_rig(index: int) -> Dictionary:
         K.add_mesh(tip, "Bone", _meshes["f%d_2" % i], skin)
         fingers.append([prox, mid, tip, float(f[5])])
     # the thumb leaves the thenar mound and lies open beside the item
-    var tp := K.pivot(hand, "Thumb", THUMB_ROOT)
+    var tp := K.pivot(hand, "Thumb", _thumb_root())
     K.add_mesh(tp, "Bone", _meshes["thumb_p"], skin)
     var td := K.pivot(tp, "Tip", Vector3(0, -THUMB_LEN * 0.53, 0))
     K.add_mesh(td, "Bone", _meshes["thumb_d"], skin)
@@ -537,7 +630,7 @@ func _new_rig(index: int) -> Dictionary:
     var vary: Array = []
     for i in range(4):
         vary.append(sin(float(index) * 1.7 + float(i) * 2.9 + 0.6) * 0.14)
-    var rig := {"root": root, "upper": upper, "fore": fore, "elbow": elbow, "hand": hand, "palm": palm, "slot": slot, "fingers": fingers, "thumb": [tp, td], "rot": Quaternion.IDENTITY, "chir": 0.0, "mirror": 1.0,
+    var rig := {"root": root, "upper": upper, "fore": fore, "elbow": elbow, "hand": hand, "palm": palm, "slot": slot, "fingers": fingers, "thumb": [tp, td], "rot": Quaternion.IDENTITY, "chir": 0.0, "mirror": 1.0, "index": index, "turn": 1.0, "lag": 0.0,
         # each arm its own: forearm droop, its sideways turn, the palm's tilt
         "bend": ELBOW_ANGLE + sin(float(index) * 2.1 + 0.3) * ELBOW_VARY,
         "yaw": sin(float(index) * 1.37 + 1.1) * 0.35,
@@ -555,11 +648,11 @@ func _set_chirality(rig: Dictionary, c: float) -> void:
     rig["chir"] = c
     (rig["palm"] as MeshInstance3D).mesh = _meshes["palm"] if c > 0.0 else _meshes["palm_l"]
     for i in range(FINGERS.size()):
-        var f: Array = FINGERS[i]
         var prox: Node3D = rig["fingers"][i][0]
-        prox.position.x = float(f[0]) * c
+        prox.position.x = _finger_x(i) * c
     var tp: Node3D = rig["thumb"][0]
-    tp.position = Vector3(THUMB_ROOT.x * c, THUMB_ROOT.y, THUMB_ROOT.z)
+    var troot := _thumb_root()
+    tp.position = Vector3(troot.x * c, troot.y, troot.z)
     var slot: Node3D = rig["slot"]
     slot.position.x = SEAT.x * c
 
@@ -603,6 +696,7 @@ func set_offer_items(kinds: Array) -> void:
             ch.queue_free()
         (rig["root"] as Node3D).visible = i < _count
         rig["rot"] = Quaternion.IDENTITY
+        rig["turn"] = 1.0
         slot.visible = i < _count
         if i < _count:
             var item := FPItemArt.make(str(kinds[i]), i)
@@ -661,9 +755,10 @@ func take_item(index: int) -> void:
     _hand_tw.tween_interval(0.3)
     if slot != null:
         _hand_tw.tween_callback(func(): slot.visible = false)
-    # the fingers close on what is left and the arms draw it back up
-    _hand_tw.tween_method(_set_curl, 0.0, 1.0, 0.16)
-    _hand_tw.tween_method(set_offer_extend, _extend, 0.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+    # the fingers fold in over the empty palm and the arms draw back up: at
+    # its ease when calm, a snatch only when the being is frantic
+    _hand_tw.tween_method(_set_curl, 0.0, lerpf(TAKE_GRIP, 1.0, _mood), lerpf(TAKE_GRIP_SECS, 0.16, _mood))
+    _hand_tw.tween_method(set_offer_extend, _extend, 0.0, lerpf(TAKE_RISE_SECS, 0.42, _mood)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 func _set_curl(c: float) -> void:
     _curl = clampf(c, 0.0, 1.0)
@@ -698,7 +793,8 @@ func _pose_fingers() -> void:
             var k: float = float(f[3]) + float(rig["vary"][i])
             # a slow breath through the fingers, quicker when the being is impatient
             var fidget := sin(_time * lerpf(1.6, 5.0, _mood) + i * 0.9 + ri * 1.7) * lerpf(0.02, 0.05, _mood)
-            var cv := lerpf(lerpf(CURL_REST, LOOK_CURL, _look_w), CURL_GRIP, _curl) + fidget
+            # hanging fingers trail a little curled until the palm has come up under them
+            var cv := lerpf(lerpf(CURL_REST, LOOK_CURL, _look_w), CURL_GRIP, _curl) + fidget + float(rig["lag"])
             if _beg:
                 # nothing in it: the fingers open wide and close on the air, over and over
                 cv = lerpf(BEG_OPEN, BEG_CLOSE, _beg_grasp(i))
@@ -862,7 +958,11 @@ func _place_hands(delta: float) -> void:
         lip.x = clampf(lip.x, -SIZE + 0.045, SIZE - 0.045)
         lip.z = clampf(lip.z, -SIZE + 0.045, SIZE - 0.045)
         rig["side_a"] = a
-        _pose_arm(rig, lip, w_end, e, eye, delta)
+        # the middle hand leads, each one further out follows a beat later
+        var off := float(col) - (in_row - 1) * 0.5
+        var order := 2.0 * absf(off) - (1.0 if off < 0.0 else 0.0) + float(row)
+        var late := minf(HAND_DELAY * maxf(order, 0.0), HAND_DELAY_MAX)
+        _pose_arm(rig, lip, w_end, clampf((e - late) / (1.0 - late), 0.0, 1.0), eye, delta)
         var slot: Node3D = rig["slot"]
         slot.scale = Vector3.ONE * item_scale
 
@@ -895,7 +995,12 @@ func _arm_target(rig: Dictionary, lip: Vector3, w: Vector3, eye: Vector3) -> Arr
     var ang_w := PI - theta - ang_s
     var away := (w - eye)
     away.y = maxf(away.y, 0.0)
-    away = away.normalized() + _side * signf(float(rig.get("side_a", 0.0))) * 0.5 + Vector3.UP * 0.2
+    # which side of the fan this hand is on; up close the middle hand picks one too
+    var side_a: float = rig.get("side_a", 0.0)
+    var sgn := signf(side_a)
+    var sgn_look := sgn if absf(side_a) > 0.001 else (1.0 if int(rig["index"]) % 2 == 0 else -1.0)
+    var fan := _look_w * lerpf(1.0, LOOK_FAN_EDGE, clampf(absf(side_a) / (SPACING * LOOK_SPREAD * 2.0), 0.0, 1.0))
+    away = away.normalized() + _side * sgn * lerpf(0.5, -LOOK_LEAN, fan) + Vector3.UP * 0.2
     away = away.rotated(Vector3.UP, float(rig["yaw"]))
     var swn := sw / d
     var perp := away - swn * away.dot(swn)
@@ -917,6 +1022,11 @@ func _arm_target(rig: Dictionary, lip: Vector3, w: Vector3, eye: Vector3) -> Arr
     if g.length() < 0.05:
         g = out
     g = g.normalized()
+    if _look_w > 0.0:
+        # the wrist tilts the fingers out, away from the middle of the fan
+        var outward := _side * sgn_look
+        var turn_dir := signf(n.cross(g).dot(outward))
+        g = g.rotated(n, LOOK_DEVIATE * fan * turn_dir).normalized()
     var ang := fdir.angle_to(g)
     if ang > WRIST_MAX:
         g = fdir.slerp(g, WRIST_MAX / ang).normalized()
@@ -942,7 +1052,9 @@ func _pose_arm(rig: Dictionary, lip: Vector3, w_end: Vector3, e: float, eye: Vec
     if absf(a) > 0.001 and hb_end.x.dot(_side) * a < 0.0:
         c = -1.0
     _set_chirality(rig, c)
-    # hanging: fingers straight down, the palm toward the player
+    # hanging: fingers straight down. `hang` has the palm toward the player;
+    # the hand comes down turned about its fingers, its back and nails to
+    # the player, and turns over as the forearm swings out
     var flat := Vector3(eye.x - lip.x, 0.0, eye.z - lip.z)
     flat = flat.normalized() if flat.length() > 0.01 else Vector3(-_side.z, 0, _side.x)
     var hang := Basis(Vector3.UP.cross(flat).normalized(), Vector3.UP, flat)
@@ -951,18 +1063,31 @@ func _pose_arm(rig: Dictionary, lip: Vector3, w_end: Vector3, e: float, eye: Vec
     var w: Vector3
     var el: Vector3
     var hb: Basis
-    var swing := 0.0
+    var swing := _swing_of(e)
+    var turn := 1.0
     if e < DROP_PHASE:
         var u := smoothstep(0.0, 1.0, e / DROP_PHASE)
         el = (lip + Vector3.UP * (fore_len + 0.45)).lerp(el_drop, u)
         w = el + Vector3.DOWN * fore_len
         hb = hang
     else:
-        swing = smoothstep(0.0, 1.0, (e - DROP_PHASE) / (1.0 - DROP_PHASE))
         el = el_drop.lerp(el_end, swing)
         var fdir := Vector3.DOWN.slerp((w_end - el_end).normalized(), swing)
         w = el + fdir * fore_len
+        # the item's weight settles into the hand as it arrives
+        if not _beg and swing > SETTLE_FROM:
+            w.y -= SETTLE_DIP * sin(PI * (swing - SETTLE_FROM) / (1.0 - SETTLE_FROM))
         hb = Basis(hang.get_rotation_quaternion().slerp(hb_end.get_rotation_quaternion(), swing))
+        # an empty asking hand stops short: it has turned over by then
+        var top := _swing_of(BEG_EXTEND) if _beg else 1.0
+        turn = 1.0 - smoothstep(FLIP_FROM * top, FLIP_TO * top, swing)
+    # going back up the hand does not turn over again: it just draws away
+    if _retreat:
+        turn = minf(turn, float(rig["turn"]))
+    rig["turn"] = turn
+    rig["lag"] = 0.0 if _beg else FOLLOW_CURL * (1.0 - swing)
+    # the fingers' line is the same as before; the thumb leads toward the eye
+    hb = hb * Basis(Vector3.UP, -c * PI * turn)
     var q := hb.get_rotation_quaternion()
     var prev: Quaternion = rig["rot"]
     var kq := 1.0 if delta <= 0.0 else 1.0 - exp(-10.0 * delta)
@@ -989,6 +1114,10 @@ func _pose_arm(rig: Dictionary, lip: Vector3, w_end: Vector3, e: float, eye: Vec
     if hx.length() > 0.05 and arm.length() > 0.001:
         hx = hx.normalized()
         fore.transform = Transform3D(Basis(hx, along * arm.length(), hx.cross(along).normalized()), w)
+
+## Share of the swing-out done at offer progress `e` (0 while coming down).
+static func _swing_of(e: float) -> float:
+    return smoothstep(0.0, 1.0, (e - DROP_PHASE) / (1.0 - DROP_PHASE)) if e >= DROP_PHASE else 0.0
 
 ## A basis whose Y axis runs along `dir` scaled to `length` (X, Z unit).
 static func _frame(dir: Vector3, length: float) -> Basis:
@@ -1055,7 +1184,10 @@ func offer_extend() -> float:
 
 ## 0 = the arms are up in the black duct, 1 = held out in front of the player.
 func set_offer_extend(t: float) -> void:
-    _extend = clampf(t, 0.0, 1.0)
+    t = clampf(t, 0.0, 1.0)
+    if t != _extend:
+        _retreat = t < _extend
+    _extend = t
     _arms.visible = _extend > 0.001 and _count > 0
     if _arms.visible:
         _place_hands(0.0)

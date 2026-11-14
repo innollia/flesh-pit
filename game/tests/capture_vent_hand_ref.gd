@@ -4,6 +4,7 @@ extends SceneTree
 ## palm, orthographic, fingers straight) and in its holding pose from the
 ## side, for the proportion pass (orchestra/vent/ref/proportions.md).
 ##   CAP_OUT=<dir> godot_console --path game --resolution 960x540 --script res://tests/capture_vent_hand_ref.gd
+## VENT_BUILD=B shows build B (FPVent art BUILD_B: the same lengths, 8-10 % broader).
 
 var out := ""
 
@@ -23,6 +24,9 @@ func _run() -> void:
 	env.environment.background_mode = Environment.BG_COLOR
 	env.environment.background_color = Color(0.2, 0.2, 0.22)
 	root.add_child(env)
+	# VENT_BUILD=B: the broader hand of the A/B pick
+	if OS.get_environment("VENT_BUILD") == "B":
+		load("res://main/art/fp_vent.gd").set("build_b", true)
 	var art: Node3D = (load("res://main/art/fp_vent.tscn") as PackedScene).instantiate()
 	root.add_child(art)
 	var cam := Camera3D.new()

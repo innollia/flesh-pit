@@ -1,5 +1,16 @@
 # 현재 상태
 
+## 2026-11-14 환풍구 존재의 손 4차 (NPC 손 다듬기)
+
+- `game/main/art/fp_vent.gd`만 고쳤다(거래 규칙·이빨 순서·들여다보기 카메라·저장은 그대로, main.gd는 건드리지 않음).
+- 손등과 손톱을 보이며 내려와 뒤집어 내민다. 손마다 박자가 다르고, 다 내밀 즈음 물건 무게가 실린다. 집은 뒤에는 느긋하게 물러난다(다급할 때만 낚아챔).
+- 들여다볼 때 손들이 부채처럼 바깥으로 벌어져 손가락이 누워 보인다(보이는 가운뎃손가락 길이 0.33~0.61 → 0.40~0.68).
+- 손바닥 혈색, 공 이음 관절, 짧고 둥근 손톱(약 18 × 8 mm). 손목 이음은 캡처에서 띠가 보이지 않아 고치지 않았다.
+- 굵기 B안(길이 같고 8~10% 굵게)은 `BUILD_B` 전환값으로만 있고 기본은 지금 굵기다. 사용자 선택 대기.
+- 검사(HEAD 격리 사본에 이 묶음 파일만 얹어 실행, 정상 플레이 저장은 읽지 않음): `run_vent_hands_tests.gd` 62(새 검사 4: 내려올 때 손등, 엄지가 눈 쪽으로, 손마다 다른 높이, 끝에는 손바닥), `run_vent_look_tests.gd` 113(새 검사 3: 손 3·5·8개의 보이는 손가락 길이), `run_vent_labels_tests.gd` 89, `run_vent_teeth_tests.gd` 169, `run_vent_save_tests.gd` 32, 아트 34 통과. B안으로도 손 검사 62 통과. 작업 폴더의 `main.gd`는 그때 다른 작업의 수정 중이라 파싱되지 않아 작업 폴더 그대로는 돌리지 못했다.
+- 사람이 볼 것: `docs/tracking/captures/R2_npc_hand/`의 `pick_AB_thickness.jpg`(A/B 고르기), `motion_offer_take.gif`(뒤집는 동작이 우아한지), `compare_3_look.jpg`(들여다볼 때 "건넨다"로 읽히는지), `compare_4_palm_nails.jpg`(혈색·손톱).
+- 실행판: 다시 만들지 않았다. 코드와 검사, 캡처까지다.
+
 ## 2026-11-14 경제 재계산 (결정 0012, 0013)
 
 지시서 셋(경제 재계산, 칼 가중, 과식 걸음)을 코드에 넣었다. 값과 이유는 `docs/tracking/decisions/0012-economy-recalculation.md`, 규칙은 `docs/business-rules.md`, 감사 표는 `docs/design/economy.md`다.

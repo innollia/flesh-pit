@@ -23,6 +23,9 @@ func far_stand() -> Vector3:
 	return Vector3(FPRestroom.VENT_CENTER.x + 1.9, 0.9, FPRestroom.VENT_CENTER.z + 1.4)
 
 func _init() -> void:
+	# VENT_BUILD=B checks the broader hand kept for the user's A/B pick
+	if OS.get_environment("VENT_BUILD") == "B":
+		load("res://main/art/fp_vent.gd").set("build_b", true)
 	m = load("res://main/scenes/main.tscn").instantiate()
 	m.user_keybinds_path = "user://keybinds_test_vent_hands.json"
 	m.save_path = "user://vent-hands-test.bin"
@@ -273,9 +276,18 @@ func run() -> void:
 	var worst_drop := 0.0
 	var limit: float = art.get("WRIST_MAX")
 	var drop_phase: float = art.get("DROP_PHASE")
+	# 2026-11-14: the hand comes down with its back and nails to the eye and
+	# turns over as the forearm swings out, the thumb leading toward the eye;
+	# the hands do not come down as one
+	var back_worst := -1.0
+	var back_frames := 0
+	var thumb_lead := -1.0
+	var apart := 0.0
+	var eye_d: Vector3 = m.player.camera.global_position
 	for f in range(120):
 		await process_frame
 		var e: float = art.get("_extend")
+		var ys: Array = []
 		for i in range(3):
 			var hand: Node3D = (art.call("item_node", i) as Node3D).get_parent()
 			var fore: Node3D = hand.get_parent().get_node("Forearm")
@@ -283,10 +295,32 @@ func run() -> void:
 			var fingers: Vector3 = -hand.global_basis.y.normalized()
 			var bend := arm_dir.angle_to(fingers)
 			worst = maxf(worst, bend)
+			var to_eye := (eye_d - hand.global_position).normalized()
 			if e < drop_phase:
 				worst_drop = maxf(worst_drop, bend)
+			if e > drop_phase * 0.4 and e < drop_phase * 0.6:
+				back_worst = maxf(back_worst, hand.global_basis.z.normalized().dot(to_eye))
+				back_frames += 1
+			# half turned: the thumb side of the hand faces the eye
+			var turn: float = art.get("_rigs")[i]["turn"]
+			if turn > 0.4 and turn < 0.6:
+				var thumb: Vector3 = hand.global_basis.x.normalized() * float(art.get("_rigs")[i]["chir"])
+				thumb_lead = maxf(thumb_lead, thumb.dot(to_eye)) if thumb_lead > -1.0 else thumb.dot(to_eye)
+			ys.append(hand.global_position.y)
+		if e > 0.3 and e < 0.9:
+			apart = maxf(apart, float(ys.max()) - float(ys.min()))
 	check(worst <= limit + 0.02, "the wrist never bends past %.0f° on the way down (worst %.1f°)" % [rad_to_deg(limit), rad_to_deg(worst)])
 	check(worst_drop < 0.02, "coming straight down out of the duct the wrist is straight (worst %.1f°)" % rad_to_deg(worst_drop))
+	check(back_frames > 0 and back_worst < -0.25, "halfway down every hand shows the eye its back and nails (palm normal to the eye at most %.2f over %d samples)" % [back_worst, back_frames])
+	check(thumb_lead > 0.2, "turning over, the thumb leads toward the eye (%.2f)" % thumb_lead)
+	check(apart > 0.05, "the hands come down one after another, not as one (up to %.2f m apart in height)" % apart)
+	await wait(0.6)
+	var up_again := 0
+	for i in range(3):
+		var hand: Node3D = (art.call("item_node", i) as Node3D).get_parent()
+		if hand.global_basis.z.normalized().y > 0.25 and hand.global_basis.z.normalized().dot((eye_d - hand.global_position).normalized()) > 0.25:
+			up_again += 1
+	check(up_again == 3, "and ends with the open palm up to the eye (%d of 3)" % up_again)
 	# --- the trade: F on the aimed item takes that one, the rest go back up
 	await wait(1.0)
 	var target: Node3D = m.vent.offer_nodes()[2]
@@ -314,7 +348,8 @@ func run() -> void:
 	check(m.aimed_offer() == want, "inside, the eye reaches the outer hand (%s)" % m.aimed_offer())
 	m.use_vent()
 	check(m.vent.offers.is_empty(), "F takes the offer")
-	await wait(1.2)
+	# a calm being draws the hands back at its ease (0.3 + 0.28 + 0.55 s)
+	await wait(1.5)
 	check(not arms.visible, "after the take every arm is back up in the dark")
 	check(eyes_shown() == 0, "and still no eyes")
 	print("--- vent hands: %d passed, %d failed ---" % [passed, failed])

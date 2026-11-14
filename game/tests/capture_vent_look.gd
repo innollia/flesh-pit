@@ -43,6 +43,23 @@ func offer(ids: Array) -> void:
 		typed.append(String(id))
 	m.vent._set_offers(typed)
 
+## How much of each middle finger's length the eye sees (1 = lying across
+## the view, 0 = seen end on), printed for the record.
+func shown(tag: String) -> void:
+	var art: Node3D = m.vent.art
+	var eye: Vector3 = m.player.camera.global_position
+	var out_s := ""
+	for i in range(int(art.call("hand_count"))):
+		var hand: Node3D = (art.call("item_node", i) as Node3D).get_parent()
+		var knuckle: Vector3 = (hand.get_node("Finger1") as Node3D).global_position
+		var tip: Node3D = hand.get_node("Finger1/Mid/Tip")
+		var length: float = art.FINGERS[1][2]
+		var end: Vector3 = tip.global_transform * Vector3(0, -length * float(art.PHALANX[2]), 0)
+		var view := ((knuckle + end) * 0.5 - eye).normalized()
+		var chord := end - knuckle
+		out_s += " %.2f" % ((chord - view * chord.dot(view)).length() / length)
+	print("INFO shown ", tag, out_s)
+
 func _run() -> void:
 	await frames(5)
 	m.finish_opening()
@@ -63,12 +80,15 @@ func _run() -> void:
 		await shot("in_%d" % i)
 	await frames(60)
 	await shot("hands_3")
+	shown("hands_3")
 	offer(FIVE)
 	await frames(90)
 	await shot("hands_5")
+	shown("hands_5")
 	offer(EIGHT)
 	await frames(90)
 	await shot("hands_8")
+	shown("hands_8")
 	# CAP_QUICK=1: only the normal view and the three counts (hand iteration)
 	if OS.get_environment("CAP_QUICK") != "":
 		m.queue_free()

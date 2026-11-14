@@ -195,9 +195,23 @@ func _composition() -> void:
 		var worst_off := 0.0
 		var sum := Vector2.ZERO
 		var pts: Array[Vector2] = []
+		# 2026-11-14: the long fingers lie across the view, not end on: how
+		# much of each middle finger's length the eye sees
+		var shown_least := INF
+		var shown_sum := 0.0
+		var eye_at: Vector3 = m.player.camera.global_position
 		for i in range(n):
 			var item: Node3D = art.call("item_node", i)
 			var hand: Node3D = item.get_parent()
+			var knuckle: Vector3 = (hand.get_node("Finger1") as Node3D).global_position
+			var tip_n: Node3D = hand.get_node("Finger1/Mid/Tip")
+			var f_len: float = art.FINGERS[1][2]
+			var f_end: Vector3 = tip_n.global_transform * Vector3(0, -f_len * float(art.PHALANX[2]), 0)
+			var view := ((knuckle + f_end) * 0.5 - eye_at).normalized()
+			var chord := f_end - knuckle
+			var part := (chord - view * chord.dot(view)).length() / f_len
+			shown_least = minf(shown_least, part)
+			shown_sum += part
 			var wrist := _on_screen_px(hand.global_position, size)
 			var tip := _on_screen_px((hand.get_node("Finger1/Mid/Tip") as Node3D).global_position, size)
 			var it := _on_screen_px(item.global_position, size)
@@ -208,6 +222,8 @@ func _composition() -> void:
 			sum += (wrist + tip) * 0.5
 			pts.append(tip)
 		check(inside == n, "all %d hands and items are inside the frame (%d)" % [n, inside])
+		print("INFO shown %d: least %.2f mean %.2f" % [n, shown_least, shown_sum / float(n)])
+		check(shown_least >= 0.38 and shown_sum / float(n) >= 0.52, "%d hands show their fingers' length (least %.2f, mean %.2f of the middle finger)" % [n, shown_least, shown_sum / float(n)])
 		var want := 0.14 if n <= 5 else 0.09
 		check(smallest >= want, "%d hands stand large (smallest palm %.2f of the height)" % [n, smallest])
 		var c := sum / float(n) - size * 0.5

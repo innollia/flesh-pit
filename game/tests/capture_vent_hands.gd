@@ -14,6 +14,9 @@ func _init() -> void:
 	out = OS.get_environment("CAP_OUT")
 	if out == "":
 		out = OS.get_user_data_dir()
+	# VENT_BUILD=B: the broader hand of the A/B pick
+	if OS.get_environment("VENT_BUILD") == "B":
+		load("res://main/art/fp_vent.gd").set("build_b", true)
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	m.user_keybinds_path = "user://keybinds_test_vent_hands.json"
 	m.save_path = "user://capture-vent-hands.bin"
