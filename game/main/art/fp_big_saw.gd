@@ -8,6 +8,37 @@ extends Node3D
 
 const K := preload("res://main/art/fp_art_kit.gd")
 const L := 0.62
+## The blade's two bands: how rusty the plate is (and how much one slice may
+## differ from the next), and how far down from the spine the bevel starts.
+const PLATE_RUST := 0.22
+const PLATE_RUST_VAR := 0.14
+const BEVEL_FROM := 0.58
+const BLADE_UV := 8.0
+## The upright handles: where they end below and above the blade's middle,
+## and where a fist closes on them. A fist is about 0.18 tall at this scale
+## (the held saw is drawn at half size), so the handle shows a hand's
+## breadth of wood over it: at 0.2 tall it ended inside the fist and the
+## hands read as floating over the blade's ends.
+const HANDLE_FOOT := -0.05
+const HANDLE_TOP := 0.33
+const GRIP_Y := 0.1
+
+## The chrome texture is upright bands of sheen (a cylinder's highlight).
+## Mapped flat with u along the blade it drew the blade as upright stripes;
+## here u runs across the blade (spine to teeth) and v along it, so the same
+## bands lie along the blade's length like a ground finish.
+static func lengthwise_uv(mesh: ArrayMesh, uv_scale: float) -> ArrayMesh:
+    var out := ArrayMesh.new()
+    for surf in range(mesh.get_surface_count()):
+        var arrays := mesh.surface_get_arrays(surf)
+        var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+        var uvs := PackedVector2Array()
+        uvs.resize(verts.size())
+        for i in range(verts.size()):
+            uvs[i] = Vector2(verts[i].y, verts[i].x) * uv_scale
+        arrays[Mesh.ARRAY_TEX_UV] = uvs
+        out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+    return out
 
 func _ready() -> void:
     var st := K.begin()
@@ -21,9 +52,18 @@ func _ready() -> void:
         var x1 := -L + 2.0 * L * (i + 1) / n
         var d0 := 0.05 + 0.06 * cos(x0 / L * PI * 0.5)
         var d1 := 0.05 + 0.06 * cos(x1 / L * PI * 0.5)
-        var col := steel.lerp(rust, K.h(i, 3) * 0.6)
+        # Two bands that run the blade's length: the dull, rust-flecked
+        # plate under the spine and the bright ground bevel above the teeth.
+        # One flat colour per slice, each a different rust, drew the blade
+        # as broad upright stripes at the game's resolution (2026-11-14
+        # review); the slices now differ only a little, the bands a lot.
+        var plate := steel.lerp(rust, PLATE_RUST + K.h(i, 3) * PLATE_RUST_VAR)
+        var bevel := bright.lerp(steel, 0.25 + K.h(i, 7) * 0.12)
+        var m0 := lerpf(0.03, -d0, BEVEL_FROM)
+        var m1 := lerpf(0.03, -d1, BEVEL_FROM)
         for sz in [-1, 1]:
-            K.quad(st, Transform3D.IDENTITY, Vector3(x0, 0.03, sz * 0.0015), Vector3(x1, 0.03, sz * 0.0015), Vector3(x1, -d1, sz * 0.0008), Vector3(x0, -d0, sz * 0.0008), Vector3(0, 0, sz), col)
+            K.quad(st, Transform3D.IDENTITY, Vector3(x0, 0.03, sz * 0.0015), Vector3(x1, 0.03, sz * 0.0015), Vector3(x1, m1, sz * 0.0012), Vector3(x0, m0, sz * 0.0012), Vector3(0, 0, sz), plate)
+            K.quad(st, Transform3D.IDENTITY, Vector3(x0, m0, sz * 0.0012), Vector3(x1, m1, sz * 0.0012), Vector3(x1, -d1, sz * 0.0008), Vector3(x0, -d0, sz * 0.0008), Vector3(0, 0, sz), bevel)
         # teeth along the belly: alternating set, pointed triangles
         var tn := 3
         for k in range(tn):
@@ -42,16 +82,16 @@ func _ready() -> void:
     for r in range(9):
         var rx := lerpf(-L * 0.9, L * 0.9, float(r) / 8.0)
         K.lathe(st, K.T(Vector3(rx, 0.034, 0), Vector3(90, 0, 0)), [Vector2(0.0, -0.0045), Vector2(0.0035, -0.0045), Vector2(0.0035, 0.0045), Vector2(0.0, 0.0045)], 6, [bright])
-    K.add_mesh(self, "Blade", K.finish(st, 8.0), K.mat("tex_chrome_128.png", 0.3, true))
+    K.add_mesh(self, "Blade", lengthwise_uv(st.commit(), BLADE_UV), K.mat("tex_chrome_128.png", 0.3, true))
     st = K.begin()
-    var wood := Color(0.66, 0.44, 0.24)
+    var wood := Color(0.82, 0.62, 0.38)
     for sx in [-1, 1]:
         var base := Vector3(sx * (L + 0.01), 0.0, 0)
-        K.tube(st, Transform3D.IDENTITY, [base + Vector3(0, -0.04, 0), base + Vector3(sx * 0.01, 0.05, 0), base + Vector3(sx * 0.02, 0.17, 0), base + Vector3(sx * 0.018, 0.2, 0)], [0.017, 0.02, 0.019, 0.015], 7, [wood])
+        K.tube(st, Transform3D.IDENTITY, [base + Vector3(0, HANDLE_FOOT, 0), base + Vector3(sx * 0.01, 0.05, 0), base + Vector3(sx * 0.02, 0.17, 0), base + Vector3(sx * 0.02, HANDLE_TOP - 0.03, 0), base + Vector3(sx * 0.018, HANDLE_TOP, 0)], [0.017, 0.02, 0.019, 0.019, 0.015], 7, [wood, wood, wood.darkened(0.08), wood.darkened(0.15)])
         K.lathe(st, K.T(base + Vector3(0, 0.0, 0.004), Vector3(90, 0, 0)), [Vector2(0.0, -0.012), Vector2(0.008, -0.012), Vector2(0.008, 0.012), Vector2(0.0, 0.012)], 6, [Color(0.3, 0.3, 0.3)])
         for fy in [-0.035, 0.04]:
             K.lathe(st, K.T(base + Vector3(sx * (0.0 if fy < 0.0 else 0.005), fy, 0)), [Vector2(0.0, -0.007), Vector2(0.023, -0.007), Vector2(0.024, 0.0), Vector2(0.023, 0.007), Vector2(0.0, 0.007)], 8, [Color(0.72, 0.55, 0.22)])
-        K.lathe(st, K.T(base + Vector3(sx * 0.018, 0.205, 0)), [Vector2(0.0, -0.006), Vector2(0.017, -0.006), Vector2(0.013, 0.008), Vector2(0.0, 0.01)], 8, [wood.darkened(0.3)])
+        K.lathe(st, K.T(base + Vector3(sx * 0.018, HANDLE_TOP + 0.005, 0)), [Vector2(0.0, -0.006), Vector2(0.017, -0.006), Vector2(0.013, 0.008), Vector2(0.0, 0.01)], 8, [wood.darkened(0.3)])
     K.add_mesh(self, "Grips", K.finish(st, 8.0), K.mat("tex_fixture_64.png", 0.2, true))
 
 ## Last stroke offset (-1..1). With moves_self off the saw stays put and a
@@ -77,10 +117,10 @@ func play_stroke() -> void:
     tw.finished.connect(set_stroke.bind(0.0))
 
 func grip_left() -> Vector3:
-    return Vector3(-L - 0.02, 0.1, 0)
+    return Vector3(-L - 0.02, GRIP_Y, 0)
 
 func grip_right() -> Vector3:
-    return Vector3(L + 0.02, 0.1, 0)
+    return Vector3(L + 0.02, GRIP_Y, 0)
 
 func capture_setup() -> Dictionary:
     return {"cam_pos": Vector3(0.15, 0.25, 1.05), "look_at": Vector3(0, 0.0, 0), "env": "dark", "fov": 60.0}

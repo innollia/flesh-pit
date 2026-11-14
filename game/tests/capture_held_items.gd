@@ -7,11 +7,15 @@ extends SceneTree
 var m: Node3D
 var out := ""
 const SAVE := "user://capture-held-items.bin"
+## CAP_ITEMS=knife,big_saw limits the run to those.
+var ITEMS: Array = ["spray_cheap", "spray_deep", "canary_feed", "barrier", "knife", "blender", "big_saw"]
 
 func _init() -> void:
 	out = OS.get_environment("CAP_OUT")
 	if out == "":
 		out = OS.get_user_data_dir()
+	if OS.get_environment("CAP_ITEMS") != "":
+		ITEMS = Array(OS.get_environment("CAP_ITEMS").split(","))
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	m.user_keybinds_path = "user://keybinds_test_held_items.json"
 	m.save_path = SAVE
@@ -36,10 +40,10 @@ func _run() -> void:
 	m.player._pitch = -0.1
 	var p = m.progression
 	p.has_belt = true
-	for id in ["spray_cheap", "spray_deep", "canary_feed", "barrier", "knife", "blender"]:
+	for id in ITEMS:
 		p.grant_item(id)
 	await frames(10)
-	for id in ["spray_cheap", "spray_deep", "canary_feed", "barrier", "knife", "blender"]:
+	for id in ITEMS:
 		m.belt_swap.swap_now(id)
 		await frames(30)
 		await shot("held_" + id)
