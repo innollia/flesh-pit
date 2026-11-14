@@ -56,7 +56,7 @@ func _run() -> void:
 	await frames(6)
 	m.finish_opening()
 	var r: FPRestroom = m.restroom
-	_test_vent_and_light(r)
+	await _test_vent_and_light(r)
 	_test_toilet(r)
 	_test_door(r)
 	_test_tub(r)
@@ -175,6 +175,29 @@ func _test_vent_and_light(r: FPRestroom) -> void:
 		side_of_vent += 1 if p.z > v.z else -1
 	check(over_lamp, "one disk sits over the real lamp")
 	check(side_of_vent == 0, "one disk each side of the grille: disk, grille, disk")
+	# standing under the vent to look at what it holds out is not walking to the door
+	var door_from := FPRestroom.HALF.z - FPVent.dist("DOOR_NEAR", 1.0)
+	var under_to := v.z + FPVent.dist("UNDER_VENT", 1.0)
+	check(door_from >= under_to - 0.001, "the door's reach (z > %.2f) starts past the vent's (z < %.2f)" % [door_from, under_to])
+	m.vent.spoken.clear()
+	m.vent.is_open = true
+	var held: Array[String] = ["spray"]
+	m.vent.offers = held
+	m.vent._walk_said = false
+	m._vent_flags.erase("door")
+	var was: Vector3 = m.player.global_position
+	m.player.global_position = Vector3(0.0, 0.05, v.z + 0.8)
+	await frames(4)
+	check(not m.vent._walk_said, "looking up at an offer from 0.8 m door-side of the vent is not leaving it")
+	m.player.global_position = Vector3(0.0, 0.05, FPRestroom.HALF.z - 0.3)
+	await frames(4)
+	check(m.vent._walk_said, "walking on to the door with the offer still out is")
+	held = []
+	m.vent.offers = held
+	m.vent.is_open = false
+	m.vent._walk_said = false
+	m.player.global_position = was
+	await frames(2)
 
 func _test_toilet(r: FPRestroom) -> void:
 	var body: MeshInstance3D = r.toilet.get_node("Body")

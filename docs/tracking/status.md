@@ -101,7 +101,7 @@
 - 검사: 새 `run_room_furniture_tests.gd` 87항목 통과. 환풍구 검사 둘(`run_vent_look_tests`, `run_vent_hands_tests`)은 서는 자리를 옛 좌표 대신 환풍구 기준 같은 거리로 적었다(판정 기준은 그대로). 통과: vent look 110, vent hands 58, vent teeth 169, vent labels 89, vent save 32, ui polish 56, live interactions 99, terrain density cache 35, restroom t1 21, restroom fixtures 47, tank lean 28, watch/door 265, preservation 209, bed 84, biome 489, spray attachment 38, hand controls 60, body marks 52. 이번 변경 전부터의 실패는 그대로다(settle_vent 3, main 7, revision 1).
 - 캡처: `game/tests/capture_room_furniture.gd`(저장·키 격리)로 같은 각도의 전후를 `docs/tracking/captures/R2_furniture/`에 두었다.
 - 사람이 볼 것: 문으로 들어선 한 컷과 앉은 첫 화면, 등을 뒤로 옮긴 뒤 문 쪽 벽의 밝기, 다듬은 가구가 방의 다른 것보다 튀지 않는지, 흰 안전모. 실행판은 다시 만들지 않았다.
-- 하지 않은 것: `vent_rules.json`의 `DOOR_NEAR` 조정(환풍구 밑 알림과 문 알림이 z 0.5~0.9에서 겹칠 수 있다. 대사 겹침은 확인하지 않았다), `fp_vent.gd`의 옛 구석 주석 수정. 둘 다 다른 작업이 고치는 중인 파일이다.
+- 뒤이어 한 것: 환풍구가 문에서 1.6 m가 되면서 내민 물건을 올려다보는 자리(z 0.5~0.9)가 "문에 다가감"으로도 쳐져 `물건두고_멀어짐`이 나올 수 있었다. `vent_rules.json`의 `DOOR_NEAR`를 1.0에서 0.6으로 줄여 문 알림(z > 0.9)이 환풍구 밑(z < 0.9) 밖에서 시작하게 했다. `run_room_furniture_tests.gd`가 두 범위가 겹치지 않는지와 환풍구 문 쪽 0.8 m에서는 안 나오고 문 앞 0.3 m에서는 나오는지를 본다(105항목 통과). `fp_vent.gd`의 옛 구석 주석도 고쳤다.
 
 ## 2026-11-14 핵심 재미 감사 묶음의 마지막 확인
 

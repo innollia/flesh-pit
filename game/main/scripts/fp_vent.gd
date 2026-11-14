@@ -193,7 +193,7 @@ func _ready() -> void:
     art = (load("res://main/art/fp_vent.tscn") as PackedScene).instantiate()
     art.name = "VentArt"
     add_child(art)
-    # Vent art sits in the restroom's +X/+Z ceiling corner (main.gd places
+    # Vent art hangs on the restroom ceiling's door-toilet line (main.gd places
     # FPVent at FPRestroom.VENT_CENTER) but is not a child of FPRestroom, so
     # restroom.gd's room-layer pass never reaches it and it stays on the
     # default render layer, catching rest-container lamp light that is meant
