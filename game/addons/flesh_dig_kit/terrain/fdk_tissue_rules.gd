@@ -43,6 +43,14 @@ const CONTRACT_RELEASE := 2.0
 const CONTRACT_GAIN := 0.3
 const CONTRACT_WAVE := 3.0 ## m: one squeeze wave runs along the wall this long
 const CONTRACT_WARN := 1.0 ## the squeeze sound plays this long before it starts
+## The wall shows the coming squeeze this long before it starts (the terrain
+## shader's preview, contract_preview below). The sound's lead is CONTRACT_WARN.
+const CONTRACT_SHOW_LEAD := 1.6
+## The squeeze wave: direction it runs along, and its sideways wobble
+## (x and z frequency, amplitude in wave lengths). contract_phase and the
+## terrain shader read the same numbers.
+const CONTRACT_DIR := Vector3(0.62, 0.31, 0.72)
+const CONTRACT_WOBBLE := Vector3(0.9, 0.4, 0.35)
 ## Cells below this density count as empty for "touches an empty cell".
 const EMPTY_DENSITY := 0.5
 
@@ -100,8 +108,8 @@ static func tear_cells(tool: String) -> int:
 ## Seconds into its own cycle a point starts, so the squeeze runs along the
 ## wall as a ~3 m wave instead of the whole tunnel pulsing at once.
 static func contract_phase(p: Vector3) -> float:
-	var along := p.dot(Vector3(0.62, 0.31, 0.72))
-	var wobble := sin(p.x * 0.9 + p.z * 0.4) * 0.35
+	var along := p.dot(CONTRACT_DIR)
+	var wobble := sin(p.x * CONTRACT_WOBBLE.x + p.z * CONTRACT_WOBBLE.y) * CONTRACT_WOBBLE.z
 	return fposmod((along / CONTRACT_WAVE + wobble) * CONTRACT_PERIOD, CONTRACT_PERIOD)
 
 ## 0..1 squeeze at time t_in_cycle (rise, hold, release, then rest).
@@ -125,3 +133,90 @@ static func contract_offset(p: Vector3, time: float) -> float:
 static func contract_warning(p: Vector3, time: float) -> bool:
 	var t := fposmod(time + contract_phase(p), CONTRACT_PERIOD)
 	return t >= CONTRACT_PERIOD - CONTRACT_WARN
+
+## 0..1 preview of the squeeze the wall at world point p is about to make,
+## rising over the CONTRACT_SHOW_LEAD seconds before it starts and gone the
+## moment it does. fdk_terrain_surface.gdshader draws exactly this on
+## contractile faces from the field's contract_time; this copy exists so
+## headless tests can hold it against the real squeeze. Change both together.
+## The squeeze is stepped per grid corner, each with its own phase (corners
+## of one cell start up to a few seconds apart), so the preview goes by the
+## corners that move this point: those of the cell holding p (a surface vertex
+## lies in the cell whose corners place it) that are near it. The far corners
+## of an edge or corner cell sit deep in solid flesh and do not squeeze; they
+## fade out between CONTRACT_NEAR_FROM and CONTRACT_NEAR_TO cells away.
+## Corners on a chunk border never squeeze (FDKChunk._rebuild_contract_list)
+## and are left out. The preview is the lead-in of the first of them and goes
+## off while any of them is clenching (rise and hold): the wall blanches, then
+## moves.
+const CONTRACT_NEAR_FROM := 0.95
+const CONTRACT_NEAR_TO := 1.15
+static func contract_preview(p: Vector3, time: float, cell_size: float, chunk_size: int) -> float:
+	var q := p / cell_size
+	var cell := q.floor()
+	var best := 0.0
+	var busy := 0.0
+	for k in range(8):
+		var c := cell + Vector3(k & 1, (k >> 1) & 1, (k >> 2) & 1)
+		if posmod(int(c.x), chunk_size) == 0 or posmod(int(c.y), chunk_size) == 0 or posmod(int(c.z), chunk_size) == 0:
+			continue
+		var near := 1.0 - smoothstep(CONTRACT_NEAR_FROM, CONTRACT_NEAR_TO, q.distance_to(c))
+		if near <= 0.0:
+			continue
+		var t := fposmod(time + contract_phase(c * cell_size), CONTRACT_PERIOD)
+		if t < CONTRACT_RISE + CONTRACT_HOLD:
+			busy = maxf(busy, near)
+		best = maxf(best, near * contract_lead_in(t))
+	return best * (1.0 - busy)
+
+## 0..1 through the CONTRACT_SHOW_LEAD seconds before a cycle's squeeze starts.
+static func contract_lead_in(t_in_cycle: float) -> float:
+	var t := fposmod(t_in_cycle, CONTRACT_PERIOD)
+	return clampf((t - (CONTRACT_PERIOD - CONTRACT_SHOW_LEAD)) / CONTRACT_SHOW_LEAD, 0.0, 1.0)
+
+## How each tissue looks when it is pulled and torn. One table for the terrain
+## shader (pull_gain, wound), the tear feel (blood, strands, snap, recoil) and
+## the drops, so a tissue reads the same in all three.
+##   pull_gain       height of the drawn-out dome against plain flesh (1.0)
+##   wound_color     wet rim round a fresh hole (linear rgb), wound_strength 0 = none
+##   blood           colour of the drops; drops = how many the tear throws (0 = dry)
+##   strands         wet strands from the rim to the fist, their colour
+##                   (strand_color; alpha 0 = blood tinted like plain flesh)
+##                   and thickness (strand_thin)
+##   snap_from/to    seconds after the tear within which each strand breaks
+##   recoil          scale of the view jolt
+## Plain flesh (COMPRESSIVE) holds the values the game had before the table;
+## the other tissues differ from it and it does not change.
+const BLOOD := Color(0.86, 0.07, 0.1)
+const LOOK_PLAIN := {
+	"pull_gain": 1.0, "wound_color": Vector3(0.46, 0.02, 0.04), "wound_strength": 0.85,
+	"blood": BLOOD, "drops": 18, "strands": 5, "strand_color": Color(0, 0, 0, 0), "strand_thin": 1.0,
+	"snap_from": 0.07, "snap_to": 0.23, "recoil": 1.0,
+}
+const LOOK := {
+	FAT: {"pull_gain": 1.35, "wound_color": Vector3(0.78, 0.62, 0.22), "wound_strength": 0.7,
+		"blood": Color(0.80, 0.66, 0.25), "drops": 10, "strands": 8, "strand_color": Color(0.86, 0.76, 0.48), "strand_thin": 1.0,
+		"snap_from": 0.15, "snap_to": 0.30, "recoil": 0.7},
+	NERVE: {"pull_gain": 0.8, "wound_color": Vector3(0.55, 0.10, 0.04), "wound_strength": 0.85,
+		"blood": BLOOD, "drops": 14, "strands": 7, "strand_color": Color(0.86, 0.74, 0.30), "strand_thin": 1.0,
+		"snap_from": 0.03, "snap_to": 0.08, "recoil": 0.9},
+	CONTRACTILE: {"pull_gain": 0.6, "wound_color": Vector3(0.30, 0.02, 0.03), "wound_strength": 0.9,
+		"blood": Color(0.45, 0.03, 0.05), "drops": 22, "strands": 3, "strand_color": Color(0, 0, 0, 0), "strand_thin": 1.0,
+		"snap_from": 0.20, "snap_to": 0.30, "recoil": 1.25},
+	CARTILAGE: {"pull_gain": 0.25, "wound_color": Vector3(0.80, 0.78, 0.72), "wound_strength": 0.3,
+		"blood": BLOOD, "drops": 4, "strands": 0, "strand_color": Color(0, 0, 0, 0), "strand_thin": 1.0,
+		"snap_from": 0.07, "snap_to": 0.23, "recoil": 1.4},
+	MEMBRANE: {"pull_gain": 0.4, "wound_color": Vector3(0.85, 0.80, 0.78), "wound_strength": 0.4,
+		"blood": Color(0.90, 0.52, 0.55), "drops": 6, "strands": 2, "strand_color": Color(0, 0, 0, 0), "strand_thin": 1.0,
+		"snap_from": 0.10, "snap_to": 0.18, "recoil": 1.0},
+	CLOTH: {"pull_gain": 0.9, "wound_color": Vector3(0.46, 0.02, 0.04), "wound_strength": 0.0,
+		"blood": BLOOD, "drops": 0, "strands": 0, "strand_color": Color(0, 0, 0, 0), "strand_thin": 1.0,
+		"snap_from": 0.07, "snap_to": 0.23, "recoil": 1.0},
+	HAIR: {"pull_gain": 0.7, "wound_color": Vector3(0.46, 0.02, 0.04), "wound_strength": 0.0,
+		"blood": BLOOD, "drops": 0, "strands": 6, "strand_color": Color(0.16, 0.10, 0.07), "strand_thin": 0.45,
+		"snap_from": 0.07, "snap_to": 0.23, "recoil": 1.0},
+}
+
+static func look(tissue: int) -> Dictionary:
+	return LOOK.get(tissue, LOOK_PLAIN)
+

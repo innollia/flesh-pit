@@ -127,17 +127,37 @@ static func terrain_material(tissue_id: int) -> ShaderMaterial:
     var m := FDKPs1Material.get_material(path, UV_SCALE, false, 0.55, 0.6).duplicate() as ShaderMaterial
     m.shader = load("res://addons/flesh_dig_kit/terrain/fdk_terrain_surface.gdshader")
     m.set_shader_parameter("organic_motion", 1.0)
+    # how a fresh wound looks on this tissue (colour only: same vertices)
+    var look := FDKTissueRules.look(tissue_id)
+    m.set_shader_parameter("wound_color", look.wound_color)
+    m.set_shader_parameter("wound_strength", look.wound_strength)
+    # new flesh shows wherever flesh grows back; a sprayed face never does
+    m.set_shader_parameter("regrow_show", 0.0 if tissue_id == FDKTissueRules.MELTED else 1.0)
+    # the coming squeeze shows on the tissue that squeezes, from the same
+    # numbers FDKTissueRules.contract_phase uses
+    m.set_shader_parameter("contract_show", 1.0 if tissue_id == FDKTissueRules.CONTRACTILE else 0.0)
+    m.set_shader_parameter("contract_period", FDKTissueRules.CONTRACT_PERIOD)
+    m.set_shader_parameter("contract_wave", FDKTissueRules.CONTRACT_WAVE)
+    m.set_shader_parameter("contract_lead", FDKTissueRules.CONTRACT_SHOW_LEAD)
+    m.set_shader_parameter("contract_clench", FDKTissueRules.CONTRACT_RISE + FDKTissueRules.CONTRACT_HOLD)
+    m.set_shader_parameter("contract_reach", Vector2(FDKTissueRules.CONTRACT_NEAR_FROM, FDKTissueRules.CONTRACT_NEAR_TO))
+    m.set_shader_parameter("contract_dir", FDKTissueRules.CONTRACT_DIR)
+    m.set_shader_parameter("contract_wobble", FDKTissueRules.CONTRACT_WOBBLE)
     _terrain_materials[tissue_id] = m
     return m
 
 ## Applies the chew-press deformation to the material of every tissue this
 ## chunk currently uses (kept as a single call site so main.gd's per-frame
 ## set_press still works with one material per tissue).
-static func set_press_all(center: Vector3, toward: Vector3, amount: float) -> void:
+## `gain` scales the drawn-out dome for the tissue being held
+## (FDKTissueRules.look().pull_gain). It is one value on every material: a
+## vertex on a tissue border is drawn by two materials and must move the same.
+static func set_press_all(center: Vector3, toward: Vector3, amount: float, gain: float = 1.0) -> void:
     for i in range(TISSUE_TEXTURES.size()):
         var m := terrain_material(i)
         m.set_shader_parameter("press_center", center)
         m.set_shader_parameter("press_amount", amount)
+        m.set_shader_parameter("press_gain", gain)
         if toward.length_squared() > 0.000001:
             m.set_shader_parameter("press_toward", toward.normalized())
 
@@ -162,6 +182,28 @@ static func set_wounds_all(wounds: PackedVector4Array) -> void:
     w.resize(WOUND_SLOTS)
     for i in range(TISSUE_TEXTURES.size()):
         terrain_material(i).set_shader_parameter("wounds", w)
+
+## Where new flesh is not growing right now although it is missing: spheres
+## (xyz world centre, w radius) round the body and the regrowth blockers. The
+## shader hides the new-flesh tint inside them. Up to REGROW_HOLDS, w <= 0 unused.
+const REGROW_HOLDS := 8
+
+static func set_regrow_hold_all(holds: PackedVector4Array) -> void:
+    var h := holds.duplicate()
+    h.resize(REGROW_HOLDS)
+    for i in range(TISSUE_TEXTURES.size()):
+        if i != FDKTissueRules.MELTED:
+            terrain_material(i).set_shader_parameter("regrow_hold", h)
+
+## The squeeze clock of the contractile material: the field's contract_time,
+## the grid the squeeze is stepped on, and the sphere (xyz, w radius) inside
+## which the field steps it at all. clock < 0 = no squeeze is running.
+static func set_contract_clock(clock: float, near: Vector4, cell_size: float, chunk_size: int) -> void:
+    var m := terrain_material(FDKTissueRules.CONTRACTILE)
+    m.set_shader_parameter("contract_clock", clock)
+    m.set_shader_parameter("contract_near", near)
+    m.set_shader_parameter("contract_cell", cell_size)
+    m.set_shader_parameter("contract_chunk", float(chunk_size))
 
 func setup(p_chunk_coord: Vector3i, p_config: FDKTerrainConfig) -> void:
     chunk_coord = p_chunk_coord
@@ -560,6 +602,8 @@ func seal_cell(x: int, y: int, z: int) -> void:
         return
     _sealed[_cell_index(x, y, z)] = 1
     _any_sealed = true
+    if field != null:
+        field.any_sealed = true
 
 ## Call after writing _tissue directly: drops the cached per-tissue tables.
 func tissue_changed() -> void:
@@ -572,12 +616,55 @@ func tissue_changed() -> void:
 func is_dirty() -> bool:
     return _dirty
 
+## 0..1 how near the empty corner `i` is to closing: its own density over the
+## iso level while it is growing back, 0 when it is not (nothing missing,
+## solid already, tissue that never regrows, sprayed open). The squeeze of
+## contractile tissue is not growth and is left out. The mesh tints new flesh
+## by this (see _build_padded); where the body or a blocker holds growth for
+## the moment is the shader's regrow_hold.
+func regrow_progress(i: int) -> float:
+    var cur: float = _density[i]
+    if cur <= 0.0 or cur >= config.iso_level or cur >= _original_density[i]:
+        return 0.0
+    if _regen_mult_dirty:
+        _rebuild_regen_mult()
+    if _regen_mult[i] <= 0.0:
+        return 0.0
+    if _any_sealed:
+        var n := config.chunk_size + 1
+        if _sealed_corner_touches_sealed_cell(i % n, (i / n) % n, i / (n * n), config.chunk_size):
+            return 0.0
+    return cur / config.iso_level
+
+## Tissue of local cell `c`, which may lie in a neighbour chunk.
+func _tissue_of_cell(c: Vector3i) -> int:
+    var s := config.chunk_size
+    if c.x >= 0 and c.y >= 0 and c.z >= 0 and c.x < s and c.y < s and c.z < s:
+        return _tissue[c.x + (c.y + c.z * s) * s]
+    if field != null:
+        return field.cell_tissue_global(chunk_coord * s + c)
+    return _tissue[clampi(c.x, 0, s - 1) + (clampi(c.y, 0, s - 1) + clampi(c.z, 0, s - 1) * s) * s]
+
+func _sealed_of_cell(c: Vector3i) -> bool:
+    var s := config.chunk_size
+    if c.x >= 0 and c.y >= 0 and c.z >= 0 and c.x < s and c.y < s and c.z < s:
+        return _sealed[c.x + (c.y + c.z * s) * s] != 0
+    if field != null:
+        return field.cell_sealed_global(chunk_coord * s + c)
+    return false
+
 ## Padded corner density, coords -1..s (size s+2 per axis).
+## Regrowth progress per padded corner (same layout as _build_padded), filled
+## by it; empty when no corner this mesh reads is growing back.
+var _padded_regrow := PackedFloat32Array()
+
 func _build_padded(s: int) -> PackedFloat32Array:
     var n := s + 1
     var p := s + 2
     var out := PackedFloat32Array()
     out.resize(p * p * p)
+    var iso := config.iso_level
+    var regrow := PackedFloat32Array()
     var base := chunk_coord * s
     var source := _density
     var snapshot: bool = field != null and field._reading_mesh_snapshot
@@ -600,9 +687,35 @@ func _build_padded(s: int) -> PackedFloat32Array:
                         v += _contract[x + y * n + z * n * n]
                 elif field != null:
                     v = field.corner_density_global(base + Vector3i(x, y, z))
+                    # a border corner belongs to the neighbour: only a partly
+                    # filled one can be growing, so the rest cost no read
+                    if v > 0.0 and v < iso:
+                        var h: float = field.corner_regrow_global(base + Vector3i(x, y, z))
+                        if h > 0.0:
+                            if regrow.is_empty():
+                                regrow.resize(p * p * p)
+                            regrow[(x + 1) + (y + 1) * p + (z + 1) * p * p] = h
                 else:
                     v = 1.0
                 out[(x + 1) + (y + 1) * p + (z + 1) * p * p] = v
+    # this chunk's own corners: the regrowth list already names every corner
+    # below its original density, so nothing else is visited
+    var owned := s if field != null else n
+    for i in _regen_idx:
+        var cur: float = _density[i]
+        if cur <= 0.0 or cur >= iso:
+            continue
+        var x := i % n
+        var y := (i / n) % n
+        var z := i / (n * n)
+        if x >= owned or y >= owned or z >= owned:
+            continue
+        var h := regrow_progress(i)
+        if h > 0.0:
+            if regrow.is_empty():
+                regrow.resize(p * p * p)
+            regrow[(x + 1) + (y + 1) * p + (z + 1) * p * p] = h
+    _padded_regrow = regrow
     return out
 
 ## Remeshes the chunk. `force_collision` rebuilds the collider now even for
@@ -638,11 +751,21 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
     var verts: Array = []
     var normals: Array = []
     var uvs: Array = []
+    # vertex colour only when some corner this mesh reads is growing back:
+    # r = 1 - progress, so a mesh without the array (white) shows none
+    var regrow := _padded_regrow
+    _padded_regrow = PackedFloat32Array()
+    var tint := not regrow.is_empty()
+    var colors: Array = []
     for i in range(n_tissues):
         verts.append(PackedVector3Array())
         normals.append(PackedVector3Array())
         uvs.append(PackedVector2Array())
+        colors.append(PackedColorArray())
     var all_verts := PackedVector3Array() # for the single collision shape
+    _tri_third_per_cell = 1.0 / (3.0 * config.cell_size)
+    _tri_size = s
+    _tri_plain = not (_any_sealed or (field != null and field.any_sealed))
 
     if not uniform:
         var cp := s + 1
@@ -650,6 +773,9 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
         cell_vert.resize(cp * cp * cp)
         var cell_has := PackedByteArray()
         cell_has.resize(cp * cp * cp)
+        var cell_regrow := PackedFloat32Array()
+        if tint:
+            cell_regrow.resize(cp * cp * cp)
         var gbase := chunk_coord * s
         for cz in range(cp):
             for cy in range(cp):
@@ -725,6 +851,12 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
                         vertex = field.surface_constraint.call(vertex + global_position) - global_position
                     cell_vert[ci] = vertex
                     cell_has[ci] = 1
+                    if tint:
+                        # the vertex is moved by these 8 corners; it shows the
+                        # one nearest to closing. A neighbour chunk reads the
+                        # same 8, so its copy of the vertex gets the same value.
+                        cell_regrow[ci] = maxf(maxf(maxf(regrow[i0], regrow[i0 + 1]), maxf(regrow[i0 + p], regrow[i0 + p + 1])),
+                            maxf(maxf(regrow[i0 + pp], regrow[i0 + pp + 1]), maxf(regrow[i0 + pp + p], regrow[i0 + pp + p + 1])))
         for z in range(s):
             for y in range(s):
                 for x in range(s):
@@ -733,15 +865,15 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
                     if a0 != (d[i0 + 1] >= iso):
                         _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
                             Vector3i(x, y - 1, z - 1), Vector3i(x, y, z - 1), Vector3i(x, y, z), Vector3i(x, y - 1, z),
-                            Vector3(1, 0, 0) * (1.0 if a0 else -1.0), x if a0 else x + 1, y, z)
+                            Vector3(1, 0, 0) * (1.0 if a0 else -1.0), colors, cell_regrow)
                     if a0 != (d[i0 + p] >= iso):
                         _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
                             Vector3i(x - 1, y, z - 1), Vector3i(x, y, z - 1), Vector3i(x, y, z), Vector3i(x - 1, y, z),
-                            Vector3(0, 1, 0) * (1.0 if a0 else -1.0), x, y if a0 else y + 1, z)
+                            Vector3(0, 1, 0) * (1.0 if a0 else -1.0), colors, cell_regrow)
                     if a0 != (d[i0 + pp] >= iso):
                         _emit_quad(verts, normals, uvs, all_verts, cell_vert, cell_has, cp,
                             Vector3i(x - 1, y - 1, z), Vector3i(x, y - 1, z), Vector3i(x, y, z), Vector3i(x - 1, y, z),
-                            Vector3(0, 0, 1) * (1.0 if a0 else -1.0), x, y, z if a0 else z + 1)
+                            Vector3(0, 0, 1) * (1.0 if a0 else -1.0), colors, cell_regrow)
 
     var t_mesh := Time.get_ticks_usec()
     var mesh := ArrayMesh.new()
@@ -755,6 +887,8 @@ func remesh(force_collision: bool = false, stage: bool = false) -> float:
         arrays[Mesh.ARRAY_VERTEX] = verts[i]
         arrays[Mesh.ARRAY_NORMAL] = normals[i]
         arrays[Mesh.ARRAY_TEX_UV] = uvs[i]
+        if tint:
+            arrays[Mesh.ARRAY_COLOR] = colors[i]
         mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
         mesh.surface_set_material(mesh.get_surface_count() - 1, FDKChunk.terrain_material(i))
 
@@ -900,15 +1034,15 @@ func flush_collision() -> bool:
     _apply_collision(_pending_faces, _pending_density, _pending_shape, _pending_shape_ready)
     return true
 
-## Emits one quad (two flat triangles) into the tissue-appropriate bucket,
-## joining 4 cell vertices around a crossing edge. `outward` points from
-## solid toward empty. (tx,ty,tz) is the solid-side corner (used to pick the
-## tissue and to build a world-aligned UV using the two axes closest to the
-## face plane, which keeps texel size roughly constant across the terrain).
+## Emits one quad (two flat triangles), joining 4 cell vertices around a
+## crossing edge. `outward` points from solid toward empty along the edge; it
+## picks the UV plane (the two axes closest to the face plane, which keeps
+## texel size roughly constant across the terrain). Each triangle goes into
+## the bucket of the tissue it shows (_face_tissue).
 func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVector3Array,
         cell_vert: PackedVector3Array, cell_has: PackedByteArray, cp: int,
         c0: Vector3i, c1: Vector3i, c2: Vector3i, c3: Vector3i, outward: Vector3,
-        tx: int, ty: int, tz: int) -> void:
+        colors: Array, cell_regrow: PackedFloat32Array) -> void:
     var i0 := (c0.x + 1) + (c0.y + 1) * cp + (c0.z + 1) * cp * cp
     var i1 := (c1.x + 1) + (c1.y + 1) * cp + (c1.z + 1) * cp * cp
     var i2 := (c2.x + 1) + (c2.y + 1) * cp + (c2.z + 1) * cp * cp
@@ -920,14 +1054,17 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
     var v2 := cell_vert[i2]
     var v3 := cell_vert[i3]
     var s := config.chunk_size
-    var tissue := get_tissue_at_cell(clampi(tx, 0, s - 1), clampi(ty, 0, s - 1), clampi(tz, 0, s - 1))
-    if _any_sealed:
-        # the empty cell this face looks into was sprayed: show melted flesh
-        var ex := clampi(tx + int(round(outward.x)), 0, s - 1)
-        var ey := clampi(ty + int(round(outward.y)), 0, s - 1)
-        var ez := clampi(tz + int(round(outward.z)), 0, s - 1)
-        if _sealed[_cell_index(ex, ey, ez)] != 0:
-            tissue = FDKTissueRules.MELTED
+    # new-flesh tint of the 4 vertices (r = 1 - progress); none = no array
+    var k0 := Color.WHITE
+    var k1 := Color.WHITE
+    var k2 := Color.WHITE
+    var k3 := Color.WHITE
+    var tint := not cell_regrow.is_empty()
+    if tint:
+        k0.r = 1.0 - cell_regrow[i0]
+        k1.r = 1.0 - cell_regrow[i1]
+        k2.r = 1.0 - cell_regrow[i2]
+        k3.r = 1.0 - cell_regrow[i3]
     # world-aligned planar UV: pick the two axes with the least outward
     # component (i.e. the plane the face roughly lies in)
     var ax := absf(outward.x)
@@ -964,11 +1101,11 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
             folded_quads += 1
             if alternate < 0: unresolved_folded_quads += 1
         if quality < 0 and alternate > quality:
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v3, v1, uv0, uv3, uv1, outward)
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v1, v3, v2, uv1, uv3, uv2, outward)
+            _tri(verts, normals, uvs, colors, all_verts, v0, v3, v1, uv0, uv3, uv1, k0, k3, k1, tint)
+            _tri(verts, normals, uvs, colors, all_verts, v1, v3, v2, uv1, uv3, uv2, k1, k3, k2, tint)
         else:
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v1, uv0, uv2, uv1, outward)
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v3, v2, uv0, uv3, uv2, outward)
+            _tri(verts, normals, uvs, colors, all_verts, v0, v2, v1, uv0, uv2, uv1, k0, k2, k1, tint)
+            _tri(verts, normals, uvs, colors, all_verts, v0, v3, v2, uv0, uv3, uv2, k0, k3, k2, tint)
     else:
         var quality := minf(-(v1-v0).cross(v2-v0).dot(outward),-(v2-v0).cross(v3-v0).dot(outward))
         var alternate := minf(-(v1-v0).cross(v3-v0).dot(outward),-(v2-v1).cross(v3-v1).dot(outward))
@@ -976,24 +1113,64 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
             folded_quads += 1
             if alternate < 0: unresolved_folded_quads += 1
         if quality < 0 and alternate > quality:
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v3, uv0, uv1, uv3, outward)
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v1, v2, v3, uv1, uv2, uv3, outward)
+            _tri(verts, normals, uvs, colors, all_verts, v0, v1, v3, uv0, uv1, uv3, k0, k1, k3, tint)
+            _tri(verts, normals, uvs, colors, all_verts, v1, v2, v3, uv1, uv2, uv3, k1, k2, k3, tint)
         else:
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v2, uv0, uv1, uv2, outward)
-            _tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v3, uv0, uv2, uv3, outward)
+            _tri(verts, normals, uvs, colors, all_verts, v0, v1, v2, uv0, uv1, uv2, k0, k1, k2, tint)
+            _tri(verts, normals, uvs, colors, all_verts, v0, v2, v3, uv0, uv2, uv3, k0, k2, k3, tint)
 
-func _tri(verts: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array, all_verts: PackedVector3Array,
-        a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2, _outward: Vector3) -> void:
+## The tissue a surface triangle shows: the cell an aimed tear takes from it.
+## The game steps half a cell into the flesh from the hit point along the
+## face's own normal and tears the cell there; the face does the same from
+## its centroid (local position `centroid`, unit normal `nn` toward the empty
+## side). Reading the solid corner's index as a cell showed the cell one
+## deeper on every face that looks toward -x, -y or -z and a cell diagonally
+## off on the rest, so a membrane pattern sat on plain flesh (s4 playtest).
+## A face that looks into a sprayed cell shows melted flesh.
+func _face_tissue(centroid: Vector3, nn: Vector3) -> int:
+    var q := centroid / config.cell_size
+    if _any_sealed or (field != null and field.any_sealed):
+        if _sealed_of_cell(Vector3i((q + nn).floor())):
+            return FDKTissueRules.MELTED
+    return _tissue_of_cell(Vector3i((q - nn * 0.5).floor()))
+
+## Set by remesh for _tri: 1 / (3 * cell size), chunk size, and whether no
+## sprayed cell can be in reach of this mesh.
+var _tri_third_per_cell := 1.0
+var _tri_size := 16
+var _tri_plain := false
+
+func _tri(verts: Array, normals: Array, uvs: Array, colors: Array, all_verts: PackedVector3Array,
+        a: Vector3, b: Vector3, c: Vector3, uva: Vector2, uvb: Vector2, uvc: Vector2,
+        ka: Color, kb: Color, kc: Color, tint: bool) -> void:
     var n := (b - a).cross(c - a)
     if n.length_squared() < 1e-12:
         return
     var nn := -n.normalized()
-    verts.append(a); verts.append(b); verts.append(c)
+    # _face_tissue, inlined for the common triangle (cell inside this chunk,
+    # nothing sprayed): two of these run per quad
+    var t := 0
+    var q := (a + b + c) * _tri_third_per_cell - nn * 0.5
+    var qx := int(floor(q.x))
+    var qy := int(floor(q.y))
+    var qz := int(floor(q.z))
+    var ts := _tri_size
+    if _tri_plain and qx >= 0 and qy >= 0 and qz >= 0 and qx < ts and qy < ts and qz < ts:
+        t = _tissue[qx + (qy + qz * ts) * ts]
+    else:
+        t = _face_tissue((a + b + c) / 3.0, nn)
+    var tv: PackedVector3Array = verts[t]
+    tv.append(a); tv.append(b); tv.append(c)
     # Godot uses clockwise front faces for both rendering and concave physics.
     # Share the final order, including degenerate-triangle rejection.
     all_verts.append(a); all_verts.append(b); all_verts.append(c)
-    normals.append(nn); normals.append(nn); normals.append(nn)
-    uvs.append(uva); uvs.append(uvb); uvs.append(uvc)
+    var tn: PackedVector3Array = normals[t]
+    tn.append(nn); tn.append(nn); tn.append(nn)
+    var tu: PackedVector2Array = uvs[t]
+    tu.append(uva); tu.append(uvb); tu.append(uvc)
+    if tint:
+        var tc: PackedColorArray = colors[t]
+        tc.append(ka); tc.append(kb); tc.append(kc)
 
 func serialize() -> Dictionary:
     return {
@@ -1022,6 +1199,8 @@ func deserialize(data: Dictionary) -> void:
     for i in range(min(sl.size(), _sealed.size())):
         _sealed[i] = int(sl[i])
     _any_sealed = _sealed.has(1)
+    if _any_sealed and field != null:
+        field.any_sealed = true
     for e in (data.get("boost", []) as Array):
         set_corner_boost(int(e[0]), float(e[1]))
     tissue_changed()

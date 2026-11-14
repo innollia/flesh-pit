@@ -12,6 +12,10 @@ extends Node3D
 ## - after: the last few hole rims stay wet with blood, fading over seconds.
 ## Work is bounded: MAX_STRANDS strand pieces (a broken strand draws two),
 ## MAX_WOUNDS shader slots.
+## Each tissue tears its own way (FDKTissueRules.look of the torn cell): how
+## far it stretches, the colour and number of drops, how many strands and
+## when they break, how hard the view is yanked. Plain flesh is the look this
+## had before; the terrain shader colours the wound rim from the same table.
 
 const MAX_STRANDS := 16
 const STRANDS_PER_TEAR := 5
@@ -33,7 +37,7 @@ const JOLT_WIDEN_HEAVY := 0.02
 const NOD_TIME := 0.18
 const NOD_DROP := 0.008
 const STRAND_LIFE := 0.6
-const BLOOD := Color(0.86, 0.07, 0.1)
+const BLOOD := FDKTissueRules.BLOOD
 
 var terrain: FDKTerrainField
 var gore: Node3D
@@ -51,6 +55,8 @@ var _strand_mm: MultiMeshInstance3D
 var _jolt_t := JOLT_TIME
 var _jolt_len := JOLT_TIME
 var _jolt_heavy := 0.0
+## The torn tissue's recoil scale (FDKTissueRules.look().recoil).
+var _jolt_recoil := 1.0
 ## 0..1, set by the game every frame: how overfull the eater is.
 var heavy := 0.0
 var _nod_wait := -1.0
@@ -104,18 +110,22 @@ func _rand() -> float:
 	return FDKLowPoly.hash3(_seed, _seed * 13 + 5, 29)
 
 ## Every chew frame: `ratio` 0..1 toward the tear at real contact `contact`,
-## `toward` from the wall toward the eater.
-func on_chew(ratio: float, contact: Vector3, toward: Vector3) -> void:
-	if gore != null and contact != Vector3.INF:
+## `toward` from the wall toward the eater, `tissue` the id of the held cell.
+func on_chew(ratio: float, contact: Vector3, toward: Vector3, tissue: int = FDKTissueRules.COMPRESSIVE) -> void:
+	var look := FDKTissueRules.look(tissue)
+	if gore != null and contact != Vector3.INF and int(look.drops) > 0:
 		# the stretched flesh weeps as it nears the tear
 		for edge in [0.55, 0.8, 0.93]:
 			if _last_ratio < edge and ratio >= edge:
-				gore.burst(contact + toward * 0.04, (toward * 0.3 + Vector3.DOWN).normalized(), 0, 2, BLOOD, 0.35, 0.35)
+				gore.burst(contact + toward * 0.04, (toward * 0.3 + Vector3.DOWN).normalized(), 0, 2, look.blood, 0.35, 0.35)
 	_last_ratio = ratio
 
 ## A real tear at `world_pos` (density already removed and published by the
-## terrain this frame). `eye` is the camera position.
-func on_tear(world_pos: Vector3, eye: Vector3) -> void:
+## terrain this frame). `eye` is the camera position, `tissue` the id of the
+## cell that came away.
+func on_tear(world_pos: Vector3, eye: Vector3, tissue: int = FDKTissueRules.COMPRESSIVE) -> void:
+	var look := FDKTissueRules.look(tissue)
+	var drops := int(look.drops)
 	_last_ratio = 0.0
 	var toward := eye - world_pos
 	toward = toward.normalized() if toward.length() > 0.01 else Vector3.UP
@@ -125,12 +135,14 @@ func on_tear(world_pos: Vector3, eye: Vector3) -> void:
 	_snap_toward = toward
 	_snap_age = 0.0
 	_add_wound(world_pos)
-	_spawn_strands(mouth, toward)
+	_spawn_strands(mouth, toward, look)
 	if gore != null:
 		# a fistful comes away: chunky bits and a wet spray out of the rim
-		gore.burst(mouth, toward, 6, 18, BLOOD, 1.7, 0.75, 1.9)
-		gore.burst(mouth - toward * 0.05, (toward + Vector3.DOWN * 1.2).normalized(), 2, 10, BLOOD, 0.7, 0.5, 1.4)
+		# (plain flesh: 18 drops and 10 more running down; a dry tissue none)
+		gore.burst(mouth, toward, 6, drops, look.blood, 1.7, 0.75, 1.9)
+		gore.burst(mouth - toward * 0.05, (toward + Vector3.DOWN * 1.2).normalized(), 2, roundi(drops * 10.0 / 18.0), look.blood, 0.7, 0.5, 1.4)
 	_jolt_t = 0.0
+	_jolt_recoil = float(look.recoil)
 	_jolt_heavy = clampf(heavy, 0.0, 1.0)
 	_jolt_len = lerpf(JOLT_TIME, JOLT_TIME_HEAVY, _jolt_heavy)
 	_jolt_dir = Vector2(_rand() - 0.5, 1.0).normalized()
@@ -150,27 +162,31 @@ func _add_wound(at: Vector3) -> void:
 	_wounds.append({"pos": at, "age": 0.0})
 	_wounds_dirty = true
 
-func _spawn_strands(mouth: Vector3, toward: Vector3) -> void:
+func _spawn_strands(mouth: Vector3, toward: Vector3, look: Dictionary = FDKTissueRules.LOOK_PLAIN) -> void:
+	var count := int(look.strands)
+	var own: Color = look.strand_color
 	var side := toward.cross(Vector3.UP)
 	if side.length() < 0.1:
 		side = toward.cross(Vector3.RIGHT)
 	side = side.normalized()
 	var up := side.cross(toward).normalized()
-	for i in range(STRANDS_PER_TEAR):
+	for i in range(count):
 		if _strands.size() >= MAX_STRANDS / 2:
 			_strands.pop_front()
-		var ang := TAU * (float(i) + _rand() * 0.6) / STRANDS_PER_TEAR
+		var ang := TAU * (float(i) + _rand() * 0.6) / count
 		var rad := 0.1 + 0.12 * _rand()
 		_strands.append({
 			"anchor": mouth + (side * cos(ang) + up * sin(ang)) * rad,
 			"grip": mouth + toward * 0.4, # replaced by the fist while it holds the chunk
 			"age": 0.0,
-			"snap": 0.07 + 0.16 * _rand(), # when it breaks
+			"snap": lerpf(float(look.snap_from), float(look.snap_to), _rand()), # when it breaks
 			"cut": 0.35 + 0.35 * _rand(), # where along it breaks
-			"radius": 0.006 + 0.006 * _rand(),
+			"radius": (0.006 + 0.006 * _rand()) * float(look.strand_thin),
 			"sag": Vector3.ZERO,
 			"tail": Vector3.ZERO,
-			"color": BLOOD.lerp(Color(0.85, 0.42, 0.42), 0.25 + 0.35 * _rand()),
+			# plain flesh: blood-wet membrane; a tissue with its own strands
+			# (nerve cord, fat, hair) keeps its colour
+			"color": BLOOD.lerp(Color(0.85, 0.42, 0.42), 0.25 + 0.35 * _rand()) if own.a <= 0.0 else Color(own.r, own.g, own.b).lightened(0.2 * _rand()),
 		})
 
 func tick(delta: float) -> void:
@@ -286,7 +302,7 @@ func jolt_offset() -> Vector2:
 	var u := _jolt_t / _jolt_len
 	# kicked at once, one rebound, settled (a body yanked by its own hands)
 	var k := exp(-u * lerpf(JOLT_DECAY, JOLT_DECAY_HEAVY, _jolt_heavy)) * sin(u * PI * 2.5 + 0.9)
-	return _jolt_dir * JOLT_AMP * lerpf(1.0, JOLT_AMP_HEAVY, _jolt_heavy) * k * (1.0 - u) + nod
+	return _jolt_dir * JOLT_AMP * _jolt_recoil * lerpf(1.0, JOLT_AMP_HEAVY, _jolt_heavy) * k * (1.0 - u) + nod
 
 ## The torn flesh goes down `delay` seconds from now: the head nods once.
 func on_swallow(delay: float) -> void:

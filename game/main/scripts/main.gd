@@ -1397,10 +1397,12 @@ func _on_chew_refused_full(world_pos: Vector3) -> void:
 
 ## The pull on the held flesh at `at` (look direction `dir`, progress
 ## `ratio`): the terrain's press, released while the hands show the tear,
-## and the tear feel's weeping drops. Visual only.
+## and the tear feel's weeping drops. The held cell's tissue sets how far it
+## stretches and what it weeps (FDKTissueRules.look). Visual only.
 func _show_pull(at: Vector3, dir: Vector3, ratio: float) -> void:
-	terrain.set_press(at, -dir, ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0)
-	tear_feel.on_chew(ratio, at, -dir)
+	var tissue: int = terrain.tissue_at(_chew_target) if _chew_target != Vector3.INF else FDKTissueRules.COMPRESSIVE
+	terrain.set_press(at, -dir, ratio if hands_rig.state != FDKHandsRig.HandState.TEAR else 0.0, float(FDKTissueRules.look(tissue).pull_gain))
+	tear_feel.on_chew(ratio, at, -dir, tissue)
 
 ## Point both hand rigs (plain and mutation) at the grabbed flesh, or clear
 ## it with Vector3.INF. The rig only reads the point; it never decides a tear.
@@ -1428,7 +1430,9 @@ func eat_cell_at(p: Vector3) -> float:
 ## removed the density and queued the hole (eat_cell_at / the chewer).
 func show_tear(world_pos: Vector3) -> void:
 	hand_blood = minf(1.0, hand_blood + 0.05)
-	tear_feel.on_tear(world_pos, player.camera.global_position)
+	# world_pos is the torn cell's centre: its tissue picks the blood, the
+	# strands and the recoil (the stored tissue outlives the dig)
+	tear_feel.on_tear(world_pos, player.camera.global_position, terrain.tissue_at(world_pos))
 
 ## Torn flesh that goes to the hands instead of the stomach.
 func add_carried(shell: int, units: float) -> void:

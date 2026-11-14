@@ -33,6 +33,11 @@ uniform float press_radius = 1.0;
 // don't share normals, so per-normal offsets tore the mesh open at every
 // edge while pressing (2026-09-30). Same position -> same offset, no gaps.
 uniform vec3 press_toward = vec3(0.0, 0.0, 1.0);
+// How far the held tissue is drawn out against plain flesh (1.0): fat sags
+// long, gristle hardly gives (FDKTissueRules.look().pull_gain of the cell
+// being held). FDKChunk.set_press_all gives every tissue's material the same
+// value, so a vertex on a tissue border moves the same in both.
+uniform float press_gain = 1.0;
 // Tear snap (2026-11-03 "살이 뿅 뿅 사라짐"): for a moment after a real tear
 // the flesh round the fresh hole springs back from the pull and wobbles.
 // Only an additive offset of the real published faces: it opens outward
@@ -45,6 +50,36 @@ uniform float snap_radius = 0.9;
 // rim (xyz = tear centre, w = 0..1 freshness; 0 = unused slot).
 uniform vec4 wounds[6];
 uniform float wound_radius = 0.6;
+// What a fresh wound looks like on this tissue (FDKTissueRules.look): plain
+// flesh bleeds dark red, fat weeps yellow, gristle shows pale, cloth and hair
+// show none. Linear rgb; colour only.
+uniform vec3 wound_color = vec3(0.46, 0.02, 0.04);
+uniform float wound_strength = 0.85;
+// New flesh: a wall that is growing back, tinted by how near it is to
+// closing. The mesh gives each vertex 1 - progress in COLOR.r, where progress
+// is the density of its emptiest-side corner over the iso level while that
+// corner regrows (FDKChunk.regrow_progress; a mesh without colours is white =
+// none). Fresh holes start at 0, so the tint rises as the fresh wound's blood
+// fades and is strongest just before the wall closes. Colour and gloss only:
+// vertices stay where the collider has them. regrow_hold are the spheres
+// (xyz, w radius) where growth is held right now (the body, barriers).
+uniform float regrow_show = 0.0;
+uniform vec4 regrow_hold[8];
+// The coming squeeze of contractile tissue, computed here per point from the
+// field's own squeeze clock: FDKTissueRules.contract_preview is the same
+// formula (change both together). contract_clock < 0 = no squeeze running.
+uniform float contract_show = 0.0;
+uniform float contract_clock = -1.0;
+uniform vec4 contract_near = vec4(0.0, 0.0, 0.0, 0.0);
+uniform float contract_cell = 0.5;
+uniform float contract_chunk = 16.0;
+uniform float contract_period = 8.0;
+uniform float contract_wave = 3.0;
+uniform float contract_lead = 1.6;
+uniform float contract_clench = 2.5;
+uniform vec2 contract_reach = vec2(0.95, 1.15);
+uniform vec3 contract_dir = vec3(0.62, 0.31, 0.72);
+uniform vec3 contract_wobble = vec3(0.9, 0.4, 0.35);
 // View-model squash (hands, stomach mass): pull vertices toward the eye along
 // their view ray so they keep screen position but never clip into nearby
 // walls. 1.0 = off (world geometry).
@@ -69,6 +104,8 @@ uniform vec3 room_half = vec3(1.1, 1.3, 1.5);
 varying float vfog;
 varying vec3 vwpos;
 varying vec3 vwnrm;
+varying float vregrow;
+varying float vsqueeze;
 
 void vertex() {
     vec3 wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -90,7 +127,7 @@ void vertex() {
     // one bell at every moment (wide dent narrowing into the dome), so the
     // dent and the lift never meet as a ring-shaped trough
     float bell = mix(wide, dome, pull);
-    float lift = (-0.16 * dent + 0.30 * pull) * bell;
+    float lift = (-0.16 * dent + 0.30 * press_gain * pull) * bell;
     lift += 0.012 * pull * pull * bell * sin(TIME * 47.0);
     vec3 grip = pn * lift;
     if (snap_age < 0.9) {
@@ -146,6 +183,51 @@ void vertex() {
         clip.xy = ndc * clip.w;
     }
     POSITION = clip;
+    // new flesh: the mesh's regrowth progress, off where growth is held
+    vregrow = 0.0;
+    if (regrow_show > 0.0) {
+        float grown = 1.0 - COLOR.r;
+        if (grown > 0.0) {
+            for (int i = 0; i < 8; i++) {
+                vec4 hold = regrow_hold[i];
+                if (hold.w > 0.0) {
+                    grown *= smoothstep(hold.w, hold.w + 0.25, distance(wpos, hold.xyz));
+                }
+            }
+        }
+        vregrow = grown * regrow_show;
+    }
+    // coming squeeze: FDKTissueRules.contract_preview. The squeeze is stepped
+    // per grid corner, each on its own phase, so go by the corners of the
+    // cell this vertex lies in that are near it (the far ones of an edge cell
+    // sit in solid flesh and do not squeeze; chunk-border corners never do):
+    // the lead-in of the first, off while any of them is clenching.
+    vsqueeze = 0.0;
+    if (contract_show > 0.0 && contract_clock >= 0.0 && distance(wpos, contract_near.xyz) <= contract_near.w) {
+        vec3 q = wpos / contract_cell;
+        vec3 cell = floor(q);
+        float lead_in = 0.0;
+        float busy = 0.0;
+        for (int k = 0; k < 8; k++) {
+            vec3 corner = cell + vec3(float(k & 1), float((k >> 1) & 1), float((k >> 2) & 1));
+            vec3 on_border = mod(corner, contract_chunk);
+            if (on_border.x == 0.0 || on_border.y == 0.0 || on_border.z == 0.0) {
+                continue;
+            }
+            float near = 1.0 - smoothstep(contract_reach.x, contract_reach.y, distance(q, corner));
+            if (near <= 0.0) {
+                continue;
+            }
+            vec3 cp = corner * contract_cell;
+            float phase = (dot(cp, contract_dir) / contract_wave + sin(cp.x * contract_wobble.x + cp.z * contract_wobble.y) * contract_wobble.z) * contract_period;
+            float t_in_cycle = mod(contract_clock + phase, contract_period);
+            if (t_in_cycle < contract_clench) {
+                busy = max(busy, near);
+            }
+            lead_in = max(lead_in, near * clamp((t_in_cycle - (contract_period - contract_lead)) / contract_lead, 0.0, 1.0));
+        }
+        vsqueeze = lead_in * (1.0 - busy) * contract_show;
+    }
     vwpos = wpos;
     vwnrm = normalize(mat3(MODEL_MATRIX) * NORMAL);
     vfog = clamp(-(MODELVIEW_MATRIX * vec4(pushed, 1.0)).z / max(fog_distance, 0.1), 0.0, 1.0);
@@ -207,12 +289,27 @@ void fragment() {
         col = mix(col, vec3(0.36, 0.02, 0.04), flush * 0.45);
         col = mix(col, col * 1.55 + vec3(0.16, 0.05, 0.06), tension * 0.65);
     }
-    col = mix(col, vec3(0.46, 0.02, 0.04), wound * 0.85);
+    // New flesh: pale, taut and glossy, with a slow pulse, stronger the nearer
+    // the wall is to closing. It starts only once regrowth is under way and
+    // gives way to a fresh wound's blood, so the two never mean the same.
+    float regrow = tile_mode ? 0.0 : smoothstep(0.2, 1.0, vregrow) * (1.0 - wound);
+    col = mix(col, vec3(0.93, 0.62, 0.60), regrow * 0.55);
+    col *= 1.0 + 0.06 * regrow * sin(TIME * 5.0);
+    // Coming squeeze: the muscle blanches and goes matte with a fast shiver
+    // for the lead time before it really closes in (grey and dull where new
+    // flesh is pink and glossy; colour only, the squeeze itself is real mesh).
+    float squeeze = tile_mode ? 0.0 : vsqueeze;
+    col = mix(col, col * 0.75 + vec3(0.18, 0.16, 0.15), squeeze * 0.6);
+    col *= 1.0 + 0.08 * squeeze * sin(TIME * 22.0 + vwpos.y * 9.0);
+    // the wet shine of a wound follows how much this tissue shows one
+    float wound_wet = wound * min(1.0, wound_strength / 0.85);
+    col = mix(col, wound_color, wound * wound_strength);
     ALBEDO = mix(col * tint.rgb, fog_color, vfog);
-    ROUGHNESS = mix(mix(roughness_value, 0.15, wetness), 0.08, max(wound, tension * 0.7));
+    ROUGHNESS = mix(mix(roughness_value, 0.15, wetness), 0.08, max(wound_wet, tension * 0.7));
+    ROUGHNESS = mix(mix(ROUGHNESS, 0.10, regrow), 0.7, squeeze * 0.6);
     // matte materials (roughness ~1, e.g. restroom tiles) get almost no toon
     // highlight, so the white room stops glaring off every wall
-    SPECULAR = mix(mix(0.25, 0.7, wetness) * (1.0 - 0.85 * smoothstep(0.8, 1.0, roughness_value)), 0.9, wound);
+    SPECULAR = mix(mix(0.25, 0.7, wetness) * (1.0 - 0.85 * smoothstep(0.8, 1.0, roughness_value)), 0.9, wound_wet);
     float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
-    EMISSION = tex * rim * 0.12 * wetness + vec3(0.09, 0.0, 0.006) * rim * wound;
+    EMISSION = tex * rim * 0.12 * wetness + vec3(0.09, 0.0, 0.006) * rim * wound_wet;
 }

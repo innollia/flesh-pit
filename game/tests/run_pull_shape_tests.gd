@@ -106,7 +106,7 @@ func run() -> void:
 	var vtx := parts[0]
 	var frag := parts[1]
 	check(vtx.contains("FDKPullShape.offset"), "the shader's pull names its measured mirror")
-	check(vtx.contains("(-%.2f * dent + %.2f * pull) * bell" % [FDKPullShape.DENT, FDKPullShape.LIFT]) and vtx.contains("mix(wide, dome, pull)"), "dent, lift and bell match FDKPullShape")
+	check(vtx.contains("(-%.2f * dent + %.2f * press_gain * pull) * bell" % [FDKPullShape.DENT, FDKPullShape.LIFT]) and vtx.contains("mix(wide, dome, pull)"), "dent, lift and bell match FDKPullShape")
 	check(vtx.contains("press_radius * %.1f" % FDKPullShape.DOME_SCALE) and vtx.contains("%.3f * pull * pull * bell" % FDKPullShape.QUIVER), "dome width and quiver match FDKPullShape")
 	check(not vtx.contains("side * pf"), "no sideways gather of the skin into the grip")
 	check(not frag.contains("atan("), "the strain shading has no angle (no radial fibres)")

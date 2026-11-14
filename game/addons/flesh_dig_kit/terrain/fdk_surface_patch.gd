@@ -91,6 +91,9 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 	d_grid.resize(total_corners)
 	var any_below_iso := false
 	var any_above_iso := false
+	# regrowth progress per corner, as FDKChunk tints new flesh (empty = none)
+	var regrow := PackedFloat32Array()
+	var can_tint: bool = field.has_method("corner_regrow_global")
 
 	for kz in range(nz):
 		for ky in range(ny):
@@ -103,6 +106,12 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 				read_corner_count += 1
 				if density < iso:
 					any_below_iso = true
+					if density > 0.0 and can_tint:
+						var h: float = field.corner_regrow_global(gcorner)
+						if h > 0.0:
+							if regrow.is_empty():
+								regrow.resize(total_corners)
+							regrow[kx + ky * nx + kz * slice_stride] = h
 				else:
 					any_above_iso = true
 
@@ -112,6 +121,8 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 
 	# Compute vertex for each cell in the region
 	var cell_vert: Dictionary = {}
+	var cell_regrow: Dictionary = {}
+	var tint := not regrow.is_empty()
 	for cz in range(span_z):
 		for cy in range(span_y):
 			for cx in range(span_x):
@@ -178,6 +189,10 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 				if field != null and field.surface_constraint.is_valid():
 					vertex = field.surface_constraint.call(vertex)
 				cell_vert[gcell] = vertex
+				if tint:
+					var r0 := cx + cy * nx + cz * slice_stride
+					cell_regrow[gcell] = maxf(maxf(maxf(regrow[r0], regrow[r0 + 1]), maxf(regrow[r0 + nx], regrow[r0 + nx + 1])),
+						maxf(maxf(regrow[r0 + slice_stride], regrow[r0 + slice_stride + 1]), maxf(regrow[r0 + slice_stride + nx], regrow[r0 + slice_stride + nx + 1])))
 
 	if cell_vert.is_empty():
 		return true
@@ -186,10 +201,12 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 	var verts: Array = []
 	var normals: Array = []
 	var uvs: Array = []
+	var colors: Array = []
 	for i in range(n_tissues):
 		verts.append(PackedVector3Array())
 		normals.append(PackedVector3Array())
 		uvs.append(PackedVector2Array())
+		colors.append(PackedColorArray())
 	var all_verts := PackedVector3Array()
 
 	# Emit quads along the internal axis edges
@@ -213,9 +230,7 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 						var c3 := K + Vector3i(0, -1, 0)
 						if cell_vert.has(c0) and cell_vert.has(c1) and cell_vert.has(c2) and cell_vert.has(c3):
 							var outward := Vector3(1, 0, 0) * (1.0 if a0 else -1.0)
-							var solid_k := K if a0 else K + Vector3i(1, 0, 0)
-							var tissue := _get_tissue(K, solid_k, outward, s)
-							_emit_quad(verts, normals, uvs, all_verts, cell_vert, c0, c1, c2, c3, outward, tissue)
+							_emit_quad(verts, normals, uvs, colors, all_verts, cell_vert, cell_regrow, c0, c1, c2, c3, outward)
 
 				# Y-edge
 				if ky < span_y:
@@ -227,9 +242,7 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 						var c3 := K + Vector3i(-1, 0, 0)
 						if cell_vert.has(c0) and cell_vert.has(c1) and cell_vert.has(c2) and cell_vert.has(c3):
 							var outward := Vector3(0, 1, 0) * (1.0 if a0 else -1.0)
-							var solid_k := K if a0 else K + Vector3i(0, 1, 0)
-							var tissue := _get_tissue(K, solid_k, outward, s)
-							_emit_quad(verts, normals, uvs, all_verts, cell_vert, c0, c1, c2, c3, outward, tissue)
+							_emit_quad(verts, normals, uvs, colors, all_verts, cell_vert, cell_regrow, c0, c1, c2, c3, outward)
 
 				# Z-edge
 				if kz < span_z:
@@ -241,9 +254,7 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 						var c3 := K + Vector3i(-1, 0, 0)
 						if cell_vert.has(c0) and cell_vert.has(c1) and cell_vert.has(c2) and cell_vert.has(c3):
 							var outward := Vector3(0, 0, 1) * (1.0 if a0 else -1.0)
-							var solid_k := K if a0 else K + Vector3i(0, 0, 1)
-							var tissue := _get_tissue(K, solid_k, outward, s)
-							_emit_quad(verts, normals, uvs, all_verts, cell_vert, c0, c1, c2, c3, outward, tissue)
+							_emit_quad(verts, normals, uvs, colors, all_verts, cell_vert, cell_regrow, c0, c1, c2, c3, outward)
 
 	var mesh_obj := ArrayMesh.new()
 	var have_any := false
@@ -256,6 +267,8 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 		arrays[Mesh.ARRAY_VERTEX] = verts[i]
 		arrays[Mesh.ARRAY_NORMAL] = normals[i]
 		arrays[Mesh.ARRAY_TEX_UV] = uvs[i]
+		if tint:
+			arrays[Mesh.ARRAY_COLOR] = colors[i]
 		mesh_obj.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh_obj.surface_set_material(mesh_obj.get_surface_count() - 1, FDKChunk.terrain_material(i))
 
@@ -263,35 +276,31 @@ func _build_region(min_cell: Vector3i, max_cell: Vector3i, tile_owned: bool = fa
 	faces = all_verts
 	return true
 
-func _get_tissue(edge_k: Vector3i, solid_k: Vector3i, outward: Vector3, s: int) -> int:
-	var cc := Vector3i(_floordiv(edge_k.x, s), _floordiv(edge_k.y, s), _floordiv(edge_k.z, s))
-	var chunk: FDKChunk = field.get_chunk(cc) if field != null and field.has_method("get_chunk") else null
-	var local_k := solid_k - cc * s
-	var lx := clampi(local_k.x, 0, s - 1)
-	var ly := clampi(local_k.y, 0, s - 1)
-	var lz := clampi(local_k.z, 0, s - 1)
+## The tissue a triangle shows: the cell an aimed tear takes from it, as
+## FDKChunk._face_tissue (world centroid, unit normal toward the empty side).
+func _face_tissue(centroid: Vector3, nn: Vector3) -> int:
+	if field != null and field.has_method("face_tissue"):
+		return field.face_tissue(centroid, nn)
+	return 0
 
-	var tissue := 0
-	if chunk != null:
-		tissue = chunk.get_tissue_at_cell(lx, ly, lz)
-		if chunk._any_sealed:
-			var ex := clampi(local_k.x + int(round(outward.x)), 0, s - 1)
-			var ey := clampi(local_k.y + int(round(outward.y)), 0, s - 1)
-			var ez := clampi(local_k.z + int(round(outward.z)), 0, s - 1)
-			if chunk.is_sealed_at_cell(ex, ey, ez):
-				tissue = FDKTissueRules.MELTED
-	elif field != null and field.tissue_sampler.is_valid():
-		var cell_world: Vector3 = (Vector3(cc * s + Vector3i(lx, ly, lz)) + Vector3.ONE * 0.5) * float(field.config.cell_size)
-		tissue = int(field.tissue_sampler.call(cell_world))
-	return tissue
-
-func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVector3Array,
-		cell_vert: Dictionary, c0: Vector3i, c1: Vector3i, c2: Vector3i, c3: Vector3i,
-		outward: Vector3, tissue: int) -> void:
+func _emit_quad(verts: Array, normals: Array, uvs: Array, colors: Array, all_verts: PackedVector3Array,
+		cell_vert: Dictionary, cell_regrow: Dictionary, c0: Vector3i, c1: Vector3i, c2: Vector3i, c3: Vector3i,
+		outward: Vector3) -> void:
 	var v0: Vector3 = cell_vert[c0]
 	var v1: Vector3 = cell_vert[c1]
 	var v2: Vector3 = cell_vert[c2]
 	var v3: Vector3 = cell_vert[c3]
+	# new-flesh tint (r = 1 - progress), the same value FDKChunk gives the vertex
+	var tint := not cell_regrow.is_empty()
+	var k0 := Color.WHITE
+	var k1 := Color.WHITE
+	var k2 := Color.WHITE
+	var k3 := Color.WHITE
+	if tint:
+		k0.r = 1.0 - float(cell_regrow[c0])
+		k1.r = 1.0 - float(cell_regrow[c1])
+		k2.r = 1.0 - float(cell_regrow[c2])
+		k3.r = 1.0 - float(cell_regrow[c3])
 
 	var ax := absf(outward.x)
 	var ay := absf(outward.y)
@@ -321,35 +330,42 @@ func _emit_quad(verts: Array, normals: Array, uvs: Array, all_verts: PackedVecto
 		var quality := minf(-(v2 - v0).cross(v1 - v0).dot(outward), -(v3 - v0).cross(v2 - v0).dot(outward))
 		var alternate := minf(-(v3 - v0).cross(v1 - v0).dot(outward), -(v3 - v1).cross(v2 - v1).dot(outward))
 		if quality < 0 and alternate > quality:
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v3, v1, uv0, uv3, uv1, outward)
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v1, v3, v2, uv1, uv3, uv2, outward)
+			_tri(verts, normals, uvs, colors, all_verts, v0, v3, v1, uv0, uv3, uv1, k0, k3, k1, tint)
+			_tri(verts, normals, uvs, colors, all_verts, v1, v3, v2, uv1, uv3, uv2, k1, k3, k2, tint)
 		else:
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v1, uv0, uv2, uv1, outward)
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v3, v2, uv0, uv3, uv2, outward)
+			_tri(verts, normals, uvs, colors, all_verts, v0, v2, v1, uv0, uv2, uv1, k0, k2, k1, tint)
+			_tri(verts, normals, uvs, colors, all_verts, v0, v3, v2, uv0, uv3, uv2, k0, k3, k2, tint)
 	else:
 		var quality := minf(-(v1 - v0).cross(v2 - v0).dot(outward), -(v2 - v0).cross(v3 - v0).dot(outward))
 		var alternate := minf(-(v1 - v0).cross(v3 - v0).dot(outward), -(v2 - v1).cross(v3 - v1).dot(outward))
 		if quality < 0 and alternate > quality:
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v3, uv0, uv1, uv3, outward)
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v1, v2, v3, uv1, uv2, uv3, outward)
+			_tri(verts, normals, uvs, colors, all_verts, v0, v1, v3, uv0, uv1, uv3, k0, k1, k3, tint)
+			_tri(verts, normals, uvs, colors, all_verts, v1, v2, v3, uv1, uv2, uv3, k1, k2, k3, tint)
 		else:
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v1, v2, uv0, uv1, uv2, outward)
-			_tri(verts[tissue], normals[tissue], uvs[tissue], all_verts, v0, v2, v3, uv0, uv2, uv3, outward)
+			_tri(verts, normals, uvs, colors, all_verts, v0, v1, v2, uv0, uv1, uv2, k0, k1, k2, tint)
+			_tri(verts, normals, uvs, colors, all_verts, v0, v2, v3, uv0, uv2, uv3, k0, k2, k3, tint)
 
-func _tri(t_verts: PackedVector3Array, t_normals: PackedVector3Array, t_uvs: PackedVector2Array,
+func _tri(verts: Array, normals: Array, uvs: Array, colors: Array,
 		all_v: PackedVector3Array, a: Vector3, b: Vector3, c: Vector3,
-		uva: Vector2, uvb: Vector2, uvc: Vector2, _outward: Vector3) -> void:
+		uva: Vector2, uvb: Vector2, uvc: Vector2, ka: Color, kb: Color, kc: Color, tint: bool) -> void:
 	var n := (b - a).cross(c - a)
 	if n.length_squared() < 1e-12:
 		return
 	var nn := -n.normalized()
+	var t := _face_tissue((a + b + c) / 3.0, nn)
 	var la := to_local(a) if is_inside_tree() else (a - position)
 	var lb := to_local(b) if is_inside_tree() else (b - position)
 	var lc := to_local(c) if is_inside_tree() else (c - position)
+	var t_verts: PackedVector3Array = verts[t]
 	t_verts.append(la); t_verts.append(lb); t_verts.append(lc)
 	all_v.append(a); all_v.append(b); all_v.append(c)
+	var t_normals: PackedVector3Array = normals[t]
 	t_normals.append(nn); t_normals.append(nn); t_normals.append(nn)
+	var t_uvs: PackedVector2Array = uvs[t]
 	t_uvs.append(uva); t_uvs.append(uvb); t_uvs.append(uvc)
+	if tint:
+		var t_colors: PackedColorArray = colors[t]
+		t_colors.append(ka); t_colors.append(kb); t_colors.append(kc)
 
 func contact_ray(from: Vector3, to: Vector3) -> Dictionary:
 	var offset := to - from

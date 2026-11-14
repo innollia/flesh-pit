@@ -760,6 +760,9 @@ func step_contraction(delta: float, near: Vector3, radius: float = 8.0) -> int:
         set_collision_guard(near, collision_guard_margin)
     var chunk_world := float(config.chunk_size) * config.cell_size
     var changed := 0
+    # the wall shows the coming squeeze from this same clock, only where the
+    # squeeze is stepped at all (fdk_terrain_surface.gdshader)
+    FDKChunk.set_contract_clock(contract_time, Vector4(near.x, near.y, near.z, radius), config.cell_size, config.chunk_size)
     for cc in _chunks.keys():
         var chunk: FDKChunk = _chunks[cc]
         var mid: Vector3 = chunk.position + Vector3.ONE * chunk_world * 0.5
@@ -902,6 +905,54 @@ func corner_density_global(g: Vector3i) -> float:
     if density_sampler.is_valid():
         return float(density_sampler.call(Vector3(g) * config.cell_size))
     return 1.0
+
+## 0..1 how near the empty global corner g is to closing by regrowth
+## (FDKChunk.regrow_progress of the chunk that owns it); 0 where no chunk is.
+func corner_regrow_global(g: Vector3i) -> float:
+    var s := config.chunk_size
+    var cc := Vector3i((Vector3(g) / float(s)).floor())
+    var chunk: FDKChunk = _chunks.get(cc, null)
+    if chunk == null:
+        return 0.0
+    var l := g - cc * s
+    var n := s + 1
+    return chunk.regrow_progress(l.x + (l.y + l.z * n) * n)
+
+## Tissue id of a global cell (the sampler's where no chunk exists yet).
+## Unlike tissue_at, a sprayed cell keeps its stored tissue here.
+func cell_tissue_global(g: Vector3i) -> int:
+    var s := config.chunk_size
+    var cc := Vector3i((Vector3(g) / float(s)).floor())
+    var chunk: FDKChunk = _chunks.get(cc, null)
+    if chunk == null:
+        if tissue_sampler.is_valid():
+            return int(tissue_sampler.call((Vector3(g) + Vector3(0.5, 0.5, 0.5)) * config.cell_size))
+        return 0
+    var l := g - cc * s
+    return chunk._tissue[l.x + (l.y + l.z * s) * s]
+
+func cell_sealed_global(g: Vector3i) -> bool:
+    var s := config.chunk_size
+    var cc := Vector3i((Vector3(g) / float(s)).floor())
+    var chunk: FDKChunk = _chunks.get(cc, null)
+    if chunk == null or not chunk._any_sealed:
+        return false
+    var l := g - cc * s
+    return chunk._sealed[l.x + (l.y + l.z * s) * s] != 0
+
+## True once any cell of any chunk was sprayed: a face may look into a
+## sprayed cell of a neighbour chunk (FDKChunk._face_tissue).
+var any_sealed := false
+
+## The tissue a surface triangle shows, from its world centroid and its unit
+## normal toward the empty side: the cell an aimed tear takes from that point
+## (half a cell into the flesh), or melted flesh when it looks into a sprayed
+## cell. FDKChunk._face_tissue is the same rule in chunk-local coordinates.
+func face_tissue(centroid: Vector3, outward: Vector3) -> int:
+    var q := centroid / config.cell_size
+    if any_sealed and cell_sealed_global(Vector3i((q + outward).floor())):
+        return FDKTissueRules.MELTED
+    return cell_tissue_global(Vector3i((q - outward * 0.5).floor()))
 
 ## Changes one global corner in every chunk that stores it (a corner on a
 ## chunk face/edge/vertex is stored by up to 8 chunks).
@@ -1173,11 +1224,29 @@ func regenerate_all(delta: float, protect_world_pos: Vector3, protect_radius: fl
                 var lc := (bc - chunk_origin) / config.cell_size
                 local_blockers.append(Vector4(lc.x, lc.y, lc.z, bv.w / config.cell_size))
         chunk.regenerate(grow, rate, local_protect, local_radius, local_blockers)
+    # New flesh is tinted where it is really growing: the mesh knows what is
+    # missing and can grow, the shader hides it where growth is held for now
+    # (round the body and inside the blockers nearest to it).
+    var holds := PackedVector4Array()
+    if protect_radius > 0.0:
+        holds.append(Vector4(protect_world_pos.x, protect_world_pos.y, protect_world_pos.z, protect_radius))
+    if regen_blockers.size() <= FDKChunk.REGROW_HOLDS - holds.size():
+        for b in regen_blockers:
+            holds.append(b)
+    else:
+        var near: Array = regen_blockers.duplicate()
+        near.sort_custom(func(a: Vector4, b: Vector4) -> bool:
+            return Vector3(a.x, a.y, a.z).distance_to(protect_world_pos) - a.w < Vector3(b.x, b.y, b.z).distance_to(protect_world_pos) - b.w)
+        for i in range(FDKChunk.REGROW_HOLDS - holds.size()):
+            holds.append(near[i])
+    FDKChunk.set_regrow_hold_all(holds)
 
 ## Chew press visual: dents then stretches the wall around `center` toward
 ## `toward` (usually the player) as amount goes 0..1. amount 0 = off.
-func set_press(center: Vector3, toward: Vector3, amount: float) -> void:
-    FDKChunk.set_press_all(center, toward, clampf(amount, 0.0, 1.0))
+## `gain` scales how far the held tissue is drawn out (1 = plain flesh, see
+## FDKTissueRules.look().pull_gain); one value for every tissue's faces.
+func set_press(center: Vector3, toward: Vector3, amount: float, gain: float = 1.0) -> void:
+    FDKChunk.set_press_all(center, toward, clampf(amount, 0.0, 1.0), gain)
 
 ## Tear snap visual: the flesh round a fresh hole at `center` springs back
 ## and wobbles, `age` seconds after the tear (>= FDKChunk.SNAP_END = off).

@@ -37,7 +37,10 @@ static func pull_amount(amount: float) -> float:
 
 ## Offset of a surface point `rel` (from the press centre) for press
 ## `amount`, `toward` the eater, press `radius`, at shader time `time`.
-static func offset(rel: Vector3, toward: Vector3, amount: float, radius: float, time: float) -> Vector3:
+## `gain` is the shader's press_gain: how far the held tissue is drawn out
+## against plain flesh (FDKTissueRules.look().pull_gain; 1.0 = plain flesh,
+## the shape as it was). It scales the lift only, so the dome keeps its shape.
+static func offset(rel: Vector3, toward: Vector3, amount: float, radius: float, time: float, gain: float = 1.0) -> Vector3:
 	var pn := (toward + Vector3(0.0, 1e-5, 0.0)).normalized()
 	var d := rel.length()
 	var wide := bell(d / radius)
@@ -46,7 +49,7 @@ static func offset(rel: Vector3, toward: Vector3, amount: float, radius: float, 
 	# one bell at every moment: the wide dent narrows into the dome, so the
 	# two never meet as a ring-shaped trough
 	var shape := lerpf(wide, dome, pull)
-	var h := (-DENT * dent_amount(amount) + LIFT * pull) * shape
+	var h := (-DENT * dent_amount(amount) + LIFT * gain * pull) * shape
 	h += QUIVER * pull * pull * shape * sin(time * 47.0)
 	return pn * h
 

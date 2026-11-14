@@ -52,6 +52,14 @@ FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩�
 
 FDKTerrainField.dig_at(world_pos: Vector3,amount: float)는 실제 셀과 이웃 공유 모서리 밀도를 제거하고 게시할 지형을 표시한다. 반환값은 없으며 부작용 결과는 밀도·메시·충돌에서 확인한다. serialize()/deserialize(Dictionary)는 청크 상태를 주고받는다. 소비자는 복원 뒤 실제 화면이 필요한 시점에 게시를 준비해야 하며 데이터 적용만으로 첫 화면 준비를 단정하지 않는다.
 
+살점 면의 표시 계약. 지형 메시의 삼각형은 `FDKChunk._face_tissue`(패치는 `FDKTerrainField.face_tissue(centroid_world, outward)`)가 고른 조직의 표면에 들어간다. 무게중심에서 면 법선의 살 쪽으로 반 칸 들어간 칸의 조직이며 `Main._terrain_target`의 조준 규칙과 같다. 둘 중 하나를 바꾸면 다른 쪽과 `run_terrain_visual_tests.gd` A절을 같이 바꾼다.
+
+새살은 정점 색 `COLOR.r = 1 - 진행`으로 전한다. 진행은 정점이 든 칸의 8개 모서리 가운데 `FDKChunk.regrow_progress`(이웃 청크 모서리는 `FDKTerrainField.corner_regrow_global`)의 최댓값이다. 색 배열이 없는 메시는 흰색이라 새살이 없다. 청크 경계의 겹친 정점은 같은 8개 모서리를 읽어 같은 값을 받는다. 재생이 붙들린 구(몸, 방벽)는 `regenerate_all` 끝에 `FDKChunk.set_regrow_hold_all(holds)`로 셰이더의 `regrow_hold[8]`에 넘긴다.
+
+수축 예고는 셰이더가 `FDKTissueRules.contract_preview`와 같은 식으로 점마다 계산한다. 시계와 범위는 `step_contraction`이 `FDKChunk.set_contract_clock(clock, near, cell_size, chunk_size)`로 넘기고, 조임이 돌지 않으면 시계는 음수다. 식을 바꾸면 GDScript 쪽과 셰이더 쪽을 같이 바꾼다(`run_terrain_visual_tests.gd` C절이 문자열과 실제 조임 목록으로 대조한다).
+
+`FDKTerrainField.set_press(center, toward, amount, gain := 1.0)`의 gain은 잡은 칸 조직의 `pull_gain`이다. 값 하나가 모든 조직 재질에 똑같이 들어가므로 조직 경계의 정점이 갈라지지 않는다. `FDKPullShape.offset(..., gain := 1.0)`이 같은 값을 받는다. `FPTearFeel.on_chew(ratio, contact, toward, tissue := COMPRESSIVE)`와 `on_tear(world_pos, eye, tissue := COMPRESSIVE)`는 조직 번호를 받아 `FDKTissueRules.look(tissue)`의 값을 쓴다. 인자를 주지 않으면 압축 살이다.
+
 외부 HTTP API나 로그인 프로토콜은 제공하지 않는다. 키트의 Godot 호출과 신호, 로컬 파일 형식이 소비자 경계다.
 
 ## 음성과 자막
