@@ -4,6 +4,7 @@ const FPGore := preload("res://main/scripts/fp_gore.gd")
 const FPTearFeel := preload("res://main/scripts/fp_tear_feel.gd")
 const FPWakeLids := preload("res://main/scripts/fp_wake_lids.gd")
 const FPRestBucket := preload("res://main/scripts/fp_rest_bucket.gd")
+const FPCorpseArt := preload("res://main/art/fp_corpse_art.gd")
 
 ## 화장실과 세 겹의 살점, 전체 진행을 연결한다.
 ## 실제 굴착·먹기 -> 위장과 즉시 털 성장 -> 변기로 토하기 -> 물내림과 이빨 정산 ->
@@ -52,10 +53,12 @@ signal tank_teeth_knocked
 
 ## 6 (decision 0012): the flesh unit halved and hair prices doubled.
 ## 7 (decision 0016): the rest containers stand at fixed places (seven, none
-## in the core) and their buckets hold teeth. Slots written before it are not
+## in the core) and their buckets hold teeth.
+## 8 (decision 0018): structures past the core lie in a membrane skin, which
+## chunks made before it do not have. Slots written before it are not
 ## converted and not read: load_from_disk refuses them and the title offers
 ## only a new game.
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
 
 const RESTROOM_CENTER := Vector3(0, 1, 0)
 ## The signed density ramp places the flesh surface against the room walls.
@@ -1104,6 +1107,7 @@ func _process(delta: float) -> void:
 	# the restroom's fixtures are not flesh to squeeze past (2026-10-31 play:
 	# walking up to the tank twisted the body and swayed the head)
 	player.squeeze_enabled = not restroom.contains(player.global_position)
+	bank_hairs_at_home()
 	stomach_view.set_state(stomach.fill_ratio(), stomach.overfill_ratio())
 	# the vomit key and mouth show only where vomiting settles (decision 0009):
 	# shown everywhere they taught emptying the stomach out in the flesh
@@ -3599,6 +3603,7 @@ func die(cause: String) -> void:
 	death_drop.drop(at, payload)
 	death_drop.visible = true
 	death_drops.append(death_drop)
+	FPCorpseArt.dress(death_drop)
 	hazard.reset()
 	_hazards.clear()
 	_crush_t = 0.0
@@ -3613,8 +3618,18 @@ func die(cause: String) -> void:
 	# even if nothing is saved again before the next crash/close.
 	save_to_disk()
 
+## The white room keeps the hairs that reach it (decision 0017): while the
+## player stands in the restroom, nothing grown out there is at stake any
+## more. Every tick rather than on the way in, so a death's wake-up, a load
+## inside and the M29 sleep are all covered. A rest container does not bank.
+func bank_hairs_at_home() -> void:
+	if not progression.expedition_hairs.is_empty() and restroom.contains(player.global_position):
+		progression.bank_expedition_hairs()
+
 ## A body: the dropped belongings, a curled skin-coloured lump, and its
-## stake marker (FDKDeathDrop). One per death.
+## stake marker (FDKDeathDrop). One per death. What the flesh grew on it
+## (hair mat, one stalk per hair to take back) is FPCorpseArt.dress, called
+## once the body holds its belongings.
 func _new_death_drop() -> FDKDeathDrop:
 	var d := FDKDeathDrop.new()
 	d.name = "DeathDrop%d" % deaths
@@ -3666,6 +3681,8 @@ func _step_death_drop(delta: float) -> void:
 			d.drop(d.last_known_position, got)
 			d.current_position = d.position
 			d.set_meta("full_until_away", true)
+			# the hairs all came back: the stalks are gone, the body stays
+			FPCorpseArt.dress(d)
 	for d in gone:
 		death_drops.erase(d)
 		if d != death_drop:
@@ -3895,6 +3912,7 @@ func deserialize(data: Dictionary) -> void:
 	death_drop = _new_death_drop()
 	if not newest.is_empty():
 		death_drop.deserialize(newest)
+		FPCorpseArt.dress(death_drop)
 	death_drop.visible = death_drop.active
 	var drops: Array = data.get("death_drops", [newest] if death_drop.active else [])
 	for dd in drops:
@@ -3906,6 +3924,7 @@ func deserialize(data: Dictionary) -> void:
 		d.visible = d.active
 		if d.active:
 			death_drops.append(d)
+			FPCorpseArt.dress(d)
 		else:
 			d.queue_free()
 	if data.has("hazard"):

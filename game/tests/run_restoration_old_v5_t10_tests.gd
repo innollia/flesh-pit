@@ -50,7 +50,7 @@ func run() -> void:
 	m.stomach.add_flesh(60.0)
 	m.terrain.dig_at(Vector3(0.25, 1.25, 4.25), 1.0)
 	first = m.serialize()
-	check(int(first.version) == m.SAVE_VERSION and m.SAVE_VERSION == 7, "new slots are written as version 7")
+	check(int(first.version) == m.SAVE_VERSION and m.SAVE_VERSION == 8, "new slots are written as version 8")
 	for index in range(2):
 		check(m.save_to_disk() and m.has_current_save() and m.load_from_disk(), "real save/load roundtrip %d" % index)
 		var after: Dictionary = m.serialize()

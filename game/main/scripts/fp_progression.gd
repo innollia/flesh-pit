@@ -26,6 +26,10 @@ const EXPEDITION_TEETH := 8
 ## 핵 12.5칸, 맨틀 6.25칸, 지표면 약 4.17칸에 색 털 한 가닥이다.
 const FLESH_PER_BIOME_HAIR := 25.0
 const FLESH_PER_COMMON_HAIR := 75.0
+## Dying leaves this share (rounded down) of the coloured hairs grown since
+## the restroom on the body out there (decision 0017). Common hairs, hairs
+## that have been home once and bought mutations stay on the player.
+const DEATH_HAIR_SHARE := 0.5
 
 ## docs/spec/04-economy.md price guide, in expeditions' earnings. Items without a guide
 ## price (canary feed, tumor bag) are prototype picks, see the report.
@@ -119,6 +123,11 @@ var has_pouch: bool = false
 ## right palm out of the restroom with no pouch, so that hand holds and
 ## carries nothing else. Not saved.
 var palm_teeth_blocks: bool = false
+## Coloured hairs grown since the player last stood in the restroom, per
+## biome pool: what a death puts at stake (DEATH_HAIR_SHARE). Main clears it
+## while the player is in the restroom (bank_expedition_hairs); a rest
+## container does not. Saved.
+var expedition_hairs: Dictionary = {}
 ## The work belt (tool hooks) comes with the first vent trade.
 var has_belt: bool = false
 var tumor_mutations: Array[String] = []
@@ -465,6 +474,7 @@ func on_flesh_eaten(shell: int, units: float = 1.0) -> void:
 	hair_carry[biome] = c_biome - float(n_biome) * FLESH_PER_BIOME_HAIR
 	if n_biome > 0:
 		mutation_tree.add_points(biome, n_biome)
+		expedition_hairs[biome] = int(expedition_hairs.get(biome, 0)) + n_biome
 
 	# Common pool hair growth
 	var c_common: float = float(hair_carry.get(COMMON, 0.0)) + weighted
@@ -472,6 +482,29 @@ func on_flesh_eaten(shell: int, units: float = 1.0) -> void:
 	hair_carry[COMMON] = c_common - float(n_common) * FLESH_PER_COMMON_HAIR
 	if n_common > 0:
 		mutation_tree.add_points(COMMON, n_common)
+
+## The restroom keeps what reached it: hairs grown out there are no longer
+## at stake once the player stands in the white room.
+func bank_expedition_hairs() -> void:
+	expedition_hairs.clear()
+
+## Coloured hairs a death here would leave on the body: DEATH_HAIR_SHARE of
+## each pool's expedition hairs, rounded down, never more than are still worn.
+func death_hair_drop() -> Dictionary:
+	var out := {}
+	for b in BIOMES:
+		var n := mini(int(floor(float(int(expedition_hairs.get(b, 0))) * DEATH_HAIR_SHARE + 1e-6)), hairs(b))
+		if n > 0:
+			out[b] = n
+	return out
+
+## Hairs lying on a dropped body (a death payload's "hairs").
+static func payload_hairs(p: Dictionary) -> int:
+	var n := 0
+	var h: Dictionary = p.get("hairs", {})
+	for k in h.keys():
+		n += maxi(0, int(h[k]))
+	return n
 
 ## Weighted flesh still pending in the stomach (0 under R17 immediate hair growth).
 func pending_hair_total() -> int:
@@ -755,11 +788,17 @@ func buy_tumor_mutation() -> String:
 
 # --- death --------------------------------------------------------------------
 
-## What drops at the death spot: stomach contents and carried consumables.
-## Under R17, already grown hairs and purchased mutations stay on the body.
-## Owned tools and teeth in the tank stay. Every carried tooth drops, in the
-## hand or in the pouch (the pouch itself stays on the body, decision 0016).
+## What drops at the death spot: stomach contents, carried consumables and
+## half the coloured hairs grown since the restroom (death_hair_drop,
+## decision 0017). Common hairs, hairs that reached the restroom and bought
+## mutations stay on the player. Owned tools and teeth in the tank stay.
+## Every carried tooth drops, in the hand or in the pouch (the pouch itself
+## stays on the body, decision 0016).
 func take_death_payload(stomach_fill: float) -> Dictionary:
+	var dropped_hairs := death_hair_drop()
+	for b in dropped_hairs.keys():
+		mutation_tree.add_points(b, -int(dropped_hairs[b]))
+	expedition_hairs.clear()
 	var payload := {
 		"stomach_fill": stomach_fill,
 		"pending_hairs": pending_hairs.duplicate(true),
@@ -768,6 +807,7 @@ func take_death_payload(stomach_fill: float) -> Dictionary:
 		"canary_feed": canary_feed,
 		"tumors": tumors._carried.duplicate(),
 		"teeth_in_hand": teeth_in_hand,
+		"hairs": dropped_hairs,
 		"migrated_v5_hairs": true,
 	}
 	barriers = 0
@@ -783,9 +823,21 @@ func take_death_payload(stomach_fill: float) -> Dictionary:
 ## Recovering a drop: consumables come back up to their carry caps and what
 ## does not fit stays in `p` (the body keeps it, see payload_empty()); the
 ## stomach flesh returns as fill (caller adds it). Already eaten flesh does
-## NOT re-award hairs. Legacy payloads with unmigrated pending_hairs are
-## migrated exactly once into hairs and hair_carry.
+## NOT re-award hairs. The body's own hairs ("hairs") all come back (hairs
+## have no carry cap) and are at stake again until the restroom. Legacy
+## payloads with unmigrated pending_hairs are migrated exactly once into
+## hairs and hair_carry.
 func restore_death_payload(p: Dictionary) -> float:
+	# values read back from a save are floats
+	var back: Dictionary = p.get("hairs", {})
+	for k in back.keys():
+		var n := int(back[k])
+		if n <= 0:
+			continue
+		mutation_tree.add_points(String(k), n)
+		if String(k) in BIOMES:
+			expedition_hairs[String(k)] = int(expedition_hairs.get(String(k), 0)) + n
+	p["hairs"] = {}
 	var is_migrated: bool = bool(p.get("migrated_v5_hairs", false))
 	var ph: Dictionary = p.get("pending_hairs", {})
 	if not is_migrated and not ph.is_empty():
@@ -830,7 +882,7 @@ func restore_death_payload(p: Dictionary) -> float:
 static func payload_empty(p: Dictionary) -> bool:
 	var sp := FDKSprayCan.Inventory.new()
 	sp.deserialize(p.get("sprays", {}))
-	return int(p.get("barriers", 0)) <= 0 and int(p.get("canary_feed", 0)) <= 0 and int(p.get("teeth_in_hand", 0)) <= 0 		and sp.cans.is_empty() and (p.get("tumors", []) as Array).is_empty() and float(p.get("stomach_fill", 0.0)) <= 0.0
+	return int(p.get("barriers", 0)) <= 0 and int(p.get("canary_feed", 0)) <= 0 and int(p.get("teeth_in_hand", 0)) <= 0 and payload_hairs(p) <= 0 		and sp.cans.is_empty() and (p.get("tumors", []) as Array).is_empty() and float(p.get("stomach_fill", 0.0)) <= 0.0
 
 # --- save ---------------------------------------------------------------------
 
@@ -848,6 +900,7 @@ func serialize() -> Dictionary:
 		"max_depth": max_depth,
 		"pending_hairs": pending_hairs.duplicate(true),
 		"hair_carry": hair_carry.duplicate(true),
+		"expedition_hairs": expedition_hairs.duplicate(true),
 		"junk_taken": junk_taken,
 		"tumor_mutations": tumor_mutations.duplicate(),
 		"tumors_eaten": tumors_eaten,
@@ -877,6 +930,11 @@ func deserialize(d: Dictionary) -> void:
 	var hc: Dictionary = d.get("hair_carry", {})
 	for k in hc.keys():
 		hair_carry[k] = float(hc[k])
+	expedition_hairs = {}
+	var eh: Dictionary = d.get("expedition_hairs", {})
+	for k in eh.keys():
+		if int(eh[k]) > 0:
+			expedition_hairs[String(k)] = int(eh[k])
 	junk_taken = int(d.get("junk_taken", 0))
 	tumor_mutations.clear()
 	const OLD_TUMOR := {"extra_arm": "T2", "palm_mouth": "T3", "swollen_torso": "T4", "back_eyes": "T5", "split_jaw": "T6", "rib_fan": "T7"}

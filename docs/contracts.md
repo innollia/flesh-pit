@@ -46,6 +46,14 @@ Main._look_hit()는 맞지 않으면 빈 Dictionary, 맞으면 collider와 세�
 
 `Main.palm_blocked()`는 화장실 밖에서 주머니 없이 이빨을 지녀 오른손이 묶인 때에 참이고(`FPProgression.palm_teeth_blocks`에 매 프레임 적는다. 저장하지 않는다), `Main.teeth_in_pouch()`는 주머니가 있고 화장실 밖이라 이빨이 허리의 주머니에 있는 때에 참이다. 묶인 동안 `FPInteractions.plan()`은 오른손의 살·도구 행동을 `HOLD_TEETH`로 돌려주고, 손 리그 셋은 `FDKHandsRig.lead_lock`(이끄는 손을 번갈지 않고 고정하는 키트 쪽 값, 게임 상태를 모른다)으로 왼손이 한 입마다 이끈다.
 
+## 죽음 드롭의 털과 구조물의 막 (결정 0017·0018)
+
+죽음 드롭의 `FDKDeathDrop.items`에 `hairs`(풀 이름 → 시체에 남은 털 수, 색 풀만)가 더해졌다. `FPProgression.take_death_payload`가 넣고 그만큼 풀에서 빼며, `restore_death_payload`가 전부 돌려주고 빈 사전으로 바꾼다(다른 것이 남아 시체가 그대로여도 털은 한 번만 돌아온다). `FPProgression.payload_hairs(p)`는 그 합이고 `payload_empty`는 털이 남은 드롭을 비었다고 하지 않는다. `FPProgression.expedition_hairs`(풀 이름 → 화장실을 나선 뒤 자란 색 털 수)는 저장되고(`progression.expedition_hairs`), `death_hair_drop()`이 지금 죽으면 남을 수를 돌려주며, `bank_expedition_hairs()`가 비운다(`Main.bank_hairs_at_home`이 화장실 안에서 부른다). 두 키가 없는 저장은 빈 값으로 읽는다.
+
+시체의 모습은 `game/main/art/fp_corpse_art.gd`의 `dress(drop)`가 `Body` 아래 `Fuzz`(털 매트)·`Stalks`(줄기, 메타 `stalks`에 그린 수)·`Tips`(망울)로 짓고, 다시 부르면 갈아 끼운다. 드롭의 내용이 바뀐 뒤(죽음, 일부만 되찾음, 불러오기) Main이 부른다. 이 스크립트는 `class_name`이 없어 `preload`로 쓴다. `Body`의 메시·재질과 말뚝은 건드리지 않는다.
+
+`FPBiomes.in_wrap(p)`는 그 점이 구조물을 감싼 막 띠 안인지 돌려준다. 구조물 사전에 `wrap`(bool)이 더해졌다. 생성기의 다른 호출 모양(`shape_density`, `tissue_at`, `apply_rest_points`)은 그대로다. Main의 저장 version은 8이다(앞선 슬롯은 읽지 않는다).
+
 ## 먹기 신호
 
 FDKChewer.try_start(world_pos)는 세계 위치를 받아 같은 셀을 이어 잡거나 새 셀 진행을 시작한다. 유효하지 않은 살에서는 stop으로 이어진다. process_chew(delta)는 초 단위 시간을 진행하고 stop()은 진행을 해제한다. terrain과 config가 없는 경우 진행하지 않는다.

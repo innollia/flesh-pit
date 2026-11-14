@@ -1180,7 +1180,12 @@ class Model:
                  + float(self.V["spray_can.MAX_CARRIED"]) * float(pu["spray_deep"])
                  + float(self.A.get("death_teeth_in_hand", 4)) / self.exp_teeth
                  + 2.0 * float(self.V["progression.TUMOR_TOOTH_PAYOUT"]) / self.exp_teeth)
-        return {"stomach": stomach, "typical": typical, "worst": worst}
+        # 죽으면 화장실을 나선 뒤 자란 색 털의 절반이 시체에 남는다(결정 0017).
+        # 색 털은 어느 껍질에서나 100 u에 1 E어치가 자란다(A10).
+        share = float(self.V["progression.DEATH_HAIR_SHARE"])
+        typical += share * float(self.A["death_typical_fill"]) / self.u_E
+        worst += share * (self.C + self.Ov) / self.u_E
+        return {"stomach": stomach, "typical": typical, "worst": worst, "hair_share": share}
 
     # D14 --------------------------------------------------------------
     def idle(self, k: int) -> dict:
@@ -1673,10 +1678,16 @@ def build_rows(cx: Context) -> list[Row]:
     add("B10", g, "죽음 비용", f"전형 {f2(dc['typical'])} E · 위장만 {f2(dc['stomach'])} E · 최악 {f2(dc['worst'])} E",
         "회수 가능", "전형 ≤ 2 E", judge(dc["typical"], None, 2.0),
         f"최악은 과식 끝 위장, 방벽 3, 먹이 3, 비싼 스프레이 3통, 지닌 이빨 {fn(float(A.get('death_teeth_in_hand', 4)))}개"
-        "(쉼터 양동이 두 번 분량, 결정 0016), 종양 2개를 모두 떨어뜨린 경우다. 쉼터를 한 번 거친 원정의 죽음은 "
-        f"양동이의 이빨만큼 전형보다 크다({f2(dc['typical'] + 1.0)} E, 전부 시체에서 되찾는다).",
+        "(쉼터 양동이 두 번 분량, 결정 0016), 종양 2개와 그 위장 분량의 색 털 절반(결정 0017)을 모두 떨어뜨린 경우다. "
+        f"전형에는 색 털 절반 {f2(dc['hair_share'] * float(A['death_typical_fill']) / M.u_E)} E가 들어 있다. "
+        "털은 화장실을 나선 뒤 먹은 양을 따르므로 돌아오지 않으면 더 커진다"
+        f"(300 u면 털만 {f2(dc['hair_share'] * 300.0 / M.u_E)} E). 전형은 위장 {fn(float(A['death_typical_fill']))} u 가정이고 여유가 없어, "
+        f"과식 끝({fn(M.C + M.Ov)} u)의 죽음은 방벽 하나와 함께 "
+        f"{f2((M.C + M.Ov) / M.u_E * (1.0 + dc['hair_share']) + float(V['progression.PRICE_UNITS']['barrier']))} E쯤이다. "
+        "쉼터를 한 번 거친 원정의 죽음은 "
+        f"양동이의 이빨만큼 전형보다 크다({f2(dc['typical'] + 1.0)} E). 전부 시체에서 되찾는다.",
         ["progression.PRICE_UNITS", "progression.MAX_BARRIERS", "progression.MAX_CANARY_FEED",
-         "spray_can.MAX_CARRIED", "progression.TUMOR_TOOTH_PAYOUT"])
+         "spray_can.MAX_CARRIED", "progression.TUMOR_TOOTH_PAYOUT", "progression.DEATH_HAIR_SHARE"])
 
     def rule_row(id_, label, flag, cur, band_txt, verdict, memo, inputs=(), fixed=None):
         if fixed is not None and cx.flag_ok(fixed[0]):
@@ -2541,6 +2552,7 @@ FIXED_PARAMS = {
     "progression.SHELL_MULTIPLIER": {"core": 1, "mantle": 2, "surface": 3},
     "progression.TEETH_PER_FLESH": 0.08, "progression.EXPEDITION_TEETH": 8,
     "progression.FLESH_PER_BIOME_HAIR": 50.0, "progression.FLESH_PER_COMMON_HAIR": 150.0,
+    "progression.DEATH_HAIR_SHARE": 0.5,
     "progression.PRICE_UNITS": {"barrier": 0.5, "spray_cheap": 1.0, "knife": 1.0, "spray_deep": 3.0, "blender": 5.0,
                                 "big_saw": 10.0, "canary_feed": 0.5, "tumor_bag": 2.0},
     "progression.UNLOCK_SHELL": {"barrier": 0, "spray_cheap": 0, "knife": 0, "canary_feed": 0, "spray_deep": 1,
@@ -2666,7 +2678,7 @@ def selftest() -> int:
     cr = M.crush()
     chk("압사 비", [cr["normal"], cr["over"], cr["m06"]], [5.0, 1.11, 1.67])
     dc = M.death()
-    chk("죽음 비용", [dc["typical"], dc["stomach"], dc["worst"]], [1.5, 1.6, 20.1])
+    chk("죽음 비용", [dc["typical"], dc["stomach"], dc["worst"]], [2.0, 1.6, 20.9])
     chk("무입력 비", [M.idle(k)["ratio"] for k in range(3)], [0.050, 0.033, 0.030])
     chk("폭발 비", M.idle(0)["burst_ratio"], 0.45)
     dr = M.draws(run["E_run"])

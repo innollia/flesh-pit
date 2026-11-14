@@ -83,7 +83,7 @@ func mouse(held: bool) -> void:
 func run() -> void:
     await process_frame
     m.save_path = copy_path
-    check(m.SAVE_VERSION==7,"single-slot format is version 7")
+    check(m.SAVE_VERSION==8,"single-slot format is version 8")
     check(m.has_save_file() and m.save_file_version()==5 and not m.has_current_save(),"historical v5 slot is old: the title offers no continue")
     var fresh: Dictionary = m.serialize()
     check(not m.load_from_disk(),"historical v5 slot is refused by load_from_disk")

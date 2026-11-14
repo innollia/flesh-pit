@@ -85,3 +85,5 @@ node --test game/tests/run_godot_checks.cjs
 같은 날 결정 0014·0015와 0009 개정이 더한 `run_mirror_buy_discard_hold_tests.gd`(거울 앞 구매, 길게 눌러 토하기, 10초쯤)와 `run_chew_assist_tests.gd`(수평 굴 정체: 문 앞 대조·문턱 기록·살 속 선 채와 웅크린 채, 실시간이라 60~140초)도 목록에 없다. 조준(`_look_hit_along`)·씹기 보조·컨트롤러의 막힘 판정과 오르기·Tab 구매·밖 토하기를 바꾸면 `FP_CHECK_SUITES`에 이름을 직접 넣어 돌린다. 살 속 구간은 실행마다 걸음이 조금씩 달라 판정 거리를 2 m로 둔다.
 
 결정 0016이 더한 `run_rest_pouch_tests.gd`(쉼터 고정 배치, 양동이 이빨, 이빨 쥔 손, 이빨 주머니, 허리 자리. 30초쯤)도 목록에 없다. 쉼터 자리·`request_vomit`의 쉼터 분기·손 계획(`FPInteractions.plan`)·벨트 자리를 바꾸면 `FP_CHECK_SUITES`에 이름을 직접 넣어 돌린다. 여러 작업자가 Godot를 같이 돌릴 때는 `APPDATA`를 작업자마다 다른 폴더로 주되, 폴더 이름에 `flesh-pit-restoration-`이 들어 있어야 한다(`run_restoration_old_v5_t10_tests.gd`·`run_interaction_component.gd`·`run_live_interactions.gd`가 그 이름을 확인하고 아니면 종료 코드 2로 끝난다).
+
+결정 0017이 더한 `run_corpse_hair_tests.gd`(죽으면 남는 털의 규칙, 시체의 매트·줄기, 저장과 불러오기, 되찾기. 10초쯤)도 목록에 없다. 죽음 드롭·털 계산·`fp_corpse_art.gd`를 바꾸면 이름을 직접 넣어 돌린다. 결정 0018의 막 시험은 `run_biome_tests.gd` 안에 있다(막 띠 조직과 밀도, 쉼터 간격, 둘레를 다 먹어도 닫혀 있는지, 맨손 거절과 칼로 찢기, 600초 재생. 10초쯤). 생성기(`fp_biomes.gd`)를 바꾸면 이 묶음을 돌린다.

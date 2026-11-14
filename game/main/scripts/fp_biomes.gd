@@ -13,6 +13,9 @@ extends RefCounted
 ## Hollows stay out of the membrane band and the blend zone before it, the
 ## restroom's surroundings, the door corridor and tumors, so the knife gate
 ## (decision 0008) and the restroom rules are unchanged.
+## Structures past the core lie in one membrane skin (decision 0018): the
+## flesh around their pocket is membrane WRAP_BAND thick and solid, so a
+## digger has to tear the skin itself to get in. Core structures stay bare.
 
 const DATA_PATH := "res://main/data/biomes.json"
 const BASE := "base"
@@ -44,6 +47,25 @@ const WINDOW_FADE := 0.8
 ## Structures keep this gap to tumors, rest containers and each other.
 const STRUCT_GAP := 1.0
 const STRUCT_TUMOR_GAP := 2.0
+## Structures past the core are wrapped in one membrane skin, as thick as
+## every other membrane: the body walled off what it swallowed. Core
+## structures stay bare (decision 0008: the core is bare-hand flesh).
+const WRAP_FROM_SHELL := 1
+const WRAP_BAND := FPWorldFeatures.BOUNDARY_BAND
+## One cell inside the pocket face still reads membrane: the cell a thin
+## remaining wall is grabbed by can have its centre inside the box.
+const WRAP_INNER := 0.5
+## No hollow this close to a wrapped pocket: every corner of a skin cell is
+## solid, so a cave never opens the skin from the side.
+const WRAP_SOLID := WRAP_BAND + 0.45
+## A wrapped pocket keeps its skin clear of a rest container's wall.
+const WRAP_REST_GAP := STRUCT_GAP + WRAP_BAND
+## The skin stops this far inside the sphere's outside (no membrane pattern
+## showing on the ball).
+const WRAP_OUTSIDE_CLEAR := 0.5
+## Pockets and wrapped boxes are looked up through a coarse grid (the
+## generator asks for every cell and corner).
+const WRAP_GRID := 4.0
 
 var center: Vector3
 var data: Dictionary = {}
@@ -65,6 +87,22 @@ const UNSET := 255
 ## Enabled pockets as boxes, and the depth band they all lie in (cheap reject).
 var _pockets: Array[AABB] = []
 var _pocket_depth := Vector2(INF, -INF)
+## Wrapped pockets: the pocket box grown by WRAP_BAND, shrunk by WRAP_INNER
+## and grown by WRAP_SOLID, and the depth band the biggest boxes lie in.
+var _wrap_outer: Array[AABB] = []
+var _wrap_inner: Array[AABB] = []
+var _wrap_solid: Array[AABB] = []
+var _wrap_depth := Vector2(INF, -INF)
+var _near_depth := Vector2(INF, -INF)
+## Grid cell -> numbers of the pockets whose wall ramp reaches it and of the
+## wrapped boxes whose solid box does, with the last cell read: the generator
+## walks a chunk cell by cell, so most reads are the cell just read.
+var _grid_pockets := {}
+var _grid_wraps := {}
+var _grid_key := Vector3i(2147483647, 0, 0)
+var _hit_pockets := PackedInt32Array()
+var _hit_wraps := PackedInt32Array()
+var _no_boxes := PackedInt32Array()
 var _noise := FastNoiseLite.new()
 var _wobble := 0.12
 var _tumors: Array[Vector3] = []
@@ -205,16 +243,28 @@ func shape_density(p: Vector3, d: float) -> float:
 	if d < 1.0:
 		return d
 	var depth := p.distance_to(center)
-	if depth >= _pocket_depth.x - 0.5 and depth <= _pocket_depth.y + 0.5:
-		# interpolated so the wall lands on the box face, not up to half a
-		# cell inside it (a hard 0/1 carve shrank pockets onto the body)
-		var sd := INF
-		for box in _pockets:
-			var q := (p - box.get_center()).abs() - box.size * 0.5
-			var outside := Vector3(maxf(q.x, 0.0), maxf(q.y, 0.0), maxf(q.z, 0.0)).length()
-			sd = minf(sd, outside + minf(maxf(q.x, maxf(q.y, q.z)), 0.0))
-		if sd < 0.5:
-			return clampf(0.5 + sd, 0.0, 1.0)
+	if depth >= _near_depth.x and depth <= _near_depth.y:
+		var key := Vector3i((p * (1.0 / WRAP_GRID)).floor())
+		if key != _grid_key:
+			_grid_key = key
+			_hit_pockets = _grid_pockets.get(key, _no_boxes)
+			_hit_wraps = _grid_wraps.get(key, _no_boxes)
+		if not _hit_pockets.is_empty():
+			# interpolated so the wall lands on the box face, not up to half a
+			# cell inside it (a hard 0/1 carve shrank pockets onto the body)
+			var sd := INF
+			for i in _hit_pockets:
+				var box: AABB = _pockets[i]
+				var q := (p - box.get_center()).abs() - box.size * 0.5
+				var outside := Vector3(maxf(q.x, 0.0), maxf(q.y, 0.0), maxf(q.z, 0.0)).length()
+				sd = minf(sd, outside + minf(maxf(q.x, maxf(q.y, q.z)), 0.0))
+			if sd < 0.5:
+				return clampf(0.5 + sd, 0.0, 1.0)
+		# the skin of a wrapped pocket is solid flesh: no hollow reaches it
+		# (after the pockets themselves, so a neighbouring pocket is not filled in)
+		for i in _hit_wraps:
+			if _wrap_solid[i].has_point(p):
+				return d
 	# cheap rejects before the biome lookup
 	var shell := FPWorldFeatures.shell_of_depth(depth)
 	var w: Vector2 = _windows[shell]
@@ -282,9 +332,22 @@ func _openness(p: Vector3, kind: String, carve: Dictionary) -> float:
 func tissue_at(p: Vector3, t: int, noise: float) -> int:
 	if t == FDKTissueRules.MEMBRANE:
 		return t
+	var depth := p.distance_to(center)
+	# the skin around a wrapped structure comes before nerve bundles, the next
+	# shell's blend and the biome's own tissue
+	if depth >= _wrap_depth.x and depth <= _wrap_depth.y:
+		var key := Vector3i((p * (1.0 / WRAP_GRID)).floor())
+		if key != _grid_key:
+			_grid_key = key
+			_hit_pockets = _grid_pockets.get(key, _no_boxes)
+			_hit_wraps = _grid_wraps.get(key, _no_boxes)
+		if not _hit_wraps.is_empty() and depth <= FPWorldFeatures.OUTER_RADIUS - WRAP_OUTSIDE_CLEAR:
+			for i in _hit_wraps:
+				if _wrap_outer[i].has_point(p) and not _wrap_inner[i].has_point(p):
+					return FDKTissueRules.MEMBRANE
 	if t == FDKTissueRules.NERVE and noise > 0.42:
 		return t # a few nerve bundles everywhere
-	var shell := FPWorldFeatures.shell_of_depth(p.distance_to(center))
+	var shell := FPWorldFeatures.shell_of_depth(depth)
 	if t != int(FDKTissueRules.SHELL_TISSUE[shell]):
 		return t # blend zone: the next shell's tissue
 	var id := biome_at(p)
@@ -293,6 +356,19 @@ func tissue_at(p: Vector3, t: int, noise: float) -> int:
 	return int(biome(id).get("tissue", t))
 
 # --- structures -----------------------------------------------------------
+
+## True in the membrane skin of a wrapped structure: inside its pocket box
+## grown by WRAP_BAND and outside the box shrunk by WRAP_INNER, short of the
+## sphere's outside.
+func in_wrap(p: Vector3) -> bool:
+	var depth := p.distance_to(center)
+	if depth < _wrap_depth.x or depth > _wrap_depth.y or depth > FPWorldFeatures.OUTER_RADIUS - WRAP_OUTSIDE_CLEAR:
+		return false
+	var hit: PackedInt32Array = _grid_wraps.get(Vector3i((p * (1.0 / WRAP_GRID)).floor()), _no_boxes)
+	for i in hit:
+		if _wrap_outer[i].has_point(p) and not _wrap_inner[i].has_point(p):
+			return true
+	return false
 
 func in_pocket(p: Vector3) -> bool:
 	for s in structures:
@@ -343,7 +419,8 @@ func _place_structures() -> void:
 				if pos == Vector3.INF:
 					continue
 				placed_boxes.append(pocket_aabb(pos, POCKETS[kind]))
-				structures.append({"kind": kind, "biome": id, "pos": pos, "half": POCKETS[kind], "enabled": true, "spots": [pos]})
+				structures.append({"kind": kind, "biome": id, "pos": pos, "half": POCKETS[kind], "enabled": true, "spots": [pos],
+					"wrap": int(b.get("shell", 0)) >= WRAP_FROM_SHELL})
 	for k in range(ALT_SPOTS - 1):
 		for st in structures:
 			var pos := _best_spot(st["biome"], st["half"], dirs, placed_boxes)
@@ -431,8 +508,9 @@ func apply_rest_points(rests: Array[Vector3], halves: Array[Vector3] = []) -> bo
 		for spot in s["spots"]:
 			var box := pocket_aabb(spot, s["half"])
 			var ok := true
+			var gap := WRAP_REST_GAP if bool(s["wrap"]) else STRUCT_GAP
 			for i in range(rests.size()):
-				if _box_gap(box, AABB(rests[i] - halves[i], halves[i] * 2.0)) < STRUCT_GAP:
+				if _box_gap(box, AABB(rests[i] - halves[i], halves[i] * 2.0)) < gap:
 					ok = false
 					break
 			if ok:
@@ -452,8 +530,11 @@ func apply_rest_points(rests: Array[Vector3], halves: Array[Vector3] = []) -> bo
 		if bool(s["enabled"]):
 			continue
 		var taken: Array[AABB] = []
+		# a wrapped structure looks for a spot against rest boxes grown by its
+		# skin, which keeps it WRAP_REST_GAP and more from the real ones
+		var grow := WRAP_BAND if bool(s["wrap"]) else 0.0
 		for i in range(rests.size()):
-			taken.append(AABB(rests[i] - halves[i], halves[i] * 2.0))
+			taken.append(AABB(rests[i] - halves[i], halves[i] * 2.0).grow(grow))
 		for o in structures:
 			if bool(o["enabled"]):
 				taken.append(pocket_aabb(o["pos"], o["half"]))
@@ -471,10 +552,21 @@ func apply_rest_points(rests: Array[Vector3], halves: Array[Vector3] = []) -> bo
 func _index_pockets() -> void:
 	_pockets.clear()
 	_pocket_depth = Vector2(INF, -INF)
+	_grid_pockets.clear()
+	_grid_wraps.clear()
+	_grid_key = Vector3i(2147483647, 0, 0)
+	_hit_pockets = _no_boxes
+	_hit_wraps = _no_boxes
+	_wrap_outer.clear()
+	_wrap_inner.clear()
+	_wrap_solid.clear()
+	_wrap_depth = Vector2(INF, -INF)
 	for s in structures:
 		if not s["enabled"]:
 			continue
 		var box := pocket_aabb(s["pos"], s["half"])
+		# the wall ramp reaches half a metre out of the box
+		_grid_add(_grid_pockets, box.grow(0.51), _pockets.size())
 		_pockets.append(box)
 		for i in range(8):
 			var dd := box.get_endpoint(i).distance_to(center)
@@ -482,6 +574,29 @@ func _index_pockets() -> void:
 			_pocket_depth.y = maxf(_pocket_depth.y, dd + 0.01)
 		# a box's nearest point can be closer than any corner
 		_pocket_depth.x = minf(_pocket_depth.x, _point_box_dist(center, box))
+		if not bool(s.get("wrap", false)):
+			continue
+		var solid := box.grow(WRAP_SOLID)
+		_grid_add(_grid_wraps, solid, _wrap_outer.size())
+		_wrap_outer.append(box.grow(WRAP_BAND))
+		_wrap_inner.append(box.grow(-WRAP_INNER))
+		_wrap_solid.append(solid)
+		_wrap_depth.x = minf(_wrap_depth.x, _point_box_dist(center, solid) - 0.01)
+		for i in range(8):
+			_wrap_depth.y = maxf(_wrap_depth.y, solid.get_endpoint(i).distance_to(center) + 0.01)
+	# the depths at which shape_density has a pocket wall or a skin to look for
+	_near_depth = Vector2(minf(_pocket_depth.x - 0.5, _wrap_depth.x), maxf(_pocket_depth.y + 0.5, _wrap_depth.y))
+
+func _grid_add(grid: Dictionary, box: AABB, number: int) -> void:
+	var lo := Vector3i((box.position / WRAP_GRID).floor())
+	var hi := Vector3i((box.end / WRAP_GRID).floor())
+	for z in range(lo.z, hi.z + 1):
+		for y in range(lo.y, hi.y + 1):
+			for x in range(lo.x, hi.x + 1):
+				var key := Vector3i(x, y, z)
+				var list: PackedInt32Array = grid.get(key, PackedInt32Array())
+				list.append(number)
+				grid[key] = list
 
 ## One empty anchor per structure under `parent` (hidden when disabled).
 ## The art itself is built only near the player (stream_art): the pockets

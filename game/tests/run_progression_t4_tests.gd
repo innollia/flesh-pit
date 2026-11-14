@@ -250,8 +250,14 @@ func _test_death_drop_recovery_no_duplicate() -> void:
 	prog.on_flesh_eaten(0, 100.0)
 	var grown := _hairs(100.0, B)
 	_assert(prog.hairs("core") == grown and grown > 0, "death test: core hairs before death")
+	var common := prog.hairs(FPProgression.COMMON)
 	var payload := prog.take_death_payload(40.0)
-	_assert(prog.hairs("core") == grown, "death: hairs are preserved on death")
+	# half of the coloured hairs grown since the restroom stay on the body,
+	# rounded down; the common ones stay on the arm (decision 0017)
+	var left := int(floor(float(grown) * FPProgression.DEATH_HAIR_SHARE))
+	_assert(left > 0 and prog.hairs("core") == grown - left, "death: %d of %d core hairs stay on the body" % [left, grown])
+	_assert(FPProgression.payload_hairs(payload) == left, "death: the body holds exactly those hairs")
+	_assert(prog.hairs(FPProgression.COMMON) == common, "death: common hairs are preserved on death")
 
 	# Recover drop
 	var fill := prog.restore_death_payload(payload)
