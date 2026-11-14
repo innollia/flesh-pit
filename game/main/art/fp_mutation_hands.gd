@@ -190,11 +190,6 @@ const BRISTLES := 12
 const BRISTLE_RADII := [0.0032, 0.0022, 0.0009]
 const BRISTLE_COLORS := [Color(0.12, 0.09, 0.07), Color(0.20, 0.15, 0.11), Color(0.70, 0.62, 0.46)]
 
-## M09 thick nails: centre depth on the tip segment of the longest finger
-## (the nail is 24 mm long, so it covers the plain nail plate and overhangs
-## the fingertip by about 4 mm).
-const M09_NAIL_Z := -0.024
-
 ## Reshape one rig for the given mutation ids (idempotent).
 static func apply_shape(rig: Node3D, ids: Array) -> void:
     _reset(rig)
@@ -238,14 +233,9 @@ static func apply_shape(rig: Node3D, ids: Array) -> void:
         _deco(_seg(rig, "right", "Wrist"), "Web", st)
     if "M09" in ids: # thick yellow nails on the finger block tip
         st = K.begin()
-        # each sits over its own fingertip: the fingers end in a stair
-        # (FDKHandsRig.TIP_SETBACK, index first on the right hand), and a row
-        # of nails at one depth left the plain nail of the long fingers
-        # poking out in front and hung the little one in the air
         for i in range(4):
             var x := -0.033 + i * 0.022
-            var z := M09_NAIL_Z + float(FDKHandsRig.TIP_SETBACK[i])
-            K.rbox(st, K.T(Vector3(x, 0.02, z)), Vector3(0.0095, 0.0045, 0.012), 0.002, Color(0.86, 0.76, 0.32), Color(0.66, 0.55, 0.2))
+            K.rbox(st, K.T(Vector3(x, 0.02, -0.012)), Vector3(0.0095, 0.0045, 0.012), 0.002, Color(0.86, 0.76, 0.32), Color(0.66, 0.55, 0.2))
         _deco(_seg(rig, "right", "Wrist/Finger1/Finger2/Finger3"), "Nails", st, "tex_ceramic_64.png")
     if "M13" in ids: # suction wrinkles on the palm side
         st = K.begin()

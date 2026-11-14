@@ -214,6 +214,7 @@
 - 사람이 볼 것: (1) 인형 체형 A/B(`compare_3_body_build_AB.jpg`), (2) 살결이 때나 병으로 보이지 않는지, 특히 화장실에서(`compare_2_hands_in_game.jpg`, `compare_6_mirror_belly_legs.jpg`), (3) 손가락·손톱·엄지(`compare_1_hand_turntable.jpg`), (4) 뜯은 직후 손의 젖은 빛(`compare_8_wet_hand.jpg`는 모델만 찍은 것이라 게임 안에서 봐야 한다). 실행판은 다시 만들지 않았다.
 - 하지 않은 것: 엄지와 검지 사이 물갈퀴 살, 머리 폭 줄이기(거울에서 눈이 사라져 되돌림), 다리 UV 배율 조정(벽지처럼 보이지 않았다).
 - 뒤에 맞춘 것: M09(두꺼운 손톱)의 손톱 넷이 한 줄로 같은 깊이에 놓여 있어, 손끝 계단이 생긴 뒤로는 긴 손가락의 제 손톱이 앞으로 비어져 나오고 새끼 쪽은 손끝 밖에 떠 있었다. 손가락마다 제 손끝에 맞춰 놓았다(`fp_mutation_hands.gd`의 `M09_NAIL_Z` + `FDKHandsRig.TIP_SETBACK`). `run_protagonist_look_tests.gd` 30항목 통과(M09 손톱이 제 손톱을 덮고 제 손끝에서 6 mm 안에 끝나는지 한 항목 추가). 전후 그림은 `compare_10_m09_nails.jpg`(위가 전, 아래가 후). 실행판은 다시 만들지 않았다.
+- 되돌림(2026-11-14 사용자 결정 "손 피부 안 바꾼 … 아예 처음이 더 나아"): 위의 피부 항목과 1인칭 손 항목, M09 손톱 자리 맞춤을 c0f1873 이전으로 되돌렸다. `fdk_hands_rig.gd`의 메시 함수와 `fdk_skin_material.gd`가 그때와 같고(뒤에 생긴 `lead_lock`만 남음), 거울 몸·배·다리도 같은 재질이라 처음 피부로 돌아갔다. 인형의 손 모양·체형, 배꼽 색, 팔 털·감각털·변이 조각·배의 혹은 그대로다. PS1 시제품 A/B는 기각. `run_protagonist_look_tests.gd`는 되돌린 모습을 보도록 고쳐 29항목 통과, mutation looks 104·mutation wire 207·belt reach 262 통과, `run_mutation_tests` 203 통과·4 실패와 `run_belt_tests` 81 통과·3 실패는 변경 전과 같다. 비교 그림은 `docs/tracking/captures/R5_hands_restored/compare.png`(왼쪽이 c0f1873 이전 체크아웃, 오른쪽이 지금; 손은 같고 벽·천장 차이는 그 뒤의 화장실 작업이다). `tex_skin_body_128.png`와 굽는 함수는 파일로 남아 있으나 쓰는 곳이 없다. 실행판은 다시 만들지 않았다.
 
 ## 2026-11-14 가구와 배치 다듬기
 

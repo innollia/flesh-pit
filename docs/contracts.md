@@ -76,7 +76,7 @@ FPStomachView.swallow_kick(units, delay)는 삼킨 살 단위만큼 위장 덩�
 
 두 손 도구(큰 톱)는 FDKHandsRig.hold_both로 두 손에 쥔다. 두 손이 함께 화면 아래로 내려갔다가 도구를 쥐고 올라온다. 게임은 도구를 오른손 Wrist 자식으로 달고 both_grip_shown()이 참일 때만 보인다. 두 손은 서로 거울 자세이고 흔들림·aside·hold_shift·누르기를 똑같이 받으므로, 게임이 hold_both_pos.x를 두 손잡이 간격에 맞추면 왼손도 왼쪽 손잡이를 계속 쥔다. 톱질은 hold_shift로 두 손을 함께 민다(2026-11-03).
 
-손 리그의 메시는 바뀔 수 있지만 다음은 소비자(피 덧칠, 변이, 쥔 도구, 팔 털, B 자세 셰이더)가 기대는 값이라 고정이다. 노드 이름과 계층(HandLeft/Right, Forearm, Wrist, Palm, Finger1/2/3, Thumb1/2/3, 각 마디의 Seg, TornChunk), 관절 12개의 자리와 마디 길이, 팔뚝 메시의 z 범위 0.008~0.34, skin_color·palm_color. 주인공 피부 재질은 FDKSkinMaterial.SKIN_TEX 한 곳에서 텍스처를 정하고, wet이 0이면 하이라이트 항이 0이다. `run_protagonist_look_tests.gd`가 이 값들을 본다(2026-11-14).
+손 리그의 메시는 바뀔 수 있지만 다음은 소비자(피 덧칠, 변이, 쥔 도구, 팔 털, B 자세 셰이더)가 기대는 값이라 고정이다. 노드 이름과 계층(HandLeft/Right, Forearm, Wrist, Palm, Finger1/2/3, Thumb1/2/3, 각 마디의 Seg, TornChunk), 관절 12개의 자리와 마디 길이, 팔뚝 메시의 z 범위 0.008~0.34, skin_color·palm_color. 주인공 피부 재질은 FDKSkinMaterial.make 한 곳에서 텍스처(`tex_skin_128.png`)를 정하고, wet이 0이면 하이라이트 항이 0이다. 손과 피부의 모습은 사용자 결정으로 처음 것이다(decisions-log 2026-11-14). `run_protagonist_look_tests.gd`가 이 값들을 본다(2026-11-14).
 
 1인칭 허리(`fp_belt.gd`)는 진행 상태를 직접 읽지 않고 `fp_art_hookup.gd`가 넣어 준다. `set_bumps(n)`은 `FPProgression.belly_bumps()`, `set_belly_form(ids)`는 `all_mutations()`를 받는다(M01·M16·M19·T4만 본다). 혹 메시는 `Torso` 아래 `TumorBump<i>`이고 거울 몸의 혹과 `FPMirrorBody.build_bump` 한 함수를 쓴다. 배 고리는 `belly_rings(ids)`가 정하며 허리 고리(0번)는 바뀌지 않고 나머지는 `front_cap(y)`를 넘지 않는다. 거울 몸의 덧조각은 재질별로 `Mut_<id>`(피부), `Mut_<id>_Hard`, `Mut_<id>_Wet` 메시이고 Hard·Wet은 Tab 인형이 밝힐 수 있게 `StandardMaterial3D`다. 감각털 메시 이름 `MutDeco_Bristles`는 떨림 코드가 찾는 이름이라 고정이다. `run_mutation_looks_tests.gd`가 이 값들을 본다(2026-11-14).
 

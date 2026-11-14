@@ -88,18 +88,10 @@ func hands() -> void:
 		for v in views:
 			view(views[v][0], mid, views[v][1])
 			await shot("hand_%s_%s" % [pose, v])
-	# M09 thick nails over the fingertip stair; "m09flat" is the row at one
-	# depth they used to be (rebuilt here for the before/after pair only)
+	# M09 thick nails on the fingertips
 	var mh: GDScript = load("res://main/art/fp_mutation_hands.gd")
-	var art: GDScript = load("res://main/art/fp_art_kit.gd")
-	for kind in ["m09", "m09flat"]:
+	for kind in ["m09"]:
 		mh.apply_shape(rig, ["M09"])
-		if kind == "m09flat":
-			var deco := rig.get_node("HandRight/Wrist/Finger1/Finger2/Finger3/MutDeco_Nails") as MeshInstance3D
-			var st: SurfaceTool = art.begin()
-			for i in range(4):
-				art.rbox(st, Transform3D(Basis.IDENTITY, Vector3(-0.033 + i * 0.022, 0.02, -0.012)), Vector3(0.0095, 0.0045, 0.012), 0.002, Color(0.86, 0.76, 0.32), Color(0.66, 0.55, 0.2))
-			deco.mesh = art.finish(st, 8.0)
 		await frames(4)
 		var wt := (rig.get_node("HandRight/Wrist") as Node3D).global_transform
 		var at := wt * Vector3(0.012, 0.0, -0.11)

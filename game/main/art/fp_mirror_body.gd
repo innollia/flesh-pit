@@ -102,8 +102,7 @@ const ARM_ROOT_X := 0.182 if PLAIN_BUILD else 0.2
 const UPPER_ARM := [[0.045, 0.045], [0.048, 0.050], [0.050, 0.053], [0.045, 0.045], [0.038, 0.040], [0.034, 0.036]] if PLAIN_BUILD else [[0.05, 0.05], [0.054, 0.056], [0.058, 0.062], [0.05, 0.05], [0.04, 0.042], [0.036, 0.038]]
 const FOREARM_THICK := [0.045, 0.042] if PLAIN_BUILD else [0.05, 0.046]
 ## Front of the belly at the navel (the belly comes 8 mm forward when plain).
-## Reflection finger lengths, index to little (the same stair as the
-## first-person hand: fdk_hands_rig TIP_SETBACK).
+## Reflection finger lengths, index to little.
 const FINGER_LEN := [0.060, 0.066, 0.062, 0.050]
 const BELLY_FRONT := 0.113 if PLAIN_BUILD else 0.105
 

@@ -1,7 +1,8 @@
 extends SceneTree
 
 ## The protagonist's look (first-person hand rig, skin texture, mirror/Tab
-## body): what the reshaping must keep and what it must show. Builds the
+## body): the first hands and skin (user decision 2026-11-14) and the
+## figure's build. Builds the
 ## models alone; no game scene and no save file. Run headless:
 ##   godot_console --headless --path game --script res://tests/run_protagonist_look_tests.gd
 
@@ -29,54 +30,27 @@ func run() -> void:
 	quit(0 if _failed == 0 else 1)
 
 func skin_texture() -> void:
-	var path := "res://addons/flesh_dig_kit/textures/tex_skin_body_128.png"
-	ok(FDKSkinMaterial.SKIN_TEX == path, "skin: the body material wears the protagonist's own texture")
-	ok(FileAccess.file_exists("res://addons/flesh_dig_kit/textures/tex_skin_128.png"), "skin: the old texture stays for the tumours and the canary")
-	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
-	ok(img != null and img.get_width() == 128 and img.get_height() == 128, "skin: body texture is 128 x 128")
-	if img == null:
-		return
-	var n := 128
-	var sum := Vector3.ZERO
-	var lum: Array[float] = []
-	for y in range(n):
-		for x in range(n):
-			var c := img.get_pixel(x, y)
-			sum += Vector3(c.r, c.g, c.b) * 255.0
-			lum.append((0.299 * c.r + 0.587 * c.g + 0.114 * c.b) * 255.0)
-	var mean := sum / float(n * n)
-	# the old texture's mean: the body colour on screen must not move
-	var want := Vector3(219, 179, 152)
-	ok(absf(mean.x - want.x) <= 2.0 and absf(mean.y - want.y) <= 2.0 and absf(mean.z - want.z) <= 2.0,
-		"skin: mean colour stays (219, 179, 152) +-2, got (%.1f, %.1f, %.1f)" % [mean.x, mean.y, mean.z])
-	var lm := 0.0
-	for v in lum:
-		lm += v
-	lm /= float(lum.size())
-	var var_sum := 0.0
-	for v in lum:
-		var_sum += (v - lm) * (v - lm)
-	var std := sqrt(var_sum / float(lum.size()))
-	ok(std >= 20.0 and std <= 26.0, "skin: brightness spread shows through the half-strength mix (std %.1f, 20..26)" % std)
-	# tileable: a step across the wrap is no bigger than a step inside
-	var inner := 0.0
-	var seam := 0.0
-	for i in range(n):
-		seam += absf(lum[i * n] - lum[i * n + n - 1]) + absf(lum[i] - lum[(n - 1) * n + i])
-		inner += absf(lum[i * n + 40] - lum[i * n + 41]) + absf(lum[40 * n + i] - lum[41 * n + i])
-	ok(seam <= inner * 1.25, "skin: no seam where the texture repeats (edge step %.1f, inner step %.1f)" % [seam / (2.0 * n), inner / (2.0 * n)])
+	# User decision 2026-11-14: the protagonist's skin is the one from before
+	# the grain texture (tex_skin_body_128) was tried, the kit's first skin.
+	var path := "res://addons/flesh_dig_kit/textures/tex_skin_128.png"
+	var mat := FDKSkinMaterial.make()
+	var tex := mat.get_shader_parameter("skin_tex") as Texture2D
+	ok(tex != null and tex.resource_path == path, "skin: the body material wears the first skin texture (tex_skin_128)")
+	var src := FileAccess.get_file_as_string("res://addons/flesh_dig_kit/common/fdk_skin_material.gd")
+	ok(not "tex_skin_body" in src, "skin: the grain texture is not referenced by the skin material")
 
 func skin_shader() -> void:
 	var code := FDKSkinMaterial.SHADER
 	var gloss_lines := 0
 	var dry_safe := true
-	for line in code.split("\n"):
+	for line in code.split("
+"):
 		if "spec" in line and "ALBEDO" in line:
 			gloss_lines += 1
 			if not "* wet *" in line:
 				dry_safe = false
 	ok(gloss_lines == 1 and dry_safe, "skin: the highlight is added only times wet (a dry hand is untouched)")
-	ok("48.0" in code and "floor(spec * 3.0 + 0.5) / 3.0" in code, "skin: the wet highlight is small, sharp and stepped")
+	ok("24.0" in code and "vec3(0.16) * wet * spec" in code and not "floor(spec" in code, "skin: the wet highlight is the first soft one (power 24, 0.16, no steps)")
 	ok("vec4(0.88, 0.72, 0.62, 1.0)" in code and "mix(vec3(1.0), tex, 0.5)" in code, "skin: body colour and texture mix are the approved ones")
 
 func _min_z_near(mesh: Mesh, x: float, reach: float) -> float:
@@ -128,82 +102,57 @@ func hand_rig() -> void:
 	var fore: AABB = (rig.get_node("HandRight/Forearm") as MeshInstance3D).mesh.get_aabb()
 	ok(absf(fore.position.z - 0.008) < 0.0005 and absf(fore.end.z - 0.34) < 0.0005,
 		"hands: forearm still spans z 0.008..0.34 (%.3f..%.3f)" % [fore.position.z, fore.end.z])
-	# wrist narrower than both the forearm and the hand
+	# User decision 2026-11-14: the first hand. A fused finger block of four
+	# rounded ridges (20-point section), a smooth fingertip curve with the
+	# tip band in the nail colour, a tapering thumb; no nail plates, no
+	# shaded grooves, no wrist bone.
 	var fverts: PackedVector3Array = (rig.get_node("HandRight/Forearm") as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var width := {}
+	var zs := {}
 	for v in fverts:
-		var key := snappedf(v.z, 0.001)
-		width[key] = maxf(width.get(key, 0.0), absf(v.x))
-	ok(width.get(0.03, 1.0) < width.get(0.008, 0.0) and width.get(0.03, 1.0) < width.get(0.25, 0.0) and width.get(0.25, 0.0) > width.get(0.34, 1.0),
-		"hands: the forearm swells, narrows to a wrist and flares into the hand")
-	# fingertip stair on the right hand (thumb at -x, so the index is at -x)
+		zs[snappedf(v.z, 0.001)] = true
+	ok(zs.size() == 4 and zs.has(0.34) and zs.has(0.18) and zs.has(0.06) and zs.has(0.008), "hands: the forearm is the first four-ring taper %s" % [zs.keys()])
+	ok(FDKHandsRig.FINGER_PROFILE.size() == 20, "hands: the finger block section is the first 20-point one (%d)" % FDKHandsRig.FINGER_PROFILE.size())
 	var tip: Mesh = (rig.get_node("HandRight/Wrist/Finger1/Finger2/Finger3/Seg") as MeshInstance3D).mesh
-	var ends: Array = []
-	for row in range(4):
-		ends.append(_min_z_near(tip, FDKHandsRig.FINGER_ROWS[row] * -1.0 * 0.03, 0.004))
-	var steps := [ends[0] - ends[1], ends[2] - ends[1], ends[3] - ends[1]]
-	ok(absf(steps[0] - 0.006) < 0.0012 and absf(steps[1] - 0.004) < 0.0012 and absf(steps[2] - 0.016) < 0.0012,
-		"hands: fingertips end in a stair behind the middle finger (index %.1f, ring %.1f, little %.1f mm)" % [steps[0] * 1000.0, steps[1] * 1000.0, steps[2] * 1000.0])
-	# nails: plates on the back of the fingertips only
 	var arrays := tip.surface_get_arrays(0)
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
-	var nail_back := 0
-	var nail_palm := 0
-	var groove := 0
-	for i in range(verts.size()):
-		if _near(cols[i], rig.nail_color):
-			if verts[i].y > 0.0:
-				nail_back += 1
-			else:
-				nail_palm += 1
-		if _near(cols[i], rig.skin_color.darkened(0.16)):
-			groove += 1
-	ok(nail_back >= 4 * 12 and nail_palm == 0, "hands: four nails on the back of the fingertips, none on the palm side (%d / %d vertices)" % [nail_back, nail_palm])
-	ok(groove > 0, "hands: the grooves between the fingers are shaded")
-	# M09 thick nails follow the fingertip stair: each covers the plain nail
-	# under it and none hangs more than 6 mm past its own fingertip
 	var free_edge := Color(0.97, 0.9, 0.86)
+	var groove_col: Color = rig.skin_color.darkened(0.16)
+	var plates := 0
+	var groove := 0
+	var nail_tip := 0
+	var tip_end := INF
+	for i in range(verts.size()):
+		tip_end = minf(tip_end, verts[i].z)
+		if _near(cols[i], free_edge):
+			plates += 1
+		if _near(cols[i], groove_col):
+			groove += 1
+		if _near(cols[i], rig.nail_color):
+			nail_tip += 1
+	ok(plates == 0 and groove == 0, "hands: no nail plates and no painted grooves on the finger block (%d / %d vertices)" % [plates, groove])
+	ok(nail_tip > 0, "hands: the fingertip band wears the nail colour (%d vertices)" % nail_tip)
+	# smooth tip curve on the right hand (thumb at -x): the little finger
+	# side (+x) ends well behind the middle, the index side a little
+	var mid_end := _min_z_near(tip, 0.0, 0.006)
+	var little_end := _min_z_near(tip, 0.036, 0.004)
+	var index_end := _min_z_near(tip, -0.036, 0.004)
+	ok(little_end - mid_end > 0.004 and index_end - mid_end > 0.0 and little_end > index_end,
+		"hands: the fingertips follow the first smooth curve (index %.1f, little %.1f mm behind the middle)" % [(index_end - mid_end) * 1000.0, (little_end - mid_end) * 1000.0])
+	# M09 thick nails: the first row at one depth on the tip segment
 	load("res://main/art/fp_mutation_hands.gd").apply_shape(rig, ["M09"])
 	var thick := rig.get_node_or_null("HandRight/Wrist/Finger1/Finger2/Finger3/MutDeco_Nails") as MeshInstance3D
-	var bad: Array = []
-	if thick == null:
-		bad.append("no MutDeco_Nails")
-	else:
-		var nverts: PackedVector3Array = thick.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-		for row in range(4):
-			var cx: float = FDKHandsRig.FINGER_ROWS[row] * -1.0 * 0.041
-			var plate_front := INF
-			var plate_back := -INF
-			var plate_top := -INF
-			for i in range(verts.size()):
-				if verts[i].y > 0.0 and absf(verts[i].x - cx) < 0.008 and (_near(cols[i], rig.nail_color) or _near(cols[i], free_edge)):
-					plate_front = minf(plate_front, verts[i].z)
-					plate_back = maxf(plate_back, verts[i].z)
-					plate_top = maxf(plate_top, verts[i].y)
-			var front := INF
-			var back := -INF
-			var top := -INF
-			for v in nverts:
-				if absf(v.x - cx) < 0.008:
-					front = minf(front, v.z)
-					back = maxf(back, v.z)
-					top = maxf(top, v.y)
-			if not (front <= plate_front and back >= plate_back and top > plate_top and front >= ends[row] - 0.006):
-				bad.append("row %d: thick %.1f..%.1f mm, plate %.1f..%.1f mm, fingertip %.1f mm" % [row, front * 1000.0, back * 1000.0, plate_front * 1000.0, plate_back * 1000.0, ends[row] * 1000.0])
-	ok(bad.is_empty(), "hands: M09 thick nails cover the plain nails and stop at their own fingertips %s" % [bad])
+	ok(thick != null, "hands: M09 puts thick nails on the fingertip segment")
+	if thick != null:
+		var nb: AABB = thick.mesh.get_aabb()
+		ok(absf(nb.get_center().z + 0.012) < 0.001 and absf(nb.size.z - 0.024) < 0.002 and nb.position.y > 0.01,
+			"hands: M09 nails sit in the first row over the fingertips (centre z %.1f mm, %.1f mm long)" % [nb.get_center().z * 1000.0, nb.size.z * 1000.0])
+		ok(nb.position.z > tip_end - 0.012, "hands: M09 nails stay on the fingertips (front %.1f mm, fingertip %.1f mm)" % [nb.position.z * 1000.0, tip_end * 1000.0])
 	load("res://main/art/fp_mutation_hands.gd").apply_shape(rig, [])
-	# thumb tip is blunt: still two thirds of its width 6 mm past the last joint length
+	# the thumb tapers to its tip as it first did
 	var thumb: Mesh = (rig.get_node("HandRight/Wrist/Thumb1/Thumb2/Thumb3/Seg") as MeshInstance3D).mesh
-	var tverts: PackedVector3Array = thumb.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var base_w := 0.0
-	var end_w := 0.0
-	for v in tverts:
-		if v.z > -0.001:
-			base_w = maxf(base_w, absf(v.x))
-		if absf(v.z + 0.031) < 0.0005 and v.y < 0.01:
-			end_w = maxf(end_w, absf(v.x))
-	ok(end_w > base_w * 0.66, "hands: the thumb ends blunt, not in a spike (%.1f mm wide at the end, %.1f at the joint)" % [end_w * 2000.0, base_w * 2000.0])
+	var tb: AABB = thumb.get_aabb()
+	ok(absf(tb.position.z + 0.032) < 0.0006, "hands: the thumb tip ends 7 mm past its last joint length (%.1f mm)" % (tb.position.z * 1000.0))
 	ok(rig.skin_color.is_equal_approx(Color(0.88, 0.72, 0.62)) and rig.palm_color.is_equal_approx(Color(0.9, 0.68, 0.6)), "hands: body and palm colours are the approved ones")
 	rig.free()
 
