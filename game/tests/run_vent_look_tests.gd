@@ -237,7 +237,7 @@ func _composition() -> void:
 			check(apart < 0.25, "the hands hold side by side, no fan (outer fingers %.2f apart along the row)" % apart)
 			# the three candidate looks stay off until the user has picked one
 			# from the pictures (docs/design/vent-npc.md "손")
-			check(not art.HAND_TONE and not art.HAND_GRACE and not art.HAND_ANGLE, "no candidate hand is the default before the user picks it")
+			check(not art.HAND_TONE and not art.HAND_GRACE and not art.HAND_ANGLE and not art.HAND_THUMB, "no candidate hand is the default before the user picks it")
 		var want := 0.14 if n <= 5 else 0.09
 		check(smallest >= want, "%d hands stand large (smallest palm %.2f of the height)" % [n, smallest])
 		var c := sum / float(n) - size * 0.5

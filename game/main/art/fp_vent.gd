@@ -266,7 +266,7 @@ const TAKE_RISE_SECS := 0.55
 ## the eye. They do not open out like a fan from the one opening (tried
 ## 2026-11-14; user: "부채 싫어").
 ##
-## Three candidates for a prettier hand, each behind one switch and all off
+## Candidates for a prettier hand, each behind one switch and all off
 ## until the user has picked from the side-by-side in
 ## docs/tracking/captures/R3_npc_hand/pick_variants.jpg. The look or pose of
 ## this hand only becomes the default after the user has seen before/after
@@ -275,18 +275,28 @@ const TAKE_RISE_SECS := 0.55
 ## TONE: colour and shading only, so the form reads against the white tiles.
 const HAND_TONE := false
 static var hand_tone := HAND_TONE
-## GRACE: the fingers each at their own height, the thumb floating under
-## them, the wrist a touch toward the little finger, the hands at uneven
-## heights.
+## GRACE: the fingers each at their own height, the thumb drawn in, the
+## wrist a touch toward the little finger, the hands at uneven heights. On
+## its own it read no better than the hand as it is up close, so the pick
+## sheet only shows it together with ANGLE.
 const HAND_GRACE := false
 static var hand_grace := HAND_GRACE
 ## ANGLE: up close the palm lies flatter and every hand runs the same way
 ## across the view, its little-finger edge to the eye.
 const HAND_ANGLE := false
 static var hand_angle := HAND_ANGLE
+## THUMB: the thumb drawn in beside the index, its tip toward the middle
+## finger, in place of lying out to the side from under the item (which read
+## as a crab's claw up close). Its own switch: it goes with any of the three.
+const HAND_THUMB := false
+static var hand_thumb := HAND_THUMB
 ## The hand coming down back first and turning over (FLIP_FROM..FLIP_TO),
 ## on since 2026-11-14; off, it comes down palm first as before. Kept
-## switchable for the user's pick (pick_flip.jpg).
+## switchable for the user's pick (pick_flip.jpg). Half way through the turn
+## the palm is edge on to the eye: the open fingers read as a rake and the
+## item stands on its side beside the hand. Gathering the fingers and
+## closing the thumb on the item for the turn was tried and did not mend
+## it (the item still stands on edge), so off is what is proposed.
 const HAND_FLIP := true
 static var hand_flip := HAND_FLIP
 
@@ -302,22 +312,29 @@ const TONE_WRAP := Vector2(0.7, 1.0)
 const TONE_KEY_VIEW := Vector3(-0.6, 0.3, 0.74)
 const TONE_EDGE := Color(0.93, 0.7, 0.66)
 const TONE_EDGE_AMOUNT := 0.58
-## The forearm's flat oval rounds out to the elbow ball's depth at its top
-## (share of the wrist half-breadth at 0.8 and 1.0 of its length; 1.06
-## otherwise): shaded, the ball stood out of the flat forearm as a band.
-const TONE_FOREARM_TOP := [1.14, 1.22]
+## Up the forearm the light and shade even out to one level (TONE_ARM_LEVEL
+## of the wrap, reached at the elbow; the arm meshes carry how far up the
+## arm each ring is in UV.x): the forearm, the elbow ball and the upper arm
+## each turned to the light their own way and the joint showed as a darker
+## band across the arm.
+const TONE_ARM_LEVEL := 0.6
 
 ## GRACE: knuckle, middle and tip joint (degrees) of the index, middle, ring
 ## and little finger at the offering rest: the index nearly straight, the
 ## middle and ring curving in under the item, the little finger lifted
 ## again; no two fingers alike, none of them straight.
-const GRACE_FLEX := [[6.0, 10.0, 6.0], [16.0, 20.0, 11.0], [13.0, 24.0, 13.0], [7.0, 17.0, 10.0]]
-## Fingers apart but not spread (degrees, index to little).
-const GRACE_SPLAY := [-3.6, -0.6, 2.0, 5.2]
-## The thumb floats under the fingers with air between, its tip toward the
-## middle finger's second joint, not out to the side.
-const GRACE_THUMB_POSE := Vector3(-30, 0, 28)
-const GRACE_THUMB_TIP := -8.0
+## The tip joints bend the most, so the fingertips lift and the nails turn
+## to the eye.
+const GRACE_FLEX := [[7.0, 12.0, 16.0], [13.0, 19.0, 20.0], [13.0, 22.0, 22.0], [9.0, 17.0, 19.0]]
+## Fingers apart but not spread (degrees, index to little): 4 degrees
+## between neighbours, the index no further out than the others.
+const GRACE_SPLAY := [-4.0, 0.0, 4.0, 8.0]
+## THUMB (and GRACE, which always has it, and ANGLE up close, where the
+## open palm shows the thumb most): the thumb lies along the index
+## with a little air between, lifted a touch toward the palm, and its tip
+## bends in toward the middle finger's second joint.
+const TUCK_THUMB_POSE := Vector3(-10, 0, 7)
+const TUCK_THUMB_TIP := -30.0
 ## The wrist turns the hand this far toward its little finger (radians).
 const GRACE_ULNAR := 0.14
 ## Neighbouring hands stand this far above and below the row.
@@ -328,21 +345,46 @@ const GRACE_STEP := 0.016
 ## side and the fingers turn ANGLE_TURN (radians) to the other in the palm's
 ## plane, so every hand lies along the same diagonal; each arm's own turn is
 ## cut to ANGLE_YAW of it so the hands stay parallel. All are right hands.
-const ANGLE_PALM_UP := 1.25
+const ANGLE_PALM_UP := 0.82
 const ANGLE_LEAN := 0.4
 const ANGLE_TURN := 0.35
 const ANGLE_YAW := 0.3
+## The fingers lying across the view each need their own line: knuckle,
+## middle and tip joint (degrees, index to little) from a nearly straight
+## index to a softly bent little finger, and 6 degrees between neighbours.
+const ANGLE_FLEX := [[3.0, 7.0, 5.0], [7.0, 12.0, 8.0], [10.0, 17.0, 11.0], [13.0, 22.0, 14.0]]
+const ANGLE_SPLAY := [-9.0, -3.0, 3.0, 9.0]
+## The item lies further down the palm, in front of the middle and ring
+## finger roots (SEAT otherwise): from the side the old seat read as the
+## item resting on the wrist.
+const ANGLE_SEAT := Vector2(-0.001, -0.067)
+## The elbow opens to this inside angle (ELBOW_ANGLE otherwise) and the
+## forearm stays slim further up (breadth at 0.2, 0.5, 0.8 and 1.0 of its
+## length, shares of the wrist half-breadth; 1.14, 1.3, 1.34, 1.26
+## otherwise), so arm, wrist and hand run in one soft line.
+const ANGLE_ELBOW := 2.82
+const ANGLE_FOREARM := [1.05, 1.14, 1.22, 1.2]
+## A single hand comes this much nearer the eye, so it shows as large as
+## the hands of a row of three, and this much higher, so its fingers stay
+## clear of the being's line of speech at the bottom of the view.
+const ANGLE_ONE_NEAR := 0.08
+const ANGLE_ONE_LIFT := 0.01
 ## Each hand along the row stands this much higher than the one before it
 ## (metres per metre along the row, less when the row is long: the ends
 ## stay within ANGLE_RISE of the middle), so no hand's fingers lie over the
 ## next; the whole row sits ANGLE_SHIFT to the side the wrists are on
-## (ANGLE_SHIFT_WIDE with more than three hands) and ANGLE_DROP lower, so
-## the fingers and the labels stay in the frame.
+## (ANGLE_SHIFT_WIDE with more than three hands, where the ends also only
+## stand ANGLE_RISE_WIDE from the middle) and ANGLE_DROP lower (higher when
+## negative), so the fingers and the labels stay in the frame.
 const ANGLE_STAIR := 0.3
-const ANGLE_RISE := 0.06
+const ANGLE_RISE := 0.045
+const ANGLE_RISE_WIDE := 0.025
 const ANGLE_SHIFT := 0.06
-const ANGLE_SHIFT_WIDE := 0.02
-const ANGLE_DROP := 0.03
+const ANGLE_SHIFT_WIDE := -0.02
+## More than three hands hold this much further from the eye, so the ends
+## of the row stay in the frame.
+const ANGLE_AHEAD_WIDE := 0.1
+const ANGLE_DROP := -0.02
 
 var _arms: Node3D
 ## One rig per hand: {root, upper, fore, elbow, hand, palm, slot, fingers, thumb, chir, ...}.
@@ -361,8 +403,10 @@ var _side := Vector3(0, 0, 1)
 var _snap := true
 var _meshes: Dictionary = {}
 var _skin_mat: Material
-## Height of the palm's skin under the item seat (hand frame z).
+## Height of the palm's skin under the item seat (hand frame z), and under
+## the ANGLE candidate's seat.
 var _seat_z := 0.012
+var _angle_seat_z := 0.012
 
 ## The being's own soft skin (user 2026-11-03: the low-poly facets should
 ## not show; 11-08: still not pretty enough): smooth shared-vertex normals
@@ -393,9 +437,12 @@ uniform vec2 tone_wrap = vec2(0.6, 1.0);
 uniform vec3 tone_key_view = vec3(-0.5, 0.6, 0.5);
 uniform vec3 tone_edge = vec3(0.9, 0.6, 0.55);
 uniform float tone_edge_amount = 0.6;
+uniform float tone_arm_level = 0.6;
 varying vec3 wn;
 varying float wy;
+varying float up_arm;
 void vertex() {
+    up_arm = UV.x;
     // the forearm is stretched along its length: the normal matrix keeps it round
     wn = normalize(MODEL_NORMAL_MATRIX * NORMAL);
     wy = (MODEL_MATRIX * vec4(VERTEX, 1.0)).y;
@@ -413,6 +460,11 @@ void fragment() {
     float wrap = pow(clamp(ndl * 0.5 + 0.5, 0.0, 1.0), 1.3);
     float fill = clamp(dot(n, normalize(fill_dir)) * 0.5 + 0.5, 0.0, 1.0);
     float ndv = clamp(dot(n, v), 0.0, 1.0);
+    // TONE: up the arm the light evens out, so the elbow is no band
+    float even = tone * smoothstep(0.0, 1.0, up_arm);
+    wrap = mix(wrap, tone_arm_level, even);
+    fill = mix(fill, 0.5, even);
+    ndv = mix(ndv, max(ndv, 0.75), even);
     float fres = pow(1.0 - ndv, 2.4);
     vec3 base = COLOR.rgb;
     float nail = clamp((1.0 - COLOR.a) * 4.0, 0.0, 1.0);
@@ -453,6 +505,7 @@ func _skin() -> Material:
             m.set_shader_parameter("tone_key_view", TONE_KEY_VIEW)
             m.set_shader_parameter("tone_edge", Vector3(TONE_EDGE.r, TONE_EDGE.g, TONE_EDGE.b))
             m.set_shader_parameter("tone_edge_amount", TONE_EDGE_AMOUNT)
+            m.set_shader_parameter("tone_arm_level", TONE_ARM_LEVEL)
         _skin_mat = m
     return _skin_mat
 
@@ -465,10 +518,13 @@ func _skin() -> Material:
 ## X edges dip toward +Z (a nail's curve across the finger, the domed back
 ## of the hand). Vertices are shared and indexed, so generate_normals shades
 ## it round, with no facets.
-static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, cols: Array, sides: int, dome0: float = 0.0, dome1: float = 0.0, arch: Array = [], bend: Array = [], palm_cols: Array = []) -> int:
-    # each ring: [centre, rx, rz, arch, bend, colour, palm-side colour]
+static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, cols: Array, sides: int, dome0: float = 0.0, dome1: float = 0.0, arch: Array = [], bend: Array = [], palm_cols: Array = [], up_arm: Array = []) -> int:
+    # each ring: [centre, rx, rz, arch, bend, colour, palm-side colour, up the arm]
     var rs: Array = []
     var n := pts.size()
+    # `up_arm` (per ring, the last repeating; 0 without) is how far up the
+    # arm the ring is, 0 at the wrist and the hand, 1 from the elbow up
+    var arm_at := func(i: int) -> float: return float(up_arm[mini(i, up_arm.size() - 1)]) if not up_arm.is_empty() else 0.0
     # `palm_cols` (per ring, the last repeating) tints the +Z half of each
     # ring: the palm side blushes, the back keeps the ring's own colour
     var col_at := func(i: int) -> Color: return cols[mini(i, cols.size() - 1)]
@@ -479,19 +535,20 @@ static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, 
         var d0: Vector3 = ((pts[0] as Vector3) - (pts[1] as Vector3)).normalized()
         for k in range(4):
             var t := (0.12 + 0.88 * float(k) / 4.0) * PI * 0.5
-            rs.append([(pts[0] as Vector3) + d0 * dome0 * cos(t), float(rx[0]) * sin(t), float(rz[0]) * sin(t), arch_at.call(0), bend_at.call(0) * sin(t), col_at.call(0), palm_at.call(0)])
+            rs.append([(pts[0] as Vector3) + d0 * dome0 * cos(t), float(rx[0]) * sin(t), float(rz[0]) * sin(t), arch_at.call(0), bend_at.call(0) * sin(t), col_at.call(0), palm_at.call(0), arm_at.call(0)])
     for i in range(n):
-        rs.append([pts[i], float(rx[i]), float(rz[i]), arch_at.call(i), bend_at.call(i), col_at.call(i), palm_at.call(i)])
+        rs.append([pts[i], float(rx[i]), float(rz[i]), arch_at.call(i), bend_at.call(i), col_at.call(i), palm_at.call(i), arm_at.call(i)])
     if dome1 > 0.0:
         var d1: Vector3 = ((pts[n - 1] as Vector3) - (pts[n - 2] as Vector3)).normalized()
         var cl: Color = col_at.call(n - 1)
         for k in range(1, 5):
             var t := (1.0 - 0.88 * float(k) / 4.0) * PI * 0.5
-            rs.append([(pts[n - 1] as Vector3) + d1 * dome1 * cos(t), float(rx[n - 1]) * sin(t), float(rz[n - 1]) * sin(t), arch_at.call(n - 1), bend_at.call(n - 1) * sin(t), cl, palm_at.call(n - 1)])
+            rs.append([(pts[n - 1] as Vector3) + d1 * dome1 * cos(t), float(rx[n - 1]) * sin(t), float(rz[n - 1]) * sin(t), arch_at.call(n - 1), bend_at.call(n - 1) * sin(t), cl, palm_at.call(n - 1), arm_at.call(n - 1)])
     for r in rs:
         for j in range(sides):
             var a := TAU * float(j) / float(sides)
             st.set_color((r[5] as Color).lerp(r[6], smoothstep(0.0, 0.6, sin(a))))
+            st.set_uv(Vector2(float(r[7]), 0.0))
             var x := cos(a) * float(r[1])
             var y := float(r[3]) * (-x if x < 0.0 else x * 0.33)
             var cx := cos(a)
@@ -515,6 +572,7 @@ static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, 
     if dome0 > 0.0:
         var d0: Vector3 = ((pts[0] as Vector3) - (pts[1] as Vector3)).normalized()
         st.set_color((col_at.call(0) as Color).lerp(palm_at.call(0), 0.5))
+        st.set_uv(Vector2(arm_at.call(0), 0.0))
         st.add_vertex((pts[0] as Vector3) + d0 * dome0)
         for j in range(sides):
             st.add_index(base + count)
@@ -524,6 +582,7 @@ static func _tube(st: SurfaceTool, base: int, pts: Array, rx: Array, rz: Array, 
     if dome1 > 0.0:
         var d1: Vector3 = ((pts[n - 1] as Vector3) - (pts[n - 2] as Vector3)).normalized()
         st.set_color((col_at.call(n - 1) as Color).lerp(palm_at.call(n - 1), 0.5))
+        st.set_uv(Vector2(arm_at.call(n - 1), 0.0))
         st.add_vertex((pts[n - 1] as Vector3) + d1 * dome1)
         var last := base + (rs.size() - 1) * sides
         for j in range(sides):
@@ -580,16 +639,17 @@ func _build_meshes() -> void:
     var wr := _wrist_half()
     var ph := _palm_half()
     var wd := _wide()
-    _tube(st, 0, [Vector3(0, -0.03, 0), Vector3(0, 0.06, 0), Vector3(0, 0.2, 0), Vector3(0, 0.5, 0), Vector3(0, 0.8, 0), Vector3(0, 1.0, 0)], [wr * 0.98, wr * 1.04, wr * 1.14, wr * 1.3, wr * 1.34, wr * 1.26], [wr * 0.64, wr * 0.68, wr * 0.8, wr * 1.0, wr * (float(TONE_FOREARM_TOP[0]) if hand_tone else 1.06), wr * (float(TONE_FOREARM_TOP[1]) if hand_tone else 1.06)], [SKIN, SKIN, SKIN, SKIN, SKIN, SKIN_SHADE], 18)
+    var fw: Array = ANGLE_FOREARM if hand_angle else [1.14, 1.3, 1.34, 1.26]
+    _tube(st, 0, [Vector3(0, -0.03, 0), Vector3(0, 0.06, 0), Vector3(0, 0.2, 0), Vector3(0, 0.5, 0), Vector3(0, 0.8, 0), Vector3(0, 1.0, 0)], [wr * 0.98, wr * 1.04, wr * float(fw[0]), wr * float(fw[1]), wr * float(fw[2]), wr * float(fw[3])], [wr * 0.64, wr * 0.68, wr * 0.8, wr * 1.0, wr * 1.06, wr * 1.06], [SKIN, SKIN, SKIN, SKIN, SKIN, SKIN_SHADE], 18, 0.0, 0.0, [], [], [], [0.0, 0.0, 0.15, 0.6, 0.95, 1.0])
     _meshes["fore"] = _smooth_finish(st)
     # upper arm, built one unit long from the elbow (0) up to the shoulder in
     # the duct (1); slim, round, a little fuller toward the shoulder
     st = _smooth_begin()
-    _tube(st, 0, [Vector3(0, -0.02, 0), Vector3(0, 0.25, 0), Vector3(0, 0.6, 0), Vector3(0, 1.0, 0), Vector3(0, 1.3, 0)], [0.027 * wd, 0.03 * wd, 0.032 * wd, 0.033 * wd, 0.033 * wd], [0.026 * wd, 0.029 * wd, 0.031 * wd, 0.032 * wd, 0.032 * wd], [SKIN_SHADE, SKIN, SKIN, SKIN_SHADE, SKIN_SHADE], 18)
+    _tube(st, 0, [Vector3(0, -0.02, 0), Vector3(0, 0.25, 0), Vector3(0, 0.6, 0), Vector3(0, 1.0, 0), Vector3(0, 1.3, 0)], [0.027 * wd, 0.03 * wd, 0.032 * wd, 0.033 * wd, 0.033 * wd], [0.026 * wd, 0.029 * wd, 0.031 * wd, 0.032 * wd, 0.032 * wd], [SKIN_SHADE, SKIN, SKIN, SKIN_SHADE, SKIN_SHADE], 18, 0.0, 0.0, [], [], [], [1.0])
     _meshes["upper"] = _smooth_finish(st)
     # the elbow, a soft round joint where the two meet
     st = _smooth_begin()
-    _tube(st, 0, [Vector3(0, -0.01, 0), Vector3(0, 0.01, 0)], [0.0275 * wd, 0.0275 * wd], [0.027 * wd, 0.027 * wd], [SKIN_SHADE], 18, 0.017 * wd, 0.017 * wd)
+    _tube(st, 0, [Vector3(0, -0.01, 0), Vector3(0, 0.01, 0)], [0.0275 * wd, 0.0275 * wd], [0.027 * wd, 0.027 * wd], [SKIN_SHADE], 18, 0.017 * wd, 0.017 * wd, [], [], [], [1.0])
     _meshes["elbow"] = _smooth_finish(st)
     # wrist and palm: the slim wrist widening in a soft curve to the
     # knuckles, its end in a gentle arc down toward the little finger and
@@ -621,10 +681,14 @@ func _build_meshes() -> void:
     _meshes["palm_l"] = _mirrored(_meshes["palm"])
     # the palm's skin under the item seat: the highest palm-side point there
     var top := -1.0
+    var top_angle := -1.0
     for v in (_meshes["palm"] as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
         if absf(v.x - SEAT.x) < 0.009 and absf(v.y - SEAT.y) < 0.009:
             top = maxf(top, v.z)
+        if absf(v.x - ANGLE_SEAT.x) < 0.009 and absf(v.y - ANGLE_SEAT.y) < 0.009:
+            top_angle = maxf(top_angle, v.z)
     _seat_z = top if top > 0.0 else 0.012
+    _angle_seat_z = top_angle if top_angle > 0.0 else _seat_z
     for i in range(FINGERS.size()):
         var f: Array = FINGERS[i]
         var length: float = f[2]
@@ -865,10 +929,16 @@ func _set_curl(c: float) -> void:
 var flat_pose := false
 
 ## The thumb's rest pose for a hand of chirality `c`, its tip bent `flex` degrees.
-static func _thumb_basis(c: float) -> Basis:
-    var pose := GRACE_THUMB_POSE if hand_grace else THUMB_POSE
+static func _thumb_basis(c: float, tuck: float = 0.0) -> Basis:
+    var pose := THUMB_POSE.lerp(TUCK_THUMB_POSE, tuck)
     var b := Basis.from_euler(Vector3(deg_to_rad(pose.x), 0.0, deg_to_rad(pose.z))) * Basis(Vector3.UP, deg_to_rad(THUMB_TWIST))
     return _mirror_basis(b, c)
+
+## How far the thumb is drawn in beside the index (0 lying open, 1 tucked).
+func _thumb_tuck() -> float:
+    if hand_thumb or hand_grace:
+        return 1.0
+    return _look_w if hand_angle else 0.0
 
 func _pose_fingers() -> void:
     if flat_pose:
@@ -905,13 +975,20 @@ func _pose_fingers() -> void:
                 for j in range(3):
                     flex[j] = deg_to_rad(float(GRACE_FLEX[i][j])) * (1.0 + float(rig["vary"][i])) + (cv - rest) * k * float(JOINT_SHARE[j])
                 splay = float(GRACE_SPLAY[i])
+            if hand_angle and not _beg:
+                # up close, lying across the view: each finger its own line
+                var rest_a := lerpf(CURL_REST, LOOK_CURL, _look_w)
+                for j in range(3):
+                    flex[j] = lerpf(float(flex[j]), deg_to_rad(float(ANGLE_FLEX[i][j])) * (1.0 + float(rig["vary"][i])) + (cv - rest_a) * k * float(JOINT_SHARE[j]), _look_w)
+                splay = lerpf(splay, float(ANGLE_SPLAY[i]), _look_w)
             (f[0] as Node3D).basis = Basis(Vector3.BACK, deg_to_rad(splay * c)) * Basis(Vector3.RIGHT, -float(flex[0]))
             for j in range(1, 3):
                 (f[j] as Node3D).rotation.x = -float(flex[j])
         var th: Array = rig["thumb"]
         var tc := _beg_grasp(0) if _beg else _curl
-        (th[0] as Node3D).basis = _thumb_basis(c) * Basis(Vector3.RIGHT, -0.5 * tc)
-        (th[1] as Node3D).rotation_degrees = Vector3((GRACE_THUMB_TIP if hand_grace else -14.0) - 30.0 * tc, 0, 0)
+        var tuck := _thumb_tuck()
+        (th[0] as Node3D).basis = _thumb_basis(c, tuck) * Basis(Vector3.RIGHT, -0.5 * tc)
+        (th[1] as Node3D).rotation_degrees = Vector3(lerpf(-14.0, TUCK_THUMB_TIP, tuck) - 30.0 * tc, 0, 0)
 
 func _hand_to(target: float, secs: float, ease_type: Tween.EaseType) -> void:
     if _hand_tw != null:
@@ -1061,7 +1138,12 @@ func _place_hands(delta: float) -> void:
         var w_end := _center + _side * a + view_up * b - fwd.normalized() * (a * a * arc - 0.12 * float(row)) + sway
         if hand_angle:
             var a_max := maxf(float(in_row - 1) * 0.5 * SPACING * LOOK_SPREAD, 0.001)
-            w_end += (-view_up * (a * minf(ANGLE_STAIR, ANGLE_RISE / a_max) + ANGLE_DROP) + _side * (ANGLE_SHIFT if _count <= 3 else ANGLE_SHIFT_WIDE)) * _look_w
+            var wide := _count > 3
+            w_end += (-view_up * (a * minf(ANGLE_STAIR, (ANGLE_RISE_WIDE if wide else ANGLE_RISE) / a_max) + ANGLE_DROP) + _side * (ANGLE_SHIFT_WIDE if wide else ANGLE_SHIFT)) * _look_w
+            if wide:
+                w_end += fwd.normalized() * ANGLE_AHEAD_WIDE * _look_w
+            if _count == 1:
+                w_end += (view_up * ANGLE_ONE_LIFT - fwd.normalized() * ANGLE_ONE_NEAR) * _look_w
         if hand_grace:
             # no two neighbours at one height
             w_end += view_up * GRACE_STEP * sin(float(i) * 2.4 + 0.5)
@@ -1077,6 +1159,9 @@ func _place_hands(delta: float) -> void:
         _pose_arm(rig, lip, w_end, clampf((e - late) / (1.0 - late), 0.0, 1.0), eye, delta)
         var slot: Node3D = rig["slot"]
         slot.scale = Vector3.ONE * item_scale
+        if hand_angle:
+            var seat := SEAT.lerp(ANGLE_SEAT, _look_w)
+            slot.position = Vector3(seat.x * float(rig["chir"]), seat.y, lerpf(_seat_z, _angle_seat_z, _look_w))
 
 ## The final arm for a wrist at `w`: a two-bone chain from the shoulder in
 ## the duct, the forearm FOREARM long, bent to the arm's own elbow angle with
@@ -1102,13 +1187,14 @@ func _arm_target(rig: Dictionary, lip: Vector3, w: Vector3, eye: Vector3) -> Arr
     var sw := sh - w
     var d := sw.length()
     var theta: float = rig["bend"]
+    # ANGLE: how far this hand has taken the one shared diagonal
+    var slant := _look_w if hand_angle else 0.0
+    theta = lerpf(theta, ANGLE_ELBOW + (theta - ELBOW_ANGLE) * 0.5, slant)
     var lf := minf(FOREARM, d * 0.48)
     var ang_s := asin(clampf(lf * sin(theta) / d, -1.0, 1.0))
     var ang_w := PI - theta - ang_s
     var away := (w - eye)
     away.y = maxf(away.y, 0.0)
-    # ANGLE: how far this hand has taken the one shared diagonal
-    var slant := _look_w if hand_angle else 0.0
     away = away.normalized() + _side * lerpf(signf(float(rig.get("side_a", 0.0))) * 0.5, ANGLE_LEAN, slant) + Vector3.UP * 0.2
     away = away.rotated(Vector3.UP, float(rig["yaw"]) * lerpf(1.0, ANGLE_YAW, slant))
     var swn := sw / d

@@ -17,8 +17,8 @@ func _init() -> void:
 	out = OS.get_environment("CAP_OUT")
 	if out == "":
 		out = OS.get_user_data_dir()
-	# VENT_VARIANT=tone,grace,angle turns on candidates kept for the user's
-	# pick (FPVent art HAND_TONE, HAND_GRACE, HAND_ANGLE); VENT_FLIP=0 has the
+	# VENT_VARIANT=tone,grace,angle,thumb turns on candidates kept for the user's
+	# pick (FPVent art HAND_TONE, HAND_GRACE, HAND_ANGLE, HAND_THUMB); VENT_FLIP=0 has the
 	# hands come down palm first
 	for v in OS.get_environment("VENT_VARIANT").split(",", false):
 		load("res://main/art/fp_vent.gd").set("hand_" + v, true)
