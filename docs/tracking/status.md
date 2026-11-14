@@ -1,5 +1,92 @@
 # 현재 상태
 
+## 2026-11-14 2차 구현 마지막 확인 (전체 묶음, 창 실행, 실행판)
+
+### 검사 결과
+
+- `game/tests`의 `run_*.gd` 87개를 격리 실행기(`run_godot_checks.cjs`, 사용자 폴더 `flesh-pit-restoration-r2-finish`)로 하나씩 차례로 돌렸다. 정상 플레이 저장과 키 파일은 읽지 않았다. 다른 작업자의 Godot가 같은 컴퓨터에서 같이 돌고 있었다.
+- 새로 생긴 실패: 없다.
+- 기준선 실패는 수가 그대로다: main 122 통과 7 실패(압사·죽음), settle_vent 185/3, revision 31/1(욕조 폭), mutation 203/4(Tab 자세), belt 81/3, perf_budget 5/1, continuation은 스크립트 오류(`Canary/Waistband` 노드 없음) 뒤 멈춰 시간 초과.
+- 실행마다 갈리는 것 1건: `run_terrain_dig_regression_tests.gd`의 큰 톱 여섯 칸 검사가 첫 실행에서 실패(154/1)하고 바로 다시 돌리자 통과(155/0)했다. 전부터 `findings.md`에 있던 항목이고 이번 관찰을 덧붙였다. 고치지 않았다.
+- 통과한 나머지 77개: audio 562, bed 84, belt_reach 262, biome 687, body_marks 52, body_posture_t3 896, body_signals 75, canary_take 36, chew_assist_edges 56, chew_assist 37, chew_stop 52, compass_start 45, controls_hierarchy 99, corpse_hair 78, crush_t8 49, eating_publication_timing 364, economy_r2 32, ending_bite 19, first_seal 15, flesh_music 45, glare_t6 109, gorge_walk 34, hand_controls 60, interaction_component 15, keybind_move 62, live_interactions 99, menu 65, mirror_buy_discard_hold 67, mirror_view 112, motion_t2 221, motion 42, movement_regression_fix 33, music 101, mutation_looks 104, mutation_wire 207, nerve_t7 32, oct02 16, play_log 13, preservation 209, progression_t4 64, protagonist_look 30, pull_shape 62, rest_pouch 122, restoration_historical_progress_t10 32, restoration_old_v5_t10 143, restoration_t9 72, restroom_fixtures 47, restroom_t1 21, room_furniture 105, save_load 15, saw_grip 24, spray_attachment 38, squeeze 29, tank_lean 28, tear_feel 20, terrain_barrier_pressure 359, terrain_batch_budget 36, terrain_density_cache 48, terrain_old_save 671, terrain_publication_epoch 54, terrain_regen_regression 634, terrain_solid_aim 67, terrain_solid_dig 143, terrain_surface_patch 161, terrain_surface_pending 118, terrain_surface_regression 1004, terrain_visual 71, run_tests 131, tissue_tools 146, ui_polish 57, vent_hands 62, vent_labels 109, vent_look 115, vent_save 32, vent_teeth 169, voice 42, watch_door_restore 265.
+- 환풍구 손 두 묶음(vent_hands 62, vent_look 115)은 다른 작업자가 부채를 지운 작업 폴더 상태에서 통과했다.
+- 실행기가 묶음으로 세지 못하는 둘: `run_headless.gd`는 판정 없는 300프레임 실행이고 스크립트 오류 없이 끝났다. `run_window_tests.gd`는 머리 없는 실행에서 건너뛰므로 격리 사본에서 창을 띄워 따로 돌렸고 7 통과 0 실패다.
+- `tests/art/run_art_tests.gd`는 격리 사본에서 34 통과.
+- 창 실행: `game/`의 격리 사본을 960×540 창으로 15초(900프레임) 띄웠다. 콘솔에 스크립트·셰이더 오류가 없었다. 입력은 주지 않았다(첫 화면까지만 본 것이다). 같은 사용자 폴더로 두 번째 창을 띄울 때는 셰이더 캐시 초기화 오류(`shader_gles3.cpp:802`)가 찍혔는데, 긴 격리 폴더 경로에서 나는 알려진 것이다(engineering-notes.md).
+
+### 실행판
+
+- 다시 만들지 못했다. `game/export_presets.cfg`의 "Windows Desktop" 프리셋으로 내보내기를 돌렸으나 내보내기 템플릿이 이 컴퓨터에 없다(`%APPDATA%/Godot/export_templates/4.7.2.stable/windows_release_x86_64.exe` 없음, 폴더가 비어 있다). 템플릿은 내려받지 않았다.
+- 지금 있는 실행 파일은 `build/VorareViscera/VorareViscera.exe`이고 2026-11-01 19:19에 만든 것이다. 2차 구현은 하나도 들어 있지 않다.
+- 내보내기를 시도할 때 편집기가 `.uid` 파일 14개를 새로 만들었다(이미 커밋된 스크립트·셰이더의 짝). 함께 커밋했다.
+
+### 2차 구현 항목별 상태
+
+| 항목 | 구현 | 검사 | 사람 확인 |
+|---|---|---|---|
+| 경제 재계산 (결정 0012·0013) | 됨: 살 단위 절반, 느린 재생, 칼 조직별 가중, 과식 걸음, 첫 정산 전 가득 찬 위장의 밖 토하기 | economy_r2 32, gorge_walk 34, first_seal 15, progression_t4 64, tissue_tools 146 통과 | 전 |
+| 거울 구매 (결정 0014) | 됨: 거울 앞에서만 구매 | mirror_buy_discard_hold 67 통과. mutation의 Tab 자세 4건은 기준선 실패 | 전 |
+| 길게 누르기 (결정 0009 개정) | 됨: 0.8초 눌러 밖 토하기 | 같은 묶음 | 전 |
+| 굴 보조 (결정 0015) | 됨: 살 속 선 채·웅크린 채 2 m. 화장실 문턱에 선 채 수평 조준은 여전히 멈춤(findings.md) | chew_assist 37, chew_assist_edges 56 통과 | 전 |
+| 쉼터·주머니 (결정 0016) | 됨: 고정 쉼터 일곱 곳, 양동이 이빨, 이빨 주머니. 쉼터 벽 충돌체와 새 음원 넷은 없음 | rest_pouch 122 통과 | 전 |
+| 털 시체 (결정 0017) | 됨 | corpse_hair 78 통과 | 전 (창 캡처도 없음) |
+| 구조물 막 (결정 0018) | 됨: 맨틀·지표면 구조물 14개. 핵 구조물 2개와 쉼터는 감싸지 않음 | biome 687 통과 | 전 (창 캡처도 없음) |
+| 화장실 음악 | 됨: dread 층 삭제, 일곱 층. 살 속 굴착 박자 층은 명세만 | music 101, audio 562, flesh_music 45 통과 | 전 (들어 본 사람 없음) |
+| 가구 | 됨: 환풍구 자리 옮김, 문·변기·욕조·세면대, 쉼터 안전모·의자·양동이, 천장 이음매 | room_furniture 105, restroom_fixtures 47, restroom_t1 21 통과. revision의 욕조 폭 1건은 기준선 실패 | 전 (`captures/R2_furniture/`) |
+| 주인공 | 됨. 다만 피부결과 손 모양은 사용자가 PS1 스타일이 아니라고 해 따로 다시 한다 | protagonist_look 30, preservation 209, saw_grip 24 통과 | 다시 하기로 함 |
+| 변이 | 됨: 배의 혹, 팔 털 묶음, 감각털, T2·T4·T7, 재질 | mutation_looks 104, mutation_wire 207, body_marks 52 통과 | 전 (`captures/R2_mutations/`) |
+| NPC 손 | 4차 뒤 사용자 "부채 싫어"로 5차에서 부채를 지움. 후보 셋은 꺼져 있음. 다른 작업자가 진행 중 | vent_hands 62, vent_look 115, vent_labels 109, vent_teeth 169, vent_save 32 통과 | 전 (`captures/R3_npc_hand/`) |
+
+### 사람이 확인할 것 (전체)
+
+그림 경로는 `docs/tracking/captures/` 아래다.
+
+고르기와 결정:
+- 실행판: 내보내기 템플릿(Godot 4.7.2)을 이 컴퓨터에 들일지. 들이기 전에는 실행 파일을 다시 만들 수 없다.
+- NPC 손: `R3_npc_hand/pick_variants.jpg`에서 후보(색·음영, 손가락 자세, 비스듬히 눕힌 손) 고르기, `pick_flip.jpg`에서 뒤집기 켬·끔, `R2_npc_hand/pick_AB_thickness.jpg`에서 굵기 A/B.
+- 인형 체형 A/B: `R2_protagonist/compare_3_body_build_AB.jpg`, `compare_3_body_build_AB_upper.jpg` (지금은 B, 보통 체형).
+- 환풍구 자리 옛 구석/새 중심선: `R2_furniture/before_vent_from_door.jpg`·`after_vent_from_door.jpg`, `after_vent_from_seat.jpg`, `before_door_enter.jpg`·`after_door_enter.jpg`.
+- 쉼터 안전모를 흰색으로 둘지 노랑으로 할지(`R2_furniture/after_can_inside_door_wall.jpg`), 쉼터 안벽을 지금의 노랑으로 둘지 회색으로 고칠지.
+- 팔 털 끝 색을 둘지(`R2_mutations/compare_3_hair.jpg`), 어두운 Tab 화면에서 털이 스스로 빛나게 할지(`after_core20_H.jpg`, `after_surface20_H.jpg`).
+- 칼을 사면 과식이 전보다 위험해지는 것을 받아들일지(칼 든 핵의 과식 끝 압사 여유 1.78 → 1.11).
+- 큰 톱을 손볼지(한 번에 6칸, 최대 12단위).
+- 화장실 문턱에 선 채 수평으로 파면 보조가 7칸 뜯다 다시 멈추는 것을 어떻게 할지.
+- 색 털 "절반"이 맞는 값인지(전형 죽음 비용 2.00 E로 대역 끝), 핵 구조물 2개까지 막을 넓힐지.
+- decisions-log의 "사용자 말 없이 정해진 음향 결정" 10건 승인, 살 속 굴착 박자 층을 만들지.
+- 내려오는 동안 손 옆으로 삐져나와 보이는 큰 물건(방벽, 칼)을 뒤집힐 때까지 숨길지.
+
+경제와 조작 (플레이로):
+- 한 입 박자와 원정 길이(계산 89~205초, 목표 180~300초). 사람 속도는 재지 않았다.
+- 닫힌 굴을 다시 뜯어 돌아오는 것이 버그가 아니라 "닫혔다"로 읽히는지.
+- 과식 걸음(75%, 깊은 머리 흔들림, 낮고 큰 발소리)이 무겁되 답답하지 않은지.
+- 뜯김·삼킴·털 소리가 두 배로 잦아진 것이 시끄럽지 않은지, 팔 털 자라는 속도가 전과 같아 보이는지.
+- 첫 정산 전 위장 160으로 갇혔을 때 V를 눌러 볼지(밖에서는 V 표시가 없다).
+- 거울 앞이 아닌 곳에서 사기를 누르면 유령 깜빡임만으로 "여기서는 못 산다"가 읽히는지, Tab 키캡이 거울로 가라는 뜻으로 읽히는지.
+- 0.8초 누르기가 실수는 막으면서 답답하지 않은지, 숙이다 마는 몸이 "더 누르면 쏟는다"로 읽히는지.
+- 웅크려 수평으로 팔 때 몸이 굴을 따라 올라가는 느낌, 선 채 파면 2 m에 1.4 m 올라가는 굴.
+
+쉼터·이빨·시체·막 (플레이로):
+- 이빨을 쥔 채 왼손 혼자 뜯는 한 입이 값으로 읽히는지 고장으로 읽히는지.
+- 이빨 든 양동이 앞의 헛구역질이 "먼저 집어라"로 읽히는지, 양동이가 제 위장에서 꺼낸 이빨만 도로 받는 규칙이 잡일로 느껴지지 않는지.
+- 맨틀 줄기 쉼터에 처음 닿을 때 배가 얼마나 차 있는지.
+- 이빨을 지니고 닫힌 길을 돌아오는 것이 초조한지 잡일인지.
+- 주머니를 사고 싶어지는지, 허리에서 보이는지.
+- 옆 쉼터를 한 곳이라도 찾는지, 문 구멍으로 들어서는 그림, 뒷벽으로 살이 비치지 않는지.
+- 시체가 "내 몸"으로 읽히는지, 털 매트와 줄기 망울이 어둠·안개·털 덤불에서 보이는지, 전등처럼 튀지 않는지, 묻힌 시체를 찾는 데 걸리는 시간.
+- 막 면이 "뒤에 뭔가 있다"로 읽히는지 "껍질 끝"으로 읽히는지, 칼로 찢는 순간이 드러남으로 느껴지는지, 안이 비어 약속만 반복한다고 느끼는지.
+
+소리 (들어서):
+- 큰 원정 뒤 화장실이 조용하고 안전하게 들리는지.
+- 남은 층 linger·wrong·cold가 "무서워지는 것"으로 들리는지, 위장이 찬 채 돌아올 때의 gut 층이 시끄럽지 않은지.
+- 문 근처에서 환풍구 밑 알림과 문 알림이 겹쳐 들리는지.
+
+그림 (캡처와 게임 화면으로):
+- 가구(`R2_furniture/`의 before·after 짝): 등을 옮긴 뒤 방이 여전히 희고 안전한지(`room_wide`, `door_inside`), 앉은 첫 화면의 문(`seat_opening`), 변기가 한눈에 변기인지(`toilet_3q`, `toilet_side`), 욕조·세면대가 튀지 않는지(`tub_3q`, `sink_angle`, `sink_low`), 쉼터 의자·양동이 크기(`can_inside_chair`, `can_inside_bucket`).
+- 화장실 천장·벽 이음매의 점, 큰 톱을 쥔 손이 실제 화면에서 나아 보이는지.
+- 변이(`R2_mutations/`): 배의 혹(`compare_1_bump.jpg`), 배의 무게와 T4 핏줄(`compare_2_belly.jpg`), 팔 털이 털로 보이는지(`compare_3_hair.jpg`), 감각털(`compare_4_bristles.jpg`), T7이 벌어진 갈비로 보이는지(`compare_5_T7.jpg`), T2가 팔로 읽히는지(`compare_6_T2.jpg`), 이빨·혀·입속 재질과 M03·M25·M20(`compare_7_materials.jpg`, `compare_8_small.jpg`). M16·M19 배의 꿀렁임과 감각털 떨림은 게임에서만 볼 수 있다.
+- 주인공(`R2_protagonist/`, 피부결·손은 다시 하기로 함): 도구를 쥔 손(`after_game_held_blender.jpg`, `after_game_held_big_saw.jpg`, `after_game_held_knife.jpg`), 인형 손(`compare_5_figure_hand.jpg`), 뜯은 직후 젖은 손과 화장실에서의 번들거림은 게임에서.
+- NPC 손(`R2_npc_hand/`): 뒤집는 동작과 박자(`motion_offer_take.gif`, `motion_strip.jpg`), 혈색과 손톱(`compare_4_palm_nails.jpg`), 다급한 낚아채기와 차분한 물러남의 구분은 게임에서.
+
 ## 2026-11-14 2차 구현 검수에서 확인된 결함 10건의 처리
 
 - 고침(커밋과 그 결함을 잡는 시험):
