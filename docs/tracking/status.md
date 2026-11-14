@@ -43,7 +43,7 @@
 
 고르기와 결정:
 - 실행판: 내보내기 템플릿(Godot 4.7.2)을 이 컴퓨터에 들일지. 들이기 전에는 실행 파일을 다시 만들 수 없다.
-- NPC 손: `R3_npc_hand/pick_variants.jpg`에서 후보(색·음영, 손가락 자세, 비스듬히 눕힌 손) 고르기, `pick_flip.jpg`에서 뒤집기 켬·끔, `R2_npc_hand/pick_AB_thickness.jpg`에서 굵기 A/B.
+- NPC 손: `R3_npc_hand/pick_variants.jpg`에서 후보(색·음영, 손가락 자세, 비스듬히 눕힌 손) 고르기, `pick_flip.jpg`에서 뒤집기 켬·끔, `R2_npc_hand/pick_AB_thickness.jpg`에서 굵기 A/B, `R4_npc_hand_model/pick_models.jpg`에서 모델 손(지금 / XR Tools / Blender).
 - 인형 체형 A/B: `R2_protagonist/compare_3_body_build_AB.jpg`, `compare_3_body_build_AB_upper.jpg` (지금은 B, 보통 체형).
 - 환풍구 자리 옛 구석/새 중심선: `R2_furniture/before_vent_from_door.jpg`·`after_vent_from_door.jpg`, `after_vent_from_seat.jpg`, `before_door_enter.jpg`·`after_door_enter.jpg`.
 - 쉼터 안전모를 흰색으로 둘지 노랑으로 할지(`R2_furniture/after_can_inside_door_wall.jpg`), 쉼터 안벽을 지금의 노랑으로 둘지 회색으로 고칠지.

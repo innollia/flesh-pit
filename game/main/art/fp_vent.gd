@@ -299,6 +299,18 @@ static var hand_thumb := HAND_THUMB
 ## it (the item still stands on edge), so off is what is proposed.
 const HAND_FLIP := true
 static var hand_flip := HAND_FLIP
+## A modeled hand in place of the hand built from tubes (user 2026-11-14:
+## every tube hand "구리다"; a modeled one was asked for, and long sculpted
+## nails are to go on it later). 0: the hand as it is. 1: the CC0 Godot XR
+## Tools hand (MakeHuman based). 2: the slender hand scripted in Blender
+## (slender_hand_r.glb). 3: the hand built to this file's own proportions by
+## tools/vent_hand_model/build_hand.py (vent_hand.glb). A
+## candidate like the others: off until the user has picked from
+## docs/tracking/captures/R4_npc_hand_model/pick_models.jpg. The arm, the
+## side by side offer, the timing and the item seat are the same for all
+## three; only the palm and fingers are swapped (see _attach_model).
+const HAND_MODEL := 0
+static var hand_model := HAND_MODEL
 
 ## TONE: the skin a shade deeper and peachier (multiplied in the shader),
 ## the light range lower so the open palm is not one flat white, the key
@@ -498,7 +510,9 @@ func _skin() -> Material:
         sh.code = SKIN_SHADER
         var m := ShaderMaterial.new()
         m.shader = sh
-        if hand_tone:
+        # under a modeled hand the arm takes the same lower, edge-darkened
+        # light as the model's own shader, so wrist and hand are one skin
+        if hand_tone or _model_kind() > 0:
             m.set_shader_parameter("tone", 1.0)
             m.set_shader_parameter("tone_tint", Vector3(TONE_TINT.r, TONE_TINT.g, TONE_TINT.b))
             m.set_shader_parameter("tone_wrap", TONE_WRAP)
@@ -796,6 +810,8 @@ func _new_rig(index: int) -> Dictionary:
         "yaw": sin(float(index) * 1.37 + 1.1) * 0.35,
         "tilt": sin(float(index) * 2.9 + 0.7) * 0.12,
         "roll": sin(float(index) * 2.3 + 0.4) * 0.14, "vary": vary}
+    if _model_kind() > 0:
+        _attach_model(rig)
     _set_chirality(rig, 1.0)
     # render layers: set_offer_items, the only caller, tags every arm after
     return rig
@@ -815,6 +831,9 @@ func _set_chirality(rig: Dictionary, c: float) -> void:
     tp.position = Vector3(troot.x * c, troot.y, troot.z)
     var slot: Node3D = rig["slot"]
     slot.position.x = SEAT.x * c
+    if rig.has("models"):
+        for mc in rig["models"]:
+            (rig["models"][mc]["node"] as Node3D).visible = float(mc) == c
 
 ## Mirror a rotation for a left hand (reflect across x = 0).
 static func _mirror_basis(b: Basis, c: float) -> Basis:
@@ -822,6 +841,308 @@ static func _mirror_basis(b: Basis, c: float) -> Basis:
         return b
     var m := Basis.from_scale(Vector3(-1, 1, 1))
     return m * b * m
+
+## --- Modeled hands (HAND_MODEL 1, 2, 3) ---------------------------------------
+## The model stands in for the palm, fingers and thumb only. It hangs on the
+## same hand pivot (wrist at 0, fingers -Y, palm +Z, thumb +X on what this
+## file calls a right hand), so the arm, the offer row, the flip and the
+## item seat run exactly as for the tube hand, whose own meshes are hidden
+## but still posed (captures and tests read their pivots). Each rig carries
+## one model per chirality and shows the one in use.
+## The files are read as they are with GLTFDocument (no import step, so a
+## candidate needs no .import files). The one that is picked should become
+## an imported scene: a file read this way is not in an exported build.
+const MODEL_DIR := "res://main/art/vent_hand_models/"
+## Per model: the file for each chirality, the basis that lays the model's
+## axes on the hand frame (a mirrored one for the Blender hand's other
+## side), the model point that goes to the wrist, the scale (the Blender
+## hand to the tube hand's wrist-to-fingertip length; the broader XR hand a
+## little under it, so three still fit the view), how far up the model's own
+## arm stub is drawn (model +Z; the rest is cut away inside the being's
+## forearm, which bends at the wrist where the stub cannot), the palm's normal in model space per
+## chirality, and how curled the model stands at rest in units of the tube
+## hand's curl (the XR hand rests about as curled as the open offer).
+## XR Tools: fingers -Z, thumb +Y, the left hand's palm +X. By this file's
+## handedness (thumb +X seen palm on, fingers down) its "L" file is c = 1.
+## Blender: fingers -Z, back of the hand +Y, thumb -X.
+## vent_hand.glb is built in this file's hand frame already (its arm stub
+## runs up +Y: "cut_axis"). "own": the surface takes the model's vertex
+## colours as they are (painted to this being's palette by its builder).
+const MODELS := {
+    1: {
+        "files": {1.0: "godot_xr_tools_hands/Hand_Nails_low_L.gltf", -1.0: "godot_xr_tools_hands/Hand_Nails_low_R.gltf"},
+        "basis": {1.0: [Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0)], -1.0: [Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0)]},
+        "normal": {1.0: Vector3(1, 0, 0), -1.0: Vector3(-1, 0, 0)},
+        "pivot": Vector3(0, -0.008, 0.02), "scale": 0.76, "rest_curl": 0.5, "cut": 0.02,
+        "fingers": ["Index", "Middle", "Ring", "Little"], "joints": ["_Proximal", "_Intermediate", "_Distal"],
+        "thumb": ["Thumb_Proximal", "Thumb_Distal"], "suffix": {1.0: "_L", -1.0: "_R"},
+        "texture": "godot_xr_tools_hands/textures/caucasian_realistic_baseColor.png",
+    },
+    2: {
+        "files": {1.0: "blender_made/slender_hand_r.glb", -1.0: "blender_made/slender_hand_r.glb"},
+        "basis": {1.0: [Vector3(-1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)], -1.0: [Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)]},
+        "normal": {1.0: Vector3(0, -1, 0), -1.0: Vector3(0, -1, 0)},
+        "pivot": Vector3(0, 0, 0.004), "scale": 0.95, "rest_curl": 0.35, "cut": 0.012,
+        "fingers": ["index", "middle", "ring", "pinky"], "joints": ["_1", "_2", "_3"],
+        "thumb": ["thumb_2", "thumb_3"], "suffix": {1.0: "", -1.0: ""},
+        "texture": "",
+    },
+    3: {
+        "files": {1.0: "blender_made/vent_hand.glb", -1.0: "blender_made/vent_hand.glb"},
+        "basis": {1.0: [Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)], -1.0: [Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)]},
+        "normal": {1.0: Vector3(0, 0, 1), -1.0: Vector3(0, 0, 1)},
+        "pivot": Vector3.ZERO, "scale": 1.0, "rest_curl": 0.2, "cut": 0.012, "cut_axis": Vector3(0, 1, 0),
+        "fingers": ["index", "middle", "ring", "little"], "joints": ["_1", "_2", "_3"],
+        "thumb": ["thumb_2", "thumb_3"], "suffix": {1.0: "", -1.0: ""},
+        "texture": "", "own": true,
+    },
+}
+## Screen grid the model's vertices snap to, the kit's PS1 setting
+## (FDKPs1Settings.vertex_snap_precision), and the side of the XR hand's
+## skin texture after it is cut down to coarse texels.
+const MODEL_SNAP := 130.0
+const MODEL_TEXELS := 128
+var _model_mats: Array = []
+var _model_tex: ImageTexture
+var _model_tex_mean := Vector3.ONE
+
+## The model in use: HAND_MODEL when its files are there, else 0.
+static func _model_kind() -> int:
+    if not MODELS.has(hand_model):
+        return 0
+    for c in MODELS[hand_model]["files"]:
+        if not FileAccess.file_exists(MODEL_DIR + str(MODELS[hand_model]["files"][c])):
+            return 0
+    return hand_model
+
+## The model's skin: the vent being's own tones and soft wrapped light (the
+## TONE candidate's range, so the open palm is not one white against the
+## tiles, and its warm darker edge), unshaded like the arm. PS1 side: the
+## vertices snap to the kit's screen grid and the XR hand's texture is cut to
+## 128 texels, read unfiltered, as light and dark on the being's skin colour
+## (its own orange is not used). The Blender hand's painted flush picks
+## between the being's skin and pad colours; its nail surface takes the
+## being's nail colour and lacquer.
+const MODEL_SHADER := """shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform vec3 skin = vec3(1.0, 0.885, 0.83);
+uniform vec3 pad = vec3(1.0, 0.82, 0.80);
+uniform vec3 nail_col = vec3(0.85, 0.44, 0.5);
+uniform float nail = 0.0;
+uniform float use_tex = 0.0;
+uniform sampler2D detail : filter_nearest, repeat_disable;
+uniform vec3 detail_mean = vec3(1.0);
+uniform float detail_amount = 0.7;
+uniform float use_paint = 0.0;
+uniform vec2 paint_g = vec2(0.557, 0.369);
+uniform float snap = 130.0;
+uniform float facing = 1.0;
+uniform float cut = 1000.0;
+uniform vec3 cut_axis = vec3(0.0, 0.0, 1.0);
+uniform float use_own = 0.0;
+uniform vec3 fill_dir = vec3(-0.6, -0.2, 0.5);
+uniform vec3 warm = vec3(1.0, 0.5, 0.42);
+uniform float sss = 0.24;
+uniform float sheen = 0.05;
+uniform float nail_gloss = 0.7;
+uniform float lip_y = 1000.0;
+uniform vec3 tone_tint = vec3(1.0);
+uniform vec2 tone_wrap = vec2(0.7, 1.0);
+uniform vec3 tone_key_view = vec3(-0.6, 0.3, 0.74);
+uniform vec3 tone_edge = vec3(0.93, 0.7, 0.66);
+uniform float tone_edge_amount = 0.58;
+varying vec3 wn;
+varying float wy;
+varying float up_stub;
+void vertex() {
+    wn = normalize(MODEL_NORMAL_MATRIX * NORMAL);
+    wy = (MODEL_MATRIX * vec4(VERTEX, 1.0)).y;
+    up_stub = dot(VERTEX, cut_axis);
+    vec4 clip = PROJECTION_MATRIX * (MODELVIEW_MATRIX * vec4(VERTEX, 1.0));
+    if (clip.w > 0.0001) {
+        vec2 ndc = floor(clip.xy / clip.w * snap + 0.5) / snap;
+        clip.xy = ndc * clip.w;
+    }
+    POSITION = clip;
+}
+void fragment() {
+    if (up_stub > cut) { discard; }
+    // a mirrored model (facing -1) comes in with its faces the other way round
+    vec3 n = normalize(wn) * facing;
+    if (!FRONT_FACING) { n = -n; }
+    vec3 v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
+    vec3 l = normalize((INV_VIEW_MATRIX * vec4(tone_key_view, 0.0)).xyz);
+    float wrap = pow(clamp(dot(n, l) * 0.5 + 0.5, 0.0, 1.0), 1.3);
+    float fill = clamp(dot(n, normalize(fill_dir)) * 0.5 + 0.5, 0.0, 1.0);
+    float ndv = clamp(dot(n, v), 0.0, 1.0);
+    float fres = pow(1.0 - ndv, 2.4);
+    float flush = use_paint * clamp((paint_g.x - COLOR.g) / (paint_g.x - paint_g.y), 0.0, 1.0);
+    vec3 base = mix(mix(skin, pad, flush), COLOR.rgb, use_own);
+    if (use_tex > 0.5) {
+        vec3 d = texture(detail, UV).rgb / detail_mean;
+        base *= mix(vec3(1.0), clamp(d, 0.6, 1.25), detail_amount);
+    }
+    base = mix(base * tone_tint, nail_col, nail);
+    vec3 col = base * mix(tone_wrap.x, tone_wrap.y, wrap) * mix(0.97, 1.03, fill);
+    col += base * warm * (sss + 0.1 * flush) * (1.0 - wrap * (1.0 - 0.5 * flush)) * (1.0 - nail);
+    col = mix(col, col * mix(vec3(1.0), warm * 1.3, 0.55), fres * 0.4 * (1.0 - nail));
+    col = mix(col, col * tone_edge, tone_edge_amount * pow(1.0 - ndv, 1.7) * (1.0 - nail));
+    vec3 h = normalize(l + v);
+    float nh = max(dot(n, h), 0.0);
+    col += vec3(1.0, 0.97, 0.95) * pow(nh, 14.0) * sheen * (1.0 - nail);
+    col += vec3(1.0) * (pow(nh, 70.0) * nail_gloss + pow(nh, 12.0) * 0.12 + fres * 0.3) * nail;
+    col *= 1.0 - 0.985 * smoothstep(lip_y - 0.03, lip_y + 0.22, wy);
+    ALBEDO = col;
+}
+"""
+
+## Material for a model surface (`is_nail`: the Blender hand's nail plates;
+## `facing` -1 for the mirrored instance).
+func _model_material(spec: Dictionary, is_nail: bool, facing: float) -> ShaderMaterial:
+    var sh: Shader = _meshes.get("model_shader")
+    if sh == null:
+        sh = Shader.new()
+        sh.code = MODEL_SHADER
+        _meshes["model_shader"] = sh
+    var m := ShaderMaterial.new()
+    m.shader = sh
+    m.set_shader_parameter("skin", Vector3(SKIN.r, SKIN.g, SKIN.b))
+    m.set_shader_parameter("pad", Vector3(SKIN_PAD.r, SKIN_PAD.g, SKIN_PAD.b))
+    m.set_shader_parameter("nail_col", Vector3(NAIL.r, NAIL.g, NAIL.b))
+    m.set_shader_parameter("nail", 1.0 if is_nail else 0.0)
+    m.set_shader_parameter("snap", MODEL_SNAP)
+    m.set_shader_parameter("facing", facing)
+    m.set_shader_parameter("cut", float(spec["cut"]))
+    m.set_shader_parameter("cut_axis", spec.get("cut_axis", Vector3(0, 0, 1)))
+    m.set_shader_parameter("use_own", 1.0 if spec.get("own", false) and not is_nail else 0.0)
+    m.set_shader_parameter("tone_tint", Vector3(TONE_TINT.r, TONE_TINT.g, TONE_TINT.b))
+    m.set_shader_parameter("tone_wrap", TONE_WRAP)
+    m.set_shader_parameter("tone_key_view", TONE_KEY_VIEW)
+    m.set_shader_parameter("tone_edge", Vector3(TONE_EDGE.r, TONE_EDGE.g, TONE_EDGE.b))
+    m.set_shader_parameter("tone_edge_amount", TONE_EDGE_AMOUNT)
+    var tex_file := str(spec["texture"])
+    if tex_file != "" and not is_nail:
+        if _model_tex == null:
+            # read as bytes: the file needs no import, and the coarse copy is the texel look
+            var img := Image.new()
+            if img.load_png_from_buffer(FileAccess.get_file_as_bytes(MODEL_DIR + tex_file)) == OK:
+                img.resize(MODEL_TEXELS, MODEL_TEXELS, Image.INTERPOLATE_BILINEAR)
+                var sum := Vector3.ZERO
+                for y in range(MODEL_TEXELS):
+                    for x in range(MODEL_TEXELS):
+                        var px := img.get_pixel(x, y)
+                        sum += Vector3(px.r, px.g, px.b)
+                _model_tex_mean = sum / float(MODEL_TEXELS * MODEL_TEXELS)
+                _model_tex = ImageTexture.create_from_image(img)
+        if _model_tex != null:
+            m.set_shader_parameter("use_tex", 1.0)
+            m.set_shader_parameter("detail", _model_tex)
+            m.set_shader_parameter("detail_mean", _model_tex_mean)
+    elif not is_nail:
+        m.set_shader_parameter("use_paint", 1.0)
+    _model_mats.append(m)
+    return m
+
+## Hang the model on the rig's hand pivot, one per chirality, and hide the
+## tube hand. The item seat rises to the model's own palm skin.
+func _attach_model(rig: Dictionary) -> void:
+    var spec: Dictionary = MODELS[_model_kind()]
+    var hand: Node3D = rig["hand"]
+    var models := {}
+    var seat_z := -1.0
+    if not _meshes.has("model_skin1"):
+        for facing in [1, -1]:
+            _meshes["model_skin%d" % facing] = _model_material(spec, false, float(facing))
+            _meshes["model_nail%d" % facing] = _model_material(spec, true, float(facing))
+    for c in [1.0, -1.0]:
+        var doc := GLTFDocument.new()
+        var state := GLTFState.new()
+        if doc.append_from_file(MODEL_DIR + str(spec["files"][c]), state) != OK:
+            continue
+        var scene := doc.generate_scene(state) as Node3D
+        if scene == null:
+            continue
+        var found := scene.find_children("*", "Skeleton3D", true, false)
+        if found.is_empty():
+            scene.free()
+            continue
+        var skel := found[0] as Skeleton3D
+        var ax: Array = spec["basis"][c]
+        var b := Basis(ax[0], ax[1], ax[2]) * float(spec["scale"])
+        scene.name = "Model" + ("R" if c > 0.0 else "L")
+        scene.transform = Transform3D(b, -(b * (spec["pivot"] as Vector3)))
+        var face := 1 if b.determinant() > 0.0 else -1
+        hand.add_child(scene)
+        for n in scene.find_children("*", "MeshInstance3D", true, false):
+            var mi := n as MeshInstance3D
+            for si in range(mi.mesh.get_surface_count()):
+                var src := mi.mesh.surface_get_material(si)
+                var is_nail := src != null and src.resource_name.contains("nail")
+                mi.set_surface_override_material(si, _meshes["model_nail%d" % face] if is_nail else _meshes["model_skin%d" % face])
+                if c > 0.0 and not is_nail:
+                    for v in mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]:
+                        var hv: Vector3 = scene.transform * v
+                        if absf(hv.x - SEAT.x) < 0.009 and absf(hv.y - SEAT.y) < 0.009:
+                            seat_z = maxf(seat_z, hv.z)
+        # each joint's bend axis in its own frame: across the bone, turning it toward the palm
+        var bones: Array = []
+        var normal: Vector3 = spec["normal"][c]
+        var names: Array = []
+        for f in spec["fingers"]:
+            for j in spec["joints"]:
+                names.append(str(f) + str(j) + str(spec["suffix"][c]))
+        for t in spec["thumb"]:
+            names.append(str(t) + str(spec["suffix"][c]))
+        for bn in names:
+            var bi := skel.find_bone(bn)
+            if bi < 0:
+                bones.append([])
+                continue
+            var g := skel.get_bone_global_rest(bi).basis.orthonormalized()
+            # the bone's line: on to its child (the files disagree on which local axis that is)
+            var along := g.y
+            var kids := skel.get_bone_children(bi)
+            if not kids.is_empty():
+                along = skel.get_bone_global_rest(kids[0]).origin - skel.get_bone_global_rest(bi).origin
+            var axis := along.normalized().cross(normal)
+            axis = g.inverse() * (axis.normalized() if axis.length() > 0.001 else Vector3.RIGHT)
+            bones.append([bi, skel.get_bone_rest(bi).basis.get_rotation_quaternion(), axis.normalized()])
+        models[c] = {"node": scene, "skel": skel, "bones": bones}
+    if models.is_empty():
+        return
+    rig["models"] = models
+    rig["model_rest"] = float(spec["rest_curl"])
+    (rig["palm"] as MeshInstance3D).visible = false
+    for f in rig["fingers"]:
+        (f[0] as Node3D).visible = false
+    (rig["thumb"][0] as Node3D).visible = false
+    if seat_z > 0.0:
+        (rig["slot"] as Node3D).position.z = seat_z
+
+## The tube hand's finger bends (rig["flex<i>"], set in _pose_fingers) laid
+## on the model's bones, less the curl the model already stands in at rest;
+## the thumb closes with the grip (`thumb_curl` 0..1).
+func _pose_model(rig: Dictionary, thumb_curl: float) -> void:
+    var rest: float = rig["model_rest"]
+    for c in rig["models"]:
+        var m: Dictionary = rig["models"][c]
+        if not (m["node"] as Node3D).visible:
+            continue
+        var skel: Skeleton3D = m["skel"]
+        var bones: Array = m["bones"]
+        for i in range(4):
+            var flex: Array = rig.get("flex%d" % i, [0.0, 0.0, 0.0])
+            var k: float = float(FINGERS[i][5])
+            for j in range(3):
+                var bone: Array = bones[i * 3 + j]
+                if bone.is_empty():
+                    continue
+                var ang := float(flex[j]) - rest * k * float(JOINT_SHARE[j])
+                skel.set_bone_pose_rotation(int(bone[0]), (bone[1] as Quaternion) * Quaternion(bone[2] as Vector3, ang))
+        for t in range(2):
+            var tb: Array = bones[12 + t]
+            if not tb.is_empty():
+                skel.set_bone_pose_rotation(int(tb[0]), (tb[1] as Quaternion) * Quaternion(tb[2] as Vector3, 0.45 * thumb_curl))
 
 func item_node(index: int) -> Node3D:
     return _offers[index] if index >= 0 and index < _offers.size() else null
@@ -984,11 +1305,15 @@ func _pose_fingers() -> void:
             (f[0] as Node3D).basis = Basis(Vector3.BACK, deg_to_rad(splay * c)) * Basis(Vector3.RIGHT, -float(flex[0]))
             for j in range(1, 3):
                 (f[j] as Node3D).rotation.x = -float(flex[j])
+            if rig.has("models"):
+                rig["flex%d" % i] = flex
         var th: Array = rig["thumb"]
         var tc := _beg_grasp(0) if _beg else _curl
         var tuck := _thumb_tuck()
         (th[0] as Node3D).basis = _thumb_basis(c, tuck) * Basis(Vector3.RIGHT, -0.5 * tc)
         (th[1] as Node3D).rotation_degrees = Vector3(lerpf(-14.0, TUCK_THUMB_TIP, tuck) - 30.0 * tc, 0, 0)
+        if rig.has("models"):
+            _pose_model(rig, tc)
 
 func _hand_to(target: float, secs: float, ease_type: Tween.EaseType) -> void:
     if _hand_tw != null:
@@ -1102,6 +1427,8 @@ func _place_hands(delta: float) -> void:
         return
     if _skin_mat != null and is_inside_tree():
         (_skin_mat as ShaderMaterial).set_shader_parameter("lip_y", to_global(Vector3(0, LIP_Y, 0)).y)
+        for mm in _model_mats:
+            (mm as ShaderMaterial).set_shader_parameter("lip_y", to_global(Vector3(0, LIP_Y, 0)).y)
     var eye := _look_eye() if looking() else _eye()
     var target := _look_cluster() if looking() else _cluster_target(eye)
     var k := 1.0 if _snap else 1.0 - exp((-6.0 if looking() else -2.5) * delta)
