@@ -19,13 +19,24 @@ var _vent_open := false
 var _barrier_count := 0
 var _hooked_barriers: Array = []
 ## Recently torn spots (newest last): the creak comes from one that is
-## really growing back, never from nowhere.
+## really growing back, never from nowhere. Of those within CREAK_RANGE it is
+## the open one nearest to closing (density between CREAK_FROM and the
+## terrain's iso level, the highest), which is the way behind, not the cell
+## just torn; creak_urgency is how near that one is to shut (0..1) and the
+## director creaks more often and louder with it.
 var _torn: Array[Vector3] = []
 const TORN_KEEP := 48
 const CREAK_RANGE := 8.0
+const CREAK_FROM := 0.15
+var creak_urgency := 0.0
+## Seconds between looks at the torn spots for the urgency (the director's
+## own look, when a creak is due, is one more).
+const CREAK_LOOK := 0.5
+var _creak_look := 0.0
 var _chirp_cool := 0.0
-## Squeezing past flesh: a wet strain each time the body has to give way
-## harder (player.squeeze() over half), at most every SQUEEZE_COOL seconds.
+## Squeezing past flesh: a short breath pressed out through the nose each time
+## the body has to give way harder (player.squeeze() over half), at most every
+## SQUEEZE_COOL seconds. Its own sound: the chew strain means overeating only.
 const SQUEEZE_COOL := 1.4
 var _squeeze_cool := 0.0
 var _squeeze_was := 0.0
@@ -37,7 +48,13 @@ var played_events: Array[String] = []
 ## outward (main.melody_level), hummed at the ending, with a second voice
 ## when the codex is complete (ending.voice_layers). The three song layers
 ## start together so they stay in step.
-const LAYER_IDS := ["magnet_hum", "song_melody", "song_hum", "song_voice2"]
+## crush_breath is the body's own shallow breath while it is being crushed:
+## its level is main.crush_progress() and it quickens with it. It is the
+## body's sound, so it sits on the SFX bus, not with the songs.
+const LAYER_IDS := ["magnet_hum", "song_melody", "song_hum", "song_voice2", "crush_breath"]
+const LAYER_BUS := {"crush_breath": &"SFX"}
+## crush_breath plays this fast at crush 0 and 1 (the loop itself keeps one pace).
+const CRUSH_PITCH := Vector2(0.9, 1.25)
 ## The in-flesh melody stays faint; at the ending the hum takes the tune
 ## over and the tine fades out (under the hum the two read as a siren).
 const MELODY_IN_FLESH := 0.35
@@ -57,7 +74,10 @@ const EVENT_SOUNDS := {
 	"ending": "ending_roll", "settle_tick": "settle_tick", "ui_click": "ui_click",
 	"echo_click": "echo_click",
 	"canary_chirp": "canary_chirp", "canary_warn": "canary_warn", "canary_wrong": "canary_wrong",
-	"squeeze": "chew_strain", "grab_refuse": "grab_refuse", "gag": "gag_dry",
+	"squeeze": "squeeze_breath", "grab_refuse": "grab_refuse", "gag": "gag_dry",
+	# the stomach is full and the mouth will not take the bite (Main.stomach_refused):
+	# a shut-mouth heave, nothing goes down. gag_dry stays "cannot vomit here".
+	"full_refuse": "full_refuse",
 	# one clatter of the settlement rattle (repeated for the rattle's length).
 	# Its own unpitched teeth knock (round8-sfx): coin_drop's 2-5 kHz sine
 	# tinks every quarter second over the flush read as a canary screaming.
@@ -184,10 +204,11 @@ func _wire() -> void:
 	_hook("canary_cry", func(frightened): play_event("canary_wrong" if frightened else "canary_warn"))
 	# the opening: water still running in the bowl
 	_hook("opening_flush", func(): director.play("toilet_flush", _toilet_pos()))
-	# a contractile wall about to squeeze creaks first, where it is
+	# a contractile wall about to squeeze swells first, where it is. Its own
+	# sound: regen_creak means flesh growing back and nothing else.
 	var tf = main.get("terrain")
 	if tf != null and tf.has_signal("contraction_warning"):
-		tf.connect("contraction_warning", func(pos): director.play("regen_creak", pos))
+		tf.connect("contraction_warning", func(pos): director.play("contract_warn", pos))
 	# teeth rattling down into the tank
 	if toilet != null and toilet.has_signal("tank_rattle_started"):
 		toilet.connect("tank_rattle_started", _on_rattle_started)
@@ -222,6 +243,8 @@ func _wire() -> void:
 	_hook("grab_refused", func(_tissue, pos): play_event("grab_refuse", pos))
 	# V out in the flesh before the first settlement: retching, nothing comes up
 	_hook("dry_heaved", func(): play_event("gag"))
+	# a bite the full stomach refused (main rations it): inside the head, no place
+	_hook("stomach_refused", func(_pos): play_event("full_refuse"))
 	# teeth shut in the tank knock its lid before the first trade: a clink
 	# and a second one just after, the settlement's tooth clink at the tank
 	_hook("tank_teeth_knocked", func():
@@ -237,6 +260,8 @@ func _start_layer(id: String) -> void:
 	var p := AudioStreamPlayer.new()
 	p.name = "Layer_" + id
 	p.bus = director.bus
+	if LAYER_BUS.has(id) and AudioServer.get_bus_index(LAYER_BUS[id]) >= 0:
+		p.bus = LAYER_BUS[id]
 	p.stream = director.bank.stream(id, 0)
 	p.volume_db = FDKAudioDirector.SILENT_DB
 	add_child(p)
@@ -260,7 +285,13 @@ func _layer_target(id: String) -> float:
 			return 1.0 if ended else 0.0
 		"song_voice2":
 			return 1.0 if ended and int(main.get("ending").get("voice_layers")) >= 2 else 0.0
+		"crush_breath":
+			return _crush()
 	return 0.0
+
+## 0..1, how far the crush has come (main.crush_progress(), read only).
+func _crush() -> float:
+	return clampf(float(main.call("crush_progress")), 0.0, 1.0) if main.has_method("crush_progress") and not _ending_active() else 0.0
 
 ## 0..1, how far the flesh's song is up (0 in its rests and outside the flesh).
 func flesh_music_level() -> float:
@@ -276,6 +307,8 @@ func _step_layers(delta: float) -> void:
 		var lv: float = move_toward(float(_layer_level[id]), _layer_target(id), LAYER_GLIDE * delta)
 		_layer_level[id] = lv
 		(_layers[id] as AudioStreamPlayer).volume_db = FDKAudioDirector.SILENT_DB if lv <= 0.0001 else maxf(linear_to_db(lv), FDKAudioDirector.SILENT_DB)
+	if _layers.has("crush_breath"):
+		(_layers["crush_breath"] as AudioStreamPlayer).pitch_scale = lerpf(CRUSH_PITCH.x, CRUSH_PITCH.y, _crush())
 
 ## Current 0..1 level of a steady layer (tests read it), -1 when absent.
 func layer_level(id: String) -> float:
@@ -286,21 +319,36 @@ func _remember_torn(pos: Vector3) -> void:
 	if _torn.size() > TORN_KEEP:
 		_torn.pop_front()
 
-## A torn spot near the listener whose flesh is coming back, or null.
+## The torn spot near the listener that is still open and nearest to closing,
+## or null when none is growing back. Leaves creak_urgency (and the
+## director's life_urgency) at how near it is to shut.
 func _regrowing_spot() -> Variant:
 	var t = main.get("terrain")
 	var player = main.get("player")
+	creak_urgency = 0.0
+	if director != null:
+		director.life_urgency = 0.0
 	if t == null or player == null:
 		return null
 	var p: Vector3 = (player as Node3D).global_position
-	for i in range(_torn.size() - 1, -1, -1):
-		var at: Vector3 = _torn[i]
+	var iso := 0.5
+	var cfg = t.get("config")
+	if cfg != null and cfg.get("iso_level") != null:
+		iso = float(cfg.get("iso_level"))
+	var best: Variant = null
+	var best_d := CREAK_FROM
+	for at in _torn:
 		if at.distance_to(p) > CREAK_RANGE:
 			continue
 		var d: float = t.density_at(at)
-		if d > 0.15 and d < 0.95:
-			return at
-	return null
+		if d > best_d and d < iso:
+			best_d = d
+			best = at
+	if best != null:
+		creak_urgency = clampf(inverse_lerp(CREAK_FROM, iso, best_d), 0.0, 1.0)
+		if director != null:
+			director.life_urgency = creak_urgency
+	return best
 
 func _on_canary_chirp(urgency: float) -> void:
 	if _chirp_cool > 0.0:
@@ -393,6 +441,14 @@ func _process_inner(_delta: float) -> void:
 	# the body's bed steps back while a song of the flesh is up (flesh_music.json bed_duck_db)
 	if _flesh_music != null:
 		director.bed_gain_db = float(_flesh_music.call("data").get("bed_duck_db", 0.0)) * flesh_music_level()
+	# regrowth creaks anywhere out in the flesh (any bed), never in the white
+	# room, a rest container or the ending
+	director.life_enabled = not in_room and not _ending_active() and not _in_rest()
+	_creak_look -= _delta
+	if _creak_look <= 0.0:
+		_creak_look = CREAK_LOOK
+		if director.life_enabled:
+			_regrowing_spot()
 	_step_layers(_delta)
 	_step_rattle(_delta)
 	_chirp_cool = maxf(0.0, _chirp_cool - _delta)
@@ -514,6 +570,12 @@ func _toilet_pos() -> Variant:
 	var restroom = main.get("restroom")
 	var t = restroom.get("toilet") if restroom != null else null
 	return t.global_position if t is Node3D else null
+
+## Inside a rest container (main.rest_points), where nothing grows.
+func _in_rest() -> bool:
+	var rests = main.get("rest_points")
+	var player = main.get("player")
+	return rests is Array and player is Node3D and FPWorldFeatures.in_container((player as Node3D).global_position, rests)
 
 func _player_in_room() -> bool:
 	var restroom = main.get("restroom")

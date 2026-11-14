@@ -896,6 +896,90 @@
     "res://audio/loops/mus_flesh_surface.wav"
    ],
    "loop_seconds": 101.875
+  },
+  "contract_warn": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/contract_warn_v1.wav",
+    "res://audio/sfx/contract_warn_v2.wav",
+    "res://audio/sfx/contract_warn_v3.wav",
+    "res://audio/sfx/contract_warn_v4.wav"
+   ],
+   "spatial": true
+  },
+  "squeeze_breath": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/squeeze_breath_v1.wav",
+    "res://audio/sfx/squeeze_breath_v2.wav",
+    "res://audio/sfx/squeeze_breath_v3.wav",
+    "res://audio/sfx/squeeze_breath_v4.wav"
+   ],
+   "spatial": false
+  },
+  "full_refuse": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/full_refuse_v1.wav",
+    "res://audio/sfx/full_refuse_v2.wav",
+    "res://audio/sfx/full_refuse_v3.wav",
+    "res://audio/sfx/full_refuse_v4.wav"
+   ],
+   "spatial": false
+  },
+  "tear_muscle": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_muscle_v1.wav",
+    "res://audio/sfx/tear_muscle_v2.wav",
+    "res://audio/sfx/tear_muscle_v3.wav",
+    "res://audio/sfx/tear_muscle_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tear_cartilage": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_cartilage_v1.wav",
+    "res://audio/sfx/tear_cartilage_v2.wav",
+    "res://audio/sfx/tear_cartilage_v3.wav",
+    "res://audio/sfx/tear_cartilage_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tear_cloth": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_cloth_v1.wav",
+    "res://audio/sfx/tear_cloth_v2.wav",
+    "res://audio/sfx/tear_cloth_v3.wav",
+    "res://audio/sfx/tear_cloth_v4.wav"
+   ],
+   "spatial": true
+  },
+  "tear_hair": {
+   "kind": "sfx",
+   "files": [
+    "res://audio/sfx/tear_hair_v1.wav",
+    "res://audio/sfx/tear_hair_v2.wav",
+    "res://audio/sfx/tear_hair_v3.wav",
+    "res://audio/sfx/tear_hair_v4.wav"
+   ],
+   "spatial": true
+  },
+  "crush_breath": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/crush_breath.wav"
+   ],
+   "loop_seconds": 6.0
+  },
+  "pull_stretch": {
+   "kind": "loop",
+   "files": [
+    "res://audio/loops/pull_stretch.wav"
+   ],
+   "loop_seconds": 2.0
   }
  },
  "beds": {

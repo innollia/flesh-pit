@@ -54,3 +54,10 @@
 - 36 ui_click: [Raspberry Mouse, Single Click](https://bigsoundbank.com/raspberry-mouse-single-click-s1735.html), `s5/bss1735.wav`, Free and Royalty Free=True, CC0=True
 
 - 결과: 게이트 PASS 274 / FAIL 0(기준·예외 목록 변경 없음), ear.py 36개 중 33 OK(기존 OK 19개 유지 + 새 14개 전부 OK), Godot 오디오 테스트 163 passed / 0 failed.
+
+## 6차 (한 입과 조임의 새 소리, 2026-11-14)
+
+- 새로 받은 녹음은 없다. contract_warn, regen_creak, squeeze_breath, crush_breath, full_refuse, tear_muscle, tear_cartilage, tear_cloth, tear_hair, pull_stretch는 nkido 패치와 이미 받아 둔 CC0 녹음의 다른 구간으로 만들었다: `tear/fs133440.wav`(regen_creak는 0.5배로 느리게, tear_muscle 0.72배, pull_stretch 0.6배), `mud/fs0495.wav`(regen_creak, squeeze_breath, 뜯김 넷), `s5/bss0483.wav` Finger clashes(tear_cartilage, 0.6배와 1.1 kHz 저역 통과로 둔하게), `tear/fs30931.wav`(tear_cloth, 작게), `chew2/fs0352.wav` Mouth Noises(full_refuse).
+- 숨 녹음은 없다. squeeze_breath, crush_breath와 full_refuse의 "읍"·트림은 대역 통과한 잡음이다.
+- 이 PC에는 Windows용 nkido(`C:\projects\_tools\nkido`)가 없다. WSL `Ubuntu-24.04`에 같은 저장소(0.4.9, 커밋 71261f6)를 `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNKIDO_BUILD_TESTS=OFF`로 빌드해 `/usr/local/bin/nkido`에 두었고(`python3-dev`, `libssl-dev`, `libsdl2-dev`, `libasound2-dev` 필요), `build_audio.render`가 Windows 실행 파일이 없으면 그것을 부른다(`FP_NKIDO_WSL`로 배포판 이름 변경). grab_refuse 네 변주가 게임의 파일과 바이트까지 같게 다시 나왔다.
+- 기준 파일 변경: `targets.json`의 `rhythmic_ok`에 `crush_breath.wav`(숨, chew_strain과 같은 종류). 다른 기준과 예외는 그대로다.

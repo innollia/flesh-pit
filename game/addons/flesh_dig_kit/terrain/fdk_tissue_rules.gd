@@ -42,7 +42,7 @@ const CONTRACT_HOLD := 1.0
 const CONTRACT_RELEASE := 2.0
 const CONTRACT_GAIN := 0.3
 const CONTRACT_WAVE := 3.0 ## m: one squeeze wave runs along the wall this long
-const CONTRACT_WARN := 1.0 ## the squeeze sound plays this long before it starts
+const CONTRACT_WARN := 1.3 ## the squeeze sound plays this long before it starts
 ## The wall shows the coming squeeze this long before it starts (the terrain
 ## shader's preview, contract_preview below). The sound's lead is CONTRACT_WARN.
 const CONTRACT_SHOW_LEAD := 1.6

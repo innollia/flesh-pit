@@ -1,0 +1,17 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: contract_warn -- contractile muscle about to clench: it fills like a chest drawing breath,
+// low and slow, and stops at the top. Its own sound (was regen_creak, which now only means
+// regrowth). No oscillator, no fast attack, the weight sits at 150..500 Hz. Ends by 0.86 s so it
+// fits inside the warning whatever its length (1.0 s now).
+sw = clamp(t / 0.72, 0, 1)
+env = sw * sw * clamp(t / 0.08, 0, 1) * clamp((0.86 - t) / 0.07, 0, 1)
+body = noise(0, 0, SEED) * env * 1.4 |> bp(@, (170 + sw * 230) * PITCH, 1.6)
+chest = noise(0, 0, SEED2) * env * 0.8 |> lp(@, (260 + sw * 200) * PITCH, 0.7)
+tick = gt(noise(22 + sw * 46, 0, SEED2 + 3), 0.35) |> lp(@, 160, 0.7)
+tight = noise(0, 0, SEED + 2) * tick * env * sw * 0.5 |> bp(@, 460 * PITCH, 1.4)
+out((body + chest + tight) * 0.5 |> lp(@, 1400, 0.7) |> hp(@, 110, 0.7))

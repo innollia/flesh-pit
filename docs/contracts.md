@@ -60,6 +60,16 @@ FDKTerrainField.dig_at(world_pos: Vector3,amount: float)는 실제 셀과 이웃
 
 `FDKTerrainField.set_press(center, toward, amount, gain := 1.0)`의 gain은 잡은 칸 조직의 `pull_gain`이다. 값 하나가 모든 조직 재질에 똑같이 들어가므로 조직 경계의 정점이 갈라지지 않는다. `FDKPullShape.offset(..., gain := 1.0)`이 같은 값을 받는다. `FPTearFeel.on_chew(ratio, contact, toward, tissue := COMPRESSIVE)`와 `on_tear(world_pos, eye, tissue := COMPRESSIVE)`는 조직 번호를 받아 `FDKTissueRules.look(tissue)`의 값을 쓴다. 인자를 주지 않으면 압축 살이다.
 
+## 소리 디렉터
+
+FDKAudioDirector는 신호를 구독하고 소비자가 준 값을 읽기만 한다. 없는 소리 id는 조용히 건너뛴다.
+- connect_chewer(chewer)는 grab_started·chew_progress·cell_torn·released를 구독하고 chewer를 보관한다. chew_progress(ratio)는 당김 층 pull_stretch의 음량(`pull_db`, ratio 제곱)과 높이(`pull_pitch`)를 움직이고, cell_torn과 released는 그 층을 바로 끈다. cell_torn의 뜯김은 `chewer.last_units ÷ chewer.config.flesh_per_cell`(0~1)만큼 크고 낮다(`thin_tear_db`, `thin_tear_pitch`). `_on_cell_torn(world_pos, whole := 1.0)`을 직접 부르는 소비자(M22)는 온전한 한 칸으로 난다. 삼킴은 `swallow_delay`(0.3초) 뒤다.
+- 뜯김 id는 `TISSUE_TEAR`가 조직 id(FDKTissueRules)로 고른다: 0 tear_flesh, 1 tear_nerve, 2 tear_fat, 3 tear_membrane, 4 tear_muscle, 6 tear_cartilage, 7 tear_cloth, 8 tear_hair. 표에 없거나 manifest에 없는 id는 tear_flesh다.
+- 재생 삐걱임은 `life_enabled`가 true인 동안만 난다(기본 false, 배경 이름과 무관). `creak_source`(Callable → Vector3 또는 null)가 실제로 자라는 자리를 주고, 소비자가 `life_urgency`(0~1)를 넣으면 간격이 `life_interval` → `life_interval_urgent`, 음량이 −6 → 0 dB로 간다. 이미 뽑아 둔 긴 대기는 지금 urgency의 가장 긴 간격으로 잘린다.
+- 발소리는 footstep_bob의 골짜기마다, `listener`가 직전 골짜기 뒤로 수평 `step_min_travel`(0.12 m) 넘게 움직였을 때만 난다. listener가 없으면 골짜기마다 난다.
+
+게임 쪽 연결(fp_audio_hookup): `FDKTerrainField.contraction_warning(world_pos)` → contract_warn(그 자리), `Main.stomach_refused(world_pos)` → full_refuse(위치 없음), 끼임 이벤트 `squeeze` → squeeze_breath, `Main.crush_progress()` → 상시 층 crush_breath(SFX 버스, 음량 = 진행, 재생 속도 0.9~1.25). 전부 읽기와 구독이다.
+
 외부 HTTP API나 로그인 프로토콜은 제공하지 않는다. 키트의 Godot 호출과 신호, 로컬 파일 형식이 소비자 경계다.
 
 ## 음성과 자막

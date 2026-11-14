@@ -379,7 +379,7 @@ const ALIEN_HAND_PERIOD := 2.0
 ## M15: a whole flesh pile swallowed in 3 s.
 const GULP_TIME := 3.0
 ## M23: hair shiver lead time before a contraction.
-const HAIR_WARN_TIME := 1.5
+const HAIR_WARN_TIME := 2.0
 ## M27: trunk twitch radius toward tumors.
 const TRUNK_RADIUS := 10.0
 ## M29: dormancy wake delay.

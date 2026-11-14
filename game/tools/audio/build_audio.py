@@ -37,11 +37,29 @@ NKIDO = r"C:\projects\_tools\nkido\build-clang\bin\nkido.exe"
 PEAK_CEILING = -1.5  # master a little under the -1.0 gate so resampling cannot push it over
 
 
+NKIDO_WSL_DISTRO = os.environ.get("FP_NKIDO_WSL", "Ubuntu-24.04")
+
+
+def _wsl_path(path):
+    path = os.path.abspath(path)
+    return "/mnt/" + path[0].lower() + path[2:].replace("\\", "/")
+
+
+def _nkido_cmd(src, out_path):
+    """The Windows clang-cl build if this PC has it, else the Linux build of the
+    same nkido inside WSL (/usr/local/bin/nkido in NKIDO_WSL_DISTRO). The two
+    render grab_refuse bit for bit the same (2026-11-14)."""
+    if os.path.exists(NKIDO):
+        return [NKIDO, "render", src, "-o", out_path]
+    return ["wsl", "-d", NKIDO_WSL_DISTRO, "-u", "root", "--", "/usr/local/bin/nkido",
+            "render", _wsl_path(src), "-o", _wsl_path(out_path)]
+
+
 def render(patch_text, out_path, seconds, rate):
     src = out_path + ".src.akkado"
     with open(src, "w", encoding="utf-8", newline="\n") as f:
         f.write(patch_text)
-    args = [NKIDO, "render", src, "-o", out_path, "--seconds", "%.3f" % seconds,
+    args = _nkido_cmd(src, out_path) + ["--seconds", "%.3f" % seconds,
             "--rate", str(rate), "--bpm", "60", "--no-default-bank"]
     r = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
     os.remove(src)

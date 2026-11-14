@@ -165,13 +165,14 @@ func run() -> void:
 		await frames(3)
 		chew_silent("load")
 
-	# 6. squeeze strain: the loop-kind chew_strain fired as an event must end
+	# 6. squeeze: its own one-shot breath (not the chew strain layer) must end
 	var d := director()
 	var hook: Node = m.get_node("AudioHookup")
 	var before := d.get_child_count()
 	hook.play_event("squeeze", m.player.global_position)
 	var made: Node = d.get_child(d.get_child_count() - 1) if d.get_child_count() > before else null
 	check(made != null and made.playing, "squeeze: the strain sounds")
+	check(d.last_played == "squeeze_breath", "squeeze: it is the body's breath, not the chew strain (%s)" % d.last_played)
 	var s: AudioStream = made.stream if made != null else null
 	check(s is AudioStreamWAV and (s as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_DISABLED, "squeeze: the strain event plays once, not as a loop")
 	check(loop_voices().is_empty(), "squeeze: no looping voice from the event")

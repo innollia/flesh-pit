@@ -1,0 +1,17 @@
+// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
+// id: pull_stretch -- the pull of one bite: wet fibres drawn tight between hand and wall. Steady
+// and broad, no creak, no tone, no beat: the game moves its level and pitch with chew_progress
+// and cuts it at the tear. A slowed stretch of the tear recording runs under it (sounds.json real_layer).
+fl = gt(noise(230, 0, 701), 0.25) |> lp(@, 400, 0.7)
+fr = gt(noise(251, 0, 709), 0.25) |> lp(@, 400, 0.7)
+fc = gt(noise(211, 0, 761), 0.25) |> lp(@, 400, 0.7)
+tens_c = noise(0, 0, 769) * (0.6 + fc) |> bp(@, 820, 0.7)
+tens_l = noise(0, 0, 719) * (0.6 + fl) |> bp(@, 900, 0.7)
+tens_r = noise(0, 0, 727) * (0.6 + fr) |> bp(@, 960, 0.7)
+wet_l = noise(0, 0, 733) * gt(noise(61, 0, 739), 0.3) |> lp(@, 700, 0.8)
+wet_r = noise(0, 0, 743) * gt(noise(53, 0, 751), 0.3) |> lp(@, 720, 0.8)
+hi_l = noise(0, 0, 757) * fl * 0.3 |> bp(@, 2400, 0.9)
+hi_r = noise(0, 0, 773) * fr * 0.3 |> bp(@, 2550, 0.9)
+l = (tens_c * 0.6 + tens_l * 0.8 + wet_l * 0.8 + hi_l) * 0.05 |> hp(@, 180, 0.7) |> lp(@, 4500, 0.7)
+r = (tens_c * 0.6 + tens_r * 0.8 + wet_r * 0.8 + hi_r) * 0.05 |> hp(@, 181, 0.7) |> lp(@, 4600, 0.7)
+out(stereo(l, r))

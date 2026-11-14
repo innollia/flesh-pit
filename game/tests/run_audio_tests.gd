@@ -31,6 +31,9 @@ func _initialize() -> void:
 	_test_bed_transition()
 	_test_chew_speed()
 	_test_signals_and_steps()
+	_test_one_meaning_assets()
+	_test_tissue_tears()
+	_test_regen_creak_pace()
 	_test_heart_and_hum_loops()
 	_test_restroom_water_assets()
 	_test_pipe_water_gaps()
@@ -53,6 +56,9 @@ func _process(_delta: float) -> bool:
 		return false
 	if _frames > 90:
 		return _layer_steps(_delta)
+	# these two need nodes that are really in the tree (players, a moving body)
+	_test_bite_pull()
+	_test_blocked_steps()
 	_hook = _main.get_node_or_null("AudioHookup")
 	_ok(_hook != null, "main.gd adds the audio hookup itself")
 	if _hook == null:
@@ -79,7 +85,11 @@ func _process(_delta: float) -> bool:
 			if not d.bank.has(String(events[ev])) or d.last_played != String(events[ev]):
 				all_ok = false
 				print("  missing event sound: ", ev)
-		_ok(all_ok and events.size() == 26, "all 26 event sounds (stage 5, the T1 tongue click, the canary, squeezing past flesh, a refused grip, a dry heave, the tank rattle, M23 hairs, the M15 gulp, the vent spill, the mirror refusal) load and play (%d)" % events.size())
+		_ok(all_ok and events.size() == 27, "all 27 event sounds (stage 5, the T1 tongue click, the canary, squeezing past flesh, a refused grip, a dry heave, a full stomach's refusal, the tank rattle, M23 hairs, the M15 gulp, the vent spill, the mirror refusal) load and play (%d)" % events.size())
+		_ok(String(events["squeeze"]) == "squeeze_breath" and not events.values().has("chew_strain"), "squeezing past flesh has its own breath; the chew strain means overeating only")
+		_main.stomach_refused.emit(Vector3(0, 1, 3))
+		_ok(d.last_played == "full_refuse" and (_hook.get("played_events") as Array).back() == "full_refuse", "main.stomach_refused sounds the full stomach's own refusal (%s)" % d.last_played)
+		_ok(String(events["gag"]) == "gag_dry" and String(events["full_refuse"]) != String(events["gag"]), "the dry heave keeps its one meaning")
 		_main.emit_signal("died", "test")
 		_ok(d.last_played == "player_death", "main.died plays the death sound (%s)" % d.last_played)
 		var mirror = _main.get("mirror")
@@ -102,7 +112,7 @@ func _process(_delta: float) -> bool:
 		_main.canary_cry.emit(true)
 		_ok(d.last_played == "canary_wrong", "a frightened canary cries (%s)" % d.last_played)
 		_main.terrain.contraction_warning.emit(Vector3(0, 1, 4))
-		_ok(d.last_played == "regen_creak", "a wall about to squeeze creaks first (%s)" % d.last_played)
+		_ok(d.last_played == "contract_warn" and not d.played_log.has("regen_creak"), "a wall about to squeeze swells with its own sound, not the regrowth creak (%s)" % d.last_played)
 		_main.toilet.tank_rattle_started.emit(0.5, false)
 		_ok(d.last_played == "teeth_rattle", "teeth rattle down into the tank with their own knock, not the coin's tink (%s)" % d.last_played)
 		_main.toilet.tank_rattle_finished.emit()
@@ -133,6 +143,8 @@ func _process(_delta: float) -> bool:
 		_ok(bought == "" and d.last_played == "ui_deny" and pe.back() == "mirror_denied", "1-10 the mirror's refusal has its own short sound (%s)" % d.last_played)
 		_main.mirror.close()
 		_ok(_hook.call("_regrowing_spot") == null, "no creak without flesh really growing back nearby")
+		_ok(not d.life_enabled, "no regrowth creak is due in the white room")
+		_test_creak_behind(d)
 		_main.flush()
 		_ok(_hook.get("played_events").has("settle_tick"), "the lever's flush ticks the settle sound")
 		_main.vomit_button.pressed.emit()
@@ -198,15 +210,27 @@ func _layer_steps(delta: float) -> bool:
 		2:
 			_ok(lv.call("magnet_hum") == 0.0, "D03 facing away from the restroom the hum stops (%.2f)" % lv.call("magnet_hum"))
 			_layer_near = float(lv.call("song_melody"))
+			var dl: FDKAudioDirector = _hook.get("director")
+			_ok(dl.life_enabled, "out in the flesh the regrowth creak is armed whatever the bed (%s)" % dl.current_bed)
+			var cb = _hook.get_node_or_null("Layer_crush_breath")
+			_ok(cb is AudioStreamPlayer and (cb as AudioStreamPlayer).playing and (cb as AudioStreamPlayer).bus == &"SFX", "the crush breath is a steady layer on the SFX bus")
+			_ok(lv.call("crush_breath") == 0.0, "no crush, no crush breath")
+			_main._crush_t = _main.progression.crush_time() * 0.5
 			_main.player.global_position = c + Vector3(0, 0, -_main.OUTER_RADIUS * 0.95)
 			_face(c)
 		3:
+			var cbp := _hook.get_node_or_null("Layer_crush_breath") as AudioStreamPlayer
+			_ok(absf(lv.call("crush_breath") - _main.crush_progress()) < 0.01 and absf(_main.crush_progress() - 0.5) < 0.01, "the crush breath follows main.crush_progress (%.2f, game %.2f)" % [lv.call("crush_breath"), _main.crush_progress()])
+			_ok(cbp != null and absf(cbp.pitch_scale - lerpf(0.9, 1.25, 0.5)) < 0.01 and cbp.volume_db > -8.0, "half crushed the breath is quicker and up (pitch %.2f, %.1f dB)" % [cbp.pitch_scale if cbp != null else 0.0, cbp.volume_db if cbp != null else 0.0])
+			_ok(absf(_main._crush_t - _main.progression.crush_time() * 0.5) < 0.0001, "the sound only reads the crush clock")
+			_main._crush_t = 0.0
 			var far: float = lv.call("song_melody")
 			_ok(far > _layer_near and far <= _hook.MELODY_IN_FLESH + 0.001, "D05 the melody grows toward the outer shell and stays faint (%.3f -> %.3f)" % [_layer_near, far])
 			_ok(lv.call("magnet_hum") > 0.0, "D03 the hum works from the outer shell too")
 			prog.mutation_tree._purchased.erase("M03")
 		4:
 			_ok(lv.call("magnet_hum") == 0.0, "D03 without M03 facing the restroom is silent")
+			_ok(lv.call("crush_breath") == 0.0, "out of the crush the breath is gone with it")
 			_ok(lv.call("song_hum") == 0.0 and lv.call("song_voice2") == 0.0, "D05 no humming before the ending")
 			# the real breakthrough: main starts the ending with 1 + codex voices
 			_main.player.global_position = c + Vector3(0, 0, _main.OUTER_RADIUS)
@@ -460,6 +484,208 @@ func _test_signals_and_steps() -> void:
 	chewer.free()
 	_test_step_variation()
 	_test_step_files()
+
+## The regrowth creak comes from the open spot nearest to closing (the way
+## behind), not from the cell just torn, and reports how near that is. Real
+## terrain: two spots dug at different times and regrown by the field itself.
+func _test_creak_behind(d: FDKAudioDirector) -> void:
+	var t: FDKTerrainField = _main.terrain
+	var c: Vector3 = _main.RESTROOM_CENTER
+	var far := c + Vector3(0, 60, 0)
+	var old_spot := _cell_centre(t, c + Vector3(0.3, 0.2, -6.0))
+	var new_spot := _cell_centre(t, c + Vector3(-1.4, 0.2, -6.2))
+	var iso: float = t.config.iso_level
+	t.dig_at(old_spot, 1.0)
+	_hook.call("_remember_torn", old_spot)
+	var k := 0
+	while t.density_at(old_spot) < 0.3 and k < 2000:
+		t.regenerate_all(1.0, far, 0.0)
+		k += 1
+	t.dig_at(new_spot, 1.0)
+	_hook.call("_remember_torn", new_spot)
+	k = 0
+	while t.density_at(new_spot) < 0.2 and t.density_at(old_spot) < iso - 0.05 and k < 2000:
+		t.regenerate_all(1.0, far, 0.0)
+		k += 1
+	var od := t.density_at(old_spot)
+	var nd := t.density_at(new_spot)
+	if not (nd > 0.15 and od > nd and od < iso):
+		_ok(false, "creak setup: both spots open and regrowing, the older further on (old %.2f, new %.2f, iso %.2f)" % [od, nd, iso])
+		return
+	var got = _hook.call("_regrowing_spot")
+	_ok(got is Vector3 and (got as Vector3).is_equal_approx(old_spot), "the creak comes from the spot nearest to closing, not the newest tear (%s)" % str(got))
+	var want := inverse_lerp(0.15, iso, od)
+	_ok(absf(float(_hook.get("creak_urgency")) - want) < 0.001 and is_equal_approx(d.life_urgency, float(_hook.get("creak_urgency"))) and want > 0.0, "its urgency is how near that spot is to shut (%.2f)" % float(_hook.get("creak_urgency")))
+	k = 0
+	while t.density_at(old_spot) < iso and k < 2000:
+		t.regenerate_all(1.0, far, 0.0)
+		k += 1
+	got = _hook.call("_regrowing_spot")
+	_ok(t.density_at(old_spot) >= iso and (got == null or not (got as Vector3).is_equal_approx(old_spot)), "a spot that has closed no longer creaks (%.2f)" % t.density_at(old_spot))
+
+func _cell_centre(t: FDKTerrainField, p: Vector3) -> Vector3:
+	var r := t.world_to_cell(p)
+	return t.get_or_create_chunk(r[0]).position + (Vector3(r[1] as Vector3i) + Vector3(0.5, 0.5, 0.5)) * t.config.cell_size
+
+## One meaning per sound (B_audio): the new ids are their own files, the
+## squeeze warning fits inside its lead, the two new steady layers loop.
+func _test_one_meaning_assets() -> void:
+	var bank := FDKSoundBank.from_file(MANIFEST)
+	for id in ["contract_warn", "tear_muscle", "tear_cartilage", "tear_cloth", "tear_hair"]:
+		_ok(bank.has(id) and not bank.is_loop(id) and bank.is_spatial(id), "%s is a one-shot with a place" % id)
+	for id in ["squeeze_breath", "full_refuse"]:
+		_ok(bank.has(id) and not bank.is_loop(id) and not bank.is_spatial(id), "%s is a one-shot inside the head" % id)
+	for id in ["crush_breath", "pull_stretch"]:
+		_ok(bank.has(id) and bank.is_loop(id), "%s is a steady layer" % id)
+	var files := {}
+	var shared := 0
+	for id in ["contract_warn", "regen_creak", "squeeze_breath", "chew_strain", "full_refuse", "gag_dry", "crush_breath"]:
+		for f in bank.sounds[id]["files"]:
+			if files.has(f):
+				shared += 1
+			files[f] = id
+	_ok(shared == 0, "squeeze warning / regrowth, squeeze breath / chew strain, full refusal / dry heave share no file")
+	var longest := 0.0
+	for i in range(bank.variation_count("contract_warn")):
+		var st := bank.stream("contract_warn", i)
+		longest = maxf(longest, st.get_length() if st != null else 99.0)
+	_ok(longest > 0.5 and longest <= FDKTissueRules.CONTRACT_WARN, "the squeeze warning ends before the squeeze starts (%.2f s in a %.1f s lead)" % [longest, FDKTissueRules.CONTRACT_WARN])
+	_ok(is_equal_approx(FDKTissueRules.CONTRACT_WARN, 1.3) and is_equal_approx(FPProgression.HAIR_WARN_TIME, 2.0), "the squeeze is told 1.3 s ahead, M23's hairs 2.0 s ahead")
+	var src := FileAccess.get_file_as_string("res://main/scripts/fp_mirror.gd")
+	_ok(src.contains("\"M23\": \"수축 2초 전에") and not src.contains("1.5초 전"), "M23's line says the lead it has")
+
+class TissueStub:
+	extends Node
+	var tissue := 0
+	func tissue_at(_p: Vector3) -> int:
+		return tissue
+
+## Each tissue tears with its own sound; one the manifest lacks, or a tissue
+## without an entry, tears as plain flesh.
+func _test_tissue_tears() -> void:
+	var d := _director()
+	var stub := TissueStub.new()
+	root.add_child(stub)
+	d.terrain = stub
+	var want := {0: "tear_flesh", 1: "tear_nerve", 2: "tear_fat", 3: "tear_membrane", 4: "tear_muscle", 6: "tear_cartilage", 7: "tear_cloth", 8: "tear_hair", 5: "tear_flesh", 99: "tear_flesh"}
+	for tissue in want.keys():
+		stub.tissue = tissue
+		d._on_cell_torn(Vector3.ZERO)
+		var heard := d.last_played if tissue != 1 else String(d.played_log[d.played_log.size() - 2])
+		_ok(heard == want[tissue], "tissue %d tears as %s (%s)" % [tissue, want[tissue], heard])
+	_ok(want[FDKTissueRules.CONTRACTILE] == "tear_muscle" and want[FDKTissueRules.CARTILAGE] == "tear_cartilage" and want[FDKTissueRules.CLOTH] == "tear_cloth" and want[FDKTissueRules.HAIR] == "tear_hair", "the ids are FDKTissueRules' own")
+	d.bank.sounds.erase("tear_hair")
+	stub.tissue = FDKTissueRules.HAIR
+	d._on_cell_torn(Vector3.ZERO)
+	_ok(d.last_played == "tear_flesh", "a tear sound the manifest lacks falls back to plain flesh (%s)" % d.last_played)
+	d.free()
+	stub.free()
+
+## One bite's pull: the stretch layer follows the chewer's chew_progress and is
+## cut at the tear and at letting go; a thin half-regrown cell tears quieter
+## and lighter, by the units the chewer really removed.
+func _test_bite_pull() -> void:
+	var d := _director()
+	d.room_bus = &"Master"
+	var cfg := FDKStomachConfig.new()
+	var chewer := FDKChewer.new()
+	chewer.config = cfg
+	root.add_child(chewer)
+	d.connect_chewer(chewer)
+	_ok(d.pull_level_db() <= FDKAudioDirector.SILENT_DB, "no pull before a bite")
+	chewer.chew_progress.emit(0.0, Vector3i.ZERO)
+	var pl := d.get_node_or_null("PullStretch") as AudioStreamPlayer
+	_ok(pl != null and pl.playing and (pl.stream as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD, "the stretch layer runs as a loop once a bite starts")
+	_ok(absf(d.pull_level_db() + 30.0) < 0.01 and absf(d.pull_pitch_now() - 0.85) < 0.001, "at the start of the pull it is faint and slack (%.1f dB, %.2f)" % [d.pull_level_db(), d.pull_pitch_now()])
+	chewer.chew_progress.emit(0.5, Vector3i.ZERO)
+	_ok(absf(d.pull_level_db() + 24.0) < 0.01 and absf(d.pull_pitch_now() - 1.0) < 0.001, "half way it has risen with ratio squared (%.1f dB, %.2f)" % [d.pull_level_db(), d.pull_pitch_now()])
+	chewer.chew_progress.emit(1.0, Vector3i.ZERO)
+	_ok(absf(d.pull_level_db() + 6.0) < 0.01 and absf(d.pull_pitch_now() - 1.15) < 0.001, "taut just before the tear (%.1f dB, %.2f)" % [d.pull_level_db(), d.pull_pitch_now()])
+	chewer.last_units = cfg.flesh_per_cell
+	chewer.cell_torn.emit(Vector3.ZERO)
+	_ok(d.pull_level_db() <= FDKAudioDirector.SILENT_DB, "the tear cuts the stretch at once")
+	_ok(is_equal_approx(d.last_tear_db, 0.0) and absf(d.last_tear_pitch - 1.0) <= d.tear_pitch_jitter + 0.0001, "a whole cell tears at full level (%.1f dB, %.3f)" % [d.last_tear_db, d.last_tear_pitch])
+	chewer.chew_progress.emit(0.7, Vector3i.ZERO)
+	chewer.released.emit()
+	_ok(d.pull_level_db() <= FDKAudioDirector.SILENT_DB, "letting go cuts the stretch at once")
+	chewer.last_units = cfg.flesh_per_cell * 0.5
+	chewer.cell_torn.emit(Vector3.ZERO)
+	_ok(absf(d.last_tear_db + 4.0) < 0.01 and d.last_tear_pitch >= (1.0 - d.tear_pitch_jitter) * 1.04 - 0.0001 and d.last_tear_pitch <= (1.0 + d.tear_pitch_jitter) * 1.04 + 0.0001, "half a cell tears quieter and lighter (%.1f dB, %.3f)" % [d.last_tear_db, d.last_tear_pitch])
+	chewer.last_units = 0.0
+	d._on_cell_torn(Vector3.ZERO)
+	_ok(is_equal_approx(d.last_tear_db, 0.0), "a tear outside the chewer (M22) sounds whole")
+	_ok(is_equal_approx(cfg.base_chew_time, 0.6) and is_equal_approx(cfg.flesh_per_cell, 4.0) and is_equal_approx(d.swallow_delay, 0.3), "chew time, flesh per cell and the swallow's 0.3 s are untouched")
+	d.free()
+	chewer.free()
+
+## A body wedged in place bobs without walking: no footstep unless the
+## listener really moved since the last trough.
+func _test_blocked_steps() -> void:
+	var d := _director()
+	var body := Node3D.new()
+	root.add_child(body)
+	d.listener = body
+	d.set_surface("flesh")
+	var cycle := func(travel: float) -> void:
+		for k in range(100):
+			body.global_position.x += travel / 100.0
+			d.on_footstep_bob(Vector3(0, sin(k * TAU / 100.0) * 0.05, 0))
+	for n in range(4):
+		cycle.call(1.5)
+	_ok(d.steps_played == 4, "walking, every trough is a step (%d)" % d.steps_played)
+	cycle.call(0.0) # the last quarter stride before stopping was still walked
+	var walked := d.steps_played
+	for n in range(5):
+		cycle.call(0.0)
+	_ok(d.steps_played == walked and walked <= 5, "wedged in place, the bob makes no footstep (%d)" % d.steps_played)
+	for n in range(5):
+		cycle.call(0.05)
+	_ok(d.steps_played == walked, "creeping under %.2f m a stride is still no step (%d)" % [d.step_min_travel, d.steps_played])
+	body.global_position.y += 3.0
+	cycle.call(0.0)
+	_ok(d.steps_played == walked, "falling or rising is not walking (%d)" % d.steps_played)
+	cycle.call(1.5)
+	_ok(d.steps_played == walked + 1, "moving again, the steps are back (%d)" % d.steps_played)
+	_ok(d.step_min_travel < 1.5 * TAU / 6.0 * 0.25, "the threshold is well under a crouched stride")
+	d.free()
+	body.free()
+
+## Regrowth creaks: only while armed, in any bed, and the nearer the spot is
+## to closing the more often and the louder.
+func _test_regen_creak_pace() -> void:
+	var d := _director()
+	d.bank.rng.seed = 7
+	var heard := [0]
+	var urgency := [0.0]
+	d.creak_source = func() -> Variant:
+		heard[0] += 1
+		d.life_urgency = urgency[0]
+		return Vector3(0, 0, 2)
+	d.set_bed("bio_any_bed_at_all", 0.0)
+	for k in range(600):
+		d.advance(0.1)
+	_ok(heard[0] == 0, "not armed, no creak")
+	d.life_enabled = true
+	for k in range(6000):
+		d.advance(0.1)
+	_ok(heard[0] >= 50 and heard[0] <= 121 and d.played_log.has("regen_creak"), "far from closing: a creak every 5-12 s in a bed that is not a body bed (%d in 600 s)" % heard[0])
+	_ok(is_equal_approx(d.last_creak_db, -6.0), "far from closing it is quiet (%.1f dB)" % d.last_creak_db)
+	_ok(d.life_wait() > 0.0, "a wait is drawn")
+	urgency[0] = 1.0
+	d.life_urgency = 1.0
+	d.advance(0.1)
+	_ok(d.life_wait() <= 3.0, "about to close, a long wait is cut to the urgent one (%.1f s)" % d.life_wait())
+	heard[0] = 0
+	for k in range(3000):
+		d.advance(0.1)
+	_ok(heard[0] >= 100 and heard[0] <= 201, "about to close: a creak every 1.5-3 s (%d in 300 s)" % heard[0])
+	_ok(is_equal_approx(d.last_creak_db, 0.0), "about to close it is at full level (%.1f dB)" % d.last_creak_db)
+	d.life_enabled = false
+	heard[0] = 0
+	for k in range(600):
+		d.advance(0.1)
+	_ok(heard[0] == 0, "disarmed (white room, rest, ending) it stops")
+	d.free()
 
 ## round7-sfx: the steps sound in the room the feet are in. The Room bus
 ## carries a reverb, sends to SFX (the slider still sets it), and the flesh

@@ -4,9 +4,16 @@ SEED = 101
 SEED2 = 211
 PITCH = 1.0
 t = phasor(0.1) * 10
-// id: regen_creak -- tissue regrowing in the dark: slow stick-slip creak, wet under-crackle. Never sharp.
-env = clamp(t / 0.3, 0, 1) * clamp((1.1 - t) / 0.35, 0, 1)
-rate = (48 + sine(1.3) * 18) * PITCH
-creak = saw(rate) * env * 0.5 |> bp(@, 520 * PITCH, 5.0)
-wet = noise(0, 0, SEED) * gt(noise(35, 0, SEED2), 0.6) * env * 0.35 |> lp(@, 1200, 0.8)
-out(creak + wet)
+// id: regen_creak -- flesh growing back into a dug passage: slow irregular stick-slip, wet meat
+// meeting wet meat. Means regrowth and nothing else (the clench warning is contract_warn).
+// 2026-11-14: was a 48 Hz saw through a Q 5 band at 520 Hz, which CLAP called arcade (1.0).
+// Now no oscillator: grains of noise whose rate wanders, a wet under-crackle, all under 850 Hz
+// so it stays below rib_creak (900..2200 Hz). The slowed tear and mud recordings carry it
+// (sounds.json real_layer, a different stretch per variation). Never sharp.
+env = clamp(t / 0.3, 0, 1) * clamp((1.08 - t) / 0.4, 0, 1)
+rate = (13 + noise(3, 0, SEED2 + 1) * 6) * PITCH
+grain = gt(noise(rate, 0, SEED), 0.25) |> lp(@, 120, 0.7)
+creak = noise(0, 0, SEED2) * grain * env * 1.6 |> bp(@, (560 + noise(2.5, 0, SEED + 5) * 120) * PITCH, 1.5)
+wet = noise(0, 0, SEED) * gt(noise(35, 0, SEED2), 0.6) * env * 0.5 |> lp(@, 800, 0.8)
+mass = noise(0, 0, SEED + 7) * env * 0.35 |> bp(@, 380 * PITCH, 1.2)
+out((creak + wet + mass) * 0.45 |> lp(@, 850, 0.7) |> lp(@, 850, 0.7) |> hp(@, 190, 0.7))

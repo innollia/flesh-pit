@@ -96,7 +96,7 @@ func _run_params() -> void:
 	_assert(is_equal_approx(_with("M20").squeeze_speed_factor(0.9), 1.0), "M20 no squeeze slowdown")
 	_assert(is_equal_approx(_with("M21").blender_self_charge(), 5.0), "M21 blender charges 5/s")
 	_assert(_with("M22").has_mutation("M22") and is_equal_approx(FPProgression.ALIEN_HAND_PERIOD, 2.0), "M22 alien hand every 2 s")
-	_assert(_with("M23").has_mutation("M23") and is_equal_approx(FPProgression.HAIR_WARN_TIME, 1.5), "M23 hair warns 1.5 s early")
+	_assert(_with("M23").has_mutation("M23") and is_equal_approx(FPProgression.HAIR_WARN_TIME, 2.0) and FPProgression.HAIR_WARN_TIME - FDKTissueRules.CONTRACT_WARN >= 0.5, "M23 hair warns 2.0 s early, ahead of the squeeze sound")
 	var m24 := _with("M24")
 	_assert(is_equal_approx(m24.light_range_factor(), 1.6) and is_equal_approx(m24.restroom_glare_factor(), 2.0), "M24 light x1.6, glare x2")
 	_assert(_with("M25").has_mutation("M25"), "M25 hyper memory owned")

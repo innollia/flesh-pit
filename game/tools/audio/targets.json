@@ -28,10 +28,11 @@
    "chew_loop_a.wav",
    "chew_loop_b.wav",
    "chew_strain.wav",
+   "crush_breath.wav",
    "amb_heart_a.wav",
    "amb_heart_b.wav"
   ],
-  "_rhythmic_ok_note": "Named intentional rhythms only. Chewing (2.5 Hz bite) is a beat by definition, like TINProject's drum stems. chew_strain is one laboured breath per 2 s. amb_heart_a/b are the body's heartbeat, the same class as TINProject amb_pulse which the owner confirmed as an intended beat (2026-09-29). The drone beds amb_body_a/b and amb_restroom are NOT exempt and must pass; their irregular life (digestion, creaks) is played as random one-shots by the kit instead of being baked into a loop.",
+  "_rhythmic_ok_note": "Named intentional rhythms only. Chewing (2.5 Hz bite) is a beat by definition, like TINProject's drum stems. chew_strain is one laboured breath per 2 s. crush_breath (2026-11-14) is the same class: shallow fast breaths while being crushed, in and out a third of a second apart, which is what the tick measure sees (-6.0 dB with an uneven pace, limit -8); it stays stereo and is not in mono_ok. amb_heart_a/b are the body's heartbeat, the same class as TINProject amb_pulse which the owner confirmed as an intended beat (2026-09-29). The drone beds amb_body_a/b and amb_restroom are NOT exempt and must pass; their irregular life (digestion, creaks) is played as random one-shots by the kit instead of being baked into a loop.",
   "mono_ok": [
    "chew_loop_a.wav",
    "chew_loop_b.wav",

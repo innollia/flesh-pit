@@ -1,0 +1,19 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: tear_muscle -- contractile tissue: a tough grain that holds a long time, fibres ticking
+// tighter and tighter, then it lets go thick and low. Longer pull and a lower, broader break
+// than tear_flesh. No oscillator, nothing under 150 Hz.
+tight = clamp(t / 0.4, 0, 1)
+pull = clamp(t / 0.1, 0, 1) * clamp((0.42 - t) / 0.05, 0, 1)
+tick = gt(noise(24 + tight * 60, 0, SEED2), 0.3) |> lp(@, 300, 0.7)
+fib = noise(0, 0, SEED) * tick * pull * (0.4 + tight * 0.6) * 0.8 |> bp(@, (600 + tight * 500) * PITCH, 1.1)
+strain = noise(0, 0, SEED2 + 1) * pull * 0.5 |> bp(@, (260 + tight * 160) * PITCH, 1.3)
+senv = clamp((t - 0.4) / 0.03, 0, 1) * exp(neg(clamp(t - 0.4, 0, 100)) / 0.2)
+brk = noise(0, 0, SEED + 2) * senv * 1.2 |> bp(@, 420 * PITCH, 0.8)
+rip = noise(0, 0, SEED + 3) * gt(noise(420, 0, SEED + 4), 0.45) * senv * 1.2 |> bp(@, (800 - clamp((t - 0.4) * 2, 0, 1) * 350) * PITCH, 0.8)
+wet = noise(0, 0, SEED2 + 2) * gt(noise(40, 0, SEED2 + 4), 0.2) * senv * 0.6 |> bp(@, 480 * PITCH, 1.4)
+out((fib + strain + brk + rip + wet) * 0.8 |> lp(@, 3800, 0.7) |> hp(@, 150, 0.7))

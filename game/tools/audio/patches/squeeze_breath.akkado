@@ -1,0 +1,16 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: squeeze_breath -- wedged in a gap too tight: the ribs are pressed and a short breath is
+// pushed out through the nose, flesh dragging over the body. No throat, no groan (chew_strain
+// was reused here and read as "this tissue is tough").
+puff = clamp(t / 0.045, 0, 1) * exp(neg(clamp(t - 0.045, 0, 100)) / 0.16) * clamp((0.6 - t) / 0.1, 0, 1)
+nose = noise(0, 0, SEED) * puff * 0.9 |> bp(@, 980 * PITCH, 1.1)
+air = noise(0, 0, SEED2) * puff * 0.45 |> bp(@, 2500 * PITCH, 1.4)
+rub_env = clamp(t / 0.1, 0, 1) * clamp((0.7 - t) / 0.3, 0, 1)
+drag = gt(noise(55, 0, SEED2 + 3), 0.1) |> lp(@, 90, 0.7)
+rub = noise(0, 0, SEED + 3) * drag * rub_env * 0.5 |> bp(@, 420 * PITCH, 1.0)
+out((nose + air + rub) * 0.5 |> lp(@, 5000, 0.7) |> hp(@, 150, 0.7))

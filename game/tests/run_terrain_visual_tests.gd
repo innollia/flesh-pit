@@ -557,7 +557,7 @@ func test_squeeze_preview() -> void:
 	check(vtx.contains("floor(q)") and vtx.contains("wpos / contract_cell") and vtx.contains("mod(corner, contract_chunk)"), "per point: the corners of the vertex's own cell, chunk-border corners left out")
 	check(vtx.contains("1.0 - smoothstep(contract_reach.x, contract_reach.y, distance(q, corner))") and vtx.contains("if (t_in_cycle < contract_clench)") and vtx.contains("lead_in * (1.0 - busy)"), "near corners only, off while one clenches, as the mirror")
 	check(float(mat.get_shader_parameter("contract_clench")) == R.CONTRACT_RISE + R.CONTRACT_HOLD and mat.get_shader_parameter("contract_reach") == Vector2(R.CONTRACT_NEAR_FROM, R.CONTRACT_NEAR_TO), "clench time and corner reach come from FDKTissueRules")
-	check(R.CONTRACT_WARN == 1.0, "the sound's lead is untouched")
+	check(is_equal_approx(R.CONTRACT_WARN, 1.3) and R.CONTRACT_WARN < R.CONTRACT_SHOW_LEAD, "the sound's lead is 1.3 s, inside the wall's own preview")
 	field.queue_free()
 
 # --- D ---------------------------------------------------------------------

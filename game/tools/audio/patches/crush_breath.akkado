@@ -1,0 +1,19 @@
+// flesh-pit loop patch. bpm 60: trigger(n) fires n per second. Loop length is set in sounds.json; every rate here divides it.
+// id: crush_breath -- being crushed: shallow fast breaths with no room to fill, in through the
+// nose and out, nine uneven ones to a 6 s loop (the pace drifts, it never settles into a beat). No throat and no groan, so it is not chew_strain (one slow
+// laboured breath per 2 s). Steady on purpose: the game raises level and pitch with the crush,
+// and a loop that sped up inside itself would jump back at the wrap.
+ph = phasor(1.5 + 0.3 * sine(0.16666667) + 0.18 * sine(0.5))
+depth = 0.8 + 0.14 * sine(0.5) + 0.06 * sine(0.16666667)
+inh = clamp(ph / 0.08, 0, 1) * clamp((0.36 - ph) / 0.1, 0, 1)
+exh = clamp((ph - 0.46) / 0.05, 0, 1) * clamp((0.92 - ph) / 0.3, 0, 1)
+inhale = noise(0, 0, 601) * inh * 0.55 |> bp(@, 2100, 1.3)
+exhale = noise(0, 0, 607) * exh * 0.9 |> bp(@, 1150, 1.2)
+chest = noise(0, 0, 613) * exh * 0.35 |> bp(@, 520, 1.0)
+catch = noise(0, 0, 619) * gt(noise(40, 0, 623), 0.5) * inh * 0.15 |> bp(@, 800, 2.0)
+mid = (inhale + exhale + chest + catch) * depth
+air_l = noise(0, 0, 631) * (inh * 0.5 + exh * 0.7) * depth * 0.3 |> bp(@, 1500, 0.9)
+air_r = noise(0, 0, 641) * (inh * 0.5 + exh * 0.7) * depth * 0.3 |> bp(@, 1560, 0.9)
+l = (mid + air_l) * 0.06 |> hp(@, 180, 0.7)
+r = (mid + air_r) * 0.06 |> hp(@, 181, 0.7)
+out(stereo(l, r))

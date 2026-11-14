@@ -1,0 +1,17 @@
+// flesh-pit sound patch. Render: bpm 60 so trigger(n) fires n times per second.
+// t is seconds since the start of the render (phasor at 0.1 Hz, so valid < 10 s).
+SEED = 101
+SEED2 = 211
+PITCH = 1.0
+t = phasor(0.1) * 10
+// id: tear_cartilage -- gristle: one dull crunch as it gives, then a wet tear. Not a dry bone
+// snap (the knuckle recording is slowed and low-passed) and no thump under 150 Hz, so it cannot
+// read as a bang.
+c = clamp((t - 0.05) / 0.012, 0, 1) * exp(neg(clamp(t - 0.05, 0, 100)) / 0.055)
+crunch = noise(0, 0, SEED) * c * 1.6 |> bp(@, 620 * PITCH, 0.9)
+gdec = clamp((t - 0.05) / 0.01, 0, 1) * exp(neg(clamp(t - 0.05, 0, 100)) / 0.11)
+grit = noise(0, 0, SEED2) * gt(noise(160, 0, SEED2 + 1), 0.5) * gdec * 0.9 |> bp(@, 1100 * PITCH, 0.9)
+renv = clamp((t - 0.16) / 0.04, 0, 1) * exp(neg(clamp(t - 0.16, 0, 100)) / 0.17)
+rip = noise(0, 0, SEED + 2) * gt(noise(600, 0, SEED + 3), 0.55) * renv * 1.1 |> bp(@, 900 * PITCH, 0.8)
+wet = noise(0, 0, SEED2 + 2) * gt(noise(45, 0, SEED2 + 4), 0.2) * renv * 0.7 |> bp(@, 520 * PITCH, 1.5)
+out((crunch + grit + rip + wet) * 0.9 |> lp(@, 3200, 0.7) |> hp(@, 170, 0.7))

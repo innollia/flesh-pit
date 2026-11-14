@@ -4,6 +4,8 @@ fp_audio_hookup은 게임과 키트의 신호를 받아 소리 디렉터와 mani
 
 잡기·뜯기·놓기·토하기·문·정산·변이·도구 신호를 실제 발생 시점에 연결한다. 이벤트 소리를 재생하기 위해 gameplay 신호를 중복 발생시키거나 게임 tick을 대신 진행하지 않는다. 소비자가 사라질 때 연결과 루프 수명을 정리한다.
 
+한 소리는 한 뜻만 진다. regen_creak는 재생(닫힘에 가장 가까운 열린 자리, `director.life_enabled`·`life_urgency`), contract_warn은 수축 예고, squeeze_breath는 끼임, crush_breath는 `main.crush_progress()`를 따르는 상시 층(SFX 버스), full_refuse는 `Main.stomach_refused`, chew_strain은 과식, gag_dry는 밖의 헛구역질이다. 새 상황에 이 가운데 하나를 빌려 쓰지 않는다. 당김 층 pull_stretch는 씹지 않을 때 멈춰 있어야 한다(run_chew_stop_tests가 남은 반복음을 실패로 본다).
+
 배경음악(fp_music, hookup의 자식)은 시작 화면·키 설정·Esc·환풍구·변이 화면·변기 정산의 상태만 읽어 Music 버스의 반복음을 고르고, 살 속에서는 아무것도 틀지 않는다. 살 속 곡은 fp_flesh_music(hookup의 자식)이 껍질로 고른다. 한 바퀴 뒤 쉼, 마디 표시에서 교차, 쉼터·Esc·화장실에서 사라짐, 곡이 올라온 만큼 배경을 `bed_gain_db`로 낮추고 song_melody를 물린다(`flesh_music.json`, docs/design/sound-music.md "살 속 음악"). 곡은 `tools/build_flesh_music.py`가 `tools/audio/lab/` 패치로 다시 만든다. 새로 만들거나 바꾸는 곡은 nkido 패치(`tools/audio/patches/mus_*.akkado`)로 만들고 `tools/build_music.py`가 두 바퀴 렌더해 둘째 바퀴를 루프로 접는다. 트리가 멈춘 메뉴에서도 돌도록 PROCESS_MODE_ALWAYS다.
 
 살 속 사건(fp_body_events, hookup의 자식)은 지금 배경의 표(manifest `bed_events`)에서 단발을 불규칙 간격으로 고른다. 한 번에 한 목소리, Music 버스, 음량은 그 배경의 자기 층을 따라간다. 위치가 있는 단발은 밀도를 걸어 나가 찾은 실제 벽에서 나고(단발당 밀도 읽기 32번 이하), 벽이 없으면 위치 없이 난다. 게임 상태와 난수는 건드리지 않는다. 뜻이 있는 소리(regen_creak, 수축 경고, stomach_gurgle)는 재사용하지 않는다. 배경은 자기 층 + 그 껍질의 심장이고 바이옴이 몸 층을 깔지 않는다. 고치면 `python -X utf8 tools/build_biome_beds.py [id...]`, 비교는 `tools/measure_beds.py`와 `tools/clap_beds.py`(`C:/fpear` venv). `build_audio.py`는 `bed_events`를 지우므로 그 뒤에 다시 돌린다.
@@ -13,6 +15,8 @@ fp_audio_hookup은 게임과 키트의 신호를 받아 소리 디렉터와 mani
 manifest 경로와 실제 스트림의 존재, 씹기 유지와 중단 시 루프, 문·토하기·정산·도구 이벤트를 실제 연결로 확인한다. FP_AUDIO_LOG=1은 재생 로그만 켜며 게임 상태와 저장을 바꾸지 않는다. 남아 있는 과거 HOOKUP 설명보다 현재 Main의 실제 연결과 신호를 확인한다.
 
 반복음 패치만 고쳤을 때는 `py -3 -B -X utf8 tools/render_loop_patches.py <id>...`로 그 파일만 다시 만든다(manifest는 그대로). `build_audio.py` 전체 실행은 manifest를 다시 쓰므로 뒤이어 다른 빌더들을 다시 돌려야 한다.
+
+nkido는 `C:\projects\_tools\nkido`의 Windows 빌드가 있으면 그것을, 없으면 WSL `Ubuntu-24.04`의 `/usr/local/bin/nkido`를 쓴다(`tools/audio/build_audio.py`의 `_nkido_cmd`, 빌드 방법은 `tools/audio/PROVENANCE.md` 6차). 패치에서 `snap`, `run`은 변수 이름으로 쓸 수 없다(내장 이름이라 E150 "Cannot reassign"). 문법은 렌더해야 드러나므로 새 패치는 `--out <옆 폴더>`로 먼저 렌더한다. Git Bash에서 `wsl ... /mnt/c/...`를 직접 부르면 경로가 Windows 경로로 바뀌므로 `MSYS_NO_PATHCONV=1`을 붙인다(파이썬에서 부르면 괜찮다).
 
 소리 모음 페이지: `py -3 -B tools/build_sound_gallery.py`로 manifest·SOUND_LIST에서 `build/sound_gallery.html`을 다시 만들고, 그 파일을 브라우저로 바로 열면(file://, 서버 없음) 모든 소리를 들을 수 있다.
 

@@ -107,7 +107,27 @@
 
 측정(사람이 들은 것이 아니다): 소리 높이 뚜렷함(정점 뒤 50 ms 자기상관 최대) 가장 높은 발소리 0.55(step_tile_s2) → 0.24, step_flesh_s2 0.51 → 0.15. CLAP의 "아케이드/8비트/비트크러시/삐" 몫은 step_tile_s1 0.56 → 0.08, step_tile_s2 0.29 → 0.04, step_flesh_s2 0.24 → 0.001. 곡 있는 살 속 발소리 자기 대역 여유(파일 기준)는 4.2~9.9 dB이고 실제로는 3 dB 낮은 1.2~6.9 dB다. 씹기·조임 경고·뜯기·삼키기 여유는 바뀌지 않았다. 엔진 녹음은 `game/tests/capture_steps.gd`, 비교는 `tools/measure_steps.py`, `tools/clap_arcade.py`.
 
-CLAP이 아직 아케이드 쪽으로 보는 소리: regen_creak(1.0, 경고음이라 손대지 않음). tear_fat·nerve_twitch·tear_flesh는 아래 round8에서 다시 만들었다.
+CLAP이 아직 아케이드 쪽으로 보는 소리: regen_creak(1.0, 경고음이라 손대지 않음). tear_fat·nerve_twitch·tear_flesh는 아래 round8에서 다시 만들었다. regen_creak는 2026-11-14에 톱니파와 좁은 대역을 빼고 다시 만들었고 CLAP은 아직 다시 재지 않았다(아래 "한 입과 조임의 새 소리").
+
+### 한 입과 조임의 새 소리 (2026-11-14)
+
+한 신호가 한 뜻만 지도록 음원을 나누고 게임에 연결했다. 목록·경로·측정값은 `game/audio/SOUND_LIST.md`. 사람이 들은 것은 아직 없다.
+- 수축 예고는 contract_warn(낮게 차오르다 멈춤), 재생은 regen_creak(불규칙한 젖은 알갱이)로 갈랐다. 둘은 긴 시간 스펙트럼이 가까워(거리 5.6 dB) 모양과 음량으로 구별된다.
+- 끼임은 squeeze_breath(코로 밀려 나오는 짧은 날숨), 압사는 crush_breath(얕고 빠른 숨의 반복음)다. 과식 신음 chew_strain과 다른 소리다.
+- 가득 찬 위장의 거절은 full_refuse(다문 입의 "읍"과 마른 트림)다. gag_dry는 밖에서 못 토하는 헛구역질 한 뜻만 진다.
+- 조직 뜯김: 수축 tear_muscle, 연골 tear_cartilage, 옷 tear_cloth, 털 tear_hair.
+
+연결한 방식(`game/audio/fp_audio_hookup.gd`, 키트 `fdk_audio_director.gd`):
+- 수축 예고는 조임 1.3초 전에 그 벽에서 contract_warn이 난다(소리는 0.86초에 끝나 조임 시작 전에 멈춘다). regen_creak는 재생에서만 난다.
+- 재생 삐걱임은 배경과 상관없이 살 속 어디서나 난다(바이옴 포함, 화장실·쉼터·엔딩 제외). 8 m 안의 뜯은 자리 가운데 아직 열려 있고 닫힘에 가장 가까운 곳(밀도 0.15~닫힘 기준 사이에서 가장 높은 곳)에서 나고, 그 가까움(0~1)에 따라 간격이 5~12초에서 1.5~3초로, 음량이 −6 dB에서 0 dB로 간다. 소리는 방금 뜯은 앞이 아니라 닫히는 등 뒤에서 난다.
+- 끼임 이벤트는 squeeze_breath다. crush_breath는 SFX 버스의 상시 층으로 음량이 `main.crush_progress()`를 따르고 재생 속도가 0.9 → 1.25로 빨라진다. 벗어나면 진행과 같이 빠진다. 압사 중에 곡 음량은 건드리지 않는다(음악은 위험을 쓰지 않는다).
+- full_refuse는 `Main.stomach_refused`에 붙였다(게임이 0.9초에 한 번으로 줄여 낸다). 삼킴은 뜯김 0.3초 뒤 그대로다.
+- pull_stretch는 Room 버스의 상시 층이다. 씹기 진행 r에 음량 −30 → −6 dB(r 제곱), 높이 0.85 → 1.15로 움직이고 뜯김과 놓기에서 바로 꺼진다. 뜯김은 실제로 뜯긴 양(한 칸 대비 u)에 따라 −8 → 0 dB, 높이 ×(1 + 0.08 × (1 − u))다.
+- 발소리는 몸이 직전 걸음 뒤로 수평 0.12 m 넘게 움직였을 때만 난다. 막힌 1칸 굴에서 걷는 소리가 나지 않는다.
+- 다시 재야 하는 것: 삐걱임이 잦아졌으므로 `tools/measure_beds.py`의 재생 삐걱·조임 경고 열(새 id가 manifest에 들어갔다), CLAP 아케이드 몫.
+- 한 입의 당김 pull_stretch는 고른 결의 반복음이고, 음량과 높이는 연결 쪽이 chew_progress로 움직인다.
+
+수치만 쟀고 사람이 들어 보지 않았다.
 
 ### 문, 칼로 뜯기, 레버 물 내림 (round8-sfx, 2026-11-09)
 

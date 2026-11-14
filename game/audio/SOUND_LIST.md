@@ -16,12 +16,12 @@
 | stomach_gurgle | sfx | 위가 1/4씩 찰 때마다 | 피부 밑 꾸르륵 |
 | chew_loop_a | loop | 씹는 동안 | 입 안 바로 가까이 씹기, 머릿속처럼 먹먹하게(녹음 1.6 kHz 아래). 잡을 때마다 처음부터 나므로 조용한 틈에서 시작하고 사인 턱 딱 없음(round9). 넘겨 먹을수록 재생 속도 1/배율(최저 0.55)로 느리고 낮아짐 |
 | chew_loop_b | loop | 변이 2단계부터 씹는 동안 | 더 크고 축축한 턱. 사인 턱 쿵·마른 1.8 kHz 위 바삭임 없음, 조용한 틈에서 시작(round9) |
-| chew_strain | loop | 씹는 동안, 넘겨 먹은 만큼 커짐 | 힘겨운 콧숨, 목 신음 |
+| chew_strain | loop | 씹는 동안, 넘겨 먹은 만큼 커짐. 과식 한 뜻만 진다(끼임은 squeeze_breath) | 힘겨운 콧숨, 목 신음 |
 | vomit_toilet | sfx | 변기 앞에서 토하기 | 헛구역질 → 쏟음 → 물 튀김, 타일 울림 |
 | vomit_floor | sfx | 화장실 밖/변기 아닌 곳 | 헛구역질 → 바닥에 철퍽, 흘러내림 |
 | step_flesh_s1..s3 | sfx | 살 위 걸음, 변이 단계별 (Room 버스, 걸음마다 높이·세기 조금씩 다름) | 단계가 오를수록 낮고 길고 무거움. 사인 쿵·PS1 질감 없음(2026-11-08) |
 | step_tile_s1..s3 | sfx | 화장실 타일 걸음 (Room 버스의 타일 방) | 딱딱한 타일 → 단계가 오를수록 뒤꿈치 무겁고 살이 묻어 철벅. 메아리 대신 방 울림(2026-11-08) |
-| regen_creak | sfx 3D | 몸 속에 있는 동안 5~12초마다 주변 어딘가 | 다시 자라는 살의 느린 삐걱임 |
+| regen_creak | sfx 3D | 살 속 어디서나(화장실·쉼터·엔딩 제외), 8 m 안에서 닫힘에 가장 가까운 열린 자리에서. 5~12초마다, 닫힘이 가까우면 1.5~3초마다 더 크게 | 다시 자라는 살의 느린 삐걱임. 재생 한 뜻만 진다. 톱니파·좁은 대역 없이 느려진 찢김·진창 녹음과 불규칙한 알갱이(2026-11-14, 아래 "한 입과 조임의 새 소리") |
 | door_open / door_close | sfx 3D | 문 | 무거운 낡은 문: 걸쇠가 둔하게 빠지고 경첩이 낮게 갈리며 삐걱, 문짝의 무게(2026-11-09, 사인 딸깍·좁은 대역 삐걱 없음) / 닫히는 둔탁음 |
 | toilet_flush | sfx 3D | 레버 정산, 시작 장면 | 레버 덜컥, 쏴아 쏟아지는 물, 꾸르륵, 바닥 배관으로 빠짐, 낮게 차오르는 물. 2.5 kHz 위 쉭 소리 없음(2026-11-09) |
 | coin_drop | sfx 3D | 상점 구매로 동전이 변기로, 벨트 고리 교환 | 도자기에 두 번 팅, 퐁당 |
@@ -107,3 +107,42 @@
 - 물탱크 달그락(`tank_rattle_started`)은 teeth_rattle을 0.22~0.45초마다 다시 내며 흔들림이 끝날 때(`tank_rattle_finished`)까지 이어진다. 종양을 던진 정산은 3.5초 더 길다.
 - song_melody·song_hum·song_voice2·magnet_hum(`Layer_*`)은 배경음(Music) 버스로 가서 설정의 배경음 음량을 따른다.
 - T1 `echo_pulsed`(파동 결과 집계)는 기획(05 T1, 08 1장)에 소리가 없어서 연결하지 않았다. 혀 차는 소리는 echo_click이 맡는다.
+
+## 한 입과 조임의 새 소리 (2026-11-14)
+
+열 개 모두 `manifest.json`에 있고 게임에 연결돼 있다(연결 방식은 docs/design/sound-music.md "한 입과 조임의 새 소리", 신호는 docs/contracts.md "소리 디렉터"). 전부 PS1 질감 없음, 톱니파·사인파 없음. 만드는 법은 다른 효과음과 같다(`tools/audio/patches/<id>.akkado`, `tools/audio/sounds.json`, 단발은 `tools/build_sfx_only.py`, 반복음은 `tools/render_loop_patches.py`).
+
+| id | 종류 | 파일 | 길이 | 쓰일 곳 | 느낌 |
+|---|---|---|---|---|---|
+| contract_warn | sfx 3D, 4변주 | `audio/sfx/contract_warn_v1..4.wav` | 0.95 s (소리는 0.86 s에 끝남) | 수축 조직의 조임 예고. regen_creak 대신 | 근육이 숨을 들이쉬듯 낮게 차오르다 꼭대기에서 멈춤. 150~500 Hz에 무게, 급한 시작 없음 |
+| regen_creak | sfx 3D, 4변주 | `audio/sfx/regen_creak_v1..4.wav` (바꿈) | 1.10 s | 재생 삐걱임만. 1.5~3초 간격으로 되풀이돼도 네 변주가 서로 다른 녹음 구간 | 젖은 살이 느리게 맞물리는 불규칙한 알갱이. rib_creak(900~2200 Hz)보다 아래 |
+| squeeze_breath | sfx, 4변주 | `audio/sfx/squeeze_breath_v1..4.wav` | 0.75 s | 끼임(`squeeze` 이벤트). chew_strain 대신 | 갈비가 눌려 코로 짧게 밀려 나오는 날숨, 살이 몸에 쓸림. 목 신음 없음 |
+| crush_breath | loop, 스테레오 | `audio/loops/crush_breath.wav` | 6.0 s | 압사가 차오르는 동안의 상시 층 | 채울 틈 없이 얕고 빠른 숨, 6초에 아홉 번, 박이 고르지 않음. 반복음 안에서는 빨라지지 않는다(이음에서 되돌아가므로). 빨라짐은 연결 쪽의 재생 속도로 낸다 |
+| full_refuse | sfx, 4변주 | `audio/sfx/full_refuse_v1..4.wav` | 0.70 s | 위장이 가득 차 못 먹을 때 | 다문 입 안에서 치밀다 끊기는 "읍", 짧고 마른 트림. gag_dry(벌린 입의 헛구역질 두 번)와 다른 소리 |
+| tear_muscle | sfx 3D, 4변주 | `audio/sfx/tear_muscle_v1..4.wav` | 0.95 s | 수축 조직(4) 뜯김 | 질긴 결이 0.4초 버티며 점점 팽팽해지다 굵고 낮게 끊김 |
+| tear_cartilage | sfx 3D, 4변주 | `audio/sfx/tear_cartilage_v1..4.wav` | 0.70 s | 연골(6) 뜯김 | 둔한 우둑 한 번, 이어서 젖은 찢김. 150 Hz 아래 쿵 없음 |
+| tear_cloth | sfx 3D, 4변주 | `audio/sfx/tear_cloth_v1..4.wav` | 0.75 s | 옷(7) 뜯김 | 젖은 천의 실밥이 점점 빠르게 터지고 올이 풀림. 배경의 cloth_snag은 마른 쪽 |
+| tear_hair | sfx 3D, 4변주 | `audio/sfx/tear_hair_v1..4.wav` | 0.80 s | 털(8) 뜯김 | 마른 털이 당겨지다 뿌리째, 두피째 젖게 뽑힘 |
+| pull_stretch | loop, 스테레오 | `audio/loops/pull_stretch.wav` | 2.0 s | 한 입의 당김. chew_progress로 음량과 높이를 움직이는 상시 층 | 젖은 섬유가 팽팽한 고른 결. 삐걱임·음정·박 없음. 음량 변화는 넣지 않았다(연결 쪽이 만든다) |
+
+측정(`tools/audio/targets.json`의 기준 그대로, 사람이 들은 것이 아니다):
+
+| id | 음량 LUFS | 최대치 dB | 변주 음량 차 LU | 살 배경 위 여유 dB (가장 나쁜 곳) | 그 밖 |
+|---|---|---|---|---|---|
+| contract_warn | −21.0 | −3.2 | 0.05 | −0.6 (body_b) | 가장 날카로운 딸깍 6.8 dB, 150 Hz 아래 쿵 −16 dB 이하 |
+| regen_creak | −26.0 | −8.9 | 0.50 | 1.8 (body_b) | 소리 높이 뚜렷함 0.54 → 0.2~0.4, 900 Hz 위 몫 −14 dB |
+| squeeze_breath | −21.0 | −2.4 | 0.10 | 5.6 (옷 뭉치) | chew_strain과의 스펙트럼 거리 10.9 dB |
+| crush_breath | −22.0 | −9.9 | 반복음 | 4.5 (body_a) | 이음 도약 0.00, 좌우 상관 0.96, 짧은 반복 −6.0 dB |
+| full_refuse | −20.0 | −1.5 | 0.49 | 4.2 (body_b) | gag_dry와의 스펙트럼 거리 16.7 dB |
+| tear_muscle | −18.3~−19.7 | −1.5 | 0.70 | 8.5 (옷 뭉치) | tear_flesh와의 거리 7.3 dB |
+| tear_cartilage | −18.2~−20.2 | −1.5 | 0.29 | 7.7 (창자 주름) | 150 Hz 아래 쿵 −16.6 dB 이하, tear_flesh와의 거리 7.6 dB |
+| tear_cloth | −18.0 | −1.5 | 0.40 | 11.9 (옷 뭉치) | tear_flesh와의 거리 11.6 dB |
+| tear_hair | −18.0~−21.3 | −1.5 | 0.75 | 12.1 (털 덤불) | tear_flesh와의 거리 30.3 dB |
+| pull_stretch | −20.0 | −8.2 | 반복음 | 6.3 (옷 뭉치) | 이음 도약 0.13, 좌우 상관 0.39, 짧은 반복 −9.2 dB |
+
+- 기준 실패는 없다. crush_breath의 짧은 반복(−6.0 dB, 기준 −8)은 숨이라는 의도된 박이라 `targets.json`의 `rhythmic_ok`에 chew_strain과 같은 이유로 이름을 올렸다. 박을 고르지 않게 한 뒤의 값이다.
+- 뜯김 넷은 tear_flesh처럼 최대치에 걸려 목표 음량(−16~−18)보다 낮게 나온 변주가 있다. 지금 tear_flesh도 −16.6~−20.9다.
+- contract_warn과 regen_creak는 긴 시간 스펙트럼이 가깝다(거리 5.6 dB, 둘 다 500 Hz 근처). 구별은 모양(한 번 차오르다 멈춤 대 불규칙한 알갱이)과 음량(−21 대 −26)에 있다.
+- pull_stretch는 합성 잡음이 이끌고 찢김 녹음은 8 dB 아래에 깔았다. 녹음을 앞세우면 찢김의 툭툭거림이 짧은 반복 기준에 걸린다.
+- 숨 녹음은 받아 둔 CC0에 없어서 숨 셋(squeeze_breath, crush_breath, full_refuse)은 잡음 합성이다. full_refuse에만 입 소리 녹음이 조금 들어간다.
+- CLAP 판별(`tools/clap_arcade.py`)은 이 PC에 `C:/fpear`가 없어 돌리지 않았다. regen_creak의 아케이드 몫 1.0이 내려갔는지는 재지 않았다.
