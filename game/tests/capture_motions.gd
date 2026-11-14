@@ -71,6 +71,8 @@ func _process(_d: float) -> bool:
                     m.place_teeth_at_vent()
             "vomit_toilet", "vomit_floor":
                 m.request_vomit()
+                if _shot == "vomit_floor":
+                    Input.action_press("fp_vomit") # away from the bowl the stomach goes with the key held
             "wash":
                 m.wash_hands()
             "belt":

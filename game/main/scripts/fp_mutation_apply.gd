@@ -145,10 +145,12 @@ func _process_inner(delta: float) -> void:
 func _step_hardness() -> void:
 	var p: FPProgression = m.progression
 	var base := p.base_chew_time()
-	var hit: Dictionary = m._look_hit()
+	# the contact the hands work: the centre line's, or the cell the chew
+	# assist holds under it (Main.chew_hit)
+	var hit: Dictionary = m.chew_hit()
 	if not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk"):
 		var dir: Vector3 = m.player.get_look_ray()[1]
-		var t: int = m.terrain.tissue_at(hit.position + dir * m.terrain_config.cell_size * 0.5)
+		var t: int = m.terrain.tissue_at(hit.get("fp_assist_cell", hit.position + dir * m.terrain_config.cell_size * 0.5))
 		var b: float = float(FPProgression.TISSUE_HARDNESS.get(t, 1.0))
 		# fp_tissue_tools (session D) already applies base hardness and
 		# M08/M09/T6; only the rest (M12, M18) is added here as a ratio

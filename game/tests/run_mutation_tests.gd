@@ -367,9 +367,20 @@ func _key(m, action: String) -> void:
 	ev.pressed = true
 	m.mirror._input(ev)
 
+## In front of the restroom mirror, looking into it: the only place the Tab
+## screen buys (decision 0014).
+func _stand_at_mirror(m) -> void:
+	var glass: Vector3 = m.mirror_point()
+	m.player.global_position = Vector3(glass.x + 1.0, 0.95, glass.z)
+	m.player._yaw = PI * 0.5
+	m.player.rotation.y = PI * 0.5
+	m.player._pitch = 0.0
+	m.player.camera_pivot.rotation.x = 0.0
+
 func _run_mirror() -> void:
 	var m = _m
 	var prog: FPProgression = m.progression
+	_stand_at_mirror(m)
 	m.open_mirror()
 	var mir: FPMirror = m.mirror
 	_assert(mir.visible and mir.body != null, "interacting with the mirror shows the reflected body")
@@ -509,6 +520,8 @@ func _run_tumors() -> void:
 	m.player.global_position = t.global_position - Vector3(0, 0.6, 0.7)
 	m.player.camera.look_at(t.global_position, Vector3.UP)
 	_assert(m.eat_tumor() and prog.belly_bumps() == 1 and not t.visible, "eating a tumor raises one bump on the belly")
+	m.player.camera.rotation = Vector3.ZERO
+	_stand_at_mirror(m)
 	m.open_mirror()
 	var tmir: FPMirror = m.mirror
 	_assert(tmir._order[0] == "tumor" and tmir.current_part() == "tumor", "the bump is the first part and Tab opens on it (%s)" % tmir.current_part())

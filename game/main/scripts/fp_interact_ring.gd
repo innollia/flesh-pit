@@ -37,8 +37,9 @@ var _a: float = 0.0
 const INK := Color(0.96, 0.93, 0.88)
 ## Actions shown as their key cap even to a mouse player: no mouse button
 ## does them (the vomit key; crouch, shown over the canary hole and for
-## digging down; the climb key for digging up).
-const KEY_ACTIONS := ["fp_vomit", "fdk_crouch", "fdk_jump"]
+## digging down; the climb key for digging up; the mutation screen's key at
+## the mirror, where it buys).
+const KEY_ACTIONS := ["fp_vomit", "fdk_crouch", "fdk_jump", "fp_mutate"]
 const DARK := Color(0.08, 0.07, 0.07)
 
 func _ready() -> void:
@@ -93,6 +94,7 @@ func _draw() -> void:
 	match device:
 		"pad":
 			if action == "fdk_crouch": _draw_stick_press(p)
+			elif action == "fp_mutate": _draw_pad_shoulder(p)
 			else: _draw_pad(p)
 		"mouse":
 			if action in KEY_ACTIONS: _draw_key(p, _key_label())
@@ -130,6 +132,12 @@ func _draw_stick_press(p: Vector2) -> void:
 	draw_circle(p, 4.2, Color(INK, 0.95 * _a))
 	draw_arc(p, 9.5, PI * 1.15, PI * 1.85, 8, Color(INK, 0.8 * _a), 1.2, true)
 
+## The pad's mutation screen is the left shoulder button: a filled bar over
+## the outline of the pad's left grip.
+func _draw_pad_shoulder(p: Vector2) -> void:
+	draw_rect(Rect2(p + Vector2(-8.0, -7.0), Vector2(12.0, 4.5)), Color(INK, 0.95 * _a))
+	draw_arc(p + Vector2(-2.0, 3.0), 6.0, PI * 0.1, PI * 1.1, 12, Color(INK, 0.6 * _a), 1.2, true)
+
 func _draw_pad(p: Vector2) -> void:
 	# Face-button diamond with the left (X) button filled.
 	var off := 5.5
@@ -154,4 +162,5 @@ func _key_label() -> String:
 		"fp_vomit": return "V"
 		"fdk_crouch": return "Ctrl"
 		"fdk_jump": return "Space"
+		"fp_mutate": return "Tab"
 	return "F"

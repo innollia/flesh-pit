@@ -136,7 +136,14 @@ func _process(_delta: float) -> bool:
 		_main.vent.place_teeth(prog.vent_absurd_threshold(), prog)
 		_ok(not spilled_ids.is_empty() and pe.back() == "vent_spill" and d.last_played == "vent_spill", "1-2 an absurd overpay spills items with a clatter (%s, %s)" % [str(spilled_ids), d.last_played])
 		_main.vent.close()
-		# the mirror refuses a part the hairs cannot pay for
+		# the mirror refuses a part the hairs cannot pay for (it buys, and so
+		# refuses, only in front of the restroom mirror)
+		var glass: Vector3 = _main.mirror_point()
+		_main.player.global_position = Vector3(glass.x + 1.0, 0.95, glass.z)
+		_main.player._yaw = PI * 0.5
+		_main.player.rotation.y = PI * 0.5
+		_main.player._pitch = 0.0
+		_main.player.camera_pivot.rotation.x = 0.0
 		_main.open_mirror()
 		_main.mirror.focus_part("face")
 		var bought: String = _main.mirror.buy_current()

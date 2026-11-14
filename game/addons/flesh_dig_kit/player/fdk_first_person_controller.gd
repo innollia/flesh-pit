@@ -64,6 +64,17 @@ const RELAX_EVERY := 0.1 ## the body checks for room to straighten up this often
 ## Share of the asked horizontal step the real move made last frame (1 = all).
 var _last_ratio: float = 1.0
 var _fit_t: float = 0.0
+## Seconds the body has been walking into something that lets none of it
+## past, and the unit direction it is trying to go; 0 and ZERO otherwise. The
+## tightest posture has been tried by then, and the crawl up into an opening
+## is either not there or held down: the descent input (crouch + eat) keeps
+## the body on the floor, so a crouched digger never crawls up a lip. Climbing
+## up (jump) is not being stuck.
+var stuck_time: float = 0.0
+## Looking down more steeply than this (radians), crouch + eat keeps the body
+## down even where a crawl up was found.
+const DESCENT_HOLDS_BELOW := 0.52
+var stuck_dir: Vector3 = Vector3.ZERO
 
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var camera: Camera3D = $CameraPivot/Camera3D
@@ -428,6 +439,12 @@ func _process_move_and_climb(delta: float) -> void:
 		_climb_input += 1.0
 	if Input.is_action_pressed("fdk_crouch") and Input.is_action_pressed("fdk_eat"):
 		_climb_input -= 1.0
+	# The descent input is for digging downward. A crouched digger eating on a
+	# level aim gives it all the time, and it used to hold the body under every
+	# lip it had found the way up: the crawl up goes first unless the look is
+	# steeply down.
+	if _climb_input < 0.0 and (_rise_left > 0.0 or _hold_t > 0.0) and _pitch > -DESCENT_HOLDS_BELOW:
+		_climb_input = 0.0
 
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
@@ -460,6 +477,12 @@ func _process_move_and_climb(delta: float) -> void:
 		_last_ratio = clampf(Vector2(moved.x, moved.z).length() / asked, 0.0, 1.0)
 	else:
 		_last_ratio = 1.0
+	if asked > 0.0005 and _last_ratio < 0.15 and (_climb_input < 0.0 or (_climb_input == 0.0 and _rise_left <= 0.0)):
+		stuck_time += delta
+		stuck_dir = wish.normalized()
+	else:
+		stuck_time = 0.0
+		stuck_dir = Vector3.ZERO
 
 func _process_footstep_bob(delta: float) -> void:
 	var horizontal_speed := Vector2(velocity.x, velocity.z).length()

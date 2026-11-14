@@ -51,7 +51,14 @@ func _run() -> void:
 	seg("gulp")
 	ma.gulp()
 	await frames(55)
-	# 1-10: the mirror refuses a part without enough hairs
+	# 1-10: the mirror refuses a part without enough hairs (it buys, and so
+	# refuses, only in front of the restroom mirror)
+	var glass: Vector3 = m.mirror_point()
+	m.player.global_position = Vector3(glass.x + 1.0, 0.95, glass.z)
+	m.player._yaw = PI * 0.5
+	m.player.rotation.y = PI * 0.5
+	m.player._pitch = 0.0
+	m.player.camera_pivot.rotation.x = 0.0
 	m.open_mirror()
 	await frames(20)
 	m.mirror.focus_part("face")

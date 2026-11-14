@@ -20,6 +20,10 @@ var eat_hint := false
 var lever_at := Vector2.INF
 ## Over the bowl the lever is the right hand's; standing, either hand's.
 var lever_left := true
+## Screen spot of the mirror while the first mutation could be bought and
+## none was (INF = none): the mutation screen's key cap pulses there. Buying
+## happens in front of the mirror only.
+var mirror_at := Vector2.INF
 var _time := 0.0
 
 func _ready() -> void:
@@ -69,6 +73,8 @@ func _draw() -> void:
 		draw_arc(lever_at, r + 2.0, 0.0, TAU, 40, Color(0.08, 0.07, 0.07, 0.6 * pulse), 5.0, true)
 		draw_arc(lever_at, r, 0.0, TAU, 40, Color(0.96, 0.93, 0.88, pulse), 2.5, true)
 		FPMenuKit.draw_mouse(self, lever_at + Vector2(r + 26.0, 22.0), lever_left, true, pulse)
+	elif mirror_at.is_finite():
+		_icon(mirror_at, _key("fp_mutate", "Tab"), pulse)
 	elif eat_hint and not waiting:
 		# above the subtitle band: the being may be talking while the door opens
 		FPMenuKit.draw_mouse(self, Vector2(size.x * 0.5, size.y * 0.68), true, false, pulse)

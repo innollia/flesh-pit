@@ -210,8 +210,12 @@ func run() -> void:
 	check(m.opening_view.hints.vomit_hint and m.vomit_button.shown, "at the toilet it does")
 	m.lever_settled = true
 	m.player.global_position = m.RESTROOM_CENTER + Vector3(1.0, -0.5, 4.5)
+	var fill1: float = m.stomach.fill
 	m.request_vomit()
-	check(m.stomach.fill == 0.0, "after a lever settlement V outside empties the stomach as before")
+	check(m.stomach.fill == fill1 and m.discard_holding(), "after a lever settlement V outside starts the bow; the press alone keeps the stomach")
+	for i in range(17): # the key held 0.85 s (DISCARD_HOLD 0.8)
+		m.discard_hold_step(0.05, true)
+	check(m.stomach.fill == 0.0, "after a lever settlement V held outside empties the stomach")
 	check(bool(m.serialize()["lever_settled"]), "the first settlement is saved")
 	# --- the compass: on the waistband, read in the left hand (decision 0009)
 	var waist_c: Node3D = m.art_hookup.waist_compass

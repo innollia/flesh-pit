@@ -81,3 +81,5 @@ node --test game/tests/run_godot_checks.cjs
 카메라 가드의 headless 검사는 process_frame 신호 직후가 아닌 정상 Main/손 노드 이후의 읽기 전용 관찰로 판정한다. 관찰 노드는 가드를 추가 호출하거나 카메라를 쓰지 않는다. 혼합 셀의 max8 밀도는 실제 점의 고체 판정이 아니므로, 통로 검사는 실제 현재 면의 안팎과 전체 캡슐을 확인하고 독립 8모서리 보간값을 진단 기록에 남긴다.
 
 기본 `run_godot_checks.cjs`에는 `run_live_interactions_tests.gd`의 실제 키 입력 회귀가 포함된다. 단독 원본 스크립트 실행은 restoration userdata를 요구한다. runner가 생성한 격리 사본은 Main을 추가하기 전에 별도 저장 경로를 지정하므로 일반 프로젝트에서 CPU 검사할 때도 정상 슬롯을 사용하지 않는다. GUI에서 같은 사본을 실행하면 `.dryforge/evidence/live-interactions/`에 V 안내·NPC 지급·카나리아 단계와 실제 엎드린 몸을 캡처한다.
+
+같은 날 결정 0014·0015와 0009 개정이 더한 `run_mirror_buy_discard_hold_tests.gd`(거울 앞 구매, 길게 눌러 토하기, 10초쯤)와 `run_chew_assist_tests.gd`(수평 굴 정체: 문 앞 대조·문턱 기록·살 속 선 채와 웅크린 채, 실시간이라 60~140초)도 목록에 없다. 조준(`_look_hit_along`)·씹기 보조·컨트롤러의 막힘 판정과 오르기·Tab 구매·밖 토하기를 바꾸면 `FP_CHECK_SUITES`에 이름을 직접 넣어 돌린다. 살 속 구간은 실행마다 걸음이 조금씩 달라 판정 거리를 2 m로 둔다.

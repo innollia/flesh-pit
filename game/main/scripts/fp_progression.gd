@@ -227,6 +227,17 @@ func paying_pool(id: String) -> String:
 func can_buy_mutation(id: String) -> bool:
 	return paying_pool(id) != ""
 
+## Something could be bought this moment: a belly bump to press with a tumor
+## mutation still left, or hairs enough for a mutation not yet owned. The
+## mirror's Tab key cap shows on this (buying happens in front of the mirror).
+func any_buyable_mutation() -> bool:
+	if tumors.tumor_points >= TUMOR_MUTATION_COST and tumor_mutations.size() < TUMOR_MUTATIONS.size():
+		return true
+	for id in mutation_info.keys():
+		if can_buy_mutation(id):
+			return true
+	return false
+
 ## Buying pulls the hairs off the arm (combination: from whichever of its
 ## two biome pools can pay its own 1.5x price).
 func buy_mutation(id: String) -> bool:

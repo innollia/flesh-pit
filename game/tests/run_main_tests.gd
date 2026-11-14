@@ -79,6 +79,9 @@ func _run() -> void:
     # outside vomit after it: empties, nothing gained
     m.lever_settled = true
     m.request_vomit()
+    _assert(m.stomach.fill == 50.0 and m.discard_holding(), "V outside only starts the bow; a tap throws nothing away")
+    for i in range(17): # the key held 0.85 s (DISCARD_HOLD 0.8)
+        m.discard_hold_step(0.05, true)
     _assert(m.stomach.fill == 0.0 and prog.teeth == 0 and prog.total_hairs() == 0 and prog.pending_hair_total() == 0, "vomit outside the toilet empties the stomach with no reward")
     # vomit button threshold (shown where vomiting settles: at the toilet)
     m.player.global_position = m.restroom.toilet.to_global(Vector3(0, 0.9, 0.5))

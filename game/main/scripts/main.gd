@@ -298,6 +298,8 @@ var has_blender: bool:
 			progression.tools.grant("blender")
 
 func _ready() -> void:
+	# the held discard must be decided before the bow's first lump comes up
+	assert(DISCARD_HOLD < 0.36 * float(FPHandMotions.DUR["vomit_floor"]))
 	if FDKPs1Settings.active.enabled:
 		ps1_post = FDKPs1ScreenPost.new()
 		add_child(ps1_post)
@@ -1092,6 +1094,7 @@ func _process(delta: float) -> void:
 	opening_view.hints.vomit_hint = not _settling and settle_spot and (stomach.fill_ratio() >= 1.0 or (not lever_settled and stomach.fill > 0.0))
 	opening_view.hints.eat_hint = _first_eat_waiting()
 	opening_view.hints.lever_at = _first_lever_spot()
+	opening_view.hints.mirror_at = _first_mirror_spot()
 	hands_rig.set_mutation(progression.mutation_amount())
 	hands_rig.set_carry(clampf(carried_flesh / 40.0, 0.0, 1.0) if carried_flesh > 0.0 else 0.0)
 	# an overfull stomach makes the same bite heavier: the pull trembles bigger
@@ -1108,6 +1111,10 @@ func _process(delta: float) -> void:
 	vent.tick(delta)
 	vent.watch_bowl(delta, toilet.has_contents() and restroom.contains(player.global_position))
 	hand_motions.check_cancel()
+	# after check_cancel (a second press of V cancels the bow first, so held
+	# time never joins up across presses) and before the motion's own tick (so
+	# the flesh is gone before the first lump shows)
+	discard_hold_step(delta, Input.is_action_pressed("fp_vomit"))
 	_watch_leans(delta)
 	hand_motions.tick(delta)
 	tear_feel.tick(delta)
@@ -1311,6 +1318,10 @@ func _chew_step(delta: float) -> void:
 		return
 	var dir: Vector3 = player.get_look_ray()[1]
 	var hit := _look_hit()
+	# nothing on the centre line: a body stuck at a tunnel it has outdug may
+	# take the nearest flesh under the line that is in its own way
+	if hit.is_empty() and _chew_assist_step(dir, delta):
+		return
 	if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk"):
 		chewer.stop()
 		terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
@@ -1338,6 +1349,230 @@ func _chew_step(delta: float) -> void:
 	else:
 		_chew_target = Vector3.INF
 		_chew_contact = Vector3.INF
+
+# --- chew assist: the body stuck behind its own level tunnel (decision 0015) ---
+#
+# Holding eat and forward on a fixed aim digs a tunnel along the aim line. Its
+# floor stands higher than the floor the body is on (a dug cell opens the
+# cells round it up to their middles), so there is a lip in front of the
+# body. Out in the flesh the body crawls up it by itself; where it does not
+# (the restroom, a lip too high) the face leaves the arm's reach and the bite
+# used to stop without a word. When that is what happened (the start
+# conditions in _assist_may_start), the hands take the nearest flesh UNDER the
+# aim line that lies in front of the body. It is an ordinary bite on an
+# ordinary contact: same reach, same occlusion, same tissue rules, the same
+# chewer and stomach (eaten flesh = removed density). Nothing above the line,
+# past the face or under the feet is ever taken, and nothing outside the view
+# (so the lip right at the feet stays: docs/tracking/findings.md).
+
+## A cell under the aim line was torn by the assist (its centre).
+signal chew_assisted(cell_center: Vector3)
+## Seconds the body must have been walking into the blocked way.
+const CHEW_ASSIST_STUCK := 0.4
+## Steeper aims are the climb's and the crouch's (dig_key_hint).
+const CHEW_ASSIST_MAX_PITCH := 60.0
+## A cell is taken only inside this cone round the aim (and inside the view).
+const CHEW_ASSIST_CONE_MAX := 35.0
+## The stuck body's aim and the way it pushes agree at least this much.
+const CHEW_ASSIST_ALIGN := 0.87
+const CHEW_ASSIST_SCAN := 0.1
+const CHEW_ASSIST_CELLS := 12
+## Off for the control run of the stall test.
+var chew_assist_enabled := true
+var assist_tears := 0
+var _assist_cell := Vector3.INF
+var _assist_aim := Vector3.INF ## the point on that cell's face the hand's ray goes to
+var _assist_hit := {}
+var _assist_frame := -100
+var _assist_scan_t := 0.0
+
+## The contact the hands are working: the centre line's, or the assist's while
+## it holds a cell (then with "fp_assist_cell", that cell's centre). Empty when
+## neither.
+func chew_hit() -> Dictionary:
+	var hit := _look_hit()
+	if hit.is_empty() and _assist_cell != Vector3.INF and Engine.get_process_frames() - _assist_frame <= 1:
+		return _assist_hit
+	return hit
+
+func _assist_drop() -> void:
+	_assist_cell = Vector3.INF
+	_assist_aim = Vector3.INF
+	_assist_hit = {}
+
+## One frame of the eat input with nothing on the centre line. True while the
+## assist holds a cell (the caller then leaves the grab alone).
+func _chew_assist_step(dir: Vector3, delta: float) -> bool:
+	var frame := Engine.get_process_frames()
+	if not chew_assist_enabled or frame - _assist_frame > 1:
+		_assist_drop() # the input lapsed, or the centre line had it meanwhile
+	if not chew_assist_enabled:
+		return false
+	var eye: Vector3 = player.get_look_ray()[0]
+	var hit := {}
+	if _assist_cell != Vector3.INF:
+		# the same cell stays held while its own contact holds (no restart)
+		hit = _assist_contact(eye, dir, _assist_cell, _assist_aim)
+		if hit.is_empty():
+			_assist_drop()
+	if _assist_cell == Vector3.INF:
+		_assist_scan_t -= delta
+		if _assist_scan_t > 0.0 or not _assist_may_start(dir):
+			return false
+		_assist_scan_t = CHEW_ASSIST_SCAN
+		var found := _assist_find(eye, dir)
+		if found.is_empty():
+			return false
+		_assist_cell = found.cell
+		_assist_aim = found.aim
+		hit = found.hit
+	_assist_frame = frame
+	hit["fp_assist_cell"] = _assist_cell
+	_assist_hit = hit
+	var toward: Vector3 = (_assist_aim - eye).normalized()
+	_chew_target = _assist_cell
+	_chew_contact = hit.position
+	set_hand_reach(hit.position)
+	if tissue_tools.chew_at(_assist_cell, hit.position, toward, delta):
+		_show_pull(hit.position, toward, _chew_ratio)
+	else:
+		# refused like any bite (a blade's tissue, a full stomach); the cell
+		# stays the assist's so the refusal repeats at the same contact
+		_chew_target = Vector3.INF
+		_chew_contact = Vector3.INF
+	return true
+
+## The assist may start: flesh just past the arm on the aim line, the body
+## walking that way and blocked, the aim not steep.
+func _assist_may_start(dir: Vector3) -> bool:
+	if absf(rad_to_deg(asin(clampf(dir.y, -1.0, 1.0)))) > CHEW_ASSIST_MAX_PITCH:
+		return false
+	if not ("stuck_time" in player) or float(player.stuck_time) < CHEW_ASSIST_STUCK:
+		return false
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if flat.length() < 0.001 or (player.stuck_dir as Vector3).dot(flat.normalized()) < CHEW_ASSIST_ALIGN:
+		return false
+	return _reach_short_point() != Vector3.INF
+
+## How far under the aim line (metres) a cell's middle may lie and still be
+## in the body's way: down to just over the feet. A dug cell leaves the
+## surface of the cell under it at about that cell's middle, so a cell whose
+## middle stands over the feet is a lip in front of the body, and one whose
+## middle is under them is the floor. The body that could crawl up the lip by
+## itself has done so before it counts as stuck (FDKFirstPersonController
+## .stuck_time); what is left is a body held to the floor (crouch + eat), one
+## that may not crawl (the restroom), or a lip too high.
+const CHEW_ASSIST_FEET_CLEAR := 0.1
+func _assist_body_depth() -> float:
+	return player.get_look_ray()[0].y - player.get_feet_position().y - CHEW_ASSIST_FEET_CLEAR
+
+## The nearest cell under the aim line, in the body's way, that the eye sees
+## and the arm reaches: {cell, aim, hit}, or empty. The cells are the slab
+## under the line (the aim's own column, middles from half a cell under it
+## down to _assist_body_depth, no farther than the face); the hand's ray is tried at each
+## one nearest first, and the contact it really makes decides the cell by the
+## centre line's own rule (_terrain_target). A contact that belongs to a cell
+## outside the slab is not taken.
+func _assist_find(eye: Vector3, d: Vector3) -> Dictionary:
+	var face := _reach_short_point()
+	if face == Vector3.INF:
+		return {}
+	var down := Vector3.DOWN - d * Vector3.DOWN.dot(d)
+	if down.length() < 0.001:
+		return {}
+	var n := down.normalized()
+	var side := d.cross(n).normalized()
+	var cs: float = terrain_config.cell_size
+	var iso: float = terrain_config.iso_level
+	var far: float = (face - eye).dot(d)
+	var deep: float = _assist_body_depth()
+	var wide: float = cs * 0.5 + 0.01
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for a: float in [0.0, far]:
+		for b: float in [cs * 0.5, deep]:
+			for c: float in [-wide, wide]:
+				var corner := eye + d * a + n * b + side * c
+				lo = lo.min(corner)
+				hi = hi.max(corner)
+	var first := (lo / cs).floor()
+	var last := (hi / cs).floor()
+	var found: Array = []
+	var slab := {}
+	for z in range(int(first.z), int(last.z) + 1):
+		for y in range(int(first.y), int(last.y) + 1):
+			for x in range(int(first.x), int(last.x) + 1):
+				var center := (Vector3(x, y, z) + Vector3.ONE * 0.5) * cs
+				var rel := center - eye
+				var along := rel.dot(d)
+				var below := rel.dot(n)
+				if along <= 0.0 or along > far or below < cs * 0.5 or below > deep or absf(rel.dot(side)) > wide:
+					continue
+				if terrain.density_at(center) < iso:
+					continue
+				found.append([along, below, center])
+				slab[Vector3i(x, y, z)] = true
+	found.sort_custom(func(p, q): return p[0] < q[0] if not is_equal_approx(p[0], q[0]) else p[1] < q[1])
+	# a dug cell's surface lies about half a cell into its neighbours, so the
+	# ray goes at the cell's middle and at its face toward the line, each also
+	# a little back and forth along the aim
+	var axis := Vector3.ZERO
+	var up := -n
+	match up.abs().max_axis_index():
+		Vector3.AXIS_X: axis = Vector3(signf(up.x), 0, 0)
+		Vector3.AXIS_Y: axis = Vector3(0, signf(up.y), 0)
+		_: axis = Vector3(0, 0, signf(up.z))
+	var slide := d - axis * d.dot(axis)
+	slide = slide.normalized() * 0.15 if slide.length() > 0.01 else Vector3.ZERO
+	var space := get_world_3d().direct_space_state
+	var reach: float = progression.reach()
+	for i in range(mini(found.size(), CHEW_ASSIST_CELLS)):
+		var cell: Vector3 = found[i][2]
+		var mid := cell + axis * cs * 0.5
+		for aim: Vector3 in [cell, cell - slide, cell + slide, mid, mid - slide, mid + slide]:
+			var toward := (aim - eye).normalized()
+			if not _assist_in_cone(toward, d):
+				continue
+			# a plain physics ray first: the search tries many rays, and only
+			# one that lands on the slab is worth the full aim query
+			var q := PhysicsRayQueryParameters3D.create(eye, eye + toward * reach)
+			q.exclude = [player.get_rid()]
+			var rough := space.intersect_ray(q)
+			if rough.is_empty() or not rough.collider.has_meta("fdk_terrain_chunk"):
+				continue
+			var rough_cell: Vector3 = (((rough.position as Vector3) - (rough.normal as Vector3) * cs * 0.5) / cs).floor()
+			if not slab.has(Vector3i(rough_cell)):
+				continue
+			var hit := _look_hit_along(eye, toward, reach)
+			if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk") or eye.distance_to(hit.position) > reach:
+				continue
+			var target := _terrain_target(hit, toward)
+			if not slab.has(Vector3i((target / cs).floor())) or terrain.density_at(target) < iso:
+				continue
+			return {"cell": target, "aim": aim, "hit": hit}
+	return {}
+
+## The hand's ray stays inside the cone round the aim line, and inside the view.
+func _assist_in_cone(toward: Vector3, d: Vector3) -> bool:
+	var cone := minf(player.camera.fov * 0.5 - 3.0, CHEW_ASSIST_CONE_MAX)
+	return toward.dot(d) >= cos(deg_to_rad(cone))
+
+## The held cell's contact this frame, along the same ray it was taken on, or
+## empty: still solid, inside the arm's reach and the cone, hidden by nothing,
+## and still the cell the centre line's rule picks from that contact.
+func _assist_contact(eye: Vector3, d: Vector3, cell: Vector3, aim: Vector3) -> Dictionary:
+	if terrain.density_at(cell) < terrain_config.iso_level or eye.distance_to(aim) < 0.001:
+		return {}
+	var toward := (aim - eye).normalized()
+	if not _assist_in_cone(toward, d):
+		return {}
+	var reach: float = progression.reach()
+	var hit := _look_hit_along(eye, toward, reach)
+	if hit.is_empty() or not hit.collider.has_meta("fdk_terrain_chunk") or eye.distance_to(hit.position) > reach:
+		return {}
+	if not _terrain_target(hit, toward).is_equal_approx(cell):
+		return {}
+	return hit
 
 ## Flesh straight ahead, past the arm: the point on it, or INF. Only tells
 ## "cannot reach"; the aim, the reach and what may be torn are _look_hit's.
@@ -1521,6 +1756,12 @@ func step_world(delta: float) -> void:
 		# hands that can do it. One input shows in one place: the ring's vomit
 		# key gives way to the stomach's, the opening's to both
 		interact_ring.set("action", "fp_vomit" if target == "toilet" else ("fp_pick" if target == "belt" else "fp_interact"))
+		# at the mirror with something to buy the glyph is the Tab key cap: the
+		# mirror is where the forearm screen buys (decision 0014). F and the
+		# hands still open the cabinet door.
+		var mirror_buys := target == "mirror" and at_mirror() and progression.any_buyable_mutation()
+		if mirror_buys:
+			interact_ring.set("action", "fp_mutate")
 		interact_ring.set("shown", target != "" and not _settling and not is_pulling_canary())
 		# standing over the canary hole: the crouch key cap says "get down"
 		var crouch_hint := target == "" and not _settling and canary_crouch_hint()
@@ -1554,6 +1795,8 @@ func step_world(delta: float) -> void:
 		opening_view.hints.lever_left = not _settling
 		if target == "lever" and not _settling:
 			opening_view.hints.lever_at = Vector2.INF
+		if mirror_buys:
+			opening_view.hints.mirror_at = Vector2.INF # the ring already shows the key
 		FPProfile.end("interact_ring")
 	FPProfile.begin("death_drop")
 	_step_death_drop(delta)
@@ -1572,7 +1815,13 @@ func step_world(delta: float) -> void:
 
 func _look_hit() -> Dictionary:
 	var ray: Array = player.get_look_ray()
-	var reach: float = progression.reach()
+	return _look_hit_along(ray[0], ray[1], progression.reach())
+
+## The aim's contact along any ray from the eye: the same reach, occlusion and
+## published / unpublished surface rules as the centre line (_look_hit is this
+## along the look ray). The chew assist judges its off-centre cells with it.
+func _look_hit_along(origin: Vector3, direction: Vector3, reach: float) -> Dictionary:
+	var ray: Array = [origin, direction]
 	var q := PhysicsRayQueryParameters3D.create(ray[0], ray[0] + ray[1] * reach)
 	q.exclude = [player.get_rid()]
 	q.hit_from_inside = true
@@ -1841,6 +2090,33 @@ func door_handle_point() -> Vector3:
 func mirror_point() -> Vector3:
 	return restroom.mirror_art.to_global(Vector3((restroom.mirror_art.call("mirror_center") as Vector3).x, 1.65, 0.24))
 
+## Standing in the restroom and looking into the mirror from close by: the
+## only place the Tab screen buys (decision 0014). Judged from the mirror's
+## own place alone. An open cabinet door shows no reflection: looking only.
+const MIRROR_BUY_DEGREES := 35.0
+const MIRROR_BUY_REACH := 1.6
+func at_mirror() -> bool:
+	if not restroom.contains(player.global_position) or bool(restroom.mirror_art.get("cabinet_open")):
+		return false
+	return _looking_at(mirror_point(), MIRROR_BUY_DEGREES, MIRROR_BUY_REACH)
+
+## Where the mirror is on screen while hairs or a bump could buy the first
+## mutation and none was ever bought (INF otherwise): the Tab key cap pulses
+## there, like the first lever's ring. Nothing is saved; the first mutation
+## owned ends it.
+func _first_mirror_spot() -> Vector2:
+	if _settling or _seated or _mirror_open or is_pulling_canary() or not restroom.contains(player.global_position):
+		return Vector2.INF
+	if bool(restroom.mirror_art.get("cabinet_open")) or not progression.all_mutations().is_empty() or not progression.any_buyable_mutation():
+		return Vector2.INF
+	var cam: Camera3D = player.camera
+	var p := mirror_point()
+	var rect := get_viewport().get_visible_rect()
+	var inner := rect.grow(-40.0) if rect.size.x > 100.0 and rect.size.y > 100.0 else rect
+	if cam.is_position_behind(p) or not inner.has_point(cam.unproject_position(p)):
+		return Vector2.INF
+	return cam.unproject_position(p)
+
 func sink_point() -> Vector3:
 	return Vector3(-FPRestroom.HALF.x + 0.3, 0.95, FPRestroom.SINK_Z)
 
@@ -1878,6 +2154,42 @@ func _near_rest_point() -> int:
 
 # --- stomach, toilet, rest points ----------------------------------------------
 
+## Seconds the vomit key must stay down, away from the bowl and the rest
+## points, before the stomach is thrown away (decision 0009, 2026-11-14): the
+## body bows first (hands on the knees by 0.6 s) and the first retch is rising
+## from 0.65 s, the first lump at 0.864 s. Letting go before this stands the
+## body back up with the stomach as it was. A tap or a row of taps never
+## empties it: the held time starts from zero at every press.
+const DISCARD_HOLD := 0.8
+## Seconds the key has been held into a discard; negative = none running.
+var _discard_hold_t := -1.0
+
+## One frame of the held discard (tests drive it with `held`). Keeps counting
+## only while the key is down, the floor-vomit bow it started is still going,
+## and the body is still away from the bowl and the rest points with nothing
+## else holding the input. Anything else ends it and the body straightens;
+## reaching DISCARD_HOLD empties the stomach for nothing.
+func discard_hold_step(delta: float, held: bool) -> void:
+	if _discard_hold_t < 0.0:
+		return
+	var bowing: bool = hand_motions.kind == "vomit_floor" and not hand_motions.cancelled
+	if not held or not bowing or _settling or _seated or _mirror_open or _near_toilet() or _near_rest_point() >= 0:
+		_discard_hold_t = -1.0
+		if hand_motions.kind == "vomit_floor":
+			hand_motions.cancel()
+		return
+	_discard_hold_t += delta
+	if _discard_hold_t < DISCARD_HOLD:
+		return
+	_discard_hold_t = -1.0
+	stomach.vomit()
+	mutation_apply.take_cud_credit() # lost with the rest
+	progression.discard_stomach()
+
+## The held discard is running (the body is bowing, nothing thrown away yet).
+func discard_holding() -> bool:
+	return _discard_hold_t >= 0.0
+
 ## At the toilet or a rest point vomiting settles; elsewhere nothing.
 func request_vomit() -> void:
 	if _settling:
@@ -1893,11 +2205,11 @@ func request_vomit() -> void:
 	else:
 		# also before the first settlement once the stomach is at its end and
 		# every bite is refused: with the tunnel grown shut behind there is no
-		# other way out (decision 0013). Nothing is paid for it.
+		# other way out (decision 0013). Nothing is paid for it. The press only
+		# starts the bow; the stomach goes once the key has been held
+		# DISCARD_HOLD seconds (discard_hold_step).
 		hand_motions.play_vomit(false, stomach.fill_ratio())
-		stomach.vomit()
-		mutation_apply.take_cud_credit() # lost with the rest
-		progression.discard_stomach()
+		_discard_hold_t = 0.0
 
 func start_settlement() -> void:
 	if _settling:
@@ -2709,6 +3021,9 @@ func open_mirror() -> void:
 		if variant.is_visible_in_tree():
 			active_rig = variant
 	mirror.setup(player.camera, active_rig.call("get_hand_root", "left"), holo)
+	# buying happens in front of the mirror only (decision 0014). The body and
+	# the view hold still while the screen is open, so this is asked once.
+	mirror.can_buy_here = at_mirror()
 	mirror.open(progression)
 	hand_motions.play_watch()
 	player.set_physics_process(false)
@@ -3116,6 +3431,7 @@ func die(cause: String) -> void:
 	carry_mode = false
 	chewer.stomach = stomach
 	chewer.stop()
+	_discard_hold_t = -1.0 # a discard being held dies with the body
 	has_canary = false
 	canary.reset_trail()
 	blender_charge = 0.0
@@ -3291,6 +3607,10 @@ func reach_ending() -> void:
 
 func _on_cell_torn(world_pos: Vector3) -> void:
 	var shell := shell_at(world_pos)
+	if _assist_cell != Vector3.INF and cell_center(world_pos).is_equal_approx(_assist_cell):
+		assist_tears += 1
+		chew_assisted.emit(_assist_cell)
+		_assist_drop()
 	_chew_target = Vector3.INF
 	_chew_contact = Vector3.INF
 	# the chewer already put chewer.last_units in the stomach unless carrying

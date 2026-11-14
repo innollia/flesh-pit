@@ -149,6 +149,9 @@ func run() -> void:
 	# --- at the end: it comes up
 	set_fill(160.0)
 	m.request_vomit()
+	check(is_equal_approx(m.stomach.fill, 160.0) and m.discard_holding(), "160 units outside: the press starts the bow, the stomach goes only with the key held")
+	for i in range(17): # the key held 0.85 s (DISCARD_HOLD 0.8)
+		m.discard_hold_step(0.05, true)
 	await frames(2)
 	print("SEAL vomit at the end: fill %.1f, heaves %d, teeth %d, lever %s" % [m.stomach.fill, heaves[0], m.progression.teeth, m.lever_settled])
 	check(is_equal_approx(m.stomach.fill, 0.0) and heaves[0] == 1, "160 units outside before the first settlement: the stomach empties (%.1f)" % m.stomach.fill)

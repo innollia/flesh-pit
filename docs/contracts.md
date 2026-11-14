@@ -28,6 +28,16 @@ Main의 저장 version은6이고 진행의 내부 version은3이다. version이 
 
 Main._look_hit()는 맞지 않으면 빈 Dictionary, 맞으면 collider와 세계 position을 포함한 히트 사전을 반환한다. 실제 지형 collider는 fdk_terrain_chunk 메타를 가진다. 소비자는 원격 셀 좌표를 새로운 히트처럼 만들어 넣지 않는다. 도구는 같은 거리·차폐를 만족하는 히트에서 동작하며 실제 내부·임시 표면도 그 계약을 따른다.
 
+`Main._look_hit()`는 `_look_hit_along(origin, direction, reach)`의 래퍼다(눈과 시선으로 부른다, 동작은 같다). `Main.chew_hit()`은 손이 지금 다루는 접점이다: 중심 조준선의 히트, 없으면 보조가 쥐고 있는 칸의 히트(그때는 `fp_assist_cell`에 그 칸의 중심이 들어 있다). 조직을 읽는 쪽(`fp_mutation_apply._step_hardness`)은 이것을 쓴다. 보조 히트도 같은 `_look_hit_along`과 `_terrain_target`으로 정해지므로 거리·차폐·면과 뜯기는 칸의 일치가 중심 조준과 같다. 보조가 칸을 뜯으면 `Main.chew_assisted(cell_center)`가 나고 `assist_tears`가 오른다. `chew_assist_enabled`를 끄면 보조는 아무것도 하지 않는다(대조 시험용). 조건은 `business-rules.md`와 결정 0015다.
+
+`FDKFirstPersonController.stuck_time`(초)과 `stuck_dir`(단위 벡터)은 몸이 걸으려는 쪽으로 조금도 못 가고 있는 시간과 그 방향이다. 가장 줄인 몸과 기어오르기를 해 본 뒤의 값이고, 움직이면 0과 ZERO다. 위로 파는 중(점프)은 막힘이 아니다. 키트는 게임 상태를 읽지 않는다.
+
+## 변이 화면과 토하기
+
+`FPMirror.can_buy_here`(기본 true)가 false면 `buy_current()`는 아무것도 사지 않고 `""`를 돌려주며 `not_here(part)`를 낸다(`denied`와 붉은 깜빡임은 없다). 유령은 0.15초 꺼졌다 켜지고(`ghost_flickering()`), 값 치를 팔털 깜빡임과 혹의 박동은 꺼져 있다. `Main.open_mirror()`가 열 때마다 `Main.at_mirror()`로 정한다. `FPMirror`를 직접 여는 쪽은 기본값대로 산다. `FPProgression.any_buyable_mutation()`은 털이나 혹으로 지금 살 수 있는 변이가 하나라도 있는지다.
+
+`Main.request_vomit()`은 변기 앞과 쉼터에서는 전과 같이 그 자리에서 정산한다. 그 밖에서 위장을 버리는 경우(첫 정산 뒤, 또는 결정 0013의 가득 찬 위장)에는 숙이는 동작만 시작하고 `discard_holding()`이 참이 된다. 위장은 `Main.discard_hold_step(delta, held)`가 `DISCARD_HOLD`(0.8초)를 채웠을 때 비워진다. `held`가 거짓이 되거나 동작이 취소되거나 정산·Tab·변기·쉼터에 들면 세던 것을 버리고 몸을 편다. Main은 매 프레임 V 입력으로 이것을 부른다. 시험은 `request_vomit()` 뒤에 `discard_hold_step`을 직접 밟는다.
+
 ## 먹기 신호
 
 FDKChewer.try_start(world_pos)는 세계 위치를 받아 같은 셀을 이어 잡거나 새 셀 진행을 시작한다. 유효하지 않은 살에서는 stop으로 이어진다. process_chew(delta)는 초 단위 시간을 진행하고 stop()은 진행을 해제한다. terrain과 config가 없는 경우 진행하지 않는다.

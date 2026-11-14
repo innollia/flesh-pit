@@ -754,6 +754,11 @@ func _reset_shapes() -> void:
 		part.scale = part.get_meta("base_scale")
 		_base[p] = Vector3.ONE
 	for e in _extras:
+		# a node waiting to be freed keeps its name until the frame ends, and
+		# the piece built in its place would be renamed: the bump of a screen
+		# opened a second time was then no longer found (tumor_bumps), so it
+		# neither beat nor took a press
+		e.name = "Freed"
 		e.queue_free()
 	_extras.clear()
 

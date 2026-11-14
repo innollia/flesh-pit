@@ -3,7 +3,9 @@ extends CanvasLayer
 
 ## Mutation screen on the forearm (형님 2026-09-30, replaces the mirror
 ## screen; the mirror itself only reflects, FPMirrorReflection).
-## A key (fp_mutate: Tab / pad button, rebindable) opens it anywhere: the
+## A key (fp_mutate: Tab / pad button, rebindable) opens it anywhere, and it
+## buys only in front of the restroom mirror (can_buy_here, decision 0014):
+## anywhere else it is for looking. The
 ## left arm comes up like reading a wristwatch and a small whole-body doll
 ## (FPMirrorBody) stands on the forearm. The background is dimmed about 70%;
 ## the arm and the doll are drawn again above the dim by a second camera on
@@ -25,6 +27,10 @@ extends CanvasLayer
 signal closed
 signal mutated(id: String)
 signal denied(part: String)
+## A buy pressed away from the mirror: nothing is bought, the ghost preview
+## goes out for a moment. Not the red blink or denied (those mean "not enough
+## hairs" and nothing else).
+signal not_here(part: String)
 
 const POOL_COLOR := {
 	"common": Color(0.2, 0.16, 0.15),
@@ -108,6 +114,13 @@ var _ghost: Node3D
 var _ghost_id := ""
 var _order: Array[String] = []
 var _kb := false ## keyboard picked the focus: mouse hover waits for motion
+## Main sets it when the screen opens: true only standing at the restroom
+## mirror and looking into it. The body and the view hold still while open, so
+## it is not asked again. Default true for callers that open the screen alone.
+var can_buy_here := true
+## Seconds the ghost preview stays hidden after a buy pressed elsewhere.
+const GHOST_FLICKER := 0.15
+var _flicker_t := 0.0
 
 func _ready() -> void:
 	layer = 6
@@ -231,6 +244,7 @@ func open(p: FPProgression) -> void:
 	body.visible = true
 	_cand.clear()
 	_kb = false
+	_flicker_t = 0.0
 	for n in holo_nodes:
 		tag_layer(n, HOLO_LAYER)
 	refresh()
@@ -283,7 +297,8 @@ func _update_glow() -> void:
 		var avail := part_available(part)
 		var sel := part == _part
 		body.set_shimmer(part, avail or sel, 1.4 if sel else 0.45)
-	body.set_tumor_shimmer(part_available("tumor"), TUMOR_GLOW)
+	# the bump beats only where pressing it does something
+	body.set_tumor_shimmer(can_buy_here and part_available("tumor"), TUMOR_GLOW)
 
 func part_available(part: String) -> bool:
 	if prog == null:
@@ -460,12 +475,12 @@ func arm_hair() -> Node3D:
 	return hand_root.get_node_or_null("ArmHair") as Node3D if hand_root != null else null
 
 ## The hairs the selected mutation would cost blink on the forearm, only
-## when it can be bought now.
+## when it can be bought now (enough hairs, and in front of the mirror).
 func _update_blink() -> void:
 	var h := arm_hair()
 	if h == null or not h.has_method("set_blink"):
 		return
-	var id := candidate() if visible else ""
+	var id := candidate() if visible and can_buy_here else ""
 	var pool := prog.paying_pool(id) if prog != null and id != "" and id != "tumor" else ""
 	h.call("set_blink", pool, prog.cost_in(id, pool) if pool != "" else 0)
 
@@ -493,6 +508,10 @@ func ghost_id() -> String:
 func buy_current() -> String:
 	if prog == null or _part == "":
 		return ""
+	if not can_buy_here:
+		_flicker_ghost()
+		not_here.emit(_part)
+		return ""
 	if _part == "tumor":
 		var got := prog.buy_tumor_mutation()
 		if got == "":
@@ -509,6 +528,23 @@ func buy_current() -> String:
 	prog.buy_mutation(id)
 	_after_buy(id)
 	return id
+
+## "It does not take here": the ghost preview goes out and comes back.
+func _flicker_ghost() -> void:
+	_flicker_t = GHOST_FLICKER
+	if _ghost != null:
+		_ghost.visible = false
+
+## The ghost is hidden by a buy pressed away from the mirror (tests).
+func ghost_flickering() -> bool:
+	return _flicker_t > 0.0
+
+func _step_flicker(delta: float) -> void:
+	if _flicker_t <= 0.0:
+		return
+	_flicker_t = maxf(0.0, _flicker_t - delta)
+	if _ghost != null:
+		_ghost.visible = _flicker_t <= 0.0
 
 func _after_buy(id: String) -> void:
 	_clear_ghost()
@@ -577,9 +613,10 @@ func part_at(screen: Vector2) -> String:
 func part_screen(part: String) -> Vector2:
 	return eye.unproject_position(body.part_center(part)) if eye != null else Vector2.ZERO
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not visible:
 		return
+	_step_flicker(delta)
 	_place()
 	_place_panel()
 
