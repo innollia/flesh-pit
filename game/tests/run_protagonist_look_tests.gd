@@ -161,6 +161,38 @@ func hand_rig() -> void:
 			groove += 1
 	ok(nail_back >= 4 * 12 and nail_palm == 0, "hands: four nails on the back of the fingertips, none on the palm side (%d / %d vertices)" % [nail_back, nail_palm])
 	ok(groove > 0, "hands: the grooves between the fingers are shaded")
+	# M09 thick nails follow the fingertip stair: each covers the plain nail
+	# under it and none hangs more than 6 mm past its own fingertip
+	var free_edge := Color(0.97, 0.9, 0.86)
+	load("res://main/art/fp_mutation_hands.gd").apply_shape(rig, ["M09"])
+	var thick := rig.get_node_or_null("HandRight/Wrist/Finger1/Finger2/Finger3/MutDeco_Nails") as MeshInstance3D
+	var bad: Array = []
+	if thick == null:
+		bad.append("no MutDeco_Nails")
+	else:
+		var nverts: PackedVector3Array = thick.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		for row in range(4):
+			var cx: float = FDKHandsRig.FINGER_ROWS[row] * -1.0 * 0.041
+			var plate_front := INF
+			var plate_back := -INF
+			var plate_top := -INF
+			for i in range(verts.size()):
+				if verts[i].y > 0.0 and absf(verts[i].x - cx) < 0.008 and (_near(cols[i], rig.nail_color) or _near(cols[i], free_edge)):
+					plate_front = minf(plate_front, verts[i].z)
+					plate_back = maxf(plate_back, verts[i].z)
+					plate_top = maxf(plate_top, verts[i].y)
+			var front := INF
+			var back := -INF
+			var top := -INF
+			for v in nverts:
+				if absf(v.x - cx) < 0.008:
+					front = minf(front, v.z)
+					back = maxf(back, v.z)
+					top = maxf(top, v.y)
+			if not (front <= plate_front and back >= plate_back and top > plate_top and front >= ends[row] - 0.006):
+				bad.append("row %d: thick %.1f..%.1f mm, plate %.1f..%.1f mm, fingertip %.1f mm" % [row, front * 1000.0, back * 1000.0, plate_front * 1000.0, plate_back * 1000.0, ends[row] * 1000.0])
+	ok(bad.is_empty(), "hands: M09 thick nails cover the plain nails and stop at their own fingertips %s" % [bad])
+	load("res://main/art/fp_mutation_hands.gd").apply_shape(rig, [])
 	# thumb tip is blunt: still two thirds of its width 6 mm past the last joint length
 	var thumb: Mesh = (rig.get_node("HandRight/Wrist/Thumb1/Thumb2/Thumb3/Seg") as MeshInstance3D).mesh
 	var tverts: PackedVector3Array = thumb.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]

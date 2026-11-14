@@ -88,7 +88,8 @@
 - 검사: 새 `run_protagonist_look_tests.gd` 29항목 통과(텍스처 평균·결·이음매, 하이라이트가 wet에만 곱해지는지, 관절 12개 자리, 팔뚝 z 범위, 손끝 계단, 손톱, 엄지 끝, 인형 키·골반·피벗·체형). 통과: run_tests 131, preservation 209, watch/door 265, body marks 52, vent hands 58, saw grip 17, art 34. `run_mutation_tests`는 203 통과·4 실패로 이번 변경 전과 같다(Tab 자세).
 - 캡처: `docs/tracking/captures/R2_protagonist/`. `compare_*.jpg` 아홉 장이 전후 묶음이고 나머지는 낱장이다.
 - 사람이 볼 것: (1) 인형 체형 A/B(`compare_3_body_build_AB.jpg`), (2) 살결이 때나 병으로 보이지 않는지, 특히 화장실에서(`compare_2_hands_in_game.jpg`, `compare_6_mirror_belly_legs.jpg`), (3) 손가락·손톱·엄지(`compare_1_hand_turntable.jpg`), (4) 뜯은 직후 손의 젖은 빛(`compare_8_wet_hand.jpg`는 모델만 찍은 것이라 게임 안에서 봐야 한다). 실행판은 다시 만들지 않았다.
-- 하지 않은 것: 엄지와 검지 사이 물갈퀴 살, 머리 폭 줄이기(거울에서 눈이 사라져 되돌림), 다리 UV 배율 조정(벽지처럼 보이지 않았다), M09 손톱 변이와 새 손톱의 겹침 확인(변이 묶음의 몫).
+- 하지 않은 것: 엄지와 검지 사이 물갈퀴 살, 머리 폭 줄이기(거울에서 눈이 사라져 되돌림), 다리 UV 배율 조정(벽지처럼 보이지 않았다).
+- 뒤에 맞춘 것: M09(두꺼운 손톱)의 손톱 넷이 한 줄로 같은 깊이에 놓여 있어, 손끝 계단이 생긴 뒤로는 긴 손가락의 제 손톱이 앞으로 비어져 나오고 새끼 쪽은 손끝 밖에 떠 있었다. 손가락마다 제 손끝에 맞춰 놓았다(`fp_mutation_hands.gd`의 `M09_NAIL_Z` + `FDKHandsRig.TIP_SETBACK`). `run_protagonist_look_tests.gd` 30항목 통과(M09 손톱이 제 손톱을 덮고 제 손끝에서 6 mm 안에 끝나는지 한 항목 추가). 전후 그림은 `compare_10_m09_nails.jpg`(위가 전, 아래가 후). 실행판은 다시 만들지 않았다.
 
 ## 2026-11-14 가구와 배치 다듬기
 
