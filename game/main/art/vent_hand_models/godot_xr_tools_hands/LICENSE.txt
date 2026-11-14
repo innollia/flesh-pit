@@ -1,0 +1,19 @@
+Hand Models for the Godot XR Tools
+
+출처: https://github.com/GodotVR/godot-xr-tools/tree/master/addons/godot-xr-tools/hands
+  (model/*.gltf, textures/*.png, About.md, License.md 를 2026-11-14 master 에서 그대로 받음)
+작가: DigitalN8m4r3 (Miodrag Sejic)
+라이선스: CC0 1.0 Universal (퍼블릭 도메인 기증). 같은 폴더 License.md 가 원문이다.
+  "To the extent possible under law, DigitalN8m4r3 aka Miodrag Sejic has waived all
+   copyright and related or neighboring rights to Hand Models for the Godot XR Tools."
+  상업 게임 사용·수정·재배포에 제한 없음, 출처 표기 의무 없음(표기는 예의로 남긴다).
+바탕 메시: MakeHuman Community Edition 출력물. MakeHuman 라이선스 D항은 내보낸 출력물에
+  어떤 권리도 주장하지 않는다(About.md).
+참고: godot-xr-tools 저장소의 코드(.gd)는 MIT 이지만 여기에는 코드를 가져오지 않았다.
+
+파일
+- hand_l.gltf / hand_r.gltf : 손톱 없는 손, 3052 삼각형
+- Hand_Nails_L.gltf / Hand_Nails_R.gltf : 손톱 있는 손, 3408 삼각형
+- Hand_Nails_low_L.gltf / Hand_Nails_low_R.gltf : 손톱 있는 저폴리, 1006 삼각형
+- textures/caucasian_realistic_baseColor.png, hands_normal.png, hands_occlusionRoughnessMetallic.png
+  (gltf 안에는 재질·이미지 연결이 없다. 원래 프로젝트는 Godot 재질 .tres 로 따로 붙였다)
