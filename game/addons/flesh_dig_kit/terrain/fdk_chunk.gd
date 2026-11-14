@@ -466,6 +466,7 @@ func _rebuild_contract_list() -> void:
                 _dirty = true
     _contract_idx = idx
     _contract_phase = ph
+    _warn_k = -1
     contract_box = AABB()
     if not idx.is_empty():
         var lo := Vector3(INF, INF, INF)
@@ -475,6 +476,37 @@ func _rebuild_contract_list() -> void:
             lo = lo.min(p)
             hi = hi.max(p)
         contract_box = AABB(lo, hi - lo)
+
+## Place in the squeeze list (_contract_idx / _contract_phase) of the squeezing
+## corner nearest the world point `near`, -1 when nothing squeezes here. The
+## field warns of that corner's squeeze (contraction_warning). Kept until the
+## list is rebuilt or `near` has moved a quarter metre.
+var _warn_k := -1
+var _warn_from := Vector3.INF
+func contract_nearest(near: Vector3) -> int:
+    if _contract_idx.is_empty():
+        return -1
+    if _warn_k >= 0 and _warn_k < _contract_idx.size() and _warn_from.distance_squared_to(near) < 0.0625:
+        return _warn_k
+    var n := config.chunk_size + 1
+    var l := (near - position) / config.cell_size
+    var best := -1
+    var best_d := INF
+    for k in range(_contract_idx.size()):
+        var i: int = _contract_idx[k]
+        var d := Vector3(i % n, (i / n) % n, i / (n * n)).distance_squared_to(l)
+        if d < best_d:
+            best_d = d
+            best = k
+    _warn_k = best
+    _warn_from = near
+    return best
+
+## World position of the corner at place `k` of the squeeze list.
+func contract_corner_world(k: int) -> Vector3:
+    var n := config.chunk_size + 1
+    var i: int = _contract_idx[k]
+    return position + Vector3(i % n, (i / n) % n, i / (n * n)) * config.cell_size
 
 ## Current squeeze offset at a corner (0 when none).
 func contract_at_corner(idx: int) -> float:

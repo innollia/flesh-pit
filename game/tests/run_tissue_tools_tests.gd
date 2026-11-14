@@ -192,6 +192,48 @@ func _unit_tests() -> void:
 		worst = maxf(worst, ch0.remesh())
 	_assert(worst < 8.0, "W20 remesh stays under 8 ms while squeezing (worst %.2f ms)" % worst)
 	cf.free()
+	# the squeeze warning is for the wall beside the listener: it names a
+	# squeezing corner next to them, CONTRACT_WARN before that corner's own
+	# squeeze (corners along one chunk start seconds apart)
+	var warned_at: Array = []
+	for ear_x in [0.5, 3.0]:
+		var wf := _field(func(_p): return R.CONTRACTILE)
+		_dig_box(wf, Vector3(0.25, 0.25, 0.25), Vector3(3.75, 1.25, 1.25))
+		var ear := Vector3(ear_x, 0.75, 0.75)
+		var got: Array = []
+		wf.contraction_warning.connect(func(p): got.append([wf.contract_time, p]))
+		var w_t := -1.0
+		var w_p := Vector3.INF
+		var w_base := 0.0
+		var rule_start := -1.0
+		var real_start := -1.0
+		var seen := 0
+		for i in range(480): # 24 s
+			wf.step_contraction(0.05, ear)
+			if w_t < 0.0:
+				# the first one may land mid-lead (the clock starts anywhere)
+				while seen < got.size() and float(got[seen][0]) < 1.5:
+					seen += 1
+				if seen < got.size():
+					w_t = float(got[seen][0])
+					w_p = got[seen][1]
+					w_base = _corner_density(wf, w_p)
+				continue
+			if rule_start < 0.0 and R.contract_offset(w_p, wf.contract_time) > 0.0:
+				rule_start = wf.contract_time
+			if real_start < 0.0 and _corner_density(wf, w_p) > w_base + 0.001:
+				real_start = wf.contract_time
+		_assert(w_t >= 0.0 and w_p.distance_to(ear) < 1.0, "the squeeze warning names a wall corner beside the listener at x=%.1f, not the chunk's middle (%s)" % [ear_x, w_p])
+		_assert(rule_start > 0.0 and absf((rule_start - w_t) - R.CONTRACT_WARN) <= 0.06, "that corner starts to squeeze %.1f s after its warning (%.2f)" % [R.CONTRACT_WARN, rule_start - w_t])
+		_assert(real_start > 0.0 and real_start - w_t >= R.CONTRACT_WARN - 0.06 and real_start - w_t <= R.CONTRACT_WARN + 0.4, "and its density really rises then (%.2f s after)" % (real_start - w_t))
+		var later := 0
+		for g in got:
+			if float(g[0]) > w_t and float(g[0]) < w_t + R.CONTRACT_PERIOD - 0.5:
+				later += 1
+		_assert(later == 0, "one warning per squeeze for a listener who stays put (%d extra)" % later)
+		warned_at.append(fposmod(w_t, R.CONTRACT_PERIOD))
+		wf.free()
+	_assert(absf(warned_at[0] - warned_at[1]) > 0.5, "two listeners 2.5 m apart in one chunk are warned at different times (%.2f, %.2f)" % [warned_at[0], warned_at[1]])
 	# W24 spray: depth per tier, permanence, neighbour boost
 	for tier in [FDKSprayCan.Tier.CHEAP, FDKSprayCan.Tier.DEEP]:
 		var sf := _field(func(_p): return R.COMPRESSIVE)

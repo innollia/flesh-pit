@@ -40,7 +40,7 @@
 - FPToiletSettlement.tank_rattle_started(duration, tumor): 물탱크 달그락 소리. 길이는 duration(종양이면 훨씬 김).
 - FPVent.line_spoken(line_id): 환풍구 존재 음성/자막. id와 한국어 문장은 game/main/data/vent_lines.json.
 
-- (세션 D) 수축 조직 조임 경고: FDKTerrainField.contraction_warning(world_pos: Vector3) 신호가 조이기 1초 전에 청크마다 한 번 뜬다. 여기에 조임 소리를 연결해 달라.
+- (세션 D) 수축 조직 조임 경고: FDKTerrainField.contraction_warning(world_pos: Vector3) 신호가 플레이어에게 가장 가까운 조이는 모서리의 조임 1.3초 전(FDKTissueRules.CONTRACT_WARN)에 청크마다 한 번 뜬다. world_pos는 그 모서리다. contract_warn이 연결돼 있다(fp_audio_hookup).
 ## 세션 C (거울·변이·종양)
 
 - `main.mirror` 신호 `mutated(id)`: 거울에서 변이를 산 순간. 털이 팔에서 빠지는 소리 + 몸이 바뀌는 소리. id가 `T1`~`T7`이면 종양 혹이 터지듯 자라는 소리.

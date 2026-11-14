@@ -49,10 +49,15 @@ func _process(delta: float) -> void:
 	_mat.set_shader_parameter("fill", _shown_fill)
 	_mat.set_shader_parameter("over", _shown_over)
 	_mat.set_shader_parameter("time", _time)
-	# the gut's end bulges once with each swallow, and with a refused bite
-	var view = main.get("stomach_view")
-	_mat.set_shader_parameter("gulp", maxf(view.kick(), view.heave_amount()) if view != null else 0.0)
+	_mat.set_shader_parameter("gulp", gulp_amount())
 	queue_redraw()
+
+## 0..1 bulge of the gut's filled end: a swallow going down, and only that.
+## A refused bite sends nothing down and leaves the gauge still (one sign,
+## one meaning); the body tells the refusal (Main._refuse_full).
+func gulp_amount() -> float:
+	var view = main.get("stomach_view") if main != null else null
+	return float(view.kick()) if view != null else 0.0
 
 func _draw() -> void:
 	if main == null:

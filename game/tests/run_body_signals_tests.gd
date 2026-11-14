@@ -115,12 +115,14 @@ func run() -> void:
 	var first_press := 0.0
 	var lurch := 0.0
 	var dip := 0.0
+	var gauge := 1.0
 	while t < 0.5:
 		await process_frame
 		m._chew_step(1.0 / 60.0)
 		if t == 0.0:
 			lurch = m.stomach_view.heave_amount()
 			dip = m.danger_show.heave_amount() if m.danger_show != null else 0.0
+			gauge = hud.gulp_amount()
 		first_press = maxf(first_press, m._full_press_t)
 		t += root.get_process_delta_time()
 	check(kit_refusals[0] >= 10, "the chewer reports every refused frame (%d)" % kit_refusals[0])
@@ -132,6 +134,7 @@ func run() -> void:
 	check(is_equal_approx(m.terrain.cell_corner_sum(target), sum0), "nothing was dug")
 	check(lurch > 0.9 and first_press > 0.0, "the stomach mass lurches and the wall is gripped (%.2f, %.2f)" % [lurch, first_press])
 	check(m.danger_show == null or dip > 0.9, "the head dips (%.2f)" % dip)
+	check(gauge == 0.0, "the gauge's end does not bulge for a refusal: that bulge means a swallow (%.2f)" % gauge)
 	check(m.hands_rig.state != FDKHandsRig.HandState.SLIP, "it is not the blade refusal's slip")
 	while t < 1.3:
 		await process_frame
@@ -214,6 +217,42 @@ func run() -> void:
 	m.stomach.fill = 0.0
 	var n: int = m.tissue_tools.on_cell_torn(saw_at)
 	check(n > 1 and m.stomach.fill > 0.0 and m.stomach.fill <= float(n - 1) * m.stomach_config.flesh_per_cell + 0.001 and _sum_around(saw_at) < dug0, "big saw with room: %d cells come away and go down (%.1f)" % [n, m.stomach.fill])
+	# carrying with the saw up (M28 / T2): its stroke goes straight down, so a
+	# full stomach refuses the stroke itself, not only its extra cells
+	m.terrain.remesh_all()
+	aim(0.0, 0.0)
+	await frames(5)
+	hit = m._look_hit()
+	check(not hit.is_empty() and hit.collider.has_meta("fdk_terrain_chunk") and prog.equipped() == "big_saw", "fixture: flesh in reach of the saw")
+	if not hit.is_empty():
+		var saw_cell: Vector3 = m.cell_center(hit.position + m.player.get_look_ray()[1] * m.terrain_config.cell_size * 0.5)
+		var saw_sum: float = m.terrain.cell_corner_sum(saw_cell)
+		prog.mutation_tree._purchased["M28"] = true # both hands free for a tool while carrying
+		m.carry_mode = true
+		m.chewer.stomach = null # as Main.toggle_carry leaves it
+		m.carried_flesh = 0.0
+		m.stomach.fill = full()
+		await frames(3)
+		check(prog.equipped() == "big_saw" and m.saw_stroke_refused(), "fixture: the saw stays up while carrying")
+		var told0: int = told.size()
+		var carry0: int = carry_told[0]
+		for i in range(150): # 2.5 s of holding, a stroke takes 0.9 s
+			await process_frame
+			m._chew_step(1.0 / 60.0)
+		check(is_equal_approx(m.stomach.fill, full()) and m.terrain.cell_corner_sum(saw_cell) >= saw_sum - 0.001, "carrying + big saw, full: nothing is torn and nothing goes down (%.1f)" % m.stomach.fill)
+		check(told.size() > told0 and carry_told[0] == carry0 and not m.chewer.is_chewing(), "and the stomach refuses it out loud (%d)" % (told.size() - told0))
+		# with room the same hold starts the stroke (stopped short here: the
+		# wall ahead is the next section's fixture)
+		m.stomach.fill = 0.0
+		var told1: int = told.size()
+		for i in range(20):
+			m._chew_step(1.0 / 60.0)
+		check(m.chewer.is_chewing() and told.size() == told1 and not m.saw_stroke_refused(), "with room the same hold saws")
+		m.chewer.stop()
+		m.carry_mode = false
+		m.chewer.stomach = m.stomach
+		m.carried_units.clear()
+		prog.mutation_tree._purchased.erase("M28")
 	prog.hands.clear()
 	prog.refresh_equipment()
 	m.stomach.fill = 0.0
@@ -310,6 +349,8 @@ func run() -> void:
 		if m.stomach_view.kick() > 0.0 and kicked_at < 0.0:
 			kicked_at = t
 		peak = maxf(peak, m.stomach_view.kick())
+		gauge = maxf(gauge, hud.gulp_amount())
+	check(gauge > 0.5, "the gauge's end bulges with the swallow (%.2f)" % gauge)
 	check(kicked_at > 0.2 and kicked_at < 0.45, "the kick lands %.2f s after the tear (%.2f)" % [FPStomachView.SWALLOW_DELAY, kicked_at])
 	check(peak > 0.5 and m.stomach_view.kick() == 0.0, "one kick, then it settles (peak %.2f)" % peak)
 	m.carry_mode = true

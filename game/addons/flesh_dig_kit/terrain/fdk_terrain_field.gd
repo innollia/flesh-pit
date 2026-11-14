@@ -524,10 +524,14 @@ func _ready() -> void:
 var remesh_ms_per_frame: float = 8.0
 ## Seconds of simulated time for the contractile squeeze clock.
 var contract_time: float = 0.0
-## Emitted once per chunk per squeeze cycle, CONTRACT_WARN seconds before the
-## squeeze starts there (the sound plays 1 s early -- 02-world-tissue.md 3).
+## Emitted CONTRACT_WARN seconds before a squeeze starts, per chunk, for the
+## squeezing corner nearest the point step_contraction is given (the player):
+## `world_pos` is that corner, and its own squeeze is the one foretold.
+## Once per squeeze; moving on to a wall that squeezes later tells that one too.
 signal contraction_warning(world_pos: Vector3)
-var _warned: Dictionary = {}
+## Squeezes starting closer together than this (s) are one warning.
+const CONTRACT_WARN_APART := 0.5
+var _warned: Dictionary = {} ## chunk coord -> start time of the squeeze told last
 
 ## P1 regrowth collider lag: a chunk whose collider only waits on regrowth
 ## gets it rebuilt after this many seconds, at most `collision_flush_per_frame`
@@ -765,7 +769,6 @@ func step_contraction(delta: float, near: Vector3, radius: float = 8.0) -> int:
     FDKChunk.set_contract_clock(contract_time, Vector4(near.x, near.y, near.z, radius), config.cell_size, config.chunk_size)
     for cc in _chunks.keys():
         var chunk: FDKChunk = _chunks[cc]
-        var mid: Vector3 = chunk.position + Vector3.ONE * chunk_world * 0.5
         # how near the squeezing walls are; the whole chunk while its list is
         # stale or empty (a dig may have opened new walls anywhere in it)
         var listed: bool = not chunk._contract_list_dirty and not chunk._contract_idx.is_empty()
@@ -776,13 +779,18 @@ func step_contraction(delta: float, near: Vector3, radius: float = 8.0) -> int:
         if chunk.step_contraction(contract_time, delta, 0.02 if gap <= CONTRACT_FINE_RADIUS else CONTRACT_COARSE_STEP):
             changed += 1
         if chunk.has_contractile_tissue() and not chunk._contract_idx.is_empty():
-            var k: int = chunk._contract_idx.size() / 2
-            var phase: float = chunk._contract_phase[k]
-            var tt := contract_time + phase
-            var cycle := int(floor((tt + FDKTissueRules.CONTRACT_WARN) / FDKTissueRules.CONTRACT_PERIOD))
-            if fposmod(tt, FDKTissueRules.CONTRACT_PERIOD) >= FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.CONTRACT_WARN and int(_warned.get(cc, -1)) != cycle:
-                _warned[cc] = cycle
-                contraction_warning.emit(mid)
+            # the wall beside `near`, not the chunk: corners start their squeeze
+            # seconds apart along one chunk (FDKTissueRules.contract_phase)
+            var k: int = chunk.contract_nearest(near)
+            var into: float = fposmod(contract_time + chunk._contract_phase[k], FDKTissueRules.CONTRACT_PERIOD)
+            if into >= FDKTissueRules.CONTRACT_PERIOD - FDKTissueRules.CONTRACT_WARN:
+                # when that squeeze starts: told once, and again only for a
+                # later one (or after the clock was set back)
+                var start: float = contract_time + FDKTissueRules.CONTRACT_PERIOD - into
+                var last: float = float(_warned.get(cc, -INF))
+                if start > last + CONTRACT_WARN_APART or start < last - FDKTissueRules.CONTRACT_PERIOD:
+                    _warned[cc] = start
+                    contraction_warning.emit(chunk.contract_corner_world(k))
     return changed
 
 ## Remeshes every dirty chunk now (used at start-up and by capture tools).

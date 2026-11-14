@@ -1291,6 +1291,17 @@ func _chew_step(delta: float) -> void:
 		else:
 			terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 		return
+	if saw_stroke_refused():
+		# a saw stroke goes straight down even while carrying (_on_cell_torn),
+		# and the chewer does not watch the stomach then: a full one refuses
+		# here, before anything is torn
+		chewer.stop()
+		var saw_hit := _look_hit()
+		if not saw_hit.is_empty() and saw_hit.collider.has_meta("fdk_terrain_chunk"):
+			_refuse_full(saw_hit.position, player.get_look_ray()[1], true)
+		else:
+			terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
+		return
 	if hands_rig.state == FDKHandsRig.HandState.TEAR:
 		terrain.set_press(Vector3.ZERO, Vector3.BACK, 0.0)
 		return
@@ -1394,6 +1405,11 @@ func _refuse_full(at: Vector3, dir: Vector3, stomach_full: bool) -> void:
 			carry_refused.emit(at)
 	var u := clampf(_full_press_t / FULL_PRESS_TIME, 0.0, 1.0)
 	terrain.set_press(at, -dir, FULL_PRESS * sin(PI * (1.0 - u)) if _full_press_t > 0.0 else 0.0)
+
+## Carrying with the big saw up (M28 / T2) and the stomach at its end: the
+## stroke's flesh would go down, so the stroke is refused like a hand bite.
+func saw_stroke_refused() -> bool:
+	return carry_mode and progression.equipped() == "big_saw" and stomach.is_full()
 
 func _on_chew_refused_full(world_pos: Vector3) -> void:
 	_refuse_full(_chew_contact if _chew_contact != Vector3.INF else world_pos, player.get_look_ray()[1], true)

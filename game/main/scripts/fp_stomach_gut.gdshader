@@ -8,7 +8,7 @@ shader_type canvas_item;
 uniform float fill = 0.0;
 uniform float over = 0.0;
 uniform float time = 0.0;
-// 0..1: one swallow (or a refused bite) passing: the filled end bulges once
+// 0..1: one swallow passing: the filled end bulges once (never a refusal)
 uniform float gulp = 0.0;
 uniform vec2 rect_size = vec2(240.0, 48.0);
 uniform float pixel = 2.0;

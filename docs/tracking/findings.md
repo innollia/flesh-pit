@@ -132,3 +132,7 @@ round7에서 `tools/clap_arcade.py`(자기 설명 대 "arcade/8-bit/bitcrushed/b
 - teeth_rattle(물탱크 달그락) 파일 하나는 arcade 0.97, "작은 새" 0.40이다. 레버 묶음(flush_chain)으로는 arcade 0.98 → 0.01, "작은 새" 0.24 → 0.00이다.
 
 재현: `C:/fpear/Scripts/python.exe -B -X utf8 tools/clap_arcade.py game/audio/sfx`, 묶음은 `python -X utf8 tools/mix_sfx_chains.py game/audio/sfx <dir>`로 만든 뒤 그 폴더에.
+
+## 손에 든 살을 넘기는 두 길은 위장 상한을 보지 않는다 (2026-11-14, 사용자 결정 대기)
+
+`FPMutationApply.gulp()`(M15 한입 삼킴)는 든 살 전부를, `FPTissueTools.finish_drink()`(믹서기)는 담긴 살의 60%를 `FDKStomach.add_flesh`로 그대로 넣는다. `add_flesh`에는 상한이 없어 용량 + 과식 용량(160 u)을 넘길 수 있다. 재현: 위장을 160 u로 채우고 살 더미를 든 뒤 M15로 삼키거나 믹서기로 마시면 fill이 160을 넘는다. 이미 뜯은 살이라 먹은 양과 제거 밀도는 어긋나지 않는다. 막는 방법(삼키기 거절, 남는 만큼만 넘기고 나머지는 손에 남김)은 새 동작이라 정하지 않았다. 뜯어서 바로 삼키는 길(손, M22, 큰 톱, M07·M14, 들기 중 큰 톱)은 모두 막혀 있다.

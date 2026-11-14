@@ -68,7 +68,7 @@ FDKAudioDirector는 신호를 구독하고 소비자가 준 값을 읽기만 한
 - 재생 삐걱임은 `life_enabled`가 true인 동안만 난다(기본 false, 배경 이름과 무관). `creak_source`(Callable → Vector3 또는 null)가 실제로 자라는 자리를 주고, 소비자가 `life_urgency`(0~1)를 넣으면 간격이 `life_interval` → `life_interval_urgent`, 음량이 −6 → 0 dB로 간다. 이미 뽑아 둔 긴 대기는 지금 urgency의 가장 긴 간격으로 잘린다.
 - 발소리는 footstep_bob의 골짜기마다, `listener`가 직전 골짜기 뒤로 수평 `step_min_travel`(0.12 m) 넘게 움직였을 때만 난다. listener가 없으면 골짜기마다 난다.
 
-게임 쪽 연결(fp_audio_hookup): `FDKTerrainField.contraction_warning(world_pos)` → contract_warn(그 자리), `Main.stomach_refused(world_pos)` → full_refuse(위치 없음), 끼임 이벤트 `squeeze` → squeeze_breath, `Main.crush_progress()` → 상시 층 crush_breath(SFX 버스, 음량 = 진행, 재생 속도 0.9~1.25). 전부 읽기와 구독이다.
+게임 쪽 연결(fp_audio_hookup): `FDKTerrainField.contraction_warning(world_pos)` → contract_warn(그 자리. `world_pos`는 `step_contraction`에 준 점에서 가장 가까운 조이는 모서리이고, 그 모서리의 조임 `CONTRACT_WARN`초 전에 청크마다 한 번 난다), `Main.stomach_refused(world_pos)` → full_refuse(위치 없음), 끼임 이벤트 `squeeze` → squeeze_breath, `Main.crush_progress()` → 상시 층 crush_breath(SFX 버스, 음량 = 진행, 재생 속도 0.9~1.25). 전부 읽기와 구독이다.
 
 외부 HTTP API나 로그인 프로토콜은 제공하지 않는다. 키트의 Godot 호출과 신호, 로컬 파일 형식이 소비자 경계다.
 
