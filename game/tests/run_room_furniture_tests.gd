@@ -63,10 +63,76 @@ func _run() -> void:
 	_test_basin(r)
 	_test_small_fixtures(r)
 	_test_container()
+	_test_shell_seams(r)
 	print("ROOM FURNITURE: %d passed, %d failed" % [passed, failed])
 	m.queue_free()
 	await frames(2)
 	quit(1 if failed else 0)
+
+## 8. the shell (floor, ceiling, four walls) stays closed under the screen
+##    snap: every vertex on a shell plane is shared by all the planes and
+##    pieces that meet there (no vertex part-way along another piece's edge),
+##    and the ceiling snaps exactly as the walls do. A vertex the neighbour
+##    lacks, or a plane that does not snap, parts the planes by a pixel or
+##    two and the flesh outside shows through as dots (2026-11-14 review;
+##    capture_room_seams.gd counts them on screen).
+func _test_shell_seams(r: FPRestroom) -> void:
+	var tiles: MeshInstance3D = r.get_node("Tiles")
+	var h := FPRestroom.HALF
+	# the shell's own triangles: all three corners on the room box
+	var on_box := func(p: Vector3) -> bool:
+		var q := (p - Vector3(0, h.y, 0)).abs()
+		return q.x <= h.x + 1e-4 and q.y <= h.y + 1e-4 and q.z <= h.z + 1e-4 and (absf(q.x - h.x) < 1e-4 or absf(q.y - h.y) < 1e-4 or absf(q.z - h.z) < 1e-4)
+	var tris: Array = []
+	var points := {}
+	for si in range(tiles.mesh.get_surface_count()):
+		var v: PackedVector3Array = tiles.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+		for i in range(0, v.size(), 3):
+			if on_box.call(v[i]) and on_box.call(v[i + 1]) and on_box.call(v[i + 2]):
+				tris.append([v[i], v[i + 1], v[i + 2]])
+				for k in range(3):
+					points[v[i + k]] = true
+	check(tris.size() > 40, "the shell is found (%d triangles)" % tris.size())
+	var t_junctions := 0
+	for t in tris:
+		for k in range(3):
+			var a: Vector3 = t[k]
+			var b: Vector3 = t[(k + 1) % 3]
+			var ab := b - a
+			for p in points.keys():
+				var w: float = (p - a).dot(ab) / ab.length_squared()
+				if w > 0.001 and w < 0.999 and (a + ab * w).distance_to(p) < 1e-4:
+					t_junctions += 1
+	check(t_junctions == 0, "no shell vertex lies part-way along another shell edge (%d)" % t_junctions)
+	# the cuts cover the hole and the doorway
+	var xs := FPRestroom.shell_cuts(0)
+	var ys := FPRestroom.shell_cuts(1)
+	var zs := FPRestroom.shell_cuts(2)
+	check(xs.size() == 6 and ys.size() == 3 and zs.size() == 4, "shell cuts: room faces, vent hole sides, doorway sides and top (%d, %d, %d)" % [xs.size(), ys.size(), zs.size()])
+	var area := 0.0
+	var ceil_area := 0.0
+	var front_area := 0.0
+	for t in tris:
+		var ar: float = (t[1] - t[0]).cross(t[2] - t[0]).length() * 0.5
+		area += ar
+		if absf(t[0].y - 2.0 * h.y) < 1e-4 and absf(t[1].y - 2.0 * h.y) < 1e-4 and absf(t[2].y - 2.0 * h.y) < 1e-4:
+			ceil_area += ar
+		if absf(t[0].z - h.z) < 1e-4 and absf(t[1].z - h.z) < 1e-4 and absf(t[2].z - h.z) < 1e-4:
+			front_area += ar
+	check(absf(ceil_area - (4.0 * h.x * h.z - 0.52 * 0.52)) < 0.001, "the ceiling is whole but for the vent hole (%.3f m2)" % ceil_area)
+	check(absf(front_area - (4.0 * h.x * h.y - 2.0 * FPRestroom.DOOR_HALF_W * FPRestroom.DOOR_H)) < 0.001, "the front wall is whole but for the doorway (%.3f m2)" % front_area)
+	# the ceiling: plain, and snapped by the walls' own rule
+	var wall := tiles.mesh.surface_get_material(0) as ShaderMaterial
+	var ceil := tiles.mesh.surface_get_material(2) as ShaderMaterial
+	check(ceil != null and ceil.get_shader_parameter("tile_mode") == null, "the ceiling is plain, no tile grid")
+	check(ceil != null and wall != null and is_equal_approx(float(ceil.get_shader_parameter("snap_precision")), float(wall.get_shader_parameter("snap_precision"))), "the ceiling snaps on the walls' grid")
+	var snap_lines := ["vec2 ndc = clip.xy / clip.w;", "float grid = max(snap_precision, 8.0);", "ndc = floor(ndc * grid + 0.5) / grid;", "clip.xy = ndc * clip.w;", "POSITION = clip;"]
+	var kit_code := (load("res://addons/flesh_dig_kit/common/fdk_ps1_material.gdshader") as Shader).code
+	var ceil_code := ceil.shader.code if ceil != null else ""
+	for line in snap_lines:
+		check(kit_code.contains(line) and ceil_code.contains(line), "walls and ceiling snap by the same line: %s" % line)
+	var col: Color = ceil.get_shader_parameter("albedo") if ceil != null else Color.BLACK
+	check(col.is_equal_approx(Color(0.92, 0.92, 0.90)), "the ceiling keeps its off-white")
 
 func _test_vent_and_light(r: FPRestroom) -> void:
 	var v: Vector3 = FPRestroom.VENT_CENTER

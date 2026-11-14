@@ -10,6 +10,7 @@ const K := preload("res://main/art/fp_art_kit.gd")
 
 ## Original 4.5 m room width; retain the requested photo furniture layout.
 const HALF := Vector3(2.25, 1.3, 1.5)
+const CEILING_SHADER := preload("res://main/scripts/fp_room_ceiling.gdshader")
 const TILE := 0.3
 const DOOR_HALF_W := 0.45
 const DOOR_H := 2.05
@@ -145,17 +146,32 @@ func _build_tiles(mat: Material, floor_mat: Material) -> void:
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
     var grout := Color(0.52, 0.55, 0.58)
     var h := HALF
-    # grout planes (slightly behind tiles), then tiles
-    _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 0, 2 * h.z), Vector3.UP, grout)
-    for r in _minus_hole([-h.x, -h.z, h.x, h.z]):
-        _plane(st, Vector3(r[0], 2 * h.y, r[1]), Vector3(r[2] - r[0], 0, 0), Vector3(0, 0, r[3] - r[1]), Vector3.DOWN, grout)
-    _plane(st, Vector3(-h.x, 0, -h.z), Vector3(2 * h.x, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.BACK, grout)
-    _plane(st, Vector3(-h.x, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3(0, 2 * h.y, 0), Vector3.RIGHT, grout)
-    _plane(st, Vector3(h.x, 0, -h.z), Vector3(0, 0, 2 * h.z), Vector3(0, 2 * h.y, 0), Vector3.LEFT, grout)
-    # front wall grout minus doorway: three pieces
-    _plane(st, Vector3(-h.x, 0, h.z), Vector3(h.x - DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.FORWARD, grout)
-    _plane(st, Vector3(DOOR_HALF_W, 0, h.z), Vector3(h.x - DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y, 0), Vector3.FORWARD, grout)
-    _plane(st, Vector3(-DOOR_HALF_W, DOOR_H, h.z), Vector3(2 * DOOR_HALF_W, 0, 0), Vector3(0, 2 * h.y - DOOR_H, 0), Vector3.FORWARD, grout)
+    # The shell: six planes cut at one shared set of lines (SHELL_X/Y/Z).
+    # Every vertex is snapped to the screen grid on its own, so a plane
+    # whose edge has a vertex the neighbouring plane's edge lacks (the
+    # ceiling pieces round the vent hole against one long wall top, the door
+    # pieces against each other) parts from it and the outside shows through
+    # as dots. With the same cuts on both sides of every edge the planes
+    # share all their edge vertices and stay closed.
+    var xs := shell_cuts(0)
+    var ys := shell_cuts(1)
+    var zs := shell_cuts(2)
+    for i in range(xs.size() - 1):
+        for k in range(zs.size() - 1):
+            _rect(st, Vector3(xs[i], 0, zs[k]), Vector3(xs[i + 1], 0, zs[k]), Vector3(xs[i + 1], 0, zs[k + 1]), Vector3(xs[i], 0, zs[k + 1]), Vector3.UP, grout)
+            var cx := (xs[i] + xs[i + 1]) * 0.5
+            var cz := (zs[k] + zs[k + 1]) * 0.5
+            if not (cx > VENT_HOLE[0] and cx < VENT_HOLE[2] and cz > VENT_HOLE[1] and cz < VENT_HOLE[3]):
+                _rect(st, Vector3(xs[i], 2 * h.y, zs[k]), Vector3(xs[i + 1], 2 * h.y, zs[k]), Vector3(xs[i + 1], 2 * h.y, zs[k + 1]), Vector3(xs[i], 2 * h.y, zs[k + 1]), Vector3.DOWN, grout)
+        for j in range(ys.size() - 1):
+            _rect(st, Vector3(xs[i], ys[j], -h.z), Vector3(xs[i + 1], ys[j], -h.z), Vector3(xs[i + 1], ys[j + 1], -h.z), Vector3(xs[i], ys[j + 1], -h.z), Vector3.BACK, grout)
+            # the front wall, less the doorway
+            if not (absf((xs[i] + xs[i + 1]) * 0.5) < DOOR_HALF_W and (ys[j] + ys[j + 1]) * 0.5 < DOOR_H):
+                _rect(st, Vector3(xs[i], ys[j], h.z), Vector3(xs[i + 1], ys[j], h.z), Vector3(xs[i + 1], ys[j + 1], h.z), Vector3(xs[i], ys[j + 1], h.z), Vector3.FORWARD, grout)
+    for k in range(zs.size() - 1):
+        for j in range(ys.size() - 1):
+            _rect(st, Vector3(-h.x, ys[j], zs[k]), Vector3(-h.x, ys[j], zs[k + 1]), Vector3(-h.x, ys[j + 1], zs[k + 1]), Vector3(-h.x, ys[j + 1], zs[k]), Vector3.RIGHT, grout)
+            _rect(st, Vector3(h.x, ys[j], zs[k]), Vector3(h.x, ys[j], zs[k + 1]), Vector3(h.x, ys[j + 1], zs[k + 1]), Vector3(h.x, ys[j + 1], zs[k]), Vector3.LEFT, grout)
 
     # (tiles themselves: flat planes above + the baked tile_tex normal map,
     # 2026-09-30 optimisation -- was ~7400 bevelled-tile triangles)
@@ -245,26 +261,23 @@ static func tile_texture() -> ImageTexture:
     _tile_tex = ImageTexture.create_from_image(img)
     return _tile_tex
 
-## Splits rect [x0, z0, x1, z1] into the parts outside VENT_HOLE.
-func _minus_hole(r: Array) -> Array:
-    var hx0: float = VENT_HOLE[0]
-    var hz0: float = VENT_HOLE[1]
-    var hx1: float = VENT_HOLE[2]
-    var hz1: float = VENT_HOLE[3]
-    if r[2] <= hx0 or r[0] >= hx1 or r[3] <= hz0 or r[1] >= hz1:
-        return [r]
-    var out: Array = []
-    if r[0] < hx0:
-        out.append([r[0], r[1], hx0, r[3]])
-    if r[2] > hx1:
-        out.append([hx1, r[1], r[2], r[3]])
-    var mx0 := maxf(r[0], hx0)
-    var mx1 := minf(r[2], hx1)
-    if r[1] < hz0:
-        out.append([mx0, r[1], mx1, hz0])
-    if r[3] > hz1:
-        out.append([mx0, hz1, mx1, r[3]])
-    return out.filter(func(q): return q[2] - q[0] > 0.002 and q[3] - q[1] > 0.002)
+## The lines every shell plane is cut at, along `axis` (0 x, 1 y, 2 z): the
+## room's own faces, the vent hole's sides and the doorway's sides and top.
+static func shell_cuts(axis: int) -> PackedFloat32Array:
+    var at: Array = []
+    match axis:
+        0: at = [-HALF.x, VENT_HOLE[0], VENT_HOLE[2], -DOOR_HALF_W, DOOR_HALF_W, HALF.x]
+        1: at = [0.0, DOOR_H, 2.0 * HALF.y]
+        _: at = [-HALF.z, VENT_HOLE[1], VENT_HOLE[3], HALF.z]
+    at.sort()
+    var out := PackedFloat32Array()
+    for v in at:
+        if out.is_empty() or float(v) - out[out.size() - 1] > 0.002:
+            out.append(float(v))
+    return out
+
+func _rect(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, n: Vector3, col: Color) -> void:
+    FDKLowPoly.add_quad(st, a, b, c, d, n, col)
 
 func _tile_color(a: int, b: int, c: int, floor_tile: bool) -> Color:
     var hsh := FDKLowPoly.hash3(a, b, c)
@@ -332,9 +345,12 @@ func _split_floor(mesh: ArrayMesh, wall_mat: Material, floor_mat: Material) -> A
     var out := FDKLowPoly.planar_uv_mesh(tmp, 2.2)
     out.surface_set_material(0, wall_mat)
     out.surface_set_material(1, floor_mat)
-    var ceiling := StandardMaterial3D.new()
-    ceiling.albedo_color = Color(0.92, 0.92, 0.90)
-    ceiling.roughness = 1.0
+    # the ceiling is plain (no tile grid), but snaps its vertices with the
+    # walls so the two stay closed along their shared edge
+    var ceiling := ShaderMaterial.new()
+    ceiling.shader = CEILING_SHADER
+    ceiling.set_shader_parameter("albedo", Color(0.92, 0.92, 0.90))
+    ceiling.set_shader_parameter("snap_precision", (wall_mat as ShaderMaterial).get_shader_parameter("snap_precision"))
     out.surface_set_material(2, ceiling)
     return out
 

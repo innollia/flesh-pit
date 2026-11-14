@@ -172,7 +172,8 @@ func _run() -> void:
     for si in tiles.mesh.get_surface_count():
         tri += tiles.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX].size() / 3
         if si == 2:
-            _assert(tiles.mesh.surface_get_material(si) is StandardMaterial3D, "photo ceiling is plain, without wall tiles")
+            var cm = tiles.mesh.surface_get_material(si)
+            _assert(cm != null and not (cm is ShaderMaterial and (cm as ShaderMaterial).get_shader_parameter("tile_mode") == true), "photo ceiling is plain, without wall tiles")
             continue
         var tm := tiles.mesh.surface_get_material(si) as ShaderMaterial
         _assert(tm != null and tm.get_shader_parameter("tile_mode") == true and tm.get_shader_parameter("tile_tex") is Texture2D, "restroom tile surface %d uses the tile normal map" % si)
