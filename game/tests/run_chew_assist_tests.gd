@@ -15,8 +15,8 @@ extends SceneTree
 ## - standing and crouching out in the flesh: the bite never stays silent more
 ##   than 4 s and the body gets on 2 m (the crouched body crawls up the lip
 ##   with crouch + eat held; it used to be held under it)
-## Not covered here: a membrane under the line, extra-cell mutations and the
-## big saw, a face farther than the arm + 1 m.
+## A membrane or a thing that is not flesh under the line, extra-cell mutations
+## and the big saw, a face farther than the arm + 1 m: run_chew_assist_edges_tests.gd.
 
 var m: Node3D
 var passed := 0
@@ -144,6 +144,7 @@ func dig_on(label: String, seconds: float, far: float) -> Dictionary:
 	press("fdk_move_forward", true)
 	var t := 0.0
 	var log_t := 0.0
+	var reached := 0.0 ## the farthest the body got with the inputs held
 	var eye_drift := 0.0
 	while t < seconds:
 		await process_frame
@@ -160,7 +161,8 @@ func dig_on(label: String, seconds: float, far: float) -> Dictionary:
 			if not lh.is_empty():
 				what = "tissue %d" % m.terrain.tissue_at(m._terrain_target(lh, m.player.get_look_ray()[1])) if lh.collider.has_meta("fdk_terrain_chunk") else String(lh.collider.name)
 			print("INFO: %s t=%.0f pos=%s adv=%.2f tears=%d assist=%d fill=%.1f stuck=%.2f sq=%.2f aim=%s short=%s refusals=%d" % [label, t, m.player.global_position, (m.player.global_position - start).dot(aim), tears.size() - first, m.assist_tears - assist0, m.stomach.fill, m.player.stuck_time, m.player.squeeze(), what, m._reach_short_point() != Vector3.INF, m.tissue_tools.membrane_refusals])
-		if (m.player.global_position - start).dot(aim) >= far:
+		reached = maxf(reached, (m.player.global_position - start).dot(aim))
+		if reached >= far:
 			break
 	press("fdk_eat", false)
 	press("fdk_move_forward", false)
@@ -168,7 +170,9 @@ func dig_on(label: String, seconds: float, far: float) -> Dictionary:
 	var eaten := 0.0
 	for i in range(first, tears.size()):
 		eaten += float(tears[i][2])
-	var adv: float = (m.player.global_position - start).dot(aim)
+	# The run stops itself at `far`: the body settling back a hair once the
+	# inputs are let go is not a stall, so the judged advance is the farthest.
+	var adv: float = maxf(reached, (m.player.global_position - start).dot(aim))
 	var out := {
 		"adv": adv, "tears": tears.size() - first, "assist": m.assist_tears - assist0,
 		"gap": longest_gap(t0, full_at if full_at >= 0.0 else clock),

@@ -449,7 +449,14 @@ func _process_move_and_climb(delta: float) -> void:
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
-	if _climb_input != 0.0:
+	if _climb_input < 0.0 and is_on_floor() and _pitch > -DESCENT_HOLDS_BELOW:
+		# The same level digger standing on a floor: pressing it down did
+		# nothing on the flat and slid it back down a floor that rises ahead
+		# (the squeezed crawl is slower than the push), so it stood stuck in
+		# its own tunnel. It walks as it would without the descent input; off
+		# the floor it still goes down below.
+		velocity.y = 0.0
+	elif _climb_input != 0.0:
 		velocity.y = _climb_input * config.climb_speed
 		if _climb_input > 0.0 and config.climb_up_speed > 0.0:
 			velocity.y = config.climb_up_speed
