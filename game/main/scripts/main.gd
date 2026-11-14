@@ -31,7 +31,8 @@ signal belt_refused
 ## rubbery creak that says a blade is needed.
 signal grab_refused(tissue: int, world_pos: Vector3)
 ## V away from the toilet and rest points before the first lever settlement:
-## the body retches but nothing comes up (decision 0009).
+## the body retches but nothing comes up (decision 0009), unless the stomach
+## is at its end (decision 0013: then it does come up).
 signal dry_heaved
 ## The stomach is full and a bite at real, grippable flesh was refused: at
 ## most once every FULL_REFUSE_EVERY seconds while the eat input is held
@@ -1886,10 +1887,13 @@ func request_vomit() -> void:
 	elif _near_rest_point() >= 0:
 		hand_motions.play_vomit(false, stomach.fill_ratio())
 		settle_at_rest_point()
-	elif not lever_settled:
+	elif not lever_settled and not stomach.is_full():
 		hand_motions.play_gag()
 		dry_heaved.emit()
 	else:
+		# also before the first settlement once the stomach is at its end and
+		# every bite is refused: with the tunnel grown shut behind there is no
+		# other way out (decision 0013). Nothing is paid for it.
 		hand_motions.play_vomit(false, stomach.fill_ratio())
 		stomach.vomit()
 		mutation_apply.take_cud_credit() # lost with the rest

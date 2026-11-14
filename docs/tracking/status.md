@@ -1,6 +1,6 @@
 # 현재 상태
 
-## 2026-11-14 경제 재계산 (결정 0012)
+## 2026-11-14 경제 재계산 (결정 0012, 0013)
 
 지시서 셋(경제 재계산, 칼 가중, 과식 걸음)을 코드에 넣었다. 값과 이유는 `docs/tracking/decisions/0012-economy-recalculation.md`, 규칙은 `docs/business-rules.md`, 감사 표는 `docs/design/economy.md`다.
 
@@ -12,6 +12,7 @@
 - 계산기: `tools/economy/params.json`을 코드와 맞추고(값 9개, 새 항목 1개, 줄 번호 62개), 칼 표와 과식 걸음을 식에 넣고, `docs/design/economy.md` 감사 표를 다시 썼다. 자체 검사 157개 통과, "가상 값" 없음.
 - 검사(격리 사본, 정상 플레이 저장은 읽지 않음): 새 `run_economy_r2_tests.gd` 32, `run_gorge_walk_tests.gd` 34 통과. 기대값을 고친 묶음: progression_t4 131, tissue_tools 148, audio, terrain_visual 207, mutation(기준선 Tab 자세 4건만 실패), settle_vent(기준선 3건만), restoration_t9 72, main(기준선 7건만), 옛 저장 묶음 넷(terrain_old_save 671, restoration_old_v5 143, historical_progress 32, vent_save 32). 그대로 통과: run_tests, save_load, mutation_wire, body_marks, play_log, biome, regen_regression, crush_t8, barrier_pressure, body_signals, hand_controls, compass_start, chew_stop, surface_pending, surface_regression, ui_polish, dig_regression, solid_dig, vent_teeth, vent_look, vent_labels, nerve_t7, squeeze, ending_bite, live_interactions, controls_hierarchy, motion, belt_reach, menu, preservation. 기준선 그대로 실패: revision 1, belt 3, perf_budget 1, continuation 스크립트 오류. 기준선에 없던 실패 1건(`run_vent_hands_tests.gd`, 환풍구 손바닥)은 이 작업이 고친 파일과 무관해 `findings.md`에 적었다.
 - 굴 시험의 실제 값: 2줄 굴 34걸음, 한 입 2.7초 → 돌아설 때 12걸음 닫힘, 13걸음 다시 뜯어 137.9단위로 귀환(기준 110~150). 한 입 0.9초 → 닫힌 걸음 0.
+- 첫 정산 전의 갇힘(결정 0013): 새 `run_first_seal_tests.gd`가 재현했다(문 밖 3.9 m, 위장 160, 등 뒤 굴이 닫힘 → 60초 동안 죽지 않고 못 걷고 못 씹고 못 들고 못 토함). 위장이 상한일 때만 첫 정산 전에도 밖 토하기가 위장을 비우게 했다(보상 없음, 159 이하는 헛구역질 그대로). 14항목 통과.
 - 실행판: 다시 만들지 않았다. 코드와 검사까지다.
 - 사람이 볼 것: (1) 한 입 박자와 원정 길이(`FP_PLAY_LOG`로 기록해 계산기 `--log`로 읽기), (2) 닫힌 굴을 다시 뜯어 돌아오는 것이 버그가 아니라 "닫혔다"로 읽히는지, (3) 과식 걸음 75%·머리 흔들림·발소리가 무겁게 느껴지되 답답하지 않은지, (4) 뜯김·삼킴·털 소리가 같은 살 양에 두 배로 잦아진 것이 시끄럽지 않은지, (5) 팔 털이 자라는 속도가 전과 같아 보이는지, (6) 칼을 든 과식이 전보다 위험해진 것(압사 여유 1.78 → 1.11).
 - 하지 않은 것: 문 앞 첫 길의 조직 바꾸기(안건 9), 굴착 몰입 음악 층, 화장실 음악 층, M15·믹서기의 위장 상한, 못 사는 변이 줄 깜박임, 통로 가장자리 보조(안건 10, 다음 작업). 큰 톱은 그대로다. 화이트보드는 글자만 고쳤고 그림(png)은 다시 내지 않았다.
