@@ -512,10 +512,10 @@ func _skin() -> Material:
         m.shader = sh
         # under a modeled hand the arm takes the same lower, edge-darkened
         # light as the model's own shader, so wrist and hand are one skin
-        if hand_tone or _model_kind() > 0:
+        if hand_tone or (_model_kind() > 0 and not MODELS[_model_kind()].get("plain", false)):
             m.set_shader_parameter("tone", 1.0)
             m.set_shader_parameter("tone_tint", Vector3(TONE_TINT.r, TONE_TINT.g, TONE_TINT.b))
-            m.set_shader_parameter("tone_wrap", TONE_WRAP)
+            m.set_shader_parameter("tone_wrap", MODEL_WRAP if _model_kind() > 0 else TONE_WRAP)
             m.set_shader_parameter("tone_key_view", TONE_KEY_VIEW)
             m.set_shader_parameter("tone_edge", Vector3(TONE_EDGE.r, TONE_EDGE.g, TONE_EDGE.b))
             m.set_shader_parameter("tone_edge_amount", TONE_EDGE_AMOUNT)
@@ -834,6 +834,10 @@ func _set_chirality(rig: Dictionary, c: float) -> void:
     if rig.has("models"):
         for mc in rig["models"]:
             (rig["models"][mc]["node"] as Node3D).visible = float(mc) == c
+    if rig.has("model_seat"):
+        # the item lies on the model's palm, which turns with its own wrist
+        var ms: Vector3 = rig["model_seat"]
+        slot.position = _mirror_basis(rig["model_wrist"], c) * Vector3(ms.x * c, ms.y, ms.z)
 
 ## Mirror a rotation for a left hand (reflect across x = 0).
 static func _mirror_basis(b: Basis, c: float) -> Basis:
@@ -873,19 +877,29 @@ const MODELS := {
         "files": {1.0: "godot_xr_tools_hands/Hand_Nails_low_L.gltf", -1.0: "godot_xr_tools_hands/Hand_Nails_low_R.gltf"},
         "basis": {1.0: [Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0)], -1.0: [Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0)]},
         "normal": {1.0: Vector3(1, 0, 0), -1.0: Vector3(-1, 0, 0)},
-        "pivot": Vector3(0, -0.008, 0.02), "scale": 0.76, "rest_curl": 0.5, "cut": 0.02,
+        "pivot": Vector3(0, -0.008, 0.02), "scale": 0.8, "rest_curl": 0.5, "cut": 0.02,
         "fingers": ["Index", "Middle", "Ring", "Little"], "joints": ["_Proximal", "_Intermediate", "_Distal"],
         "thumb": ["Thumb_Proximal", "Thumb_Distal"], "suffix": {1.0: "_L", -1.0: "_R"},
         "texture": "godot_xr_tools_hands/textures/caucasian_realistic_baseColor.png",
+        # a man's hand as it comes: the palm narrowed and thinned, the
+        # fingers drawn longer and slimmer, the thumb turned in from its
+        # catcher's-mitt spread, and nail plates built on (it has none)
+        "hand_scale": Vector3(0.84, 1.0, 0.88), "finger_shape": [1.12, 0.84], "thumb_shape": [1.0, 0.86],
+        "gather": 0.75, "thumb_root": "Thumb_Metacarpal", "thumb_in": 0.5, "thumb_flex": 0.2,
+        "cup": [[8, 16, 10], [12, 22, 13], [17, 28, 15], [22, 32, 17]],
+        "seat": Vector2(0.0, -0.066), "tip": "_Tip", "nail_plates": true, "detail_amount": 0.5,
     },
     2: {
         "files": {1.0: "blender_made/slender_hand_r.glb", -1.0: "blender_made/slender_hand_r.glb"},
         "basis": {1.0: [Vector3(-1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)], -1.0: [Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)]},
         "normal": {1.0: Vector3(0, -1, 0), -1.0: Vector3(0, -1, 0)},
-        "pivot": Vector3(0, 0, 0.004), "scale": 0.95, "rest_curl": 0.35, "cut": 0.012,
+        "pivot": Vector3(0, 0, 0.004), "scale": 1.0, "rest_curl": 0.44, "cut": 0.012, "plain": true,
         "fingers": ["index", "middle", "ring", "pinky"], "joints": ["_1", "_2", "_3"],
         "thumb": ["thumb_2", "thumb_3"], "suffix": {1.0: "", -1.0: ""},
         "texture": "",
+        "gather": 0.5, "thumb_root": "thumb_1", "thumb_in": 0.22, "thumb_flex": 0.15,
+        "cup": [[10, 18, 12], [14, 24, 14], [19, 30, 16], [24, 34, 18]],
+        "seat": Vector2(0.0, -0.07),
     },
     3: {
         "files": {1.0: "blender_made/vent_hand.glb", -1.0: "blender_made/vent_hand.glb"},
@@ -895,13 +909,40 @@ const MODELS := {
         "fingers": ["index", "middle", "ring", "little"], "joints": ["_1", "_2", "_3"],
         "thumb": ["thumb_2", "thumb_3"], "suffix": {1.0: "", -1.0: ""},
         "texture": "", "own": true,
+        "gather": 0.5, "thumb_root": "thumb_1", "thumb_in": 0.3, "thumb_flex": 0.15,
+        "cup": [[10, 18, 12], [14, 24, 14], [19, 30, 16], [24, 34, 18]],
+        "seat": Vector2(0.0, -0.066),
     },
 }
+## What the model hands hold in common, on top of the tube hand's pose
+## (art review 2026-11-14: three copies of one flat, spread hand read as the
+## fan the user turned down; the item lay on the wrist; the palm burnt out
+## white against the tiles; a band and a step showed at the wrist).
+## "cup" (degrees at the knuckle, middle and tip joint of the index, middle,
+## ring and little finger) curls the fingers up round the item, more toward
+## the little finger; each hand takes its own share of it (MODEL_CUP_VARY).
+## "gather" is the share of the model's rest spread taken out, so the
+## fingers lie together; "thumb_in" turns the thumb's root toward the index.
+## "seat" puts the item further down the palm than SEAT. Each hand's wrist
+## leans a little to one edge and bends a little, its own way.
+## MODEL_WRAP is the light range (TONE_WRAP for the tube hand's TONE).
+const MODEL_CUP_VARY := 0.45
+const MODEL_WRIST_SIDE := 0.13
+const MODEL_WRIST_BEND := 0.09
+const MODEL_WRAP := Vector2(0.58, 0.9)
+## Nail plates built for a model that has none ("nail_plates"): an almond
+## over the far share of the tip joint, MODEL_NAIL_WIDE of the finger's
+## breadth, its free edge MODEL_NAIL_PAST beyond the fingertip. Each hangs
+## on its tip joint's bone (a BoneAttachment3D named Nail<finger>): the place
+## the long sculpted nails go later.
+const MODEL_NAIL_FROM := 0.4
+const MODEL_NAIL_WIDE := 0.8
+const MODEL_NAIL_PAST := 0.004
 ## Screen grid the model's vertices snap to, the kit's PS1 setting
 ## (FDKPs1Settings.vertex_snap_precision), and the side of the XR hand's
 ## skin texture after it is cut down to coarse texels.
 const MODEL_SNAP := 130.0
-const MODEL_TEXELS := 128
+const MODEL_TEXELS := 256
 var _model_mats: Array = []
 var _model_tex: ImageTexture
 var _model_tex_mean := Vector3.ONE
@@ -951,6 +992,10 @@ uniform vec2 tone_wrap = vec2(0.7, 1.0);
 uniform vec3 tone_key_view = vec3(-0.6, 0.3, 0.74);
 uniform vec3 tone_edge = vec3(0.93, 0.7, 0.66);
 uniform float tone_edge_amount = 0.58;
+// "plain": the tube hand's own light (SKIN_SHADER without TONE), so the arm stays as it is
+uniform float plain = 0.0;
+uniform vec3 key_dir = vec3(0.35, 0.85, 0.4);
+uniform float rim = 0.12;
 varying vec3 wn;
 varying float wy;
 varying float up_stub;
@@ -972,6 +1017,7 @@ void fragment() {
     if (!FRONT_FACING) { n = -n; }
     vec3 v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
     vec3 l = normalize((INV_VIEW_MATRIX * vec4(tone_key_view, 0.0)).xyz);
+    if (plain > 0.5) { l = normalize(key_dir); }
     float wrap = pow(clamp(dot(n, l) * 0.5 + 0.5, 0.0, 1.0), 1.3);
     float fill = clamp(dot(n, normalize(fill_dir)) * 0.5 + 0.5, 0.0, 1.0);
     float ndv = clamp(dot(n, v), 0.0, 1.0);
@@ -982,11 +1028,13 @@ void fragment() {
         vec3 d = texture(detail, UV).rgb / detail_mean;
         base *= mix(vec3(1.0), clamp(d, 0.6, 1.25), detail_amount);
     }
-    base = mix(base * tone_tint, nail_col, nail);
-    vec3 col = base * mix(tone_wrap.x, tone_wrap.y, wrap) * mix(0.97, 1.03, fill);
+    base = mix(mix(base * tone_tint, base, plain), nail_col, nail);
+    vec2 wr = mix(tone_wrap, vec2(0.66, 1.04), plain);
+    vec3 col = base * mix(wr.x, wr.y, wrap) * mix(0.97, 1.03, fill);
     col += base * warm * (sss + 0.1 * flush) * (1.0 - wrap * (1.0 - 0.5 * flush)) * (1.0 - nail);
     col = mix(col, col * mix(vec3(1.0), warm * 1.3, 0.55), fres * 0.4 * (1.0 - nail));
-    col = mix(col, col * tone_edge, tone_edge_amount * pow(1.0 - ndv, 1.7) * (1.0 - nail));
+    col += vec3(0.92, 0.95, 1.0) * rim * fres * wrap * plain * (1.0 - nail);
+    col = mix(col, col * tone_edge, tone_edge_amount * (1.0 - plain) * pow(1.0 - ndv, 1.7) * (1.0 - nail));
     vec3 h = normalize(l + v);
     float nh = max(dot(n, h), 0.0);
     col += vec3(1.0, 0.97, 0.95) * pow(nh, 14.0) * sheen * (1.0 - nail);
@@ -1016,10 +1064,12 @@ func _model_material(spec: Dictionary, is_nail: bool, facing: float) -> ShaderMa
     m.set_shader_parameter("cut_axis", spec.get("cut_axis", Vector3(0, 0, 1)))
     m.set_shader_parameter("use_own", 1.0 if spec.get("own", false) and not is_nail else 0.0)
     m.set_shader_parameter("tone_tint", Vector3(TONE_TINT.r, TONE_TINT.g, TONE_TINT.b))
-    m.set_shader_parameter("tone_wrap", TONE_WRAP)
+    m.set_shader_parameter("tone_wrap", MODEL_WRAP)
     m.set_shader_parameter("tone_key_view", TONE_KEY_VIEW)
     m.set_shader_parameter("tone_edge", Vector3(TONE_EDGE.r, TONE_EDGE.g, TONE_EDGE.b))
     m.set_shader_parameter("tone_edge_amount", TONE_EDGE_AMOUNT)
+    m.set_shader_parameter("detail_amount", float(spec.get("detail_amount", 0.7)))
+    m.set_shader_parameter("plain", 1.0 if spec.get("plain", false) else 0.0)
     var tex_file := str(spec["texture"])
     if tex_file != "" and not is_nail:
         if _model_tex == null:

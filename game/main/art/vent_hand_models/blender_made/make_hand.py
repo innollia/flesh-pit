@@ -20,32 +20,43 @@ from mathutils import Vector, Matrix
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_NAME = "slender_hand_r.glb"
 
-SKIN_TRIS = 3200          # skin budget; nails add 5 * 60
-VOXEL = 0.0009
-SMOOTH_REPEAT = 8
+SKIN_TRIS = 4800          # skin budget; nails add 5 * 60
+VOXEL = 0.0008
+SMOOTH_REPEAT = 12
 
-MID_LEN = 0.092           # middle finger, knuckle to tip
+# Sized to the game's own tube hand (fp_vent.gd: palm 86 mm, palm half-width 28 mm, wrist
+# 22 x 14 mm), so the model sits on that forearm without a step and reads as delicate as it does.
+MID_LEN = 0.085           # middle finger, knuckle to tip (0.072 read as stubs once curled)
 PHALANX = (0.46, 0.29, 0.25)
-TIP_TAPER = 0.74          # tip half-width / root half-width
+TIP_TAPER = 0.60          # tip half-width / root half-width
+NAIL_WIDTH = 0.78         # nail half-width / finger half-width under it
+WRIST_HALF = 0.0216       # the game forearm at the wrist: 0.98 * 22.2 mm across ...
+WRIST_THICK = 0.0142      # ... and 0.64 * 22.2 mm deep
 
 # name, knuckle x, knuckle y, length ratio, root half-width, spread deg, curl deg (mcp, pip, dip)
+# The curl is 1.3 times the game's offer pose up close (fp_vent LOOK_CURL 0.44 * the finger's curl
+# share * JOINT_SHARE; at that curl the longer modelled fingers still read straight), built in so the
+# bones stand at rest where the hand is seen; the fingers lie
+# together, their tips drawn a little in toward the middle finger as the tube hand's are.
 FINGERS = [
-    ("index",  -0.0250, 0.0895, 0.93, 0.0080,  5.5, (5.0, 9.0, 6.0)),
-    ("middle", -0.0082, 0.0950, 1.00, 0.0083,  1.2, (6.0, 10.0, 7.0)),
-    ("ring",    0.0085, 0.0910, 0.95, 0.0078, -3.2, (7.0, 12.0, 8.0)),
-    ("pinky",   0.0236, 0.0815, 0.77, 0.0067, -8.5, (8.0, 14.0, 9.0)),
+    ("index",  -0.0198, 0.0765, 0.93, 0.0062, -1.2, (11.0, 26.0, 16.0)),
+    ("middle", -0.0066, 0.0815, 1.00, 0.0064, -0.2, (13.5, 32.0, 20.0)),
+    ("ring",    0.0067, 0.0785, 0.95, 0.0060,  0.9, (15.5, 36.0, 22.5)),
+    ("pinky",   0.0189, 0.0700, 0.78, 0.0052,  2.2, (19.0, 44.0, 27.0)),
 ]
-THUMB_BASE = Vector((-0.0190, 0.0200, -0.0075))
-THUMB_FWD = Vector((-0.50, 0.84, -0.20))
-THUMB_BACK = Vector((-0.50, -0.30, 0.80))
-THUMB_SEG = (0.042, 0.033, 0.029)
-THUMB_ROOT_W = 0.0104
-THUMB_CURL = (0.0, 9.0, 7.0)
+# The thumb lies in beside the palm, about 28 degrees off the index, its pad turned toward the palm.
+THUMB_BASE = Vector((-0.0160, 0.0230, -0.0065))
+THUMB_FWD = Vector((-0.48, 0.86, -0.14))
+THUMB_BACK = Vector((-0.72, -0.10, 0.68))
+THUMB_SEG = (0.032, 0.028, 0.024)
+THUMB_ROOT_W = 0.0090
+THUMB_CURL = (0.0, 12.0, 18.0)
+THUMB_TAPER = 0.60
 
 SKIN_BACK = (0.80, 0.56, 0.46)
-SKIN_PALM = (0.80, 0.49, 0.42)
+SKIN_PALM = (0.80, 0.54, 0.45)
 SKIN_PAD = (0.80, 0.36, 0.32)
-NAIL_COL = (0.72, 0.20, 0.26)
+NAIL_COL = (0.70, 0.36, 0.40)
 
 
 def smooth01(t):
@@ -96,28 +107,29 @@ class Digit:
     def width(self, s):
         """Half-width without the round tip."""
         t = max(0.0, min(1.0, s / self.length))
-        w = self.root_w * (1.0 + (TIP_TAPER - 1.0) * t ** 1.15)
-        w *= 1.0 + 0.08 * bump(s, 0.0, 0.007) + 0.13 * bump(s, self.j1, 0.0055) \
-            + 0.085 * bump(s, self.j2, 0.0045)
-        w *= 1.0 - 0.05 * bump(s, self.j1 * 0.55, 0.010) \
-            - 0.05 * bump(s, (self.j1 + self.j2) * 0.5, 0.007)
+        taper = THUMB_TAPER if self.name == "thumb" else TIP_TAPER
+        w = self.root_w * (1.0 + (taper - 1.0) * t ** 1.1)
+        # the joints only a breath broader: a soft doll's finger, no folds
+        w *= 1.0 + 0.04 * bump(s, 0.0, 0.007) + 0.05 * bump(s, self.j1, 0.0055) \
+            + 0.035 * bump(s, self.j2, 0.0045)
         return w
 
     def section(self, s):
         """(half-width, back height, palm height) of the skin at s."""
         w = self.width(s)
-        back = w * self.flat * (1.0 + 0.10 * bump(s, self.j1, 0.005) + 0.05 * bump(s, self.j2, 0.004))
-        palm = w * (self.flat + 0.06)
-        palm *= 1.0 + 0.07 * bump(s, self.j1 * 0.5, 0.010) \
-            + 0.06 * bump(s, (self.j1 + self.j2) * 0.5, 0.007) \
-            + 0.10 * bump(s, self.length - self.segs[2] * 0.45, 0.007)
-        # nail bed: the back of the last joint sits a little lower and flatter
-        back *= 1.0 - 0.10 * smooth01((s - self.nail_from + 0.002) / 0.004)
+        back = w * self.flat * (1.0 + 0.03 * bump(s, self.j1, 0.005))
+        palm = w * (self.flat + 0.04)
+        palm *= 1.0 + 0.03 * bump(s, self.j1 * 0.5, 0.010) \
+            + 0.03 * bump(s, (self.j1 + self.j2) * 0.5, 0.007)
+        # the last joint flattens from the sides into a soft oval; the nail bed lies flat on it
+        k_tip = smooth01((s - self.nail_from + 0.003) / 0.006)
+        back *= 1.0 - 0.14 * k_tip
+        palm *= 1.0 - 0.06 * k_tip
         if self.name == "thumb" and s < 0.0:
             # the thumb starts inside the wrist as a round end, not a cut cylinder
             f = math.sqrt(max(0.02, 1.0 - (s / self.root_in) ** 2))
             w, back, palm = w * f, back * f, palm * f
-        tip_r = w * 1.15
+        tip_r = w * 0.95
         if s > self.length - tip_r:
             k = (s - (self.length - tip_r)) / tip_r
             f = math.sqrt(max(0.0, 1.0 - k * k))
@@ -177,20 +189,21 @@ def lerp_table(table, y):
 
 # y, half-width, centre x, back thickness, palm thickness
 PALM = [
-    (-0.060, 0.0225, 0.0000, 0.0150, 0.0150),
-    (-0.030, 0.0205, 0.0000, 0.0140, 0.0140),
-    (-0.004, 0.0195, 0.0000, 0.0125, 0.0125),
-    (0.014, 0.0230, -0.0005, 0.0120, 0.0135),
-    (0.036, 0.0295, -0.0010, 0.0115, 0.0140),
-    (0.060, 0.0325, -0.0015, 0.0105, 0.0128),
-    (0.080, 0.0325, -0.0020, 0.0092, 0.0108),
-    (0.091, 0.0315, -0.0020, 0.0080, 0.0090),
-    (0.097, 0.0280, -0.0020, 0.0055, 0.0062),
+    (-0.060, WRIST_HALF, 0.0000, WRIST_THICK, WRIST_THICK),
+    (-0.020, WRIST_HALF, 0.0000, WRIST_THICK, WRIST_THICK),
+    (-0.004, 0.0214, 0.0000, 0.0132, 0.0132),
+    (0.012, 0.0226, -0.0003, 0.0120, 0.0128),
+    (0.031, 0.0256, -0.0006, 0.0112, 0.0130),
+    (0.050, 0.0272, -0.0009, 0.0102, 0.0120),
+    (0.066, 0.0270, -0.0011, 0.0090, 0.0102),
+    (0.076, 0.0260, -0.0011, 0.0078, 0.0086),
+    (0.082, 0.0230, -0.0011, 0.0054, 0.0060),
 ]
+KNUCKLE_Y = 0.081
 
 
 def knuckle_line(x):
-    pts = [(-0.040, 0.082)] + [(f[1], f[2]) for f in FINGERS] + [(0.036, 0.072)]
+    pts = [(-0.034, 0.070)] + [(f[1], f[2]) for f in FINGERS] + [(0.030, 0.062)]
     for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
         if x <= x1:
             return y0 + (y1 - y0) * smooth01((x - x0) / (x1 - x0))
@@ -210,7 +223,7 @@ def palm_shell(bm, sides=32):
             x = cx + half * math.copysign(abs(c) ** 0.85, c)
             z = (back if s > 0 else palm) * math.copysign(abs(s) ** 0.85, s)
             # the far edge follows the arc of the knuckles instead of a straight cut
-            yy = y + (knuckle_line(x) - 0.095) * smooth01((y - 0.030) / 0.060)
+            yy = y + (knuckle_line(x) - KNUCKLE_Y) * smooth01((y - 0.026) / 0.052)
             ring.append(Vector((x, yy, z + 0.0008)))
         rings.append(ring)
     loft(bm, rings)
@@ -221,11 +234,11 @@ def make_digits():
     for name, x, y, ratio, root_w, spread, curl in FINGERS:
         rot = Matrix.Rotation(math.radians(spread), 3, 'Z')
         segs = tuple(MID_LEN * ratio * p for p in PHALANX)
-        digits.append(Digit(name, Vector((x, y, 0.0012)), rot, segs, root_w, curl, 0.86, 0.016))
+        digits.append(Digit(name, Vector((x, y, 0.0010)), rot, segs, root_w, curl, 0.84, 0.014))
     fwd = THUMB_FWD.normalized()
     back = (THUMB_BACK - fwd * THUMB_BACK.dot(fwd)).normalized()
     rot = Matrix((fwd.cross(back), fwd, back)).transposed()
-    digits.append(Digit("thumb", THUMB_BASE, rot, THUMB_SEG, THUMB_ROOT_W, THUMB_CURL, 0.80, 0.014))
+    digits.append(Digit("thumb", THUMB_BASE, rot, THUMB_SEG, THUMB_ROOT_W, THUMB_CURL, 0.82, 0.012))
     return digits
 
 
@@ -235,14 +248,12 @@ def build_skin(digits):
     for d in digits:
         digit_shell(bm, d)
     thumb = digits[-1]
-    # thumb mound, heel of the hand, web between thumb and index, soft knuckle heads
-    ellipsoid(bm, thumb.chain.point(0.020, 0.002, -0.004), (0.0125, 0.027, 0.0105), thumb.chain.rot)
-    ellipsoid(bm, Vector((0.0140, 0.036, -0.0065)), (0.0120, 0.032, 0.0072))
-    ellipsoid(bm, Vector((-0.0270, 0.064, -0.0010)), (0.0100, 0.0200, 0.0048),
-              Matrix.Rotation(math.radians(24), 3, 'Z'))
-    for d in digits[:4]:
-        ellipsoid(bm, d.chain.point(-0.001, 0.0, 0.0018), (d.root_w * 0.95, 0.0085, d.root_w * 0.72),
-                  d.chain.rot)
+    # thumb mound, heel of the hand and the web to the index: low and wide, melted into the palm
+    # so they only round it off (full mounds showed as blotches in the game's light)
+    ellipsoid(bm, thumb.chain.point(0.014, 0.004, 0.0005), (0.0095, 0.020, 0.0072), thumb.chain.rot)
+    ellipsoid(bm, Vector((0.0120, 0.030, -0.0040)), (0.0110, 0.026, 0.0090))
+    ellipsoid(bm, Vector((-0.0215, 0.054, -0.0008)), (0.0085, 0.0170, 0.0042),
+              Matrix.Rotation(math.radians(22), 3, 'Z'))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new("slender_hand_skin")
     bm.to_mesh(mesh)
@@ -276,19 +287,29 @@ def fuse_and_reduce(obj):
     m.ratio = SKIN_TRIS / dense
     m.use_collapse_triangulate = True
     apply_modifier(obj, m)
+    m = obj.modifiers.new("soften", 'SMOOTH')
+    m.factor = 0.4
+    m.iterations = 2
+    apply_modifier(obj, m)
     for p in obj.data.polygons:
         p.use_smooth = True
+    m = obj.modifiers.new("normals", 'WEIGHTED_NORMAL')
+    m.weight = 50
+    m.keep_sharp = False
+    apply_modifier(obj, m)
     return dense
 
 
 def nail_plate(d, cols=6, rows=5):
-    """Almond plate over the far 56% of the last joint, on its own material and bone."""
+    """Oval plate on the back of the far 56% of the last joint, ending short of the tip so no
+    colour shows round it from the palm side; on its own material and bone (the bone's tail at
+    the plate's free edge is where long nails go)."""
     s0 = d.nail_from
-    s1 = d.length + 0.0028
+    s1 = d.length + 0.0026
     ref = d.length - 0.30 * d.segs[2]
     w = d.width(ref)
     back = w * d.flat * 0.90
-    half = math.radians(58)
+    half = math.radians(50)
     verts, faces = [], []
     for r in range(rows + 1):
         v = r / rows
@@ -299,14 +320,14 @@ def nail_plate(d, cols=6, rows=5):
             a = u * half * shape
             vv = v + 0.10 * u * u * (1 - v) ** 3 - 0.10 * u * u * v ** 3
             s = s0 + (s1 - s0) * vv
-            z = back * math.cos(a) * (1.0 - 0.10 * v * v) + 0.00035
-            verts.append(d.chain.point(s, w * 0.97 * math.sin(a), z))
+            z = back * math.cos(a) * (1.0 - 0.30 * v * v) + 0.00030
+            verts.append(d.chain.point(s, w * NAIL_WIDTH * math.sin(a) / math.sin(half), z))
     for r in range(rows):
         for c in range(cols):
             i = r * (cols + 1) + c
             faces.append((i, i + 1, i + cols + 2, i + cols + 1))
     root = d.chain.point(s0, 0.0, back)
-    tip = d.chain.point(s1, 0.0, back * 0.90)
+    tip = d.chain.point(s1, 0.0, back * 0.70)
     return verts, faces, root, tip
 
 
@@ -400,18 +421,23 @@ def bind(skin, rig):
 def paint(skin, digits):
     """Vertex colour: pale back, warmer palm, warmer still on the fingertip pads and knuckles."""
     col = skin.data.color_attributes.new("Col", 'FLOAT_COLOR', 'POINT')
-    pads = [d.chain.point(d.length - d.segs[2] * 0.4, 0.0, -d.width(d.length) * 0.8) for d in digits]
+    pads = [d.chain.point(d.length - d.segs[2] * 0.45, 0.0, -d.width(d.length) * 0.8) for d in digits]
     knuckles = [d.chain.point(s, 0.0, d.width(s) * 0.8) for d in digits for s in (0.0, d.j1)]
     thumb_back = digits[-1].chain.rot.col[2]
+    webs = [(a.chain.point(0.003) + b.chain.point(0.003)) * 0.5 for a, b in zip(digits[:3], digits[1:4])]
+    palm_mid = Vector((0.0, 0.048, -0.012))
     for v in skin.data.vertices:
         p = v.co
         near_thumb = smooth01(1.0 - (p - digits[-1].chain.point(0.06)).length / 0.03)
         facing = v.normal.z * (1 - near_thumb) + v.normal.dot(thumb_back) * near_thumb
         k = smooth01(0.5 - facing * 1.6)
         c = Vector(SKIN_BACK).lerp(Vector(SKIN_PALM), k)
-        pad = max(smooth01(1.0 - (p - q).length / 0.011) for q in pads) * k
-        kn = max(smooth01(1.0 - (p - q).length / 0.008) for q in knuckles) * (1 - k) * 0.35
-        c = c.lerp(Vector(SKIN_PAD), max(pad, kn))
+        pad = max(smooth01(1.0 - (p - q).length / 0.012) for q in pads) * k
+        kn = max(smooth01(1.0 - (p - q).length / 0.007) for q in knuckles) * (1 - k) * 0.3
+        # a soft flush in the hollow of the palm and between the finger roots
+        hollow = smooth01(1.0 - (p - palm_mid).length / 0.022) * k * 0.25
+        web = max(smooth01(1.0 - (p - q).length / 0.008) for q in webs) * 0.4
+        c = c.lerp(Vector(SKIN_PAD), max(pad, kn, hollow, web))
         col.data[v.index].color = (c.x, c.y, c.z, 1.0)
 
 
@@ -435,9 +461,9 @@ def main():
     skin = build_skin(digits)
     dense = fuse_and_reduce(skin)
     paint(skin, digits)
-    skin.data.materials.append(material("hand_skin", SKIN_BACK, 0.55, vertex_colour=True))
+    skin.data.materials.append(material("hand_skin", SKIN_BACK, 0.75, vertex_colour=True))
     nails, nail_bones = build_nails(digits)
-    nails.data.materials.append(material("hand_nail", NAIL_COL, 0.12, two_sided=True))
+    nails.data.materials.append(material("hand_nail", NAIL_COL, 0.35, two_sided=True))
     rig = build_rig(digits, nail_bones)
     weighted = bind(skin, rig)
     skin_tris, nail_tris = tri_count(skin), tri_count(nails)
