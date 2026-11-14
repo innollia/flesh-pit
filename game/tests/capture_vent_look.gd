@@ -3,6 +3,7 @@ extends SceneTree
 ## The head in under the vent (user 2026-11-07): the being's hands held out
 ## in the middle of the view with 3, 5 and 8 items, and the head going in
 ## and coming out frame by frame. Real rendering, isolated save.
+## VENT_VARIANT=tone|grace|angle (comma separated) shows a candidate hand.
 ##   CAP_OUT=<dir> godot_console --path game --resolution 1280x720 --fixed-fps 60 --script res://tests/capture_vent_look.gd
 
 const THREE := ["knife", "spray_cheap", "barrier"]
@@ -16,6 +17,13 @@ func _init() -> void:
 	out = OS.get_environment("CAP_OUT")
 	if out == "":
 		out = OS.get_user_data_dir()
+	# VENT_VARIANT=tone,grace,angle turns on candidates kept for the user's
+	# pick (FPVent art HAND_TONE, HAND_GRACE, HAND_ANGLE); VENT_FLIP=0 has the
+	# hands come down palm first
+	for v in OS.get_environment("VENT_VARIANT").split(",", false):
+		load("res://main/art/fp_vent.gd").set("hand_" + v, true)
+	if OS.get_environment("VENT_FLIP") == "0":
+		load("res://main/art/fp_vent.gd").set("hand_flip", false)
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	m.save_path = "user://capture-vent-look.bin"
 	m.user_keybinds_path = "user://capture-vent-look-keys.json"
@@ -81,6 +89,10 @@ func _run() -> void:
 	await frames(60)
 	await shot("hands_3")
 	shown("hands_3")
+	offer(["spray_cheap"])
+	await frames(90)
+	await shot("hands_1")
+	shown("hands_1")
 	offer(FIVE)
 	await frames(90)
 	await shot("hands_5")

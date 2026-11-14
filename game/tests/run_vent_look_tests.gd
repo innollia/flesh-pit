@@ -195,8 +195,10 @@ func _composition() -> void:
 		var worst_off := 0.0
 		var sum := Vector2.ZERO
 		var pts: Array[Vector2] = []
-		# 2026-11-14: the long fingers lie across the view, not end on: how
-		# much of each middle finger's length the eye sees
+		# how much of each middle finger's length the eye sees. The hands
+		# hold side by side with their fingers toward the eye (the fan that
+		# laid them across the view was thrown out: user 2026-11-14 "부채
+		# 싫어"), so this only guards against a finger seen dead end on
 		var shown_least := INF
 		var shown_sum := 0.0
 		var eye_at: Vector3 = m.player.camera.global_position
@@ -223,7 +225,19 @@ func _composition() -> void:
 			pts.append(tip)
 		check(inside == n, "all %d hands and items are inside the frame (%d)" % [n, inside])
 		print("INFO shown %d: least %.2f mean %.2f" % [n, shown_least, shown_sum / float(n)])
-		check(shown_least >= 0.38 and shown_sum / float(n) >= 0.52, "%d hands show their fingers' length (least %.2f, mean %.2f of the middle finger)" % [n, shown_least, shown_sum / float(n)])
+		check(shown_least >= 0.22 and shown_sum / float(n) >= 0.38, "%d hands show no finger end on (least %.2f, mean %.2f of the middle finger seen)" % [n, shown_least, shown_sum / float(n)])
+		if n == 3:
+			# side by side, not a fan: the outer hands' fingers do not point
+			# away from each other along the row
+			var h0: Node3D = (art.call("item_node", 0) as Node3D).get_parent()
+			var h2: Node3D = (art.call("item_node", 2) as Node3D).get_parent()
+			var along: Vector3 = (h2.global_position - h0.global_position).normalized()
+			var apart: float = (-h2.global_basis.y.normalized() + h0.global_basis.y.normalized()).dot(along)
+			print("INFO fan 3: %.2f" % apart)
+			check(apart < 0.25, "the hands hold side by side, no fan (outer fingers %.2f apart along the row)" % apart)
+			# the three candidate looks stay off until the user has picked one
+			# from the pictures (docs/design/vent-npc.md "손")
+			check(not art.HAND_TONE and not art.HAND_GRACE and not art.HAND_ANGLE, "no candidate hand is the default before the user picks it")
 		var want := 0.14 if n <= 5 else 0.09
 		check(smallest >= want, "%d hands stand large (smallest palm %.2f of the height)" % [n, smallest])
 		var c := sum / float(n) - size * 0.5

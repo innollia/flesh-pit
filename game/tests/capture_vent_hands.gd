@@ -17,6 +17,13 @@ func _init() -> void:
 	# VENT_BUILD=B: the broader hand of the A/B pick
 	if OS.get_environment("VENT_BUILD") == "B":
 		load("res://main/art/fp_vent.gd").set("build_b", true)
+	# VENT_VARIANT=tone,grace,angle turns on candidates kept for the user's
+	# pick (FPVent art HAND_TONE, HAND_GRACE, HAND_ANGLE); VENT_FLIP=0 has the
+	# hands come down palm first
+	for v in OS.get_environment("VENT_VARIANT").split(",", false):
+		load("res://main/art/fp_vent.gd").set("hand_" + v, true)
+	if OS.get_environment("VENT_FLIP") == "0":
+		load("res://main/art/fp_vent.gd").set("hand_flip", false)
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	m.user_keybinds_path = "user://keybinds_test_vent_hands.json"
 	m.save_path = "user://capture-vent-hands.bin"
@@ -67,6 +74,13 @@ func _run() -> void:
 	await frames(60)
 	look_at_point(m.vent.offer_center())
 	await shot("three_near")
+	# CAP_QUICK=1: only the descent and the held offer (hand iteration)
+	if OS.get_environment("CAP_QUICK") != "":
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://capture-vent-hands.bin"))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://keybinds_test_vent_hands.json"))
+		m.queue_free()
+		quit(0)
+		return
 	# from other places in the room
 	for spot in [["three_far", Vector3(1.4, 0.9, 0.9)], ["three_grate_side", Vector3(-1.6, 0.9, -0.5)], ["three_under", Vector3(-0.5, 0.9, -0.7)], ["three_door", Vector3(0.6, 0.9, 1.2)]]:
 		await stand(spot[1])

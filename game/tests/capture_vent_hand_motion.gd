@@ -7,7 +7,8 @@ extends SceneTree
 ## (motion_000.png ...), to be put together into a strip or an animation.
 ## Real rendering, isolated save.
 ##   CAP_OUT=<dir> godot_console --path game --resolution 960x540 --fixed-fps 60 --script res://tests/capture_vent_hand_motion.gd
-## VENT_BUILD=B shows build B; VENT_MOOD=1 a frantic being (the snatch).
+## VENT_BUILD=B shows build B; VENT_MOOD=1 a frantic being (the snatch);
+## VENT_FLIP=0 the hands coming down palm first; VENT_VARIANT a candidate.
 
 const MOTION_STEP := 3
 
@@ -21,6 +22,13 @@ func _init() -> void:
 		out = OS.get_user_data_dir()
 	if OS.get_environment("VENT_BUILD") == "B":
 		load("res://main/art/fp_vent.gd").set("build_b", true)
+	# VENT_VARIANT=tone,grace,angle turns on candidates kept for the user's
+	# pick (FPVent art HAND_TONE, HAND_GRACE, HAND_ANGLE); VENT_FLIP=0 has the
+	# hands come down palm first
+	for v in OS.get_environment("VENT_VARIANT").split(",", false):
+		load("res://main/art/fp_vent.gd").set("hand_" + v, true)
+	if OS.get_environment("VENT_FLIP") == "0":
+		load("res://main/art/fp_vent.gd").set("hand_flip", false)
 	m = (load("res://main/scenes/main.tscn") as PackedScene).instantiate()
 	m.user_keybinds_path = "user://keybinds_capture_vent_hand_motion.json"
 	m.save_path = "user://capture-vent-hand-motion.bin"
