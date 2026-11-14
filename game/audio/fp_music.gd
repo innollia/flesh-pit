@@ -20,7 +20,7 @@ extends Node
 ##
 ## The room is one piece of music, not one track per screen (user 2026-11-07:
 ## the music turning into another because you knelt at the bowl was wrong).
-## Eight stems of the same key, tempo and length play in one synchronized
+## Seven stems of the same key, tempo and length play in one synchronized
 ## stream on one player and only their levels move, slowly; the bowl is no
 ## place of its own and nothing is ever swapped. Which stems are up follows
 ## the game, by the situations in audio/room_music.json, read the way the

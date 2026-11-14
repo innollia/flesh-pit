@@ -250,7 +250,7 @@ func _stems_are_one_piece() -> void:
 	var data: Dictionary = music.call("room_data")
 	_ok(data != null and not data.is_empty(), "room_music.json loads")
 	var stems: Array = (data.get("층", {}) as Dictionary).keys()
-	_ok(stems.size() >= 8, "at least eight stems (%d)" % stems.size())
+	_ok(stems.size() >= 7, "at least seven stems (%d)" % stems.size())
 	var length := -1.0
 	var rate := -1
 	var same := true
@@ -283,6 +283,15 @@ func _stems_are_one_piece() -> void:
 				bad.append(stem)
 	_ok(bad.is_empty(), "every condition and stem named in the situations exists %s" % str(bad))
 	_ok(music.call("active_situations") == ["평소"], "fresh in the room only the quiet is active (%s)" % str(music.call("active_situations")))
+	# the size of the trip never changes the room (user 2026-11-14: a room that
+	# grows more frightening was never approved)
+	_ok(not stems.has("dread"), "no fear stem among the room's stems")
+	var by_trip: Array = []
+	for sit in data.get("상황", []):
+		for key in ["이번_굴착", "이번_시간", "이번_깊이"]:
+			if (sit.get("조건", {}) as Dictionary).has(key):
+				by_trip.append("%s:%s" % [String(sit.get("id", "")), key])
+	_ok(by_trip.is_empty(), "no situation reads how much, how long or how deep the trip was %s" % str(by_trip))
 
 func _modal_places_in_room() -> void:
 	var bank: FDKSoundBank = m.get_node("AudioHookup").get("director").bank
@@ -389,14 +398,14 @@ func _situations() -> void:
 	await _trip(func(): pass)
 	_ok(music.call("active_situations") == ["평소"], "a walk to the door and back changes nothing (%s)" % str(music.call("active_situations")))
 	_ok(music.call("room_targets") == quiet, "same stems as before")
-	# back from a big dig
+	# back from a big dig: the room is as quiet as before (user 2026-11-14)
 	await _trip(func():
 		m.excavated_cells += 60
 		await run_for(0.2))
-	_hears("dread", "많이_파고_옴")
+	_ok(music.call("active_situations") == ["평소"], "a big dig changes nothing in the room (%s)" % str(music.call("active_situations")))
+	_ok(music.call("room_targets") == quiet, "same stems after a big dig")
 	_ok(float((music.call("facts") as Dictionary).get("이번_굴착", 0.0)) >= 60.0, "the dig is counted")
 	await run_for(260.0)
-	_ok(not music.call("active_situations").has("많이_파고_옴"), "the fear wears off after minutes in the room (%s)" % str(music.call("active_situations")))
 	# a long stay: the same clock, now past the long-stay line
 	await run_for(30.0)
 	_hears("linger", "오래_안_나감")
@@ -404,7 +413,6 @@ func _situations() -> void:
 	await _trip(func():
 		m.excavated_cells += 5
 		await run_for(0.2))
-	_ok(not music.call("active_situations").has("많이_파고_옴"), "a few cells are not a big dig")
 	_ok(not music.call("active_situations").has("오래_안_나감"), "and going out ended the long stay")
 	# the stomach
 	m.stomach.fill = m.stomach_config.capacity
@@ -439,7 +447,7 @@ func _situations() -> void:
 	m.wake_lids.set("_t", -1.0)
 	await run_for(16.0)
 	_hears("cold", "죽고_돌아옴")
-	_ok(not music.call("active_situations").has("많이_파고_옴"), "death takes the place of the fear")
+	_ok(not (music.call("room_targets") as Dictionary).has("dread"), "no fear stem in the room")
 	# the glare on the way back holds the start until the eyes have adjusted
 	m.player.global_position = m.RESTROOM_CENTER + Vector3(0, 0, -6.0)
 	await frames(1)

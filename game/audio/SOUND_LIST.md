@@ -82,12 +82,12 @@
 | mus_title | loop 음악 87 s | 시작 화면(거기서 연 설정 포함) | 음 어긋난 오르골 자장가와 낡은 리드 오르간, 둘째 바퀴에 허밍, 셋째 바퀴는 단조 화음, 넷째는 조각만. D장조 44 bpm |
 | mus_room_base | loop 음악 80 s (층) | 화장실·변기: 늘 돈다. 눈부심이 가시고 6초 뒤부터 8초에 걸쳐 아주 작게(`audio/room_music.json` 평소) | 젖은 손끝으로 도자기 테두리를 문지른 몇 음, 물탱크의 으뜸음. Bb 프리지안 54 bpm 72박 |
 | mus_room_reckon | loop 음악 80 s (층) | 변기 앞 정산 화면에서 천천히 올라옴 | 낮은 현 합주의 활 소리, 둔한 나무 두드림, 변기 안 음정 있는 물방울(옛 mus_settle) |
-| mus_room_dread | loop 음악 80 s (층) | 원정에 많이 파거나 겉껍질까지 갔다 돌아옴 | 반음 부딪는 낮은 활, 너무 느린 심장, 올라가는 높은 현, 내 것이 아닌 숨 |
 | mus_room_linger | loop 음악 80 s (층) | 화장실에 3분 넘게 있음 | 가까워진 테두리 소리가 Bb·Cb 반음을 맴돈다 |
 | mus_room_gut | loop 음악 80 s (층) | 위장이 80% 넘게 참 | 배 속 낮은 출렁임과 음정 있는 거품 |
 | mus_room_cold | loop 음악 80 s (층) | 죽고 깨어남, 3분 동안 | 낮은 소리가 빠진 높고 가는 음, 찬 공기 |
 | mus_room_wrong | loop 음악 80 s (층) | 이번 원정에 종양을 먹음, 돌아와 4분 동안 | 방의 선율을 반음의 1/3 낮게 반 박 늦게 따라 부르는 그림자 |
 | mus_room_gold | loop 음악 80 s (층) | 한 번에 이빨 12개 이상 정산, 90초 동안 | 음정 있는 딸깍임과 이 방에서 유일한 장조 온기 |
+| (없앰) mus_room_dread | | 2026-11-14에 뺐다. 많이 파거나 깊이 다녀오면 방이 무서워지던 층이다(사용자: "난 더 무서워지는걸 승인한 적 없긴해"). 원정 크기·깊이는 방 음악을 바꾸지 않는다. 패치만 남아 있다 | |
 | mus_vent | loop 음악 64 s | 환풍구 창살이 열려 있는 동안 | 이를 세듯 딱딱 부딪는 소리, 걷는 둔한 저음 현, 이 사이로 부는 반 박 늦은 휘파람(둘째·넷째 바퀴), 덕트 울림. B단조 120 bpm |
 | mus_pause | loop 음악 80 s | 살 속에서 Esc 눈 감기(거기서 연 설정 포함). 끌 때까지 곡이 바뀌지 않는다 | 어택 없는 따뜻한 현악 패드, 10초마다 녹아 넘어가는 화음, 숨처럼 부풀고 가라앉음. Ab 리디안, 박 없음(심장은 눈꺼풀 그림이 보여 준다) |
 | mus_pause_alt | loop 음악 87 s | 화장실 안에서 Esc 눈 감기(거기서 연 설정 포함). 끌 때까지 곡이 바뀌지 않는다 | 따뜻한 작은 방의 펠트 피아노, 화음 뒤 높은 음이 몇 초 간격으로 하나둘, 깔린 온기, 희미한 심장. Db장조 66 bpm |
@@ -146,3 +146,10 @@
 - pull_stretch는 합성 잡음이 이끌고 찢김 녹음은 8 dB 아래에 깔았다. 녹음을 앞세우면 찢김의 툭툭거림이 짧은 반복 기준에 걸린다.
 - 숨 녹음은 받아 둔 CC0에 없어서 숨 셋(squeeze_breath, crush_breath, full_refuse)은 잡음 합성이다. full_refuse에만 입 소리 녹음이 조금 들어간다.
 - CLAP 판별(`tools/clap_arcade.py`)은 이 PC에 `C:/fpear`가 없어 돌리지 않았다. regen_creak의 아케이드 몫 1.0이 내려갔는지는 재지 않았다.
+
+## 할 일
+
+- [다른 컴퓨터] CLAP 아케이드/전자 몫 다시 재기. 이 PC(admin)에는 `C:/fpear` venv가 없어 `tools/clap_arcade.py`·`tools/clap_beds.py`를 못 돌린다. 대상: 2026-11-14에 다시 만든 `regen_creak`, 새 소리 `contract_warn`·`squeeze_breath`·`crush_breath`·`full_refuse`·`tear_muscle`·`tear_cartilage`·`tear_cloth`·`tear_hair`·`pull_stretch`, 그리고 살 속 박자 층을 만들었다면 `mus_flesh_mantle_drive`·`mus_flesh_surface_drive`. 기준: 사용자가 퇴짜 놓은 "전자적·아케이드" 결이 아니고 `mus_pause_alt`·`lab_emotion`의 손으로 연주한 결에 가깝다. 곡과 음원 제작은 이 PC에서 한다(nkido는 WSL에 있다).
+- [이 PC] 삐걱임이 잦아진 뒤의 배경 마스킹 다시 재기(`tools/measure_beds.py`의 재생 삐걱·조임 경고 열).
+- [미구현] 살 속 굴착 몰입 박자 층. 사용자가 괜찮다고 한 방향이고 시킨 일은 아니다. 명세는 docs/design/sound-music.md "굴착 몰입 박자 층".
+- [사람] 화장실 일곱 층 청취: 큰 원정 뒤에도 조용하고 안전하게 들리는지, linger·wrong·cold가 "무서워지는 것"으로 들리는지, 귀환 때마다 gut 0.42가 시끄럽지 않은지.

@@ -67,9 +67,9 @@ func _run() -> void:
 		m.queue_free()
 		quit(0)
 		return
-	seg("dread_trip")
+	seg("big_trip")
 	await trip(func(): m.excavated_cells += 60)
-	seg("dread")
+	seg("after_big_trip")
 	await secs(36.0)
 	seg("gut")
 	m.stomach.fill = m.stomach_config.capacity

@@ -690,13 +690,6 @@
    ],
    "loop_seconds": 67.2
   },
-  "mus_room_dread": {
-   "kind": "loop",
-   "files": [
-    "res://audio/loops/mus_room_dread.wav"
-   ],
-   "loop_seconds": 80.0
-  },
   "mus_room_linger": {
    "kind": "loop",
    "files": [

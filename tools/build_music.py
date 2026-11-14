@@ -43,7 +43,8 @@ song_melody). So none of these plays in the flesh. Where each one plays
                                    finger on the rim, always, very low: 03 1,
                                    so quiet you hear your own breath), reckon
                                    (the bowl's bowed basses, tally, drips),
-                                   dread, linger, gut, cold, wrong, gold
+                                   linger, gut, cold, wrong, gold (no stem
+                                   answers to how much or how deep was dug)
 
 Each is a seamless loop of whole bars. The numpy tracks wrap notes and
 reverb tails round the loop end (circular placement and circular
@@ -316,16 +317,18 @@ LOFI = {"mus_title": (22050, 12), "mus_vent": (16000, 10),
 # The room's stems: one piece, so one length, one wow curve (a different one per
 # stem would slide them against each other) and one lo-fi. Their loudness is
 # alike; the game sets the mix. Written at half rate: the lo-fi leaves nothing
-# above 8 kHz, and eight long stems are the largest thing in the sound folder.
-ROOM_STEMS = ("base", "reckon", "dread", "linger", "gut", "cold", "wrong", "gold")
+# above 8 kHz, and seven long stems are the largest thing in the sound folder.
+ROOM_STEMS = ("base", "reckon", "linger", "gut", "cold", "wrong", "gold")
 ROOM_LOOP = 72 * 60.0 / 54.0
 ROOM_RATE = 24000
 for stem in ROOM_STEMS:
     NKIDO_TRACKS["mus_room_" + stem] = (54.0, ROOM_LOOP, 0.3, (0.002, [2, 5], [0.0, 0.0]))
     LOFI["mus_room_" + stem] = (16000, 12)
     TARGET_LUFS["mus_room_" + stem] = -28.0
-# folded into the stems: no longer built, gone from the manifest
-RETIRED = ("mus_restroom", "mus_settle")
+# no longer built, gone from the manifest: the first two were folded into the
+# stems; mus_room_dread (the room growing frightening after a big dig) was
+# taken out 2026-11-14, the user never approved it. Its patch is kept.
+RETIRED = ("mus_restroom", "mus_settle", "mus_room_dread")
 
 
 def render_nkido(name):
