@@ -21,18 +21,23 @@ const MAX_SLOTS := 240
 const SHAGGY_AT := 80
 ## Strands drawn per hair point (mut6: fewer thick rods read as bugs).
 const STRANDS := 3
-## Hair colour; the kind colour only tints it a little.
+## Hair colour; the kind colour barely touches the root.
 const HAIR := Color(0.1, 0.065, 0.045)
-const TINT := 0.3
+const TINT := 0.1
 ## How far a strand's outer part takes its kind colour (the root keeps HAIR,
-## so a hair still reads as dark hair; mut6). Set to TINT to go back to one
-## even tint along the whole strand.
-const TINT_TIP := 0.55
-## The strands of one hair point share a follicle: each starts within this
-## distance of the point's root, fans out by FAN radians and is shorter.
-const TUFT_R := 0.0025
-const FAN := 0.25
-const TUFT_LEN := [1.0, 0.8, 0.6]
+## so a hair still reads as dark hair; mut6). The colour sits on the outer
+## half only and is strong there: spread thin along the whole strand it
+## read as coloured grass on the model and as black scratches at the game's
+## resolution (2026-11-14 review).
+const TINT_TIP := 0.8
+## The strands of one hair point grow from one patch of skin: each starts
+## within TUFT_R of the point's root and leans FAN radians off its
+## neighbours. Three strands out of one pore, a quarter radian apart, read
+## as a bird's foot or a blade of grass; a few millimetres apart and nearly
+## parallel they read as three hairs.
+const TUFT_R := 0.008
+const FAN := 0.07
+const TUFT_LEN := [1.0, 0.86, 0.72]
 const COLORS := {
     "common": Color(0.05, 0.035, 0.03),
     "core": Color(0.93, 0.33, 0.55),     # compressive tissue: deep pink (spec 02)
@@ -56,6 +61,11 @@ void vertex() {
 void fragment() {
     ALBEDO = COLOR.rgb;
     ROUGHNESS = 1.0;
+    // the coloured tip carries its own light: a strand is about a pixel
+    // wide at the game's resolution and a lit tint went black there, so no
+    // kind could be told from another (dark hair has no chroma and stays dark)
+    float chroma = max(COLOR.r, max(COLOR.g, COLOR.b)) - min(COLOR.r, min(COLOR.g, COLOR.b));
+    EMISSION = COLOR.rgb * chroma * 1.6;
 }
 """
 
@@ -240,6 +250,29 @@ func strand_count() -> int:
 
 ## Strand k (0..STRANDS-1) of the hair point rooted at slot `s`.
 func _strand(st: SurfaceTool, s: Array, k: int, kind: String, shaggy: bool, blink: bool = false) -> void:
+            var thick := sqrt(density())
+            var pts := strand_points(s, k, shaggy)
+            var radii: Array = []
+            var w := (0.0012 if shaggy else 0.0011) * minf(thick, 1.6)
+            # a strand keeps most of its width to the end (a long taper is
+            # under a pixel wide where the colour is, and draws as dashes)
+            for i in range(pts.size()):
+                radii.append(lerpf(w, w * 0.7, float(i) / float(pts.size() - 1)) if i < pts.size() - 1 else w * 0.35)
+            var cols: Array = strand_colors(kind)
+            if blink:
+                cols = [COLORS[kind].lightened(0.35)]
+            K.tube(st, Transform3D.IDENTITY, pts, radii, 3, cols, false)
+
+## Root-to-tip colours of a strand of `kind`: dark hair, the kind's colour
+## on the outer half only.
+static func strand_colors(kind: String) -> Array:
+            var root := HAIR.lerp(COLORS[kind], TINT)
+            var tip := HAIR.lerp(COLORS[kind], TINT_TIP)
+            return [root, root, root.lerp(tip, 0.2), root.lerp(tip, 0.75), tip, tip]
+
+## The centre line (root first) of strand k of the hair point at slot `s`
+## ([base, normal, seed] as in _slots).
+func strand_points(s: Array, k: int, shaggy: bool) -> Array:
             var nrm: Vector3 = s[1]
             var thick := sqrt(density())
             # a crowded arm grows denser more than longer: a mane hid the arm
@@ -255,27 +288,20 @@ func _strand(st: SurfaceTool, s: Array, k: int, kind: String, shaggy: bool, blin
             if ang > 0.6:
                 lean = (lean + Vector3(nrm.y, -nrm.x, 0.0) * ang * 0.4).normalized()
             var side := nrm.cross(lean).normalized()
-            # one follicle: the strands start a hair's breadth apart
+            # one patch of skin: the strands stand a few millimetres apart,
+            # each on the arm's own surface (the offset follows the skin)
             var base: Vector3 = s[0]
             if k > 0:
                 var around := float(k) * 2.4 + float(s[2]) * TAU
-                base += (side * cos(around) + lean * sin(around)) * TUFT_R
+                base += (side * cos(around) + lean * sin(around)) * TUFT_R * (0.6 + 0.4 * float(k % 2))
             var pts: Array = [base - nrm * 0.001]
-            var radii: Array = []
-            var w := (0.0011 if shaggy else 0.001) * minf(thick, 1.6)
+            # nearly straight: a low arc off the skin and a slight sideways
+            # drift (a strong curl made each strand a claw)
             for i in range(1, 6):
                 var t := float(i) / 5.0
-                var lift := 0.3 * sin(t * PI * 0.5) - 0.08 * t * t
-                pts.append(base + nrm * length * lift + lean * length * t + side * length * 0.12 * j * t * t)
-            for i in range(pts.size()):
-                radii.append(lerpf(w, 0.0003, float(i) / float(pts.size() - 1)))
-            # dark at the root, the kind's colour toward the tip
-            var root := HAIR.lerp(COLORS[kind], TINT)
-            var tip := HAIR.lerp(COLORS[kind], TINT_TIP)
-            var cols: Array = [root, root.lerp(tip, 0.6), tip, tip, tip]
-            if blink:
-                cols = [COLORS[kind].lightened(0.35)]
-            K.tube(st, Transform3D.IDENTITY, pts, radii, 3, cols, false)
+                var lift := 0.22 * sin(t * PI * 0.5) - 0.05 * t * t
+                pts.append(base + nrm * length * lift + lean * length * t + side * length * 0.05 * j * t * t)
+            return pts
 
 func drop_hairs(n: int) -> void:
     for k in ["surface", "mantle", "core", "common"]:

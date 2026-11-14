@@ -161,6 +161,18 @@ func mirror_body() -> void:
 	b.apply(["M23"])
 	var whiskers := _piece(b, "Mut_M23")
 	ok(whiskers != null and maxf(absf(whiskers.get_aabb().position.x), absf(whiskers.get_aabb().end.x)) > 0.3, "mirror: sense bristles stand clear of the arm's outline")
+	# enough of them, and dark enough, to be seen in the mirror (2026-11-14
+	# review: eight thin ones pale from the middle up were all but gone)
+	var wcols: PackedColorArray = whiskers.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var dark := 0
+	var strand := 0
+	for c in wcols:
+		if c.get_luminance() < 0.2:
+			dark += 1
+		if c.get_luminance() < 0.2 or (c.r - c.b) < 0.3 and c.get_luminance() < 0.7 and c.b < 0.5:
+			strand += 1
+	ok(int(b.get_script().get_script_constant_map()["MIRROR_BRISTLES"]) >= 12, "mirror: twelve bristles an arm")
+	ok(dark * 2 > strand and dark > 100, "mirror: a bristle is dark for most of its length (%d dark of %d strand vertices)" % [dark, strand])
 	b.apply(["M20"])
 	var elbow := b.part_node("right_hand")
 	ok(absf(elbow.rotation_degrees.x - FPMirrorBody.M20_ELBOW) < 0.01, "mirror: M20 folds the right elbow the wrong way")
@@ -190,6 +202,47 @@ func hands() -> void:
 			tall = tall and br.get_aabb().size.y >= 0.05
 	ok(both == 2, "hands: M23 bristles on both forearms, under the name the shiver looks for")
 	ok(tall, "hands: the bristles stand at least 50 mm off the arm (arm hair lies within 12 mm)")
+	# they grow out of the arm: every one starts on the forearm's own skin
+	# (2026-11-14 review: by the thin wrist they hung beside the arm as a
+	# stray orange line), in their own dark colour, thick enough to see
+	var mh_script: Script = mh.get_script()
+	var consts: Dictionary = mh_script.get_script_constant_map()
+	var radii: Array = consts["BRISTLE_RADII"]
+	var bcols: Array = consts["BRISTLE_COLORS"]
+	ok(int(consts["BRISTLES"]) >= 12 and float(radii[0]) >= 0.003 and float(radii[2]) >= 0.0008, "hands: twelve bristles an arm, 6 mm at the root (%d, %.1f mm)" % [int(consts["BRISTLES"]), float(radii[0]) * 2000.0])
+	ok((bcols[0] as Color).get_luminance() < 0.15 and (bcols[1] as Color).get_luminance() < 0.25 and (bcols[2] as Color).get_luminance() > 0.5, "hands: a bristle is dark for most of its length, bleached at the end")
+	var worst_gap := 0.0
+	var thin_gap := 0.0
+	for side in ["HandRight", "HandLeft"]:
+		var hand := rig.get_node(side)
+		var forearm := hand.get_node("Forearm") as MeshInstance3D
+		var br := hand.get_node("MutDeco_Bristles") as MeshInstance3D
+		ok((br.material_override as ShaderMaterial).get_shader_parameter("use_vertex_color") == true, "hands: %s bristles are drawn in their own colours, not the skin texture" % side)
+		# a bristle's foot: the lowest of its vertices in the root colour
+		# (its first segment), one per bristle along the arm
+		var arr := br.mesh.surface_get_arrays(0)
+		var bv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var bc: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+		var rings := {}
+		for i in range(bv.size()):
+			var root_col: Color = bcols[0]
+			if absf(bc[i].r - root_col.r) + absf(bc[i].g - root_col.g) + absf(bc[i].b - root_col.b) > 0.03:
+				continue
+			var key := int(round(bv[i].z * 1000.0 / 24.0))
+			if not rings.has(key) or bv[i].y < (rings[key] as Vector3).y:
+				rings[key] = bv[i]
+		ok(rings.size() == int(consts["BRISTLES"]), "hands: %s has a root for every bristle (%d)" % [side, rings.size()])
+		for key in rings:
+			var f: Vector3 = rings[key]
+			var top: float = mh_script.call("arm_top", forearm, f.x, f.z, -1.0)
+			ok(top > 0.0, "hands: bristle at z %.3f is over the forearm" % f.z)
+			worst_gap = maxf(worst_gap, f.y - top)
+			if f.z < 0.1:
+				thin_gap = maxf(thin_gap, f.y - top)
+	ok(worst_gap < 0.002, "hands: no bristle starts above the arm's skin (highest foot %.1f mm over it)" % (worst_gap * 1000.0))
+	ok(thin_gap < 0.002, "hands: nor by the thin wrist, where a fixed height left them in the air (%.1f mm)" % (thin_gap * 1000.0))
+	var flat: float = mh_script.call("arm_top", rig.get_node("HandRight/Forearm"), 0.016, 0.05, -1.0)
+	ok(flat > 0.005 and flat < 0.022, "hands: the wrist end of the forearm is lower than the old fixed 26 mm (%.1f mm)" % (flat * 1000.0))
 	ok(not rig.find_children("MutDeco_Buds", "MeshInstance3D", true, false).is_empty(), "hands: M26 buds are there")
 	mh.call("apply_all", [rig], [])
 	ok(rig.find_children("MutDeco_*", "", true, false).is_empty(), "hands: shedding the mutations removes the pieces")
@@ -211,6 +264,33 @@ func arm_hair() -> void:
 		lo = minf(lo, c.r)
 		hi = maxf(hi, c.r)
 	ok(hi > lo + 0.15, "hair: a core hair is dark at the root and pink toward the tip (red %.2f..%.2f)" % [lo, hi])
+	# three hairs side by side, not three blades out of one pore (2026-11-14
+	# review: a fan from one root read as a bird's foot or a blade of grass)
+	var slot: Array = (arm.get("_slots") as Array)[0]
+	var lines: Array = []
+	for k in range(3):
+		lines.append(arm.call("strand_points", slot, k, false))
+	var root_gap := 9.0
+	var widest := 0.0
+	var bow := 0.0
+	for a in range(3):
+		var pa: Array = lines[a]
+		var da: Vector3 = ((pa[pa.size() - 1] as Vector3) - (pa[0] as Vector3))
+		# how far the strand's middle stands off its chord, in chord lengths
+		bow = maxf(bow, ((pa[3] as Vector3) - (pa[0] as Vector3) - da * ((pa[3] as Vector3) - (pa[0] as Vector3)).dot(da) / da.length_squared()).length() / da.length())
+		for b in range(a + 1, 3):
+			var pb: Array = lines[b]
+			var db: Vector3 = ((pb[pb.size() - 1] as Vector3) - (pb[0] as Vector3))
+			root_gap = minf(root_gap, (pa[0] as Vector3).distance_to(pb[0] as Vector3))
+			widest = maxf(widest, da.angle_to(db))
+	ok(root_gap > 0.003, "hair: the strands of a hair point stand apart on the skin (nearest roots %.1f mm)" % (root_gap * 1000.0))
+	ok(widest < 0.2, "hair: and run nearly side by side, no fan (widest %.2f rad)" % widest)
+	ok(bow < 0.12, "hair: a strand is a low arc, not a claw (bow %.2f of its length)" % bow)
+	var kc: Array = arm.get_script().call("strand_colors", "core")
+	var hair_col: Color = arm.get_script().get_script_constant_map()["HAIR"]
+	ok(kc.size() == 6 and Vector3(kc[0].r - hair_col.r, kc[0].g - hair_col.g, kc[0].b - hair_col.b).length() < 0.12 and (kc[1] as Color).is_equal_approx(kc[0]), "hair: the inner part of a coloured hair is plain dark hair")
+	ok((kc[5] as Color).r > 0.6 and (kc[5] as Color).r - (kc[5] as Color).g > 0.3 and (kc[4] as Color).is_equal_approx(kc[5]), "hair: its outer part carries the kind's colour strongly enough to tell at a pixel's width (%s)" % str(kc[5]))
+	ok(((arm.get_node("Hairs") as MeshInstance3D).material_override as ShaderMaterial).shader.code.contains("EMISSION = COLOR.rgb * chroma"), "hair: the coloured tip is lit by its own colour, dark hair is not")
 	arm.call("set_hair", 1, {})
 	cols = (arm.get_node("Hairs") as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
 	hi = 0.0

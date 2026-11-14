@@ -23,10 +23,10 @@ const SETS := {
 	"bump7": {"bumps": 7, "shots": "ABD"},
 	"hair6": {"hair": [2, 2, 1, 1], "shots": "CH"},
 	"hair40": {"hair": [14, 9, 8, 9], "shots": "CH"},
-	"hair240": {"hair": [60, 60, 60, 60], "shots": "CH"},
-	"core20": {"hair": [0, 20, 0, 0], "shots": "H"},
-	"mantle20": {"hair": [0, 0, 20, 0], "shots": "H"},
-	"surface20": {"hair": [0, 0, 0, 20], "shots": "H"},
+	"hair240": {"hair": [60, 60, 60, 60], "shots": "BCH"},
+	"core20": {"hair": [0, 20, 0, 0], "shots": "CH"},
+	"mantle20": {"hair": [0, 0, 20, 0], "shots": "CH"},
+	"surface20": {"hair": [0, 0, 0, 20], "shots": "CH"},
 	"M23": {"ids": ["M23"], "shots": "ABCH"},
 	"M23_hair240": {"ids": ["M23"], "hair": [60, 60, 60, 60], "shots": "CH"},
 	"M09": {"ids": ["M09"], "shots": "AB"},
@@ -125,7 +125,9 @@ func run_model() -> void:
 			cam.look_at(arm.position + Vector3(0, 0.0, -0.17), Vector3.UP)
 			await save("model_%s_arm" % nm)
 			arm.queue_free()
-			continue
+			# a set with mutations as well (M23_hair240) also gets the body views
+			if not spec.has("ids"):
+				continue
 		var ids: Array = spec.get("ids", [])
 		b.apply(ids, int(spec.get("bumps", 0)))
 		await frames(2)

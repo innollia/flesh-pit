@@ -17,6 +17,8 @@ const BAG_SCENE := preload("res://main/art/fp_tumor_bag.tscn")
 ## Same skin as the first-person hands (fdk_hands_rig skin_color).
 const SKIN := Color(0.88, 0.72, 0.62)
 const SKIN_D := Color(0.8, 0.64, 0.55)
+## M23 sense bristles standing off each arm of the mirror body.
+const MIRROR_BRISTLES := 12
 
 const SHIMMER_SHADER := "shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_back;
@@ -1040,12 +1042,16 @@ func _extra(id: String, _ghost: bool) -> Array[Node3D]:
 		"M23": # sense bristles: long whiskers standing clear of both arms,
 			# dark at the root and bleached at the tip (not body hair)
 			parent = _parts["arms"]
+			# twelve an arm, each out of a small mound of skin, dark for
+			# most of its length (eight thin ones pale from the middle up
+			# could hardly be seen in the mirror; 2026-11-14 review)
 			for sx in [-1, 1]:
-				for k in range(8):
-					var tt := float(k) / 7.0
+				for k in range(MIRROR_BRISTLES):
+					var tt := float(k) / float(MIRROR_BRISTLES - 1)
 					var base := Vector3(sx * (ARM_ROOT_X + 0.035 + 0.05 * tt), -0.03 - 0.25 * tt, 0.03 + 0.05 * tt)
 					var tip: Vector3 = base + Vector3(sx * 0.08, 0.02, 0.03).normalized() * 0.09
-					K.tube(st, I, [base, base.lerp(tip, 0.45), tip], [0.0035, 0.0024, 0.001], 3, [Color(0.12, 0.09, 0.07), Color(0.82, 0.76, 0.60)], false)
+					K.blob(st, I, base, Vector3(0.009, 0.008, 0.009), 0.15, 230 + k, SKIN, SKIN_D)
+					K.tube(st, I, [base, base.lerp(tip, 0.6), tip], [0.0045, 0.0032, 0.0014], 3, [Color(0.12, 0.09, 0.07), Color(0.20, 0.15, 0.11), Color(0.70, 0.62, 0.46)], false)
 		"M25": # swollen veins across the forehead and temples
 			parent = _parts["face"]
 			# two veins that climb from the temples and wander over the

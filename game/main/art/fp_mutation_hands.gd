@@ -144,11 +144,51 @@ static func _reset(rig: Node3D) -> void:
         d.get_parent().remove_child(d)
         d.queue_free()
 
-static func _deco(parent: Node3D, dname: String, st: SurfaceTool, col_tex: String = "tex_skin_128.png") -> MeshInstance3D:
+## `own_colors`: the piece is drawn in its vertex colours (times the
+## texture) instead of the texture alone. The bristles need it: under the
+## skin texture alone they were skin-orange lines, not dark whiskers.
+static func _deco(parent: Node3D, dname: String, st: SurfaceTool, col_tex: String = "tex_skin_128.png", own_colors: bool = false) -> MeshInstance3D:
     if parent == null:
         return null
-    var mi := K.add_mesh(parent, "MutDeco_" + dname, K.finish(st, 8.0), FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/" + col_tex, 6.0, false, 0.32, 0.55, 0.18))
+    var mi := K.add_mesh(parent, "MutDeco_" + dname, K.finish(st, 8.0), FDKPs1Material.get_material("res://addons/flesh_dig_kit/textures/" + col_tex, 6.0, own_colors, 0.32, 0.55, 0.18))
     return mi
+
+## Height of the top of the rig's forearm over the point (x, z) of the hand
+## root's frame, read off the forearm mesh itself (with the scale a mutation
+## gave it), so what grows on the arm stands on its skin wherever the arm is
+## thin. `fallback` when the point is off the arm.
+static func arm_top(forearm: MeshInstance3D, x: float, z: float, fallback: float = 0.026) -> float:
+    if forearm == null or forearm.mesh == null or forearm.mesh.get_surface_count() == 0:
+        return fallback
+    var arr := forearm.mesh.surface_get_arrays(0)
+    var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+    var idx = arr[Mesh.ARRAY_INDEX]
+    var n: int = (idx as PackedInt32Array).size() if idx != null else v.size()
+    var best := -INF
+    var t := forearm.transform
+    for i in range(0, n, 3):
+        var a: Vector3 = t * v[idx[i] if idx != null else i]
+        var b: Vector3 = t * v[idx[i + 1] if idx != null else i + 1]
+        var c: Vector3 = t * v[idx[i + 2] if idx != null else i + 2]
+        # barycentric coordinates of (x, z) in the triangle seen from above
+        var d := (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z)
+        if absf(d) < 1e-12:
+            continue
+        var wa := ((b.z - c.z) * (x - c.x) + (c.x - b.x) * (z - c.z)) / d
+        var wb := ((c.z - a.z) * (x - c.x) + (a.x - c.x) * (z - c.z)) / d
+        var wc := 1.0 - wa - wb
+        if wa < -1e-5 or wb < -1e-5 or wc < -1e-5:
+            continue
+        best = maxf(best, wa * a.y + wb * b.y + wc * c.y)
+    return best if best > -INF else fallback
+
+## M23 sense bristles on each forearm: how many, how thick (root, three
+## fifths up, tip) and their colours there. Dark for most of their length
+## with only the end bleached: a strand pale from the middle up was lost
+## against skin, tile and sky alike.
+const BRISTLES := 12
+const BRISTLE_RADII := [0.0032, 0.0022, 0.0009]
+const BRISTLE_COLORS := [Color(0.12, 0.09, 0.07), Color(0.20, 0.15, 0.11), Color(0.70, 0.62, 0.46)]
 
 ## Reshape one rig for the given mutation ids (idempotent).
 static func apply_shape(rig: Node3D, ids: Array) -> void:
@@ -213,14 +253,22 @@ static func apply_shape(rig: Node3D, ids: Array) -> void:
         # straight up, three times as long, dark at the root and bleached at
         # the tip like a cat's whisker, so their shiver (the squeeze
         # warning) is not lost among ordinary hair
+        # Each stands on the arm's own skin (arm_top reads the forearm mesh:
+        # at a fixed height the ones by the thin wrist hung in the air beside
+        # it) out of a small mound of flesh, and is thick and dark enough to
+        # see: under the skin texture and a hair's width they were a stray
+        # orange line by the wrist (2026-11-14 review).
         for side in both:
             st = K.begin()
-            for k in range(10):
-                var x := 0.018 if k % 2 == 0 else -0.018
-                var foot := Vector3(x, 0.026, 0.04 + k * 0.028)
+            var forearm := _seg(rig, side, "Forearm") as MeshInstance3D
+            for k in range(BRISTLES):
+                var x := 0.016 if k % 2 == 0 else -0.016
+                var z := 0.045 + k * 0.024
+                var foot := Vector3(x, arm_top(forearm, x, z) - 0.0015, z)
                 var tip := foot + Vector3(x * 0.6, 0.060, 0.004).normalized() * lerpf(0.055, 0.070, K.h(k, 23))
-                K.tube(st, I, [foot, foot.lerp(tip, 0.45), tip], [0.0022, 0.0014, 0.0005], 3, [Color(0.12, 0.09, 0.07), Color(0.82, 0.76, 0.60)], false)
-            _deco(_seg(rig, side, ""), "Bristles", st)
+                K.blob(st, I, foot, Vector3(0.0055, 0.0035, 0.0055), 0.15, 230 + k, skin, skin_d)
+                K.tube(st, I, [foot, foot.lerp(tip, 0.6), tip], BRISTLE_RADII, 3, BRISTLE_COLORS, false)
+            _deco(_seg(rig, side, ""), "Bristles", st, "tex_ceramic_64.png", true)
     if "M26" in ids: # tiny two-jointed fingers budding on the right hand's edge
         st = K.begin()
         var bud_tip := Color(0.93, 0.78, 0.72)
